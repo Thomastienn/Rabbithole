@@ -197,9 +197,10 @@ export function foldHierarchy<T extends { id: string; parent: string | null }>(
 }
 
 // Map line routing (epic Rabbithole-ldr): out of the source ring sideways, a 45° turn, a vertical run
-// through the gutter centre when the rise exceeds the run, a 45° turn and sideways into the target ring.
+// through the gutter centre (moved by `lane`, see branchLanes) when the rise exceeds the run, a 45° turn and
+// sideways into the target ring.
 // shortcut: only the two linked cards are avoided, not third cards in the gutter; pass all boxes if they collide.
-export function routeLine(source: Point, target: Point, from: Box, to: Box): Point[] {
+export function routeLine(source: Point, target: Point, from: Box, to: Box, lane = 0): Point[] {
     const right = (box: Box) => box.x + box.width;
     // A child left of its parent mirrors the rule; overlapping columns (above or below) run outside both cards.
     const facing = to.x >= right(from) ? 1 : right(to) <= from.x ? -1 : 0;
@@ -216,7 +217,7 @@ export function routeLine(source: Point, target: Point, from: Box, to: Box): Poi
         { x: x + (facing || -1) * turn, y: end.y },
         end,
     ];
-    if (!facing) return bend(Math.max(start.x, end.x) + 40, Math.min(16, rise / 2));
+    if (!facing) return bend(Math.max(start.x, end.x) + 40 + lane, Math.min(16, rise / 2));
     const middle = (start.x + end.x) / 2,
         run = Math.abs(end.x - start.x);
     // A rise within the run is one 45° diagonal centred in the gutter, with a short level stub at each ring.
@@ -227,7 +228,53 @@ export function routeLine(source: Point, target: Point, from: Box, to: Box): Poi
             { x: middle + (facing * rise) / 2, y: end.y },
             end,
         ];
-    return bend(middle, Math.min(16, run / 2, rise / 2));
+    return bend(middle + lane, Math.min(16, run / 2, rise / 2));
+}
+
+// Room for a 7px line plus a 5px gap.
+export const LANE = 12;
+
+// Sibling lines whose vertical runs (routed with lane 0) would touch spread into lanes LANE apart around their
+// mean run. Lanes follow child ring height so lines never cross: the run to the farther child lies farther from
+// the child cards, clear of the nearer child's way in.
+// shortcut: lanes are not squeezed to fit, so many siblings in a narrow gutter can reach the cards; fit them if that shows up.
+export function branchLanes(lines: { id: string; parent: string; points: Point[] }[]) {
+    const runs = lines.flatMap(({ id, parent, points }) => {
+        const i = points.findIndex(
+            (p, i) => i > 0 && p.x === points[i - 1].x && p.y !== points[i - 1].y,
+        );
+        if (i < 0) return [];
+        const { x } = points[i],
+            end = points.at(-1)!,
+            down = points[i].y > points[i - 1].y;
+        // Sorting by key sorts lanes left to right.
+        const key = (end.x > x ? -1 : 1) * (down ? 1 : -1) * end.y;
+        const [top, bottom] = [points[i - 1].y, points[i].y].sort((a, b) => a - b);
+        return [{ id, parent, x, top, bottom, key }];
+    });
+    type Run = (typeof runs)[number];
+    const touches = (a: Run, b: Run) =>
+        a !== b &&
+        a.parent === b.parent &&
+        Math.abs(a.x - b.x) < LANE &&
+        a.top < b.bottom + LANE &&
+        b.top < a.bottom + LANE;
+    const lanes: Record<string, number> = {};
+    const placed = new Set<Run>();
+    for (const run of runs) {
+        if (placed.has(run)) continue;
+        const group = [run];
+        for (const member of group)
+            for (const other of runs)
+                if (!group.includes(other) && touches(member, other)) group.push(other);
+        group.forEach((member) => placed.add(member));
+        if (group.length < 2) continue;
+        const centre = group.reduce((sum, r) => sum + r.x, 0) / group.length;
+        group
+            .sort((a, b) => a.key - b.key)
+            .forEach((r, i) => (lanes[r.id] = centre + (i - (group.length - 1) / 2) * LANE - r.x));
+    }
+    return lanes;
 }
 
 export const linePath = (points: Point[]) => `M${points.map((p) => `${p.x} ${p.y}`).join('L')}`;

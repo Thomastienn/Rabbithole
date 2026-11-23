@@ -21,7 +21,7 @@ import {
     MeasureHandles,
     type ConversationNode,
 } from './Conversation';
-import Branch from './Branch';
+import Branch, { Lanes, MeasureLanes } from './Branch';
 import { GhostTree } from './GhostTree';
 import { useGhostTrees, type GhostOptions } from './useGhostTrees';
 import { fit, useMapViewport } from './useMapViewport';
@@ -186,6 +186,7 @@ export default function TreeOverview({
     }
     const placed = useRef(new Set<string>());
     const [notice, setNotice] = useState('');
+    const [lanes, setLanes] = useState<Record<string, number>>({});
     const hierarchy = useMemo(() => foldHierarchy(root, trees, folded), [root, trees, folded]);
     const focusedPath = useMemo(() => {
         const path = new Set<string>();
@@ -470,55 +471,58 @@ export default function TreeOverview({
                 }}
             >
                 <ConversationTransition.Provider value={transition}>
-                    <ReactFlow<ConversationNode>
-                        nodes={mapNodes}
-                        onlyRenderVisibleElements={canCull && nodes.length > 50}
-                        onNodesChange={(changes) => onNodesChange(ghost.move(changes))}
-                        edges={mapEdges}
-                        edgeTypes={edgeTypes}
-                        nodeTypes={nodeTypes}
-                        onInit={(instance) => {
-                            flow.current = instance;
-                        }}
-                        onMoveStart={(event) => {
-                            if (event) navigated.current = true;
-                        }}
-                        onMove={(_, viewport) => setZoom(viewport.zoom)}
-                        onMoveEnd={(_, viewport) => saveViewport(viewport)}
-                        defaultViewport={savedViewport}
-                        onNodeClick={(event, node) => {
-                            if (
-                                node.type === 'conversation' &&
-                                !(event.target as HTMLElement).closest(
-                                    'button, a, input, select, textarea, [role="button"], [role="menuitem"], .nodrag',
+                    <Lanes.Provider value={lanes}>
+                        <ReactFlow<ConversationNode>
+                            nodes={mapNodes}
+                            onlyRenderVisibleElements={canCull && nodes.length > 50}
+                            onNodesChange={(changes) => onNodesChange(ghost.move(changes))}
+                            edges={mapEdges}
+                            edgeTypes={edgeTypes}
+                            nodeTypes={nodeTypes}
+                            onInit={(instance) => {
+                                flow.current = instance;
+                            }}
+                            onMoveStart={(event) => {
+                                if (event) navigated.current = true;
+                            }}
+                            onMove={(_, viewport) => setZoom(viewport.zoom)}
+                            onMoveEnd={(_, viewport) => saveViewport(viewport)}
+                            defaultViewport={savedViewport}
+                            onNodeClick={(event, node) => {
+                                if (
+                                    node.type === 'conversation' &&
+                                    !(event.target as HTMLElement).closest(
+                                        'button, a, input, select, textarea, [role="button"], [role="menuitem"], .nodrag',
+                                    )
                                 )
-                            )
-                                open(node.id);
-                        }}
-                        onNodeDragStop={(_, node) => {
-                            if (node.type !== 'conversation') return;
-                            save({ [node.id]: node.position });
-                            setNotice(
-                                `${node.data.conversation.title} moved to ${Math.round(node.position.x)}, ${Math.round(node.position.y)}.`,
-                            );
-                        }}
-                        nodesConnectable={false}
-                        edgesReconnectable={false}
-                        autoPanOnNodeFocus={false}
-                        deleteKeyCode={null}
-                        disableKeyboardA11y
-                        colorMode={mode}
-                        proOptions={{ hideAttribution: true }}
-                        fitView={!savedViewport}
-                        fitViewOptions={fit}
-                        minZoom={MIN_ZOOM}
-                        maxZoom={1.5}
-                        zoomOnScroll
-                        zoomOnPinch={false}
-                        zoomActivationKeyCode={null}
-                    >
-                        <MeasureHandles nodes={nodes} />
-                    </ReactFlow>
+                                    open(node.id);
+                            }}
+                            onNodeDragStop={(_, node) => {
+                                if (node.type !== 'conversation') return;
+                                save({ [node.id]: node.position });
+                                setNotice(
+                                    `${node.data.conversation.title} moved to ${Math.round(node.position.x)}, ${Math.round(node.position.y)}.`,
+                                );
+                            }}
+                            nodesConnectable={false}
+                            edgesReconnectable={false}
+                            autoPanOnNodeFocus={false}
+                            deleteKeyCode={null}
+                            disableKeyboardA11y
+                            colorMode={mode}
+                            proOptions={{ hideAttribution: true }}
+                            fitView={!savedViewport}
+                            fitViewOptions={fit}
+                            minZoom={MIN_ZOOM}
+                            maxZoom={1.5}
+                            zoomOnScroll
+                            zoomOnPinch={false}
+                            zoomActivationKeyCode={null}
+                        >
+                            <MeasureHandles nodes={nodes} />
+                            <MeasureLanes onChange={setLanes} />
+                        </ReactFlow>
+                    </Lanes.Provider>
                 </ConversationTransition.Provider>
             </VStack>
         </>
