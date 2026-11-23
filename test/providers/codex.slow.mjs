@@ -282,3 +282,52 @@ test('aborted generation starts no inference; interrupt releases a stalled turn 
         client.close();
     }
 });
+
+test('refreshed token restarts the CLI only after running turns finish', async () => {
+    const launched = [];
+    let token = 'synthetic-token-one',
+        started;
+    const turn = new Promise((resolve) => {
+        started = resolve;
+    });
+    const client = new Codex(
+        { token: async () => token },
+        mkdtempSync(join(tmpdir(), 'rabbithole-codex-')),
+        (_command, _args, options) => {
+            launched.push(options.env.ACCESS_TOKEN);
+            const child = spawn(process.execPath, ['test/support/protocol-fixture.mjs'], {
+                ...options,
+                cwd: process.cwd(),
+            });
+            const write = child.stdin.write.bind(child.stdin);
+            child.stdin.write = (data) => {
+                if (JSON.parse(data).method === 'turn/start') started();
+                return write(data);
+            };
+            return child;
+        },
+    );
+    try {
+        const controller = new AbortController();
+        const events = [];
+        const running = client.generate(
+            {},
+            'hold',
+            (event) => events.push(event),
+            () => {},
+            controller.signal,
+        );
+        await turn;
+        token = 'synthetic-token-two';
+        await client.models();
+        assert.deepEqual(launched, ['synthetic-token-one']);
+        controller.abort();
+        await running;
+        assert.equal(events.at(-1).status, 'interrupted');
+        while (client.pending.size) await new Promise((resolve) => setTimeout(resolve, 10));
+        await client.models();
+        assert.deepEqual(launched, ['synthetic-token-one', 'synthetic-token-two']);
+    } finally {
+        client.close();
+    }
+});

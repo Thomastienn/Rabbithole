@@ -7,6 +7,7 @@ import { tutorSystem } from '../media/tutor-instructions.mjs';
 import { inputParts } from '../attachments.mjs';
 import { toolEvents } from './toolEvents.mjs';
 import { ENDED, STALLED } from './chatStream.mjs';
+import { FRESH_FOR } from './auth.mjs';
 
 export class Codex {
     readsImages = true;
@@ -23,7 +24,10 @@ export class Codex {
     }
     async ready() {
         const token = await this.auth.token();
-        if (this.process && this.token === token) return this.initialized;
+        // A refreshed token waits for running work instead of killing it; the old token is still valid until keepUntil.
+        const busy = this.listeners.size || this.pending.size;
+        if (this.process && (this.token === token || (busy && Date.now() < this.keepUntil)))
+            return this.initialized;
         if (this.starting) return this.starting;
         this.starting = this.start(token).finally(() => {
             this.starting = null;
@@ -112,6 +116,8 @@ export class Codex {
         });
         this.process = child;
         this.token = token;
+        // shortcut: a turn still running this long after a refresh is cut off; move to per-token CLIs if turns get that long.
+        this.keepUntil = Date.now() + FRESH_FOR - 60000;
         // Never forward CLI stderr: diagnostics can include provider request details.
         child.stderr.resume();
         createInterface({ input: child.stdout }).on('line', (line) => {

@@ -7,6 +7,8 @@ const issuer = 'https://auth.openai.com';
 const resource = 'https://api.openai.com/v1';
 const jwks = createRemoteJWKSet(new URL(`${issuer}/.well-known/jwks.json`));
 const random = () => randomBytes(32).toString('base64url');
+// A token handed out stays valid at least this long, so a CLI started with it can finish running turns.
+export const FRESH_FOR = 20 * 60000;
 export class Auth {
     constructor(dir) {
         this.path = join(dir, 'chatgpt.json');
@@ -123,7 +125,7 @@ export class Auth {
     }
     async token() {
         if (!this.saved) throw new Error('Continue with ChatGPT before sending a question.');
-        if (this.saved.expires_at > Date.now() + 60000) return this.saved.access_token;
+        if (this.saved.expires_at > Date.now() + FRESH_FOR) return this.saved.access_token;
         if (!this.refreshing)
             this.refreshing = this.refresh().finally(() => {
                 this.refreshing = null;
