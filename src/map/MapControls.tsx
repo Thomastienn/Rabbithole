@@ -15,7 +15,7 @@ export function InkLegend({
     root: string;
 }) {
     return (
-        <aside className="ink-legend" aria-label="Branch family inks" tabIndex={0}>
+        <aside className="ink-legend" aria-label="First branches" tabIndex={0}>
             <ul>
                 {legend.map((t) => (
                     <li key={t.id} style={inkStyle(t.ink)}>

@@ -33,15 +33,15 @@ test('the route strip matches the mockup: families leave the trunk, siblings con
         '1:12,2-28,18',
         '1:28,18-28,100%',
     ]);
-    // 1.1.1 turns off 1.1; its child and its sibling both continue straight down the third column.
+    // 1.1.1 turns off 1.1 in its own fork ink; its child and its sibling both continue straight down the third column.
     assert.deepEqual(draw(strip[2]), [
         '0:12,0-12,100%',
         '1:28,0-28,2',
-        '1:28,2-44,18',
-        '1:44,18-44,100%',
+        '2:28,2-44,18',
+        '2:44,18-44,100%',
     ]);
-    assert.deepEqual(draw(strip[3]), ['0:12,0-12,100%', '1:44,0-44,100%', '1:44,0-44,18']);
-    assert.deepEqual(draw(strip[4]), ['0:12,0-12,100%', '1:44,0-44,18']);
+    assert.deepEqual(draw(strip[3]), ['0:12,0-12,100%', '2:44,0-44,100%', '2:44,0-44,18']);
+    assert.deepEqual(draw(strip[4]), ['0:12,0-12,100%', '2:44,0-44,18']);
     // 1.2 is the second family: a new colour off the trunk.
     assert.deepEqual(draw(strip[5]), ['0:12,0-12,2', '2:12,2-28,18']);
     for (const row of strip)
