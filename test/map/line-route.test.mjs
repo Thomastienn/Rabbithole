@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { linePath, routeLine } from '../../src/map/canvas.ts';
+import { branchLanes, LANE, linePath, routeLine } from '../../src/map/canvas.ts';
 
 const parent = { x: 0, y: 0, width: 256, height: 400 };
 const card = (x, y) => ({ x, y, width: 256, height: 300 });
@@ -79,4 +79,75 @@ test('linePath writes an SVG polyline', () => {
         ]),
         'M0 1L2 3',
     );
+});
+
+// Routes every sibling line with its lane and returns each line's vertical run x.
+function siblings(children, sourceY = () => 200) {
+    const lines = children.map((to, i) => ({
+        id: String(i),
+        parent: 'p',
+        points: route(to, sourceY(i)),
+    }));
+    const lanes = branchLanes(lines);
+    return children.map((to, i) => {
+        const points = routeLine(
+            { x: 256, y: sourceY(i) },
+            { x: to.x, y: to.y + 20 },
+            parent,
+            to,
+            lanes[i] ?? 0,
+        );
+        assertTransit(points);
+        return points.find((p, j) => j && p.x === points[j - 1].x && p.y !== points[j - 1].y).x;
+    });
+}
+
+test('sibling lines sharing a gutter take lanes that never touch, the lower child nearer the parent', () => {
+    const [upper, lower] = siblings([card(352, 900), card(352, 1300)]);
+    assert.ok(upper - lower >= LANE && LANE > 7, 'separate runs 7px lines cannot touch');
+    assert.equal((upper + lower) / 2, 304, 'centred on the gutter');
+    assert.ok(lower > 256 && upper < 352, 'both stay in the gutter');
+});
+
+test('dragging a child past its sibling swaps their lanes', () => {
+    const before = siblings([card(352, 900), card(352, 1300)]);
+    const after = siblings([card(352, 1400), card(352, 1300)]);
+    assert.deepEqual(after, [...before].reverse());
+});
+
+test('siblings whose cards are out of line still take ordered lanes that never touch', () => {
+    const [upper, lower] = siblings([card(352, 900), card(392, 1300)]);
+    assert.ok(
+        upper - lower >= LANE,
+        'the lower child runs nearer the parent, clear of the upper way in',
+    );
+    const runs = siblings([card(352, 900), card(352, 1300), card(352, 1700), card(380, 2100)]);
+    assert.deepEqual(
+        runs.toSorted((a, b) => b - a),
+        runs,
+        'lower children nearer the parent',
+    );
+    runs.slice(1).forEach((x, i) => assert.ok(runs[i] - x >= LANE));
+});
+
+test('children above take lanes so their lines never cross', () => {
+    const [higher, lower] = siblings([card(352, -1300), card(352, -900)]);
+    assert.ok(lower - higher >= LANE, 'the higher child runs nearer the parent');
+});
+
+test('a lone line or a line in a gutter of its own keeps the gutter centre', () => {
+    assert.deepEqual(siblings([card(352, 900)]), [304]);
+    assert.deepEqual(siblings([card(352, 900), card(752, 1300)]), [304, 504]);
+    // Runs one above the other in the same gutter do not share it.
+    assert.deepEqual(
+        siblings([card(352, -900), card(352, 900)], (i) => (i ? 380 : 20)),
+        [304, 304],
+    );
+});
+
+test('lines to children left of the parent and stacked in its column also separate', () => {
+    const [upperLeft, lowerLeft] = siblings([card(-352, 900), card(-352, 1300)]);
+    assert.ok(lowerLeft - upperLeft >= LANE, 'mirrored: the lower child nearer the parent');
+    const [upperStacked, lowerStacked] = siblings([card(0, 900), card(0, 1300)]);
+    assert.ok(lowerStacked - upperStacked >= LANE, 'stacked: the lower child outside');
 });
