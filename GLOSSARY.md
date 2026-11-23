@@ -40,9 +40,13 @@ _Avoid_: Side question (for the link), forest, new root
 A conversation's place in its learning tree: the root conversation (trunk) is 1, its children 1.1, 1.2 and so on down (1.1.2). Siblings are numbered in the order they were created (ties by id), so adding a branch never renumbers the conversations before it. Deleting a branch renumbers its later siblings.
 _Avoid_: Path, index, number
 
-**Branch family**:
-A first-level branch of the trunk and every conversation beneath it. Each family takes one series ink in address order (amber, leaf, rust, lichen, then repeating); the trunk wears paper. A passage underline, its address chip, the branch line on the map and the conversation node band share their family's ink.
-_Avoid_: Subtree, colour group
+**Branch ink**:
+The series ink a conversation wears, chosen at each fork so siblings read apart. The trunk wears paper; its children take inks 1 to 4 in address order, then repeat. Below the trunk, the children of a conversation take the three inks other than their parent's in order, then the parent's, then repeat; an only child keeps its parent's ink. A passage underline, its address chip, the branch line on the map, the Contents route strip and the conversation node band wear the ink of the conversation they lead to.
+_Avoid_: Branch family, family ink, colour group
+
+**Depth stops**:
+A row of stops under a conversation node's address chip, one porcelain ring per level below the trunk, joined by a line, the last filled. It shows at a glance how deep a conversation sits; its address gives the exact place. The row has no cap and grows with depth.
+_Avoid_: Depth dots, depth badge, level number
 
 **Passage**:
 The exact contiguous text of a tutor reply, or of a line in a discussion, that a branch was created from. A branch created from groundwork has the groundwork concept's name as its passage instead.
@@ -266,7 +270,7 @@ The panel on the left of every page holding the app's own controls (views, searc
 _Avoid_: Top bar, band, nav, drawer (outside narrow screens)
 
 **Theme**:
-A named colour palette for the whole app, such as Main Line or Enamel, covering the ground, ink, porcelain and the four family line colours. Each theme has a light and a dark variant; Appearance chooses between them.
+A named colour palette for the whole app, such as Main Line or Enamel, covering the ground, ink, porcelain and the four branch inks. Each theme has a light and a dark variant; Appearance chooses between them.
 _Avoid_: Skin, colour scheme, tint
 
 **Appearance**:

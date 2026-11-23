@@ -1,6 +1,6 @@
 ---
 name: Rabbithole
-description: A learning tree drawn as a transit line diagram, one coloured line per branch family, read at a 640px measure.
+description: A learning tree drawn as a transit line diagram, siblings at every fork on lines of their own colour, read at a 640px measure.
 colors:
   porcelain: "#ffffff"
   on-porcelain: "#0b1230"
@@ -229,14 +229,15 @@ components:
 
 **Creative North Star: "The Line Diagram"**
 
-A learning tree is a transit line diagram. The trunk conversation is a porcelain line; each first-level branch family is a line of its own colour; every conversation is a white-ringed station; and every branch point is an interchange ring placed at the passage the learner selected. The diagram is not decoration laid over a chat app: it is the navigation. The same family colour runs from the passage underline in a reply, through the interchange ring and the address chip that leads a title, to the Contents route strip in the sidebar and the line on the map.
+A learning tree is a transit line diagram. The trunk conversation is a porcelain line; the children at every fork take lines of different colours; every conversation is a white-ringed station; and every branch point is an interchange ring placed at the passage the learner selected. The diagram is not decoration laid over a chat app: it is the navigation. A branch's colour runs from the passage underline in a reply, through the interchange ring and the address chip that leads a title, to the Contents route strip in the sidebar and the line on the map.
 
 The world is midnight enamel by default: a deep navy ground, a deeper field for the sidebar and the docked map, and raised enamel for anything that sits on top. Light appearance swaps to a porcelain ground with midnight ink and action and the same lines darkened to AA. It is flat and dense in the way a printed network map is dense: thick round-capped lines that turn only at 45 or 90 degrees, hairline seams, condensed caps labels, and no shadow, gradient or blur. Reading is the exception to density: replies sit at a 640px measure in a large, open reading face.
 
 The system ships as interchangeable themes that share every role and differ only in palette (Platform by default, then Main Line, Enamel, Tunnel, Timetable, Ferry, Terminus), each with a light and a dark variant chosen separately in Settings (Dark is the default appearance). Platform carries Main Line's four hues on a low-chroma graphite ground so long reading sessions are not spent on saturated navy; Main Line stays as the navy original.
 
 **Key Characteristics:**
-- One colour per first-level branch family, four lines repeating; porcelain is the trunk.
+- Siblings at every fork take different colours from four lines; an only child stays on its parent's line; porcelain is the trunk.
+- Depth shows as a stop row under the address chip, never as line weight or tint.
 - Lines 5px in the sidebar, 7px on the map, round caps, 45/90 degree turns only.
 - Stations and interchanges are porcelain rings; the current station is filled.
 - Colour belongs to lines and their chips, never to running text.
@@ -245,13 +246,13 @@ The system ships as interchangeable themes that share every role and differ only
 
 ## Colors
 
-A midnight enamel ground carrying one porcelain trunk and four equal-weight family lines; scarlet is held back for failure. Frontmatter and the role values below are Main Line, dark appearance; Platform, the default, is in the theme table; every role is a `light-dark()` pair; the roles and icons are shared in `src/themes/lineDiagram.ts` and `src/themes/icons.ts`, and each theme source (`src/themes/<name>/<name>Theme.ts`) holds only its name and palette.
+A midnight enamel ground carrying one porcelain trunk and four equal-weight branch lines; scarlet is held back for failure. Frontmatter and the role values below are Main Line, dark appearance; Platform, the default, is in the theme table; every role is a `light-dark()` pair; the roles and icons are shared in `src/themes/lineDiagram.ts` and `src/themes/icons.ts`, and each theme source (`src/themes/<name>/<name>Theme.ts`) holds only its name and palette.
 
 ### Primary
 - **Porcelain** (#ffffff dark / #0b1230 light): the trunk line, every station and interchange ring, the focus ring, conversation titles and current-item text, and the one action fill (New chat, Send, the primary button). Text on it is **On Porcelain** (#0b1230 dark / #ffffff light), which is also the text on any filled line chip.
 
-### Secondary: the four family lines
-Assigned in order to first-level branch families and repeating: line 1, 2, 3, 4, 1, ... All four carry equal weight; none is "the accent".
+### Secondary: the four branch lines
+Assigned at every fork. The trunk's children take line 1, 2, 3, 4, 1, ... in address order. Below the trunk, siblings take the three lines other than their parent's in order, then the parent's line, repeating; an only child keeps its parent's line. All four carry equal weight; none is "the accent".
 - **Cobalt Line** (line 1; #4d7dff dark / #1f4fd8 light).
 - **Amber Line** (line 2; #ffc20e dark / #8f6200 light).
 - **Signal Green Line** (line 3; #22b14c dark / #157a3a light).
@@ -296,9 +297,9 @@ Ink, muted ink, hover, seams and selection follow the same recipe in every theme
 4. Add the theme's row to the table above and its name to the Overview list.
 
 ### Named Rules
-**The Colour Belongs to Lines Rule.** Family colour appears only as a line, a ring, a filled address chip, a passage underline, a line tick, or a line swatch in a key or legend (a short round-capped length of the line itself). Running text is never tinted to decorate; titles and current items are porcelain, everything else is ink or muted ink.
+**The Colour Belongs to Lines Rule.** Branch colour appears only as a line, a ring, a filled address chip, a passage underline, a line tick, or a line swatch in a key or legend (a short round-capped length of the line itself). Running text is never tinted to decorate; titles and current items are porcelain, everything else is ink or muted ink.
 
-**The No Bar Beside Text Rule.** No coloured vertical or horizontal bar sits beside text as an accent. The family shows as the filled address chip that leads a title. The Contents route strip and the swatches in keys and legends are the diagram itself, not accents, and are the only places a line runs alongside text.
+**The No Bar Beside Text Rule.** No coloured vertical or horizontal bar sits beside text as an accent. A branch's line shows as the filled address chip that leads a title. The Contents route strip and the swatches in keys and legends are the diagram itself, not accents, and are the only places a line runs alongside text.
 
 **The Scarlet Means Failure Rule.** Scarlet appears only when something failed, and always with words ("Reply failed") and a way forward (Retry, Cancel, a reason). It is never a brand colour, a highlight or a destructive-button decoration.
 
@@ -384,7 +385,7 @@ Plain and quiet, with one porcelain action.
 - **Disabled:** muted ink at 65%.
 
 ### Chips
-- **Address chip:** filled with the family line colour (porcelain for the trunk), on-porcelain text, Semi Condensed 700 12px with tabular figures, 4px corners, padding 3px 6px 2px. It leads every conversation title (title chip: 16px, padding 5px 8px 4px), map card headers and the current breadcrumb, and follows a branched passage in a reply (aria-hidden there).
+- **Address chip:** filled with its conversation's line colour (porcelain for the trunk), on-porcelain text, Semi Condensed 700 12px with tabular figures, 4px corners, padding 3px 6px 2px. It leads every conversation title (title chip: 16px, padding 5px 8px 4px), map card headers and the current breadcrumb, and follows a branched passage in a reply (aria-hidden there).
 - **Attachment and media chips on map cards:** deep field fill, ink text, 8px corners, 24px tall.
 
 ### Cards / Containers
@@ -401,7 +402,7 @@ Plain and quiet, with one porcelain action.
 
 ### Navigation
 - **Sidebar views:** full-width ghost rows, Barlow 14px 400 with muted icons; the current view is raised enamel with porcelain 600 text.
-- **Contents route strip:** each conversation is a row beside a 5px line in its family colour with a ringed station; the current row is raised enamel with porcelain 600 text and a filled station. Addresses are muted 12px tabular.
+- **Contents route strip:** each conversation is a row beside a 5px line in its conversation's line colour with a ringed station; the current row is raised enamel with porcelain 600 text and a filled station. Addresses are muted 12px tabular.
 - **Breadcrumbs:** muted 400 crumbs, current title porcelain 600 with its address chip.
 - **Narrow:** a 52px deep-field header (menu, wordmark, search, New chat) and a drawer holding the sidebar.
 
@@ -412,10 +413,10 @@ Menus, popovers, the passage box, dialogs and enlarged media: raised enamel, 8px
 Scarlet wash fill, 1px scarlet border, 8px corners, padding 8px 12px, ink text with a scarlet icon, and the recovery action pushed to the end of the row.
 
 ### The Map (signature)
-Conversation cards (160px wide, raised enamel, 8px) carry a header with the address chip and a two-line Semi Condensed title over turn previews. Family lines (7px, round caps) leave an interchange ring beside their source message and land in the card's left ring. The current card wears a 2.5px porcelain ring 3px off its edge; a marked card a dashed porcelain outline. Folded stubs read "address · N folded" behind a dashed line. Ghost trees are dashed, muted and drop their family colours; their links are 3px dotted muted lines. Controls sit bottom left on raised enamel; the line key sits top left on the deep field.
+Conversation cards (160px wide, raised enamel, 8px) carry a header with the address chip and a two-line Semi Condensed title over turn previews. Under the address chip, depth stops mark how deep the card sits: one 6px porcelain ring per level below the trunk, 11px apart, joined by a 1.5px porcelain line, the last ring filled; the row has no cap. Branch lines (7px, round caps) leave an interchange ring beside their source message and land in the card's left ring; sibling lines from one card each take their own vertical run, so none covers another. The current card wears a 2.5px porcelain ring 3px off its edge; a marked card a dashed porcelain outline. Folded stubs read "address · N folded" behind a dashed line. Ghost trees are dashed, muted and drop their line colours; their links are 3px dotted muted lines. Controls sit bottom left on raised enamel; the line key sits top left on the deep field.
 
 ### Replies and passages
-Replies have no bubble: Atkinson 17px/1.68 at 640px. Suggestions are a 2px muted dotted underline. A branched passage wears a 3px solid underline in its family colour, then a porcelain interchange ring, then its address chip. Questions are right-aligned raised-enamel bubbles, at most 520px.
+Replies have no bubble: Atkinson 17px/1.68 at 640px. Suggestions are a 2px muted dotted underline. A branched passage wears a 3px solid underline in its branch's line colour, then a porcelain interchange ring, then its address chip. Questions are right-aligned raised-enamel bubbles, at most 520px.
 
 ### Diagrams (Mermaid)
 Mermaid renders on the base theme fed from the surrounding tokens: surface fills, ink text and lines, seam borders, the reading or interface face, and the four lines (in hue-slot order) as series colours. Nodes have 8px corners and a 1.5px stroke; links are 2px with round caps and joins.
@@ -426,7 +427,7 @@ Mermaid renders on the base theme fed from the surrounding tokens: surface fills
 ## Do's and Don'ts
 
 ### Do:
-- **Do** give every first-level branch family one line colour, cycling line 1 to 4, and carry it from passage underline to interchange ring, address chip, route strip and map line.
+- **Do** give siblings at every fork different line colours, keep an only child on its parent's line, and carry each conversation's colour from passage underline to interchange ring, address chip, route strip and map line.
 - **Do** lead every conversation title with its filled address chip (4px corners).
 - **Do** draw lines thick and round-capped (5px sidebar, 7px map) and turn them only at 45 or 90 degrees, following the Routing Rule.
 - **Do** mark stations and interchanges with porcelain rings, and the current one by filling it.
@@ -437,7 +438,8 @@ Mermaid renders on the base theme fed from the surrounding tokens: surface fills
 - **Do** take every value from the theme roles so every theme, light and dark, stay in step.
 
 ### Don't:
-- **Don't** tint running text with a family colour to decorate it.
+- **Don't** tint running text with a line colour to decorate it.
+- **Don't** show depth with line weight or tint; lines stay 7px and full colour at every depth.
 - **Don't** place a coloured bar beside text; the route strip and key swatches are the diagram, not accents.
 - **Don't** use scarlet for anything but a failure.
 - **Don't** add shadows, gradients or blur; depth is tonal enamel and seams.

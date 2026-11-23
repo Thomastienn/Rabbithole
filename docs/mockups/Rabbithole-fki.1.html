@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup (Rabbithole-fki): fork inks and depth stops on the learning tree map</title>
+<!-- Throwaway mockup. Tokens copied from src/themes/platform/platformTheme.ts and src/themes/main/mainTheme.ts; card and line rules from src/styles/map.css, src/map/Conversation.tsx and src/map/canvas.ts. -->
+<style>
+/* Theme roles as light-dark() pairs, like lineDiagramRoles. color-scheme on each panel picks the side. */
+[data-theme='platform'] {
+    --ground: light-dark(#f6f8fa, #14171d);
+    --deep: light-dark(#edeff3, #0d1014);
+    --raised: light-dark(#ffffff, #1d2128);
+    --hover: light-dark(#e1e4ea, #292d36);
+    --paper: light-dark(#191e27, #f3f5f9);
+    --paper-ink: light-dark(#ffffff, #14171d);
+    --text: light-dark(#1d2229, #e3e6ec);
+    --muted: light-dark(#5a616c, #9ea3ad);
+    --seam: light-dark(#191e2724, #ffffff22);
+    --seam2: light-dark(#191e2780, #ffffff66);
+    --selection: light-dark(#225ebf33, #6da5f866);
+    --ink-1: light-dark(#225ebf, #6da5f8);
+    --ink-2: light-dark(#976213, #edb24d);
+    --ink-3: light-dark(#287c42, #5dc47e);
+    --ink-4: light-dark(#a93772, #e37fb0);
+}
+[data-theme='main'] {
+    --ground: light-dark(#f4f6fb, #0b1230);
+    --deep: light-dark(#e8ecf6, #070d24);
+    --raised: light-dark(#ffffff, #141d42);
+    --hover: light-dark(#dde3f1, #1f2a5a);
+    --paper: light-dark(#0b1230, #ffffff);
+    --paper-ink: light-dark(#ffffff, #0b1230);
+    --text: light-dark(#141b3a, #e9ecf7);
+    --muted: light-dark(#4d587c, #97a1c4);
+    --seam: light-dark(#0b123024, #ffffff22);
+    --seam2: light-dark(#0b123080, #ffffff66);
+    --selection: light-dark(#1f4fd833, #4d7dff66);
+    --ink-1: light-dark(#1f4fd8, #4d7dff);
+    --ink-2: light-dark(#8f6200, #ffc20e);
+    --ink-3: light-dark(#157a3a, #22b14c);
+    --ink-4: light-dark(#b8297a, #f06bb0);
+}
+:root {
+    /* Barlow ships via @fontsource in the app; here only the stack is named, with narrow system faces before the wide fallbacks. */
+    --font-heading: 'Barlow Semi Condensed', 'Roboto Condensed', 'Nimbus Sans Narrow', 'Arial Narrow', Barlow, 'Segoe UI', Helvetica, Arial, sans-serif;
+    --font-body: Barlow, 'Segoe UI', Helvetica, Arial, sans-serif;
+    --line: 7px;
+    --line-focus: 9px;
+    --z: 1;
+    color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { background: var(--ground); }
+body {
+    margin: 0;
+    padding: 32px 0 64px;
+    background: var(--ground);
+    color: var(--text);
+    font: 400 14px / 1.4286 var(--font-body);
+}
+::selection { background: var(--selection); }
+.page-head, .panel-head, .strip { padding-inline: 32px; }
+h1 {
+    margin: 0 0 8px;
+    font: 700 34px / 1.12 var(--font-heading);
+    letter-spacing: -0.015em;
+    color: var(--paper);
+}
+.page-head p { margin: 0 0 8px; max-width: 72ch; }
+.rules { margin: 16px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; max-width: 90ch; }
+.rules b { font-family: var(--font-heading); font-weight: 700; color: var(--paper); }
+.toolbar { display: flex; gap: 8px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
+.label {
+    font: 600 12px / 1.2 var(--font-heading);
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+.toolbar button, .toolbar a {
+    height: 32px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text);
+    font: 400 14px / 32px var(--font-body);
+    text-decoration: none;
+    cursor: pointer;
+}
+.toolbar button:hover, .toolbar a:hover { background: #ffffff14; }
+.toolbar button[aria-pressed='true'] { background: var(--raised); color: var(--paper); font-weight: 600; }
+:focus-visible { outline: 2px solid var(--paper); outline-offset: 2px; }
+
+.panel { margin-top: 40px; background: var(--ground); color: var(--text); padding: 24px 0 0; }
+.panel-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; margin-bottom: 12px; }
+.panel-head h2 { margin: 0; font: 700 22px / 1.2 var(--font-heading); color: var(--paper); }
+.panel-head .theme { font-size: 13px; color: var(--muted); }
+.panel-head p { flex-basis: 100%; margin: 0; max-width: 90ch; color: var(--text); }
+.map-scroll {
+    overflow-x: auto;
+    background: var(--deep);
+    border-block: 1px solid var(--seam);
+    scrollbar-color: var(--seam2) transparent;
+}
+.map-size { width: calc(var(--w) * var(--z)); height: calc(var(--h) * var(--z)); }
+.map { position: relative; transform: scale(var(--z)); transform-origin: 0 0; }
+.map > svg { position: absolute; inset: 0; overflow: visible; }
+.map > svg path { fill: none; stroke: var(--ink); stroke-width: var(--line); stroke-linecap: round; stroke-linejoin: round; }
+.map > svg path.focused { stroke-width: var(--line-focus); }
+
+/* Conversation card: map.css .conversation-box, 160px, raised enamel, 8px, header band over the preview. */
+.card {
+    position: absolute;
+    width: 160px;
+    padding: 12px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: var(--raised);
+    font-size: 12px;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.card.static { position: relative; }
+.card[data-focused] { outline: 2.5px solid var(--paper); outline-offset: 3px; }
+.band {
+    margin: -12px -12px 0;
+    padding: 8px 8px 8px 10px;
+    border-bottom: 1px solid var(--seam);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.lead { flex: none; display: flex; flex-direction: column; align-items: flex-start; gap: 5px; max-width: 100%; }
+.chip {
+    padding: 3px 6px 2px;
+    border-radius: 4px;
+    background: var(--ink);
+    color: var(--ink-on);
+    font: 700 12px / 1 var(--font-heading);
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.stops { display: block; overflow: visible; }
+.stops line { stroke: var(--paper); stroke-width: 1.5; stroke-linecap: round; }
+.stops circle { fill: var(--raised); stroke: var(--paper); stroke-width: 1.5; }
+.stops circle.here { fill: var(--paper); }
+.title {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    color: var(--paper);
+    font: 600 14px / 1.2 var(--font-heading);
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+}
+.fold { flex: none; width: 24px; height: 24px; display: grid; place-items: center; color: var(--paper); }
+.fold svg { width: 16px; height: 16px; }
+.msg { position: relative; }
+.preview {
+    margin: 0;
+    color: var(--muted);
+    font: 400 12px / 1.6667 var(--font-body);
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+}
+/* Stations: map.css .react-flow__handle, a porcelain ring on the deep field. */
+.ring {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border: 3px solid var(--paper);
+    border-radius: 50%;
+    background: var(--deep);
+    transform: translate(-50%, -50%);
+}
+.ring.out { left: calc(100% + 12px); }
+.ring.in { left: 0; top: 50%; width: 15px; height: 15px; }
+
+/* D: comparison strip. */
+.strip-row { display: flex; flex-wrap: wrap; gap: 24px 48px; align-items: flex-start; padding: 24px 32px; background: var(--deep); border-block: 1px solid var(--seam); }
+.strip-row figure { margin: 0; display: grid; gap: 8px; justify-items: start; }
+.strip-row figcaption { font-size: 13px; color: var(--muted); max-width: 30ch; }
+.legend { display: grid; grid-template-columns: repeat(9, auto); gap: 8px 16px; align-items: center; justify-items: start; padding: 12px; background: var(--raised); border-radius: 8px; }
+.legend span { font-size: 11px; color: var(--muted); }
+</style>
+</head>
+<body data-theme="platform">
+<header class="page-head">
+    <h1>Map inks: fork inks and depth stops</h1>
+    <p>Throwaway mockup. The same learning tree drawn under each rule: a trunk with five children, a fork of three under 1.2, a fork of four under 1.2.2, and one chain down to depth 9.</p>
+    <ul class="rules">
+        <li><b>A. Today.</b> Each first-level family takes line 1 to 4 in order (1.5 repeats line 1); every descendant keeps its family line.</li>
+        <li><b>B. Fork inks.</b> Children of the trunk take 1, 2, 3, 4, 1 in order. Under a parent on line p, children take the three other lines in ascending order, then p, then repeat. An only child keeps its parent’s line.</li>
+        <li><b>C. Fork inks and depth stops.</b> B, plus a stop row under the address chip: one stop per level, no cap, the last filled. This is the chosen design.</li>
+        <li><b>D. Cap considered and rejected.</b> The depth-9 card with nine stops (chosen) against the capped row (rejected).</li>
+    </ul>
+    <nav class="toolbar" aria-label="Mockup controls">
+        <span class="label">Map zoom</span>
+        <button type="button" data-zoom="1" aria-pressed="true">100%</button>
+        <button type="button" data-zoom="0.8" aria-pressed="false">80%</button>
+        <button type="button" data-zoom="0.6" aria-pressed="false">60%</button>
+        <span class="label" style="margin-left:16px">Jump to</span>
+        <a href="#platform-dark-A">Platform dark</a>
+        <a href="#platform-light-A">Platform light</a>
+        <a href="#main-dark-C">Main Line dark</a>
+        <a href="#strip-D">D. Cap rejected</a>
+    </nav>
+</header>
+<main id="panels"></main>
+
+<script>
+// Sample tree: address, title, preview. The address is the id; its parent is the address minus the last part.
+const TREE = [
+    ['1', 'How do black holes form?', 'A heavy star runs out of fuel and its core collapses.'],
+    ['1.1', 'What is nuclear fusion?', 'Light nuclei join and release energy.'],
+    ['1.2', 'Why does the core collapse?', 'Gravity wins once fusion stops pushing out.'],
+    ['1.2.1', 'What is electron degeneracy?', 'Electrons resist being packed closer.'],
+    ['1.2.2', 'What is a neutron star?', 'A collapsed core made almost all of neutrons.'],
+    ['1.2.2.1', 'How dense is neutron matter?', 'A teaspoon weighs about a billion tonnes.'],
+    ['1.2.2.1.1', 'What holds neutrons apart?', 'Degeneracy pressure, like electrons.'],
+    ['1.2.2.1.1.1', 'Why can’t two neutrons share a state?', 'The Pauli exclusion principle.'],
+    ['1.2.2.1.1.1.1', 'What is quantum spin?', 'An intrinsic angular momentum.'],
+    ['1.2.2.1.1.1.1.1', 'Is spin really rotation?', 'Not in the everyday sense.'],
+    ['1.2.2.1.1.1.1.1.1', 'What is angular momentum?', 'How much a body keeps turning.'],
+    ['1.2.2.1.1.1.1.1.1.1', 'Why is it conserved?', 'It follows from rotational symmetry.'],
+    ['1.2.2.2', 'Do pulsars really pulse?', 'A beam sweeps past us as it spins.'],
+    ['1.2.2.3', 'Can neutron stars merge?', 'Yes, and we have heard it happen.'],
+    ['1.2.2.4', 'What is a magnetar?', 'A neutron star with a huge field.'],
+    ['1.2.3', 'What is a supernova?', 'The outer layers blast away.'],
+    ['1.3', 'What is an event horizon?', 'The boundary light cannot cross.'],
+    ['1.4', 'Does anything escape?', 'Hawking radiation, very slowly.'],
+    ['1.5', 'How do we photograph one?', 'By imaging the glowing ring around it.'],
+].map(([address, title, preview]) => ({
+    address, title, preview,
+    parent: address.includes('.') ? address.slice(0, address.lastIndexOf('.')) : null,
+    depth: address.split('.').length - 1,
+}));
+const byId = new Map(TREE.map((n) => [n.address, n]));
+const kids = (id) => TREE.filter((n) => n.parent === id);
+
+// Ink rules. 0 is paper (the trunk).
+const RULES = {
+    today: (p, i) => (p === 0 ? (i % 4) + 1 : p),
+    fork: (p, i, n) => (p === 0 ? (i % 4) + 1 : n === 1 ? p : [...[1, 2, 3, 4].filter((x) => x !== p), p][i % 4]),
+};
+function inks(rule) {
+    const out = new Map([['1', 0]]);
+    const walk = (id) => kids(id).forEach((c, i, all) => { out.set(c.address, RULES[rule](out.get(id), i, all.length)); walk(c.address); });
+    walk('1');
+    return out;
+}
+// Self-check of the fork rule on the sample tree.
+{
+    const f = inks('fork'), t = inks('today');
+    console.assert(['1.1', '1.2', '1.3', '1.4', '1.5'].map((a) => f.get(a)).join() === '1,2,3,4,1', 'trunk children');
+    console.assert(['1.2.1', '1.2.2', '1.2.3'].map((a) => f.get(a)).join() === '1,3,4', 'children of line 2');
+    console.assert(['1.2.2.1', '1.2.2.2', '1.2.2.3', '1.2.2.4'].map((a) => f.get(a)).join() === '1,2,4,3', 'children of line 3, 4th falls back');
+    console.assert(TREE.filter((n) => n.depth > 1).every((n) => t.get(n.address) === 2 || !n.address.startsWith('1.2')), 'today keeps family');
+}
+
+// Depth stops: up to four porcelain rings joined by a line, the last filled; depth 5+ adds a run-in from the left.
+function stops(depth, cap = Infinity) {
+    const n = Math.min(depth, cap), lead = depth > cap ? 8 : 0, r = 3, gap = 11;
+    const w = lead + 2 * r + 1.5 + (n - 1) * gap, cy = 4.5;
+    const x = (k) => lead + r + 0.75 + k * gap;
+    let s = `<svg class="stops" width="${w}" height="9" viewBox="0 0 ${w} 9" aria-hidden="true">`;
+    if (lead || n > 1) s += `<line x1="${lead ? 0.75 : x(0)}" y1="${cy}" x2="${x(n - 1)}" y2="${cy}"/>`;
+    for (let k = 0; k < n; k++) s += `<circle cx="${x(k)}" cy="${cy}" r="${r}"${k === n - 1 ? ' class="here"' : ''}/>`;
+    return s + '</svg>';
+}
+
+const inkVars = (ink) => ink
+    ? `--ink: var(--ink-${ink}); --ink-on: var(--paper-ink);`
+    : '--ink: var(--paper); --ink-on: var(--paper-ink);';
+const chevron = '<span class="fold" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg></span>';
+
+function cardHTML(n, ink, { markers, focused, cap = Infinity, isStatic } = {}) {
+    const children = kids(n.address);
+    const handles = children.map((c, k) => `<span class="ring out" data-child="${c.address}" style="top:${(100 * (k + 1)) / (children.length + 1)}%"></span>`).join('');
+    return `<div class="card${isStatic ? ' static' : ''}" data-id="${n.address}" style="${inkVars(ink)}"${focused ? ' data-focused' : ''}>
+        ${n.parent && !isStatic ? '<span class="ring in"></span>' : ''}
+        <div class="band">
+            <div class="lead"><span class="chip">${n.address}</span>${markers && n.depth ? stops(n.depth, cap) : ''}</div>
+            <h3 class="title">${n.title}</h3>
+            ${children.length ? chevron : ''}
+        </div>
+        <div class="msg" style="${children.length ? `min-height:${8 * (children.length + 1)}px` : ''}">
+            <p class="preview">${n.preview}</p>${handles}
+        </div>
+    </div>`;
+}
+
+// canvas.ts routeLine, unchanged.
+function routeLine(source, target, from, to) {
+    const right = (box) => box.x + box.width;
+    const facing = to.x >= right(from) ? 1 : right(to) <= from.x ? -1 : 0;
+    const start = { x: facing < 0 ? from.x : right(from), y: source.y };
+    const end = { x: facing > 0 ? to.x : right(to), y: target.y };
+    const rise = Math.abs(end.y - start.y), up = Math.sign(end.y - start.y);
+    if (rise < 1) return [start, { x: end.x, y: start.y }];
+    const bend = (x, turn) => [start, { x: x - (facing || 1) * turn, y: start.y }, { x, y: start.y + up * turn }, { x, y: end.y - up * turn }, { x: x + (facing || -1) * turn, y: end.y }, end];
+    if (!facing) return bend(Math.max(start.x, end.x) + 40, Math.min(16, rise / 2));
+    const middle = (start.x + end.x) / 2, run = Math.abs(end.x - start.x);
+    if (rise <= run - 16) return [start, { x: middle - (facing * rise) / 2, y: start.y }, { x: middle + (facing * rise) / 2, y: end.y }, end];
+    return bend(middle, Math.min(16, run / 2, rise / 2));
+}
+const linePath = (pts) => `M${pts.map((p) => `${p.x} ${p.y}`).join('L')}`;
+
+const COL = 160 + 88, PAD = 32, GAP = 40;
+const CURRENT = '1.2.2.1.1.1.1.1.1.1';
+
+function panel({ id, letter, name, theme, scheme, themeName, rule, markers, focus, note }) {
+    const ink = inks(rule);
+    const sec = document.createElement('section');
+    sec.className = 'panel';
+    sec.id = id;
+    sec.dataset.theme = theme;
+    sec.style.colorScheme = scheme;
+    const path = new Set();
+    if (focus) for (let a = CURRENT; a; a = byId.get(a).parent) path.add(a);
+    sec.innerHTML = `<div class="panel-head"><h2>${letter}. ${name}</h2><span class="theme">${themeName} · ${scheme}</span><p>${note}</p></div>
+        <div class="map-scroll"><div class="map-size"><div class="map">
+            <svg aria-hidden="true"></svg>
+            ${TREE.map((n) => cardHTML(n, ink.get(n.address), { markers, focused: focus && n.address === CURRENT })).join('')}
+        </div></div></div>`;
+    document.getElementById('panels').append(sec);
+    const map = sec.querySelector('.map');
+    const card = (a) => map.querySelector(`.card[data-id="${a}"]`);
+    // Place: column by depth; each card as high as its parent allows, below the last card in its column (placeBox-like).
+    const pos = new Map(), bottom = [];
+    const place = (n) => {
+        const el = card(n.address), h = el.offsetHeight;
+        const y = Math.max(n.parent ? pos.get(n.parent).y : PAD, (bottom[n.depth] ?? PAD - GAP) + GAP);
+        pos.set(n.address, { x: PAD + n.depth * COL, y, width: el.offsetWidth, height: h });
+        bottom[n.depth] = y + h;
+        el.style.left = `${PAD + n.depth * COL}px`;
+        el.style.top = `${y}px`;
+        kids(n.address).forEach(place);
+    };
+    place(byId.get('1'));
+    const W = PAD * 2 + 9 * COL + 160, H = Math.max(...bottom) + PAD;
+    const size = sec.querySelector('.map-size');
+    size.style.setProperty('--w', `${W}px`);
+    size.style.setProperty('--h', `${H}px`);
+    Object.assign(map.style, { width: `${W}px`, height: `${H}px` });
+    // Lines: breadth-first like the hierarchy, each in its child's ink, from the passage ring to the landing ring.
+    const m = map.getBoundingClientRect(), z = m.width / W;
+    const centre = (el) => { const r = el.getBoundingClientRect(); return { x: (r.left + r.width / 2 - m.left) / z, y: (r.top + r.height / 2 - m.top) / z }; };
+    const svg = map.querySelector('svg');
+    const queue = ['1'];
+    for (const a of queue) for (const c of kids(a)) {
+        queue.push(c.address);
+        const pts = routeLine(centre(map.querySelector(`.ring.out[data-child="${c.address}"]`)), centre(card(c.address).querySelector('.ring.in')), pos.get(a), pos.get(c.address));
+        svg.insertAdjacentHTML('beforeend', `<path d="${linePath(pts)}" style="${inkVars(ink.get(c.address))}"${path.has(c.address) ? ' class="focused"' : ''}/>`);
+    }
+}
+
+function strip({ id, theme, scheme, themeName }) {
+    const n = byId.get(CURRENT), ink = inks('fork').get(CURRENT);
+    const sec = document.createElement('section');
+    sec.className = 'panel';
+    sec.id = id;
+    sec.dataset.theme = theme;
+    sec.style.colorScheme = scheme;
+    sec.innerHTML = `<div class="panel-head"><h2>D. Cap considered and rejected</h2><span class="theme">${themeName} · ${scheme}</span>
+            <p>The same depth-9 card. The owner chose one stop per level with no cap; the row may grow long.</p></div>
+        <div class="strip-row">
+            <figure>${cardHTML(n, ink, { markers: true, cap: 99, isStatic: true })}<figcaption>Chosen, uncapped: nine stops.</figcaption></figure>
+            <figure>${cardHTML(n, ink, { markers: true, cap: 4, isStatic: true })}<figcaption>Rejected, capped: four stops and a run-in line.</figcaption></figure>
+            <figure><div class="legend">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => stops(d)).join('')}${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => `<span>depth ${d}</span>`).join('')}</div>
+                <figcaption>Capped row at each depth. From 5 on, every row looks the same.</figcaption></figure>
+        </div>`;
+    document.getElementById('panels').append(sec);
+}
+
+const NOTES = {
+    A: 'Everything under 1.2 is amber, so 1.2.1, 1.2.2 and 1.2.3 and the four children of 1.2.2 read as one line.',
+    B: 'Each fork fans out in different lines. 1.2.2.4 is the fourth child of a green parent, so it falls back to green.',
+    C: 'B plus depth stops under each chip. The current card (depth 9) wears the porcelain ring and its whole path is drawn at 9px.',
+};
+const P = { theme: 'platform', themeName: 'Platform' };
+for (const scheme of ['dark', 'light']) {
+    panel({ ...P, scheme, id: `platform-${scheme}-A`, letter: 'A', name: 'Today', rule: 'today', note: NOTES.A });
+    panel({ ...P, scheme, id: `platform-${scheme}-B`, letter: 'B', name: 'Fork inks', rule: 'fork', note: NOTES.B });
+    panel({ ...P, scheme, id: `platform-${scheme}-C`, letter: 'C', name: 'Fork inks and depth stops', rule: 'fork', markers: true, focus: true, note: NOTES.C });
+}
+panel({ theme: 'main', themeName: 'Main Line', scheme: 'dark', id: 'main-dark-C', letter: 'C', name: 'Fork inks and depth stops', rule: 'fork', markers: true, focus: true, note: NOTES.C });
+strip({ ...P, scheme: 'dark', id: 'strip-D' });
+strip({ ...P, scheme: 'light', id: 'strip-D-light' });
+
+document.querySelectorAll('[data-zoom]').forEach((b) => b.addEventListener('click', () => {
+    document.documentElement.style.setProperty('--z', b.dataset.zoom);
+    document.querySelectorAll('[data-zoom]').forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
+}));
+</script>
+</body>
+</html>
