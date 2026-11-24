@@ -408,11 +408,12 @@ export function libraryPieces(source, brief, names, parts = []) {
     });
 }
 
-const USES = ['reuse', 'variant', 'new'];
+const USES = ['reuse', 'improve', 'new'];
 // A wrong piece choice, which a patch of the code cannot fix.
 const choiceError = (message) => Object.assign(new Error(message), { choice: true });
-// The set-piece answer when library matches were offered: {"pieces":[{name, use, id?, roles?}], "code"}.
-// Reuse and variant name one of that object's library matches; code holds only variant and new pieces.
+// The set-piece answer when library matches were offered: {"pieces":[{name, use, id?, reason, roles?}], "code"}.
+// Reuse and improve name one of that object's library matches; code holds only improved and new pieces.
+// Each choice carries a one-line reason.
 // With solid, a reused piece's saved 3D form is added by the app too, so it must not be written either.
 export function pieceChoices(raw, names, matches, brief, solid = false) {
     let answer;
@@ -421,13 +422,22 @@ export function pieceChoices(raw, names, matches, brief, solid = false) {
     } catch {}
     if (typeof answer?.code !== 'string' || !Array.isArray(answer.pieces))
         throw new Error('set pieces answer is not {"pieces", "code"} JSON.');
+    const improved = new Set();
     const choices = names.map((name, i) => {
         const c = answer.pieces.find((p) => p?.name === name);
         if (!c || !USES.includes(c.use))
-            throw choiceError(`no reuse, variant or new choice for ${name}.`);
+            throw choiceError(`no reuse, improve or new choice for ${name}.`);
+        if (typeof c.reason !== 'string' || !c.reason.trim() || /\n/.test(c.reason.trim()))
+            throw choiceError(`${name} needs a one-line reason for its choice.`);
         const piece = c.use === 'new' ? null : matches[i]?.find((m) => m.id === c.id);
         if (c.use !== 'new' && !piece)
             throw choiceError(`${name} names a piece that was not offered.`);
+        // Two improvements of one saved piece would overwrite each other in the library.
+        if (c.use === 'improve' && improved.has(c.id))
+            throw choiceError(
+                `${name} improves a piece another object already improves; make it new.`,
+            );
+        if (c.use === 'improve') improved.add(c.id);
         if (
             c.roles !== undefined &&
             !(
@@ -446,7 +456,13 @@ export function pieceChoices(raw, names, matches, brief, solid = false) {
             (written(name) || (solid && piece.source3d && written(`${name}3D`)))
         )
             throw new Error(`reused piece ${name} must not be written again.`);
-        return { name, use: c.use, ...(piece && { piece }), ...(c.roles && { roles: c.roles }) };
+        return {
+            name,
+            use: c.use,
+            reason: c.reason.trim(),
+            ...(piece && { piece }),
+            ...(c.roles && { roles: c.roles }),
+        };
     });
     return { code: answer.code, choices };
 }

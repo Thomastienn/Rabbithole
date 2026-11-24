@@ -2,8 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
     DEFAULT_TUTOR_STYLE,
+    LOOKUP_RULE,
     MEMORY_RULE,
     TUTOR_RULES,
+    TOOL_VISUAL_RULES,
     VERDICT_RULE,
     TUTOR_SKILLS,
     tutorSystem,
@@ -69,6 +71,17 @@ test('the fixed memory rule appears only when update_memory_note is offered', ()
     assert.ok(!tutorSystem({ tutorStyle: 'Mine.' }).includes(MEMORY_RULE));
 });
 
+test('the concept lookup rule appears only when look_up_concept is offered', () => {
+    const tool = (name) => ({ tutorStyle: 'Mine.', tools: [{ name }] });
+    assert.match(
+        LOOKUP_RULE,
+        /concepts the concept neighbourhood does not cover, such as those in an attachment or a request like 'explain the concepts in this', look them up together with look_up_concept before you explain\./,
+    );
+    assert.ok(tutorSystem(tool('look_up_concept')).includes(LOOKUP_RULE));
+    assert.ok(!tutorSystem(tool('read_page')).includes(LOOKUP_RULE));
+    assert.ok(!tutorSystem({ tutorStyle: 'Mine.' }).includes(LOOKUP_RULE));
+});
+
 test('the teaching skill carries everyday-analogy guidance to replies, visuals and narration, never discussions', async () => {
     const { ANALOGY_SKILL } = await import('../../server/media/skills.mjs');
     const { PLAN_INSTRUCTIONS } = await import('../../server/media/video-plan.mjs');
@@ -105,6 +118,18 @@ test('the tutor rules describe a visual as a section read in place, drawn by the
     assert.match(TUTOR_RULES, /section of your reply that the learner reads in place/);
     assert.match(TUTOR_RULES, /chat model draws the visual in a separate call/);
     assert.doesNotMatch(TUTOR_RULES, /smart-model/);
+});
+
+test('both visual rules lean on more visuals for hard ideas, loosely and without a quota', () => {
+    const hard =
+        'When an idea is hard to grasp, such as an abstract or mathematical one, lean on more visuals; the harder it is for this learner, the more a picture helps.';
+    for (const rules of [TUTOR_RULES, TOOL_VISUAL_RULES]) {
+        assert.equal(rules.split(hard).length, 2);
+        assert.doesNotMatch(
+            rules,
+            /at least (one|two|three|\d+) visuals|visuals? per (reply|idea) at least/i,
+        );
+    }
 });
 
 test('the default tutor style ends with the readability paragraph after the unchanged original', () => {

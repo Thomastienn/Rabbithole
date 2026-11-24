@@ -111,8 +111,11 @@ test('a Claude reply with inline notes underlines at once and quick thinking nam
     assert.ok(env.store.graph().concepts.some((c) => c.name === 'Plagiarism'));
 });
 
-test('a completed reply without [[end]] starts its briefs once quick thinking has marked it', async () => {
-    const calls = [];
+test('a completed reply without [[end]] starts its briefs once quick thinking has marked it, applying any memory edits first', async () => {
+    const calls = [],
+        logs = [],
+        prompts = [];
+    let note = '- Knows Python\n' + 'x'.repeat(7980);
     const store = {
         tree: () => ({ provider: 'claude' }),
         suggestionSettings: () => ({ enabled: true }),
@@ -122,15 +125,16 @@ test('a completed reply without [[end]] starts its briefs once quick thinking ha
         addGraph: () => {},
         graph: () => ({ topics: [], concepts: [] }),
         mentioned: () => ({}),
+        memoryNote: () => note,
+        saveMemoryNote: (text, message) => ((note = text), calls.push(['memory', message])),
     };
+    let memory;
     const quick = {
         models: async () => [{ model: 'haiku' }],
         generate: async (tree, text, emit) => {
-            emit({
-                type: 'item',
-                item: 'a',
-                text: JSON.stringify({ suggestions: [{ text: 'shared state', concept: 'State' }] }),
-            });
+            prompts.push(text);
+            const answer = { suggestions: [{ text: 'shared state', concept: 'State' }], memory };
+            emit({ type: 'item', item: 'a', text: JSON.stringify(answer) });
             emit({ type: 'status', status: 'completed' });
         },
     };
@@ -142,14 +146,41 @@ test('a completed reply without [[end]] starts its briefs once quick thinking ha
         neighbourhood: async () => ({ concepts: [] }),
         pick: () => quick,
         logged: (provider) => provider,
+        log: (line) => logs.push(line),
         toolCapable: async () => false,
         quickModel: async () => ({ provider: 'claude', model: 'haiku', effort: null }),
         startBriefs: (...args) => calls.push(['briefs', ...args]),
     });
-    noteSuggestions('c', 'r', 'completed', notesOf('Use shared state'), 'Q', 'Use shared state');
-    await jobs.get('suggestion', 'r').done;
-    assert.deepEqual(calls, [
-        ['finish', 'c', 'r', [{ start: 4, end: 16, text: 'shared state', concept: 'State' }]],
-        ['briefs', 'c', 'r'],
-    ]);
+    const run = async (message) => {
+        calls.length = 0;
+        noteSuggestions(
+            'c',
+            message,
+            'completed',
+            notesOf('Use shared state'),
+            'Q',
+            'Use shared state',
+        );
+        await jobs.get('suggestion', message).done;
+    };
+    const finished = (message) => [
+        ['finish', 'c', message, [{ start: 4, end: 16, text: 'shared state', concept: 'State' }]],
+        ['briefs', 'c', message],
+    ];
+    // No memory field: the note stays as it was.
+    await run('r');
+    assert.deepEqual(calls, finished('r'));
+    assert.equal(data({ input: prompts[0] }).memoryNote, note, 'the call reads the current note');
+    // An edit within the limit saves for its reply; one that grows the note past it is refused.
+    memory = [
+        { operation: 'rewrite', old_text: '- Knows Python', text: '- Knows Rust' },
+        { operation: 'add', text: '- Likes long proofs' },
+        'not an edit',
+    ];
+    await run('s');
+    assert.deepEqual(calls, [['memory', 's'], ...finished('s')]);
+    assert.equal(note, '- Knows Rust\n' + 'x'.repeat(7980));
+    assert.equal(logs.length, 2);
+    assert.match(logs[0], /INFO suggestions memory edit id="s"/);
+    assert.match(logs[1], /WARN suggestions memory edit refused id="s".*limit/);
 });

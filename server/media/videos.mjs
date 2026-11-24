@@ -14,8 +14,8 @@ import { detectClips } from './clips.mjs';
 import { startCuts, makeCut, cutRows } from './video-cuts.mjs';
 import { CUT_STATES, cutState, playable } from './cut-state.mjs';
 import { mediaCall, raced } from './media-call.mjs';
-import { planBuilder } from './plan-calls.mjs';
-import { drawPieces } from './video-pieces.mjs';
+import { planBuilder, PIECES_PLAN_NOTE } from './plan-calls.mjs';
+import { drawPieces, embedded } from './video-pieces.mjs';
 import { sandboxProcess, REPO } from './video-sandbox.mjs';
 import { detectManim, videoBrowser } from './manim.mjs';
 import { sandboxManim, checkManim } from './manim-cut.mjs';
@@ -289,14 +289,29 @@ async function keptCuts({ dir, artifact, previous, workspace }, prior) {
 }
 
 // The smart model builds the plan through calls; one stop without a valid finish gets a retry with the problem.
-async function planVideo({ artifact }, deps, searching, clipping) {
+// With saved pieces and an embedder, the planner looks up the nearest pieces by name and role before each look.
+async function planVideo({ artifact, signal }, deps, searching, clipping) {
+    const pieces =
+        deps.embed && deps.store.hasPieces()
+            ? async (query) => {
+                  try {
+                      const [vector] = await embedded([query], deps, signal);
+                      return vector ? deps.store.nearestPieces(vector) : [];
+                  } catch (error) {
+                      signal.throwIfAborted();
+                      deps.onWarning(`WARN video piece library unavailable: ${error.message}`);
+                      return [];
+                  }
+              }
+            : null;
     const planned = async (note = '') => {
-        const builder = planBuilder({ exhibits: searching, clips: !!clipping?.ready });
+        const builder = planBuilder({ exhibits: searching, clips: !!clipping?.ready, pieces });
         let characters = 0;
         const answer = await deps.call(
             PLAN_INSTRUCTIONS +
                 (searching ? EXHIBITS_NOTE : '') +
                 (clipping?.ready ? CLIPS_NOTE : '') +
+                (pieces ? PIECES_PLAN_NOTE : '') +
                 (JSON.parse(artifact.input).differentVersion
                     ? '\nCreate a different version: take a different approach than the previous version while explaining the same request.'
                     : '') +

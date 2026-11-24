@@ -223,7 +223,7 @@ A set piece used inside another set piece, such as the person in a city. It is a
 _Avoid_: Child piece, sub-piece, component
 
 **Piece library**:
-The local collection of set pieces from earlier videos, each with its 2D and 3D forms, shared across all learning trees and browsable from its own view. A new video reuses a close match, derives a variant from one, or draws a new piece; that choice covers the 2D and 3D forms together, and parts are saved and reused as set pieces of their own. A cut audit that finds a saved piece poor or off the house style replaces it with a better version for future videos; saved videos keep how they looked. It holds only drawn set pieces, never exhibits.
+The local collection of set pieces from earlier videos, each with its 2D and 3D forms, shared across all learning trees and browsable from its own view. A new video reuses a close match, improves one into a new version of the same piece, or draws a new piece, and records each choice with its reason; that choice covers the 2D and 3D forms together, and parts are saved and reused as set pieces of their own. A cut audit that finds a saved piece poor or off the house style replaces it with a better version for future videos; saved videos keep how they looked. It holds only drawn set pieces, never exhibits.
 _Avoid_: Component cache, asset library
 
 **Stock piece**:
