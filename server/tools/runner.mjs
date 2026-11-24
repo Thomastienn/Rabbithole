@@ -120,17 +120,20 @@ const TOOLS = {
     },
     look_up_concept: {
         description:
-            "Look up the learner's familiarity with concepts across all learning trees. Returns up to 5 nearest concepts to the description, each with familiarity from 0 to 1 (or a guess from linked concepts, or unknown), topics and links." +
+            "Look up the learner's familiarity with concepts across all learning trees. Returns, per requested item, up to 5 nearest concepts, each with familiarity from 0 to 1 (or a guess from linked concepts, or unknown), topics and links; an item with no match returns unknown." +
             CONTEXT_ONLY,
         parameters: {
             type: 'object',
             properties: {
-                description: {
-                    type: 'string',
-                    description: 'Concept name or a short description of it.',
+                concepts: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    minItems: 1,
+                    maxItems: 10,
+                    description: 'Concept names or short descriptions of them, 1 to 10.',
                 },
             },
-            required: ['description'],
+            required: ['concepts'],
             additionalProperties: false,
         },
         run: (input, turn, options) => options.recall.lookUpConcept(input, turn),
