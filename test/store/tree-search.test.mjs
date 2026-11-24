@@ -89,6 +89,22 @@ test('search finds every conversation text by word parts, forgives typos and gro
         'short words match title words by prefix only',
     );
 
+    const viaduct = store.create('How a viaduct crosses many deep valleys on arches', 'codex');
+    store.message(rome.id, 'user', 'viaduct', 'completed');
+    assert.deepEqual(
+        (await search('viaduct')).map((r) => [r.conversation, r.field]),
+        [
+            [viaduct.id, 'title'],
+            [rome.id, 'question'],
+        ],
+        'a title match ranks above a closer text match',
+    );
+    assert.equal(
+        (await search('via\0duct valleys'))[0].conversation,
+        viaduct.id,
+        'NUL splits words',
+    );
+
     const order = async (tree) =>
         (await search('redundancy', tree)).map((r) => [r.root, r.conversation]);
     assert.deepEqual((await order(rome.id))[0], [rome.id, rome.id], 'current tree first');

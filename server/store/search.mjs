@@ -108,7 +108,14 @@ export const search = {
     // Words of 3+ characters match anywhere, in any order; shorter ones match title words by prefix.
     // With no match, a shared-trigram ranking forgives typos. One result per conversation, grouped by learning tree.
     search(query, current) {
-        const words = [...new Set(query.toLocaleLowerCase().split(/\s+/).filter(Boolean))],
+        const words = [
+                ...new Set(
+                    query
+                        .toLocaleLowerCase()
+                        .split(/[\s\0]+/)
+                        .filter(Boolean),
+                ),
+            ],
             long = words.filter((w) => [...w].length >= 3),
             short = words.filter((w) => [...w].length < 3);
         if (!words.length) return [];

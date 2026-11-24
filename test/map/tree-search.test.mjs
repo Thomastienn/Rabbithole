@@ -75,7 +75,9 @@ test('conversation search opens focused, marks snippet matches, selects with arr
     const dialog = await open();
     assert.ok(dialog.getAttribute('aria-label'), 'named for assistive tech');
     assert.equal(document.activeElement.tagName, 'INPUT');
+    assert.match(dialog.textContent, /Type words from any conversation\./);
     query = await type('missing');
+    assert.match(dialog.textContent, /No conversations match\./);
     assert.equal(dialog.querySelectorAll('[role=option]').length, 0);
     query = await type('O');
     const options = [...dialog.querySelectorAll('[role=option]')];
