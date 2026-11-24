@@ -4,6 +4,7 @@ import {
     DEFAULT_TUTOR_STYLE,
     MEMORY_RULE,
     TUTOR_RULES,
+    TOOL_VISUAL_RULES,
     VERDICT_RULE,
     TUTOR_SKILLS,
     tutorSystem,
@@ -105,6 +106,18 @@ test('the tutor rules describe a visual as a section read in place, drawn by the
     assert.match(TUTOR_RULES, /section of your reply that the learner reads in place/);
     assert.match(TUTOR_RULES, /chat model draws the visual in a separate call/);
     assert.doesNotMatch(TUTOR_RULES, /smart-model/);
+});
+
+test('both visual rules lean on more visuals for hard ideas, loosely and without a quota', () => {
+    const hard =
+        'When an idea is hard to grasp, such as an abstract or mathematical one, lean on more visuals; the harder it is for this learner, the more a picture helps.';
+    for (const rules of [TUTOR_RULES, TOOL_VISUAL_RULES]) {
+        assert.equal(rules.split(hard).length, 2);
+        assert.doesNotMatch(
+            rules,
+            /at least (one|two|three|\d+) visuals|visuals? per (reply|idea) at least/i,
+        );
+    }
 });
 
 test('the default tutor style ends with the readability paragraph after the unchanged original', () => {
