@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Search window · Rabbithole-nav.2 mockup</title><link rel="stylesheet" href="line-diagram/ld.css">
+<style>
+/* Mockup only. One floating window over a flat scrim: raised enamel, 8px corners, 1.5px strong seam, no shadow. */
+.stagebox { position: relative; }
+.scrim { position: absolute; inset: 0; background: light-dark(#ffffff66, #000000b8); }
+.swin { position: absolute; left: 50%; top: 9%; translate: -50% 0; width: min(760px, calc(100% - 32px)); max-height: 80%; display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; background: var(--up); border: 1.5px solid var(--seam2); border-radius: 8px; overflow: hidden; }
+.swin.static { position: static; translate: none; max-height: none; width: 100%; }
+.sf { display: flex; gap: 10px; align-items: center; height: 56px; padding: 0 12px 0 18px; border-bottom: 1.5px solid var(--w); font-size: 17px; color: var(--ink); }
+.sf.idle { border-bottom-color: var(--seam2); }
+.sf .qv { flex: 1; }
+.sf .ph { flex: 1; color: var(--mut); }
+.sf > .i { color: var(--mut); }
+.cnt { padding: 10px 18px 2px; font-size: 12px; color: var(--mut); }
+.sres { overflow: auto; padding: 4px 8px 8px; }
+.grp + .grp { margin-top: 8px; border-top: 1px solid var(--seam); padding-top: 8px; }
+.grp > h2 { display: flex; gap: 8px; align-items: baseline; font: 600 12px/1.2 var(--cond); letter-spacing: 0.07em; text-transform: uppercase; color: var(--mut); padding: 8px 10px 6px; }
+.grp > h2 small { font: 400 12px var(--ui); letter-spacing: 0; text-transform: none; margin-left: auto; }
+.hit { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 2px 10px; padding: 9px 10px; border-radius: 6px; align-items: baseline; }
+.hit.on { background: var(--up2); }
+.hit .chip { align-self: start; margin-top: 1px; }
+.hit b { font-weight: 600; color: var(--w); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hit .where { font-size: 12px; color: var(--mut); white-space: nowrap; }
+.hit .snip { grid-column: 2 / -1; font: 14px/1.5 var(--read); color: var(--mut); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.hit mark, .p mark { background: var(--sel); color: var(--ink); border-radius: 2px; padding: 0 1px; }
+.keys { display: flex; gap: 18px; align-items: center; padding: 10px 18px; border-top: 1px solid var(--seam); font-size: 12px; color: var(--mut); background: var(--up); }
+.keys span { display: inline-flex; gap: 6px; align-items: center; }
+.keys kbd { display: inline-flex; align-items: center; min-height: 20px; }
+.keys kbd .i { width: 12px; height: 12px; }
+.recent .hit { grid-template-columns: auto minmax(0, 1fr) auto; }
+.nores { padding: 28px 18px 36px; }
+.nores b { display: block; font: 700 20px/1.2 var(--cond); color: var(--w); }
+.nores p { color: var(--mut); margin-top: 6px; font-size: 14px; }
+</style></head><body>
+<nav class="mock" aria-label="Mockup screens"><b>Knowledge and search</b><a href="line-diagram/index.html">Line Diagram index</a><a href="Rabbithole-mkg.6.html">mkg.6 Topic colours and hulls</a><a href="Rabbithole-mkg.7.html">mkg.7 Stats panel</a><a href="Rabbithole-nav.2.html" aria-current=page>nav.2 Search window</a><label><input type="checkbox" id="lt"> Light</label></nav>
+<header class="intro"><h1>A search window over every conversation</h1><p>Rabbithole-nav.2. Search used to find learning tree titles only. Ctrl+K or the sidebar's Search button now opens a floating window that searches every conversation's title, passage, question and replies as the learner types. Results are grouped by learning tree. Spec: <code>docs/search-window-version-and-map-cleanup-spec.md</code>, "Search window". Where this mockup and the spec differ, follow the spec.</p></header>
+<ul class="rules">
+<li>The window is centred, 760px wide, and at most 80% of the viewport tall. It shares the overlay frame and sits on a flat scrim. Below 48rem it spans the width less 16px on each side.</li>
+<li>The field has no frame. Its underline turns porcelain while it holds focus. Focus stays in the field while Up and Down move the highlighted result.</li>
+<li>The current learning tree's group comes first, marked "This tree". Then the other trees follow, newest first.</li>
+<li>Each result shows its address chip in its line colour, its conversation title, and where the words matched. A snippet of about 160 characters follows, with the matched words marked in the selection colour.</li>
+<li>A title match has no snippet, because the title already shows the words.</li>
+<li>Typing waits 120 ms, then replaces the results in place. The old results stay until the new ones arrive, so the list never flashes empty.</li>
+<li>The count line is a polite live region, for example "9 results in 3 learning trees". The selected result is announced as the active option.</li>
+</ul>
+
+<section class="intro"><h2>In place</h2><p>Reading 1.2, the learner presses Ctrl+K and types "hyph tip".</p></section>
+<div class="stagebox" style="margin-top:20px;border-top:1px solid var(--seam)"><div class="app" style="height:820px;min-height:0"><nav class="side" aria-label="Sidebar"><div class="top"><button class="ib" aria-label="Shrink sidebar to rail"><i class="i i-rail"></i></button><a class="mark" href="line-diagram/library.html"><svg viewBox="0 0 26 26" aria-hidden="true"><path class="ln" style="stroke-width:3.5" d="M5 13H12L18 7H22M12 13L18 19H22"/><circle class="stn" cx="5" cy="13" r="3.4"/></svg>Rabbithole</a></div><div class="new"><a class="btn pri" href="line-diagram/read.html"><i class="i i--sm i-plus"></i>New chat</a><button class="ib hover" aria-label="Search conversations (Ctrl+K)"><i class="i i-magnifying-glass"></i></button></div><div class="views"><a class="view" href="line-diagram/read.html" aria-current=page><i class="i i-book-open"></i>Read</a><a class="view" href="line-diagram/map.html"><i class="i i-map"></i>Map</a><a class="view" href="Rabbithole-mkg.6.html"><i class="i i-share"></i>Knowledge</a><a class="view" href="line-diagram/videos.html"><i class="i i-film"></i>Videos</a><a class="view" href="line-diagram/pieces.html"><i class="i i-cube"></i>Pieces</a><a class="view" href="line-diagram/library.html"><i class="i i-rectangle-stack"></i>Library</a></div><div style="flex:1"></div><div class="foot"><a class="view" href="line-diagram/settings.html"><i class="i i-cog-6-tooth"></i>Settings</a></div></nav>
+<main class="page"><div class="col reply" style="max-width:68ch"><h1 class="title"><span class="chip c2">1.2</span><span>What are hyphae?</span></h1><div class="by">Tutor · Claude · Opus 4</div><p class="p">A hypha is a single thread of a fungus, a tube one cell wide. Thousands of them together make the mycelium, the web you see as white fuzz under a log.</p><p class="p">A hypha lengthens only at its tip, the last few micrometres, where new wall is laid down. Everything behind the tip stays put.</p><p class="p">Because a thread is so thin, it reaches pores no root can enter, and that is where much of the phosphorus sits.</p></div></main></div>
+<div class="scrim"></div>
+<div class="swin" role="dialog" aria-modal="true" aria-label="Search conversations">
+<div class="sf"><i class="i i-magnifying-glass"></i><span class="qv">hyph tip<span class="cursor"></span></span><kbd>Esc</kbd></div>
+<p class="cnt" role="status">9 results in 3 learning trees</p>
+<div class="sres" role="listbox" aria-label="Results">
+<div class="grp" role="group" aria-label="How do fungi trade?, this tree"><h2>How do fungi trade?<small>This tree</small></h2>
+<div class="hit on" role="option" aria-selected="true"><span class="chip c2">1.2</span><b>What are hyphae?</b><span class="where">Reply</span><span class="snip">…a tube one cell wide. A <mark>hyph</mark>a lengthens only at its <mark>tip</mark>, the last few micrometres, where new wall is laid down…</span></div>
+<div class="hit" role="option"><span class="chip c2">1.2</span><b>What are hyphae?</b><span class="where">Title</span></div>
+<div class="hit" role="option"><span class="chip c2">1.2.1</span><b>How thin is thin?</b><span class="where">Question</span><span class="snip">Why does a <mark>hyph</mark>a only grow at the <mark>tip</mark> and not along its length?</span></div>
+<div class="hit" role="option"><span class="chip c4">1.4</span><b>Where does the sugar go?</b><span class="where">Passage</span><span class="snip">“sugar flows toward the growing <mark>tip</mark> of each <mark>hyph</mark>a”</span></div>
+</div>
+<div class="grp" role="group" aria-label="What makes bread rise?"><h2>What makes bread rise?<small>Yesterday</small></h2>
+<div class="hit" role="option"><span class="chip c0">1</span><b>What makes bread rise?</b><span class="where">Reply</span><span class="snip">…yeast cells bud instead of growing <mark>hyph</mark>ae from a <mark>tip</mark>, which is why a dough stays smooth rather than stringy…</span></div>
+<div class="hit" role="option"><span class="chip c1">1.1</span><b>Is yeast a fungus?</b><span class="where">Reply</span><span class="snip">…some yeasts switch to thread form under stress, pushing pseudo<mark>hyph</mark>ae out from the cell <mark>tip</mark>…</span></div>
+</div>
+<div class="grp" role="group" aria-label="Why are mushrooms so fast?"><h2>Why are mushrooms so fast?<small>12 Nov</small></h2>
+<div class="hit" role="option"><span class="chip c0">1</span><b>Why are mushrooms so fast?</b><span class="where">Reply</span><span class="snip">…a mushroom does not grow cell by cell. Its <mark>hyph</mark>ae are already there and swell with water, so the <mark>tip</mark>…</span></div>
+</div>
+</div>
+<div class="keys" aria-hidden="true"><span><kbd><i class="i i-chevron-up"></i></kbd><kbd><i class="i i-chevron-down"></i></kbd>Move</span><span><kbd>Enter</kbd>Open</span><span><kbd>Esc</kbd>Close</span></div>
+</div></div>
+
+<main class="specs">
+<section class="spec"><h2>Empty query</h2><p>Opening the window shows the six most recent learning trees. Up, Down and Enter work the same way as on results.</p><div class="stage" style="justify-items:stretch"><div class="swin static recent" role="dialog" aria-label="Search conversations"><div class="sf"><i class="i i-magnifying-glass"></i><span class="ph">Search every conversation<span class="cursor"></span></span><kbd>Esc</kbd></div><div class="sres" role="listbox" aria-label="Recent learning trees"><div class="grp"><h2>Recent learning trees</h2>
+<div class="hit on" role="option" aria-selected="true"><span class="chip c0">1</span><b>How do fungi trade?</b><span class="where">Today · 9 conversations</span></div>
+<div class="hit" role="option"><span class="chip c0">1</span><b>What makes bread rise?</b><span class="where">Yesterday · 4 conversations</span></div>
+<div class="hit" role="option"><span class="chip c0">1</span><b>How do rockets change orbit?</b><span class="where">19 Nov · 6 conversations</span></div>
+<div class="hit" role="option"><span class="chip c0">1</span><b>Why is phosphorus so scarce?</b><span class="where">12 Nov · 3 conversations</span></div>
+<div class="hit" role="option"><span class="chip c0">1</span><b>Why are mushrooms so fast?</b><span class="where">12 Nov · 2 conversations</span></div>
+<div class="hit" role="option"><span class="chip c0">1</span><b>What is a lock in an operating system?</b><span class="where">3 Nov · 11 conversations</span></div>
+</div></div></div></div></section>
+
+<section class="spec"><h2>A small typo</h2><p>"hyfae" has no exact match, so the trigram fallback ranks close texts. The results look the same as exact matches, with the closest words marked.</p><div class="stage" style="justify-items:stretch"><div class="swin static"><div class="sf"><i class="i i-magnifying-glass"></i><span class="qv">hyfae<span class="cursor"></span></span><kbd>Esc</kbd></div><p class="cnt" role="status">4 results in 2 learning trees</p><div class="sres" role="listbox" aria-label="Results"><div class="grp"><h2>How do fungi trade?<small>This tree</small></h2><div class="hit on" role="option" aria-selected="true"><span class="chip c2">1.2</span><b>What are <mark>hyphae</mark>?</b><span class="where">Title</span></div><div class="hit" role="option"><span class="chip c2">1.2.1</span><b>How thin is thin?</b><span class="where">Reply</span><span class="snip">…most <mark>hyphae</mark> are two to ten micrometres across, about a tenth of a human hair…</span></div></div></div></div></div></section>
+
+<section class="spec"><h2>No match</h2><p>Says what was searched and what to try. The count line announces it too.</p><div class="stage" style="justify-items:stretch"><div class="swin static"><div class="sf"><i class="i i-magnifying-glass"></i><span class="qv">quantum tunnelling<span class="cursor"></span></span><kbd>Esc</kbd></div><div class="nores" role="status"><b>Nothing matches “quantum tunnelling”</b><p>No conversation uses these words. Try fewer words or part of one.</p></div></div></div></section>
+
+<section class="spec"><h2>Opening a result</h2><p>Enter opens the conversation in the focused chat, scrolled to the matched message. The matched words keep the selection colour for about two seconds, then fade. A title or passage match opens at the top. Escape instead closes the window and returns focus to where it was.</p><div class="stage"><div class="wide reply"><h1 class="title" style="font-size:28px"><span class="chip c2">1.2</span><span>What are hyphae?</span></h1><p class="p" style="margin-top:12px">A <mark>hyph</mark>a lengthens only at its <mark>tip</mark>, the last few micrometres, where new wall is laid down. Everything behind the tip stays put.</p></div></div></section>
+</main>
+<script src="line-diagram/ld.js"></script>
+</body></html>

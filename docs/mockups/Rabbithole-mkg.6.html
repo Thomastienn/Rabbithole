@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Topic colours and hulls · Rabbithole-mkg.6 mockup</title><link rel="stylesheet" href="line-diagram/ld.css">
+<style>
+/* Mockup only. The graph itself is drawn by knowledge-graph.js. */
+.kfield > svg.kg { position: absolute; inset: 8px 8px 124px; width: calc(100% - 16px); height: calc(100% - 132px); }
+.mini { position: relative; width: 100%; aspect-ratio: 780 / 600; background: var(--deep); border-radius: 8px; overflow: hidden; }
+.mini svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.lightbox { color-scheme: light; background: var(--g); padding: 12px; border-radius: 8px; width: 100%; }
+.darkbox { color-scheme: dark; background: var(--g); padding: 12px; border-radius: 8px; width: 100%; }
+.hues { display: grid; gap: 8px; font-size: 13px; }
+.hues li { display: flex; gap: 10px; align-items: center; list-style: none; }
+.hues i { width: 28px; height: 7px; border-radius: 9999px; flex: none; background: color-mix(in oklch, light-dark(oklch(0.5 0.13 var(--h)), oklch(0.8 0.12 var(--h))) 85%, var(--ink)); }
+.hues small { color: var(--mut); margin-left: auto; font-variant-numeric: tabular-nums; }
+.kleg { background: color-mix(in srgb, var(--deep) 88%, transparent); padding: 8px 10px; border-radius: 8px; }
+</style></head><body>
+<nav class="mock" aria-label="Mockup screens"><b>Knowledge and search</b><a href="line-diagram/index.html">Line Diagram index</a><a href="Rabbithole-mkg.6.html" aria-current=page>mkg.6 Topic colours and hulls</a><a href="Rabbithole-mkg.7.html">mkg.7 Stats panel</a><a href="Rabbithole-nav.2.html">nav.2 Search window</a><label><input type="checkbox" id="lt"> Light</label></nav>
+<header class="intro"><h1>Topic colours, hulls and related topics nearby</h1><p>Rabbithole-mkg.6. Today every topic is the same plain circle, pinned evenly round a ring, so the graph's layout means nothing. Now related topics sit near each other, each concept wears its main topic's hue, and each topic draws a soft hull behind its concepts. Spec: <code>docs/memory-recall-and-knowledge-graph-spec.md</code>, "Graph colour, hulls and placement". Where this mockup and the spec differ, follow the spec.</p></header>
+<ul class="rules">
+<li>Topic placement comes from the server's PCA anchors, so Mycology sits beside Fermentation and Ecology, and Orbital mechanics sits far away. The same data always gives the same picture.</li>
+<li>The hue sits on the concept's ring and on its familiarity fill. Empty, half and full fills still mean new, getting there and known.</li>
+<li>Each hull is one flat shape at low opacity, behind the links and points, with its topic name above it in muted caps. It has no border, gradient or blur.</li>
+<li>Text never takes the hue. Concept names stay ink, the selected one porcelain, and topic names muted.</li>
+<li>A concept without a topic stays porcelain, with no hull. "Scientific method" shows this below.</li>
+<li>The "Merge concepts" button is gone from the page head (Rabbithole-mkg.4), so only Refresh is left.</li>
+</ul>
+
+<section class="intro"><h2>In place</h2><p>Hyphae is selected. Its links turn porcelain and its detail is open.</p></section>
+<div class="app" style="margin-top:20px;border-top:1px solid var(--seam);height:860px;min-height:0"><nav class="side" aria-label="Sidebar"><div class="top"><button class="ib" aria-label="Shrink sidebar to rail"><i class="i i-rail"></i></button><a class="mark" href="line-diagram/library.html"><svg viewBox="0 0 26 26" aria-hidden="true"><path class="ln" style="stroke-width:3.5" d="M5 13H12L18 7H22M12 13L18 19H22"/><circle class="stn" cx="5" cy="13" r="3.4"/></svg>Rabbithole</a></div><div class="new"><a class="btn pri" href="line-diagram/read.html"><i class="i i--sm i-plus"></i>New chat</a><button class="ib" aria-label="Search conversations"><i class="i i-magnifying-glass"></i></button></div><div class="views"><a class="view" href="line-diagram/read.html"><i class="i i-book-open"></i>Read</a><a class="view" href="line-diagram/map.html"><i class="i i-map"></i>Map</a><a class="view" href="Rabbithole-mkg.6.html" aria-current=page><i class="i i-share"></i>Knowledge</a><a class="view" href="line-diagram/videos.html"><i class="i i-film"></i>Videos</a><a class="view" href="line-diagram/pieces.html"><i class="i i-cube"></i>Pieces</a><a class="view" href="line-diagram/library.html"><i class="i i-rectangle-stack"></i>Library</a></div><div style="flex:1"></div><div class="foot"><a class="view" href="line-diagram/settings.html"><i class="i i-cog-6-tooth"></i>Settings</a></div></nav><main class="page">
+<a class="ret" href="line-diagram/read.html"><i class="i i--sm i-arrow-left"></i>Return to learning tree</a><div class="phead"><div><h1>Knowledge</h1><p>Concepts you have explored across every tree, grouped by topic.</p></div>
+<div class="end"><button class="ib" aria-label="Refresh Knowledge"><i class="i i-arrow-path"></i></button></div></div>
+<div class="kn"><div class="kfield" role="region" aria-label="Knowledge map"><svg data-graph aria-hidden="true"></svg>
+<div class="kleg" aria-label="Legend"><span><svg viewBox="0 0 16 16"><circle class="fam" cx="8" cy="8" r="5.5"/></svg>New to you</span><span><svg viewBox="0 0 16 16"><circle class="fam half" cx="8" cy="8" r="5.5"/></svg>Getting there</span><span><svg viewBox="0 0 16 16"><circle class="fam full" cx="8" cy="8" r="5.5"/></svg>You know this</span><span>Colour shows the topic. An arrow points to the concept that builds on the other.</span></div>
+<div class="ctl" role="group" aria-label="Knowledge map controls" style="left:auto;right:12px;padding-right:2px"><button class="ib" aria-label="Zoom out"><i class="i i-minus"></i></button>100%<button class="ib" aria-label="Zoom in"><i class="i i-plus"></i></button><button class="ib" aria-label="Fit map"><i class="i i-arrows-pointing-out"></i></button></div></div>
+<aside class="kd" aria-label="Hyphae details"><h2>Hyphae</h2><p>The thread-like cells a fungus is built from.</p>
+<dl><dt>Topic</dt><dd>Mycology</dd><dt>Familiarity</dt><dd>You know this</dd><dt>Leads to</dt><dd>Mycelium</dd><dt>Related to</dt><dd>Yeast, Spores</dd></dl>
+<h3>Met in replies</h3><ul><li><a href="line-diagram/read.html">1.2 · What are hyphae?</a></li><li><a href="line-diagram/read.html">What makes bread rise?</a></li></ul>
+<div class="act"><button class="btn sm pri"><i class="i i--sm i-check"></i>I know this</button><button class="btn sm">I don't get this</button></div></aside></div>
+</main></div>
+
+<main class="specs">
+<section class="spec"><h2>Zoomed out</h2><p>Below the label scale, concept names hide as they do today. Hulls, hues and topic names stay, so the groups still read. Topic names keep their screen size.</p><div class="stage" style="justify-items:stretch"><div class="mini"><svg data-graph="far" data-selected="" aria-hidden="true"></svg></div></div></section>
+
+<section class="spec"><h2>Neighbouring hues</h2><p>Hues go round the wheel in the order of each topic's angle from the centre of the anchors. Topics that sit next to each other get hues that sit next to each other. This key explains the mockup only. The product shows no topic key.</p><div class="stage"><ul class="hues" id="hues"></ul></div></section>
+
+<section class="spec"><h2>Light and dark</h2><p>Each hue is a light-dark pair, mixed toward the theme's ink. Rings stay at least 3:1 against the deep field in both variants. The hull is a little stronger in light.</p><div class="stage" style="justify-items:stretch"><div class="darkbox"><div class="mini"><svg data-graph aria-hidden="true"></svg></div></div><div class="lightbox"><div class="mini"><svg data-graph aria-hidden="true"></svg></div></div></div></section>
+
+<section class="spec"><h2>A concept without a topic</h2><p>It keeps the porcelain ring and sits outside every hull. The detail says so plainly.</p><div class="stage"><aside class="kd" aria-label="Scientific method details" style="width:320px"><h2>Scientific method</h2><p>Testing an idea by trying to prove it wrong.</p><dl><dt>Topic</dt><dd>None yet</dd><dt>Familiarity</dt><dd>You know this</dd></dl></aside></div></section>
+
+<section class="spec"><h2>A topic without embeddings</h2><p>PCA cannot place it, so it falls back to its slot on today's even circle. It still gets a hue and a hull. Its hue comes from that slot's angle, like any other topic.</p></section>
+</main>
+<script src="line-diagram/ld.js"></script>
+<script src="knowledge-graph.js"></script>
+<script>
+// Mockup only: the hue order key.
+const list = document.getElementById("hues");
+for (const [t, h] of KG.hues) list.insertAdjacentHTML("beforeend", `<li><i style="--h:${h}"></i>${t}<small>${h}°</small></li>`);
+</script>
+</body></html>

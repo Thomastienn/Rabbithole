@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Knowledge stats panel · Rabbithole-mkg.7 mockup</title><link rel="stylesheet" href="line-diagram/ld.css">
+<style>
+/* Mockup only. The panel sits on the page ground under the graph: sections split by seams, no cards. */
+.kfield > svg.kg { position: absolute; inset: 8px 8px 124px; width: calc(100% - 16px); height: calc(100% - 132px); }
+.kleg { background: color-mix(in srgb, var(--deep) 88%, transparent); padding: 8px 10px; border-radius: 8px; }
+.ks { margin-top: 48px; }
+.ks > header h2 { font-size: 24px; }
+.ks > header p { color: var(--mut); margin-top: 4px; }
+.ksg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 48px; margin-top: 20px; }
+.ksg > section { border-top: 1px solid var(--seam); padding: 18px 0 32px; min-width: 0; }
+.ksg > section.wide { grid-column: 1 / -1; }
+.ksg h3 { font-size: 15px; font-weight: 600; line-height: 1.2; }
+.ksg h3 + p { color: var(--mut); font-size: 13px; margin: 4px 0 16px; }
+.chart { width: 100%; height: auto; display: block; overflow: visible; }
+.chart .grid { stroke: var(--seam); stroke-width: 1; }
+.chart .ax { font: 11px var(--ui); fill: var(--mut); font-variant-numeric: tabular-nums; }
+.chart .met { stroke: var(--mut); stroke-width: 2; fill: none; stroke-linejoin: round; stroke-linecap: round; }
+.chart .known { stroke: var(--w); stroke-width: 3; fill: none; stroke-linejoin: round; stroke-linecap: round; }
+.chart .end { font: 600 12px var(--ui); font-variant-numeric: tabular-nums; }
+.rank { display: grid; grid-template-columns: 28px minmax(0, 9rem) minmax(0, 1fr) 10rem; gap: 10px 12px; align-items: center; font-size: 13px; list-style: none; padding: 0; }
+.rank li { display: contents; }
+.rank .sw2 { width: 28px; height: 7px; border-radius: 9999px; background: color-mix(in oklch, light-dark(oklch(0.5 0.13 var(--h)), oklch(0.8 0.12 var(--h))) 85%, var(--ink)); }
+.rank .track { height: 8px; border-radius: 4px; background: var(--up); overflow: hidden; }
+.rank .track b { display: block; height: 100%; background: var(--w); border-radius: 4px; }
+.rank small { color: var(--mut); text-align: right; }
+.clist { list-style: none; padding: 0; display: grid; }
+.clist li + li { border-top: 1px solid var(--seam); }
+.crow { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 10px; align-items: center; width: 100%; min-height: 44px; padding: 6px 8px; margin: 0 -8px; border-radius: 6px; text-align: left; font-size: 14px; }
+.crow:hover, .crow.hover { background: var(--up2); }
+.crow.focus { outline: 2px solid var(--w); outline-offset: -2px; }
+.crow b { font-weight: 600; color: var(--ink); }
+.crow span small { display: block; color: var(--mut); font-size: 12px; margin-top: 1px; }
+.crow > small { color: var(--mut); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
+.crow svg { width: 16px; height: 16px; }
+.mis { grid-template-columns: 3.5rem minmax(0, 1fr) auto; }
+.mis .chip { margin-right: 6px; font-size: 11px; padding: 2px 5px 1px; vertical-align: 1px; }
+.st { display: inline-flex; gap: 6px; align-items: center; font-size: 12px; color: var(--mut); white-space: nowrap; }
+.st.ok { color: var(--ink); font-weight: 600; }
+.st .i { margin: 0; }
+.heat { display: grid; grid-template-columns: 2.25rem 1fr; gap: 6px 8px; font: 11px var(--ui); color: var(--mut); }
+.heat .months { grid-column: 2; display: grid; grid-template-columns: repeat(26, 14px); column-gap: 4px; }
+.heat .days { display: grid; grid-template-rows: repeat(7, 14px); row-gap: 4px; align-items: center; }
+.heat .cells { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 14px); grid-auto-columns: 14px; gap: 4px; }
+.heat .cells i, .hkey i { width: 14px; height: 14px; border-radius: 3px; background: var(--up); }
+.heat .cells i[data-l="1"], .hkey i[data-l="1"] { background: color-mix(in oklch, var(--w) 25%, var(--up)); }
+.heat .cells i[data-l="2"], .hkey i[data-l="2"] { background: color-mix(in oklch, var(--w) 50%, var(--up)); }
+.heat .cells i[data-l="3"], .hkey i[data-l="3"] { background: color-mix(in oklch, var(--w) 75%, var(--up)); }
+.heat .cells i[data-l="4"], .hkey i[data-l="4"] { background: var(--w); }
+.hkey { display: flex; gap: 4px; align-items: center; font-size: 12px; color: var(--mut); margin-top: 14px; }
+.hkey span { margin: 0 4px; }
+.none { color: var(--mut); font-size: 13px; padding: 12px 0; }
+.box { width: 100%; max-width: 520px; }
+</style></head><body>
+<nav class="mock" aria-label="Mockup screens"><b>Knowledge and search</b><a href="line-diagram/index.html">Line Diagram index</a><a href="Rabbithole-mkg.6.html">mkg.6 Topic colours and hulls</a><a href="Rabbithole-mkg.7.html" aria-current=page>mkg.7 Stats panel</a><a href="Rabbithole-nav.2.html">nav.2 Search window</a><label><input type="checkbox" id="lt"> Light</label></nav>
+<header class="intro"><h1>Stats panel under the knowledge graph</h1><p>Rabbithole-mkg.7. Nothing on the Knowledge page shows how knowledge grows. A panel under the graph has five sections: concepts met and known over time, topics by familiarity, fading concepts, misconceptions, and daily activity. Spec: <code>docs/memory-recall-and-knowledge-graph-spec.md</code>, "Stats panel". Where this mockup and the spec differ, follow the spec.</p></header>
+<ul class="rules">
+<li>The panel reads like the rest of the page: plain sections on the ground, split by seams. It has no cards, big numbers or scores.</li>
+<li>Familiarity is said in the graph's own words (New to you, Getting there, You know this), never as a percentage or a grade.</li>
+<li>Every concept name in the panel is a button. Choosing one scrolls back to the graph, selects the concept there and opens its detail.</li>
+<li>The activity heatmap shows messages per day and nothing more. It has no streak count, goal or reminder.</li>
+<li>Topic swatches use the same hues as the graph (Rabbithole-mkg.6). Swatches are short line lengths, as in a key.</li>
+<li>Each chart has a text alternative: the chart's label sums up the trend, and a visually hidden table holds the figures.</li>
+</ul>
+
+<section class="intro"><h2>In place</h2><p>The learner has scrolled down past the graph.</p></section>
+<div class="app" style="margin-top:20px;border-top:1px solid var(--seam);height:1880px;min-height:0"><nav class="side" aria-label="Sidebar"><div class="top"><button class="ib" aria-label="Shrink sidebar to rail"><i class="i i-rail"></i></button><a class="mark" href="line-diagram/library.html"><svg viewBox="0 0 26 26" aria-hidden="true"><path class="ln" style="stroke-width:3.5" d="M5 13H12L18 7H22M12 13L18 19H22"/><circle class="stn" cx="5" cy="13" r="3.4"/></svg>Rabbithole</a></div><div class="new"><a class="btn pri" href="line-diagram/read.html"><i class="i i--sm i-plus"></i>New chat</a><button class="ib" aria-label="Search conversations"><i class="i i-magnifying-glass"></i></button></div><div class="views"><a class="view" href="line-diagram/read.html"><i class="i i-book-open"></i>Read</a><a class="view" href="line-diagram/map.html"><i class="i i-map"></i>Map</a><a class="view" href="Rabbithole-mkg.7.html" aria-current=page><i class="i i-share"></i>Knowledge</a><a class="view" href="line-diagram/videos.html"><i class="i i-film"></i>Videos</a><a class="view" href="line-diagram/pieces.html"><i class="i i-cube"></i>Pieces</a><a class="view" href="line-diagram/library.html"><i class="i i-rectangle-stack"></i>Library</a></div><div style="flex:1"></div><div class="foot"><a class="view" href="line-diagram/settings.html"><i class="i i-cog-6-tooth"></i>Settings</a></div></nav><main class="page">
+<a class="ret" href="line-diagram/read.html"><i class="i i--sm i-arrow-left"></i>Return to learning tree</a><div class="phead"><div><h1>Knowledge</h1><p>Concepts you have explored across every tree, grouped by topic.</p></div>
+<div class="end"><button class="ib" aria-label="Refresh Knowledge"><i class="i i-arrow-path"></i></button></div></div>
+<div class="kn"><div class="kfield" role="region" aria-label="Knowledge map"><svg data-graph aria-hidden="true"></svg>
+<div class="kleg" aria-label="Legend"><span><svg viewBox="0 0 16 16"><circle class="fam" cx="8" cy="8" r="5.5"/></svg>New to you</span><span><svg viewBox="0 0 16 16"><circle class="fam half" cx="8" cy="8" r="5.5"/></svg>Getting there</span><span><svg viewBox="0 0 16 16"><circle class="fam full" cx="8" cy="8" r="5.5"/></svg>You know this</span><span>Colour shows the topic. An arrow points to the concept that builds on the other.</span></div>
+<div class="ctl" role="group" aria-label="Knowledge map controls" style="left:auto;right:12px;padding-right:2px"><button class="ib" aria-label="Zoom out"><i class="i i-minus"></i></button>100%<button class="ib" aria-label="Zoom in"><i class="i i-plus"></i></button><button class="ib" aria-label="Fit map"><i class="i i-arrows-pointing-out"></i></button></div></div>
+<aside class="kd" aria-label="Hyphae details"><h2>Hyphae</h2><p>The thread-like cells a fungus is built from.</p>
+<dl><dt>Topic</dt><dd>Mycology</dd><dt>Familiarity</dt><dd>You know this</dd><dt>Leads to</dt><dd>Mycelium</dd></dl>
+<div class="act"><button class="btn sm pri"><i class="i i--sm i-check"></i>I know this</button><button class="btn sm">I don't get this</button></div></aside></div>
+
+<section class="ks" aria-labelledby="ks-h"><header><h2 id="ks-h">How your knowledge grows</h2><p>From every learning tree since 2 June.</p></header>
+<div class="ksg">
+<section><h3>Concepts met and known</h3><p>Known means the ring is full on the graph.</p>
+<svg class="chart" id="growth" viewBox="0 0 520 210" role="img" aria-label="Concepts met rose from 8 to 312 and concepts known from 0 to 128 over 26 weeks."></svg>
+<table class="sr"><caption>Concepts met and known by week</caption><tr><th>Week of</th><th>Met</th><th>Known</th></tr><tr><td>18 Nov</td><td>312</td><td>128</td></tr></table></section>
+
+<section><h3>Topics by familiarity</h3><p>Mean familiarity of each topic's concepts, strongest first.</p>
+<ol class="rank" id="rank"></ol></section>
+
+<section><h3>Fading</h3><p>Concepts you knew that have slipped back. Worth a second look.</p>
+<ul class="clist">
+<li><button class="crow hover"><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="fam half" cx="8" cy="8" r="5.5"/></svg><span><b>Spores</b><small>Mycology</small></span><small>Known until 14 Sep</small></button></li>
+<li><button class="crow"><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="fam half" cx="8" cy="8" r="5.5"/></svg><span><b>Phosphorus uptake</b><small>Plant biology</small></span><small>Known until 2 Oct</small></button></li>
+<li><button class="crow"><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="fam half" cx="8" cy="8" r="5.5"/></svg><span><b>Mutualism</b><small>Ecology</small></span><small>Known until 21 Oct</small></button></li>
+<li><button class="crow"><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="fam" cx="8" cy="8" r="5.5"/></svg><span><b>Delta-v</b><small>Orbital mechanics</small></span><small>Known until 30 Oct</small></button></li>
+</ul></section>
+
+<section><h3>Misconceptions</h3><p>Newest first. Cleared means a later message showed the idea right.</p>
+<ul class="clist">
+<li><button class="crow mis"><small style="text-align:left">21 Nov</small><span><b>Mutualism</b><small><span class="chip c3">1.3</span>Who gains more from the trade?</small></span><span class="st">Not cleared yet</span></button></li>
+<li><button class="crow mis"><small style="text-align:left">18 Nov</small><span><b>Delta-v</b><small><span class="chip c0">1</span>How do rockets change orbit?</small></span><span class="st ok"><i class="i i--sm i-check"></i>Cleared 19 Nov</span></button></li>
+<li><button class="crow mis"><small style="text-align:left">9 Nov</small><span><b>Phosphate</b><small><span class="chip c1">1.1</span>Why is phosphorus so scarce?</small></span><span class="st ok"><i class="i i--sm i-check"></i>Cleared 12 Nov</span></button></li>
+<li><button class="crow mis"><small style="text-align:left">2 Nov</small><span><b>Leavening</b><small><span class="chip c0">1</span>What makes bread rise?</small></span><span class="st">Not cleared yet</span></button></li>
+</ul></section>
+
+<section class="wide"><h3>Activity</h3><p>Messages you sent each day, last 26 weeks.</p>
+<div class="heat" role="img" aria-label="Messages per day over the last 26 weeks. Busiest day: 14 messages on 16 Nov."><div class="months" id="months"></div><div class="days"><span></span><span>Mon</span><span></span><span>Wed</span><span></span><span>Fri</span><span></span></div><div class="cells" id="cells"></div></div>
+<div class="hkey" aria-hidden="true">Fewer<span></span><i data-l="0"></i><i data-l="1"></i><i data-l="2"></i><i data-l="3"></i><i data-l="4"></i><span></span>More</div></section>
+</div></section>
+</main></div>
+
+<main class="specs">
+<section class="spec"><h2>Choosing a concept</h2><p>Click or Enter on any concept row. The page scrolls the graph into view, selects the concept and moves focus to its detail. Focus shows the porcelain ring.</p><div class="stage"><ul class="clist box"><li><button class="crow focus"><svg viewBox="0 0 16 16" aria-hidden="true"><circle class="fam half" cx="8" cy="8" r="5.5"/></svg><span><b>Phosphorus uptake</b><small>Plant biology</small></span><small>Known until 2 Oct</small></button></li></ul></div></section>
+
+<section class="spec"><h2>Nothing to show yet</h2><p>A section with no data says so in one line and keeps its heading, so the panel never jumps. With no concepts at all, the page shows its existing "No concepts yet" state and no panel. (Mockup addition: the spec does not word these lines.)</p><div class="stage" style="justify-items:stretch"><div class="box"><h3 style="font-size:15px;font-weight:600">Fading</h3><p class="none">Nothing is fading.</p></div><div class="box"><h3 style="font-size:15px;font-weight:600">Misconceptions</h3><p class="none">No misconceptions recorded.</p></div><div class="box"><h3 style="font-size:15px;font-weight:600">Concepts met and known</h3><p class="none">The chart starts after your first week of questions.</p></div></div></section>
+
+<section class="spec"><h2>A heatmap day</h2><p>Pointing at or focusing a day names it, for example "3 messages on Tue 12 Nov". Screen readers get the summary label and a hidden table by week.</p></section>
+</main>
+<script src="line-diagram/ld.js"></script>
+<script src="knowledge-graph.js"></script>
+<script>
+// Mockup only: draws the chart, the topic ranking and the heatmap.
+const met = [8, 20, 31, 45, 52, 60, 74, 90, 101, 112, 118, 131, 146, 160, 171, 183, 196, 210, 221, 236, 249, 262, 275, 288, 300, 312];
+const known = [0, 2, 5, 9, 12, 15, 20, 26, 31, 36, 39, 44, 50, 57, 62, 68, 66, 74, 80, 85, 91, 97, 108, 115, 121, 128];
+const svg = document.getElementById("growth");
+const X = (i) => 34 + (i * 420) / 25, Y = (v) => 186 - (v / 320) * 170;
+let g = "";
+for (const v of [0, 100, 200, 300]) g += `<line class="grid" x1="34" x2="454" y1="${Y(v)}" y2="${Y(v)}"/><text class="ax" x="26" y="${Y(v) + 4}" text-anchor="end">${v}</text>`;
+for (const [i, m] of [[0, "Jun"], [4, "Jul"], [9, "Aug"], [13, "Sep"], [17, "Oct"], [22, "Nov"]]) g += `<text class="ax" x="${X(i)}" y="206" text-anchor="middle">${m}</text>`;
+const path = (d) => "M" + d.map((v, i) => `${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join("L");
+g += `<path class="met" d="${path(met)}"/><path class="known" d="${path(known)}"/>`;
+g += `<text class="end" x="${X(25) + 10}" y="${Y(312) + 4}" style="fill:var(--mut)">Met 312</text><text class="end" x="${X(25) + 10}" y="${Y(128) + 4}" style="fill:var(--w)">Known 128</text>`;
+svg.innerHTML = g;
+
+const rank = [["Plant biology", 0.78, 3], ["Mycology", 0.71, 4], ["Ecology", 0.52, 4], ["Orbital mechanics", 0.34, 2], ["Soil chemistry", 0.22, 3], ["Fermentation", 0.18, 3]];
+const word = (v) => (v >= 0.66 ? "You know this" : v >= 0.33 ? "Getting there" : "New to you");
+document.getElementById("rank").innerHTML = rank.map(([t, v, n]) =>
+  `<li><i class="sw2" style="--h:${KG.hues.get(t)}" aria-hidden="true"></i><span>${t}</span><span class="track" role="img" aria-label="${word(v)}"><b style="width:${v * 100}%"></b></span><small>${word(v)} · ${n} concepts</small></li>`).join("");
+
+// 26 weeks of days, Sunday rows first, from Sun 24 May to Sat 21 Nov; a seeded generator so the picture is stable.
+let s = 7;
+const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+const cells = [];
+for (let d = 0; d < 182; d++) {
+  const busy = d > 120 ? 0.75 : d > 60 ? 0.55 : 0.4;
+  const n = rnd() < busy ? Math.ceil(rnd() * (d > 150 ? 14 : 9)) : 0;
+  const l = n === 0 ? 0 : n <= 2 ? 1 : n <= 5 ? 2 : n <= 9 ? 3 : 4;
+  const date = new Date(2026, 4, 24 + d);
+  cells.push(`<i data-l="${l}" title="${n} message${n === 1 ? "" : "s"} on ${date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}"></i>`);
+}
+document.getElementById("cells").innerHTML = cells.join("");
+const months = Array(26).fill("<span></span>");
+for (const [w, m] of [[1, "Jun"], [5, "Jul"], [10, "Aug"], [14, "Sep"], [18, "Oct"], [23, "Nov"]]) months[w] = `<span>${m}</span>`;
+document.getElementById("months").innerHTML = months.join("");
+</script>
+</body></html>

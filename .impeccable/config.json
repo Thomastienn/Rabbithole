@@ -71,6 +71,15 @@
         "value": "semi condensed\",barlow,\"segoe ui\",helvetica,arial,sans-serif",
         "createdAt": "2026-11-22T20:34:24.040Z",
         "reason": "agent: same heading stack as DESIGN.md typography and src/themes/*.css --font-family-heading, differs only in quoting"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "docs/mockups/Rabbithole-nav.2.html"
+        ],
+        "createdAt": "2026-11-24T07:05:50.814Z",
+        "reason": "agent triage: .sf is a 56px row with centred content (16px clear of its underline); .stagebox border-top is the mockup frame seam, same as Rabbithole-upd.2.html"
       }
     ]
   }
