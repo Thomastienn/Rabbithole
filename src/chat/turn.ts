@@ -155,8 +155,8 @@ export function conversationUsageLine(messages: Message[], suggestions: Suggesti
     ].join(' · ');
 }
 // Underline ranges use the same raw UTF-16 offsets as manual selection; only exact slices draw.
-// Explored passages may overlap each other (a branch inside a branched phrase); an unexplored suggestion
-// draws only where it overlaps nothing else.
+// Passages may overlap or nest (a briefed selection inside a suggestion, a branch inside a branched phrase), wider first;
+// an unexplored suggestion is dropped only where an explored passage covers exactly the same words.
 // Branches from a free selection also draw as explored passages, so every child's source stays marked.
 export function underlineRanges(
     text: string,
@@ -173,15 +173,10 @@ export function underlineRanges(
             (p) => p.end > p.start && p.end <= text.length && text.slice(p.start, p.end) === p.text,
         )
         .sort((a, b) => a.start - b.start || b.end - a.end);
-    const explored = exact.filter((p) => p.child);
-    let end = 0;
     return exact
-        .filter((p) => {
-            if (p.child) return true;
-            const ok = p.start >= end && !explored.some((x) => x.start < p.end && x.end > p.start);
-            if (ok) end = p.end;
-            return ok;
-        })
+        .filter(
+            (p) => p.child || !exact.some((x) => x.child && x.start === p.start && x.end === p.end),
+        )
         .map(({ start, end, child }) => (child ? { start, end, child } : { start, end }));
 }
 // replaced: the failed reply a Retry streams over, dropped from the list.

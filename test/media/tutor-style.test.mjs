@@ -151,7 +151,10 @@ test('the tool-path tutor prompt before learner data is no larger than before vi
     const text = tutorSystem({ textTools: APP_TOOLS }).replace(definitions, '');
     // The visual and discussion marker rules replaced show_visual and start_discussion (ADR 0018), so they count against the
     // tool-path total at 3b6b9d0: that prompt plus its app tool definitions.
-    const MARKER_BEFORE = 9987 + 6121;
+    // The bold-term suggestion sentence (docs/reply-reading-polish-spec.md) is allowed on top.
+    const BOLD =
+        'When you would bold a term because it matters, the learner may not fully understand it yet, so mark it as a suggestion instead of only bolding it. ';
+    const MARKER_BEFORE = 9987 + 6121 + BOLD.length;
     for (const prompt of [native, text])
         assert.ok(prompt.length + definitions.length <= MARKER_BEFORE, `${prompt.length}`);
     for (const part of [
