@@ -1,6 +1,7 @@
 import { familiarity } from '../familiarity.mjs';
 import { blob, vector } from './embeddings.mjs';
 import { mentions } from '../neighbourhood.mjs';
+import { knowledgeStats } from '../knowledge-stats.mjs';
 
 const summary = (observations, met) => {
     const counts = [0, 0, 0, 0, 0, 0];
@@ -60,6 +61,35 @@ export const knowledge = {
             })),
             links: links.map((l) => ({ ...l })),
         };
+    },
+    // Read-only figures for the stats panel; nothing here is stored.
+    // shortcut: learner messages per day count recorded tutor calls whose reply still exists (messages have no time); upgrade if messages gain a timestamp.
+    graphStats(now = Date.now()) {
+        return knowledgeStats(
+            {
+                concepts: this.graph().concepts,
+                observations: this.db
+                    .prepare(
+                        'SELECT c.name AS concept, o.level, o.confidence, o.at, m.text FROM observations o JOIN concepts c ON c.id=o.concept LEFT JOIN messages m ON m.id=o.message',
+                    )
+                    .all(),
+                firstEvidence: new Map(
+                    this.db
+                        .prepare(
+                            'SELECT c.name, MIN(e.at) AS at FROM evidence e JOIN concepts c ON c.id=e.concept GROUP BY c.id',
+                        )
+                        .all()
+                        .map((r) => [r.name, r.at]),
+                ),
+                activity: this.db
+                    .prepare(
+                        "SELECT date(u.at/1000,'unixepoch','localtime') AS day, COUNT(*) AS messages FROM usage_events u JOIN messages m ON u.id='chat:'||m.id AND m.role='assistant' WHERE u.task='chat' GROUP BY day ORDER BY day",
+                    )
+                    .all()
+                    .map((r) => ({ ...r })),
+            },
+            now,
+        );
     },
     // Familiarity is derived from observations, never stored; "met" is counted for display and never moves it.
     familiarity(concept) {

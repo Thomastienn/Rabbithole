@@ -9,6 +9,8 @@ const WEIGHT = { low: 1, high: 2 };
 const MAX_WEIGHT = 6;
 // What fading drifts toward: a concept once seen is rarely fully forgotten.
 export const FLOOR = 0.2;
+// Known: the level the Knowledge graph draws as a full ring (fill in src/knowledge/knowledge.ts).
+export const KNOWN = 0.8;
 // Time for the distance to FLOOR to shrink by a factor of e, before any spaced evidence.
 export const START_STABILITY = 2 * DAY;
 // Spaced evidence (level 2 or above, at least GAP after the previous observation) multiplies stability by GROWTH.

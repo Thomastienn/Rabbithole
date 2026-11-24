@@ -8,12 +8,31 @@ import { initial, setup } from '../support/knowledge-kit.mjs';
 import { fakeServer } from '../support/fake-server.mjs';
 const { default: KnowledgePage } = await import('../../src/knowledge/KnowledgePage.tsx');
 
+const DAY = 24 * 60 * 60 * 1000;
+const stats = (now = Date.now()) => ({
+    since: now - 14 * DAY,
+    growth: [
+        { at: now - 7 * DAY, met: 2, known: 1 },
+        { at: now, met: 3, known: 0 },
+    ],
+    topics: [
+        { name: 'Operating systems', familiarity: 0.5, concepts: 2 },
+        { name: 'Concurrency', familiarity: 0.3, concepts: 2 },
+    ],
+    fading: [{ name: 'Scheduler', until: now - 3 * DAY }],
+    misconceptions: [
+        { name: 'Mutex', at: now - DAY, text: 'Is a mutex a semaphore?', cleared: null },
+        { name: 'Mutual exclusion', at: now - 2 * DAY, text: 'q', cleared: now - DAY },
+    ],
+    activity: [{ day: new Date(now).toLocaleDateString('sv'), messages: 4 }],
+});
+
 test('knowledge points, relations, zoom labels retain accessible state', async (t) => {
     const graph = initial();
     const calls = [];
     const api = async (path, body) => {
         calls.push([path, body]);
-        return graph;
+        return path === '/api/graph/stats' ? stats() : graph;
     };
     fakeServer(t, api);
     const { container, act, cleanup } = await render(h(KnowledgePage, { activity: '' }), setup);
@@ -90,4 +109,78 @@ test('knowledge points, relations, zoom labels retain accessible state', async (
         for (let i = 0; i < 8; i++) button(container, 'Zoom in').click();
     });
     assert.equal(container.querySelectorAll('.concept-name:not(.sr-only)').length, 3);
+});
+
+test('the stats panel shows the figures and choosing a concept opens it in the graph', async (t) => {
+    const graph = initial();
+    fakeServer(t, async (path) => (path === '/api/graph/stats' ? stats() : graph));
+    let dom;
+    const { container, act, cleanup } = await render(
+        h(KnowledgePage, { activity: '' }),
+        (w) => (dom = setup(w)),
+    );
+    t.after(cleanup);
+    const panel = container.querySelector('.knowledge-stats');
+    const rows = (title) =>
+        [...panel.querySelectorAll('.stats-section')]
+            .find((s) => s.querySelector('h3').textContent === title)
+            .querySelectorAll('[data-stats-concept]');
+    // Growth chart: the end labels and the hidden table carry the stored figures.
+    assert.deepEqual(
+        [...panel.querySelectorAll('.stats-chart .end')].map((e) => e.textContent),
+        ['Met 3', 'Known 0'],
+    );
+    assert.deepEqual(
+        [...panel.querySelectorAll('table')[0].querySelectorAll('tbody td:not(:first-child)')].map(
+            (e) => e.textContent,
+        ),
+        ['2', '1', '3', '0'],
+    );
+    // Topics keep the route's order and say familiarity in the graph's words.
+    assert.deepEqual(
+        [...panel.querySelectorAll('.stats-rank .track')].map((e) => [
+            e.previousElementSibling.textContent,
+            e.getAttribute('aria-label'),
+            e.firstChild.style.width,
+        ]),
+        [
+            ['Operating systems', 'Some familiarity', '50%'],
+            ['Concurrency', 'Unfamiliar', '30%'],
+        ],
+    );
+    assert.deepEqual(
+        [...rows('Fading')].map((b) => b.dataset.statsConcept),
+        ['Scheduler'],
+    );
+    assert.deepEqual(
+        [...rows('Misconceptions')].map((b) => [b.dataset.statsConcept, b.lastChild.className]),
+        [
+            ['Mutex', 'open'],
+            ['Mutual exclusion', 'cleared'],
+        ],
+    );
+    // Today's four messages shade the last heatmap day.
+    const cells = panel.querySelectorAll('.stats-heat .cells i');
+    assert.equal(cells[cells.length - 1].dataset.l, '2');
+    assert.equal(
+        panel.querySelectorAll('.stats-heat .cells i[data-l="0"]').length,
+        cells.length - 1,
+    );
+    // Choosing a concept anywhere in the panel selects it in the graph and focuses its detail.
+    for (const [title, name] of [
+        ['Fading', 'Scheduler'],
+        ['Misconceptions', 'Mutual exclusion'],
+    ]) {
+        await act(async () => {
+            rows(title)[title === 'Fading' ? 0 : 1].click();
+            dom.frames();
+        });
+        const detail = container.querySelector('#concept-detail');
+        assert.equal(detail.querySelector('h2').textContent, name);
+        assert.ok(document.activeElement === detail);
+        assert.equal(
+            container.querySelector('[aria-pressed=true][data-concept]').dataset.concept,
+            name,
+        );
+    }
 });
