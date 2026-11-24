@@ -1,4 +1,5 @@
 import { HStack } from '@astryxdesign/core/Layout';
+import { Button } from '@astryxdesign/core/Button';
 import { Text } from '@astryxdesign/core/Text';
 import { ChatMessage, ChatMessageBubble } from '@astryxdesign/core/Chat';
 import type { Source } from '../map/TreeOverview';
@@ -10,7 +11,7 @@ import CopyButton from '../markdown/CopyButton';
 import { artifactsAt } from '../media/artifacts';
 import { visualsReady } from '../media/visualProgress';
 import { replyUsageLine } from './turn';
-import { FreeBranches, Groundwork, NextQuestions, ReplyFeedback } from './ChatDetails';
+import { FreeBranches, Groundwork, NextQuestions, ReplyFeedback, ReplyUsage } from './ChatDetails';
 import Passage from './Passage';
 import Reply from './Reply';
 import BranchForm from './BranchForm';
@@ -22,6 +23,7 @@ import type { ReplyStream } from './useReplyStream';
 import type { BranchFormState } from './useBranchForm';
 import { MessageAttachments } from './Attachments';
 import type { TreeActions } from './useTreeActions';
+import type { SettingsTab } from '../settings/SettingsWindow';
 
 // The values the thread reads besides its conversation, its source passage and whether it replies.
 export type ThreadProps = Pick<ChatModel, 'modelLabel'> &
@@ -46,7 +48,10 @@ export type ThreadProps = Pick<ChatModel, 'modelLabel'> &
         | 'pickPart'
         | 'startBranch'
     > &
-    Pick<TreeActions, 'videoAction'> & { trees: Summary[] };
+    Pick<TreeActions, 'videoAction'> & {
+        trees: Summary[];
+        openSettings: (section?: SettingsTab, focus?: string, opener?: HTMLElement | null) => void;
+    };
 
 // The focused chat's questions and replies, with their figures, branch form and feedback.
 export default function ChatThread({
@@ -78,6 +83,7 @@ export default function ChatThread({
     explainBrief,
     pickPart,
     startBranch,
+    openSettings,
 }: ThreadProps & {
     tree: Tree;
     overview: boolean;
@@ -122,13 +128,24 @@ export default function ChatThread({
                                 />
                             )}
                             {(message.usage !== undefined || !!message.mediaUsage?.length) && (
-                                <Text type="supporting" color="secondary" className="reply-usage">
-                                    {replyUsageLine(
+                                <ReplyUsage
+                                    line={replyUsageLine(
                                         message.usage ?? null,
                                         suggestions?.usage,
                                         message.mediaUsage,
                                     )}
-                                </Text>
+                                />
+                            )}
+                            {message.memoryUpdated && (
+                                <Button
+                                    label="Memory updated"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="reply-memory"
+                                    onClick={(e) =>
+                                        openSettings('models', '#memory-note', e.currentTarget)
+                                    }
+                                />
                             )}
                             {visualCount && (
                                 <Text type="supporting" color="secondary" className="reply-visuals">
@@ -156,8 +173,8 @@ export default function ChatThread({
                         onVisualPart={openVisualPart}
                         visualBranches={visualBranches}
                         discussionBranches={discussionBranches}
-                        onArtifactAction={(artifactId, action) =>
-                            videoAction(tree.id, artifactId, action)
+                        onArtifactAction={(artifactId, action, instruction) =>
+                            videoAction(tree.id, artifactId, action, instruction)
                         }
                         onDiscussionReply={replyDiscussion}
                         inlineArtifacts={
@@ -183,6 +200,7 @@ export default function ChatThread({
                                           text: t.passage,
                                           child: t.id,
                                           title: t.title,
+                                          ...tree.branchPreviews?.[t.id],
                                       },
                                   ]
                                 : [],
@@ -281,9 +299,10 @@ export default function ChatThread({
                                     }
                                     onPart={openVisualPart}
                                     onRetry={() => videoAction(tree.id, artifact.id, 'retry')}
-                                    onRegenerate={() =>
-                                        videoAction(tree.id, artifact.id, 'regenerate')
+                                    onRegenerate={(instruction) =>
+                                        videoAction(tree.id, artifact.id, 'regenerate', instruction)
                                     }
+                                    onPrevious={() => videoAction(tree.id, artifact.id, 'previous')}
                                 />
                             ) : artifact.kind === 'video' ? (
                                 <VideoCard

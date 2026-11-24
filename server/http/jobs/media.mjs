@@ -40,7 +40,8 @@ export function mediaJobs(ctx) {
     const { store, dir, jobs, pick, selectionError, smart, metered } = ctx;
     // Frozen inputs stay server-side for every kind; explicit worker actions reuse them.
     const live = (artifact) => {
-        const { input, attempt, ...a } = artifact;
+        const { input, attempt, previous, ...a } = artifact;
+        if (previous) a.hasPrevious = true;
         if (a.kind === 'discussion') return discussionArtifact(a);
         if (a.kind === 'visual' && a.status === 'pending') {
             const job = jobs.get('drawing', a.id);
@@ -97,6 +98,7 @@ export function mediaJobs(ctx) {
             startedAt: Date.now(),
             phaseStartedAt: Date.now(),
         });
+        store.videoStarted(job.conversation, job.id, job.attempt, running.startedAt);
         const cancel = () => running.controller.abort(parentSignal.reason);
         parentSignal?.addEventListener('abort', cancel, { once: true });
         if (parentSignal?.aborted) cancel();
@@ -279,10 +281,17 @@ export function mediaJobs(ctx) {
         };
         const capable = await ctx.toolCapable(selection);
         if (signal.aborted) throw signal.reason;
-        return generateVisual(metering, selection, input, signal, ctx.visualTimeout, onPartial, {
-            capable,
-            mcp: ctx.mcp,
-        });
+        // A new version changes the one it replaced, now in the previous slot.
+        const current = input.differentVersion ? JSON.parse(artifact.previous)?.source : undefined;
+        return generateVisual(
+            metering,
+            selection,
+            { ...input, current },
+            signal,
+            ctx.visualTimeout,
+            onPartial,
+            { capable, mcp: ctx.mcp },
+        );
     };
     // Explicit Retry runs detached like a video job, with the same stop/delete/polling lifecycle.
     const startDrawing = (artifact, parentSignal, onUpdate) =>

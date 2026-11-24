@@ -162,6 +162,8 @@ test('whole names and aliases work offline, then semantic matching backfills and
         if (!available) throw new Error('Fixture embedder unavailable');
         return texts.map((text) => (/mutex|lock thing/i.test(text) ? [1, 0, 0] : [0, 1, 0]));
     };
+    // The neighbourhood's batch starts with the question; the background message batches start with the reply.
+    const asked = (question) => batches.findLast((texts) => texts[0] === question);
     const env = await launch(t, embed);
     add(env.store, ['Mutex', 'Mutual exclusion', 'Unrelated']);
     env.store.mergeConcepts('Mutual exclusion', 'Mutex');
@@ -177,12 +179,16 @@ test('whole names and aliases work offline, then semantic matching backfills and
     available = true;
     await env.ask('the lock thing');
     assert.equal(env.neighbourhood().concepts[0].name, 'Mutex');
-    assert.deepEqual(batches.at(-1), ['the lock thing', 'Mutex', 'Unrelated']);
+    assert.deepEqual(asked('the lock thing'), ['the lock thing', 'Mutex', 'Unrelated']);
     await env.ask('the lock thing again');
-    assert.deepEqual(batches.at(-1), ['the lock thing again'], 'saved names are not re-embedded');
+    assert.deepEqual(
+        asked('the lock thing again'),
+        ['the lock thing again'],
+        'saved names are not re-embedded',
+    );
     add(env.store, ['New while usable']);
     await env.ask('the lock thing');
-    assert.deepEqual(batches.at(-1), ['the lock thing', 'New while usable']);
+    assert.deepEqual(asked('the lock thing'), ['the lock thing', 'New while usable']);
 
     const reopened = new Store(join(env.dir, 'trees.sqlite'));
     t.after(() => reopened.close());
@@ -215,7 +221,7 @@ test('Stop during local embedding ends the reply and never starts provider infer
     resume.resolve();
     await env.ask('Mutex again?');
     assert.deepEqual(
-        batches.at(-1),
+        batches.findLast((texts) => texts[0] === 'Mutex again?'),
         ['Mutex again?', 'Mutex'],
         'an aborted call saves no embeddings',
     );
@@ -313,7 +319,11 @@ test('attachment text is never embedded; only the typed question is', async (t) 
         body: form,
     });
     assert.match(await response.text(), /"status":"completed"/);
-    assert.deepEqual(batches, [['What is this file about?', 'Mutex']]);
+    // The background message batch holds the typed question and the reply, never the attachment.
+    assert.deepEqual(batches, [
+        ['What is this file about?', 'Mutex'],
+        ['Peterson uses two flags.', 'What is this file about?'],
+    ]);
 });
 
 test('the largest typed message embeds at most a fixed number of paragraphs', async (t) => {

@@ -17,3 +17,21 @@ test('the memory note starts empty, keeps markdown whole and survives reopening'
     assert.equal(store.saveMemoryNote(''), '');
     store.close();
 });
+
+test("a write caused by a reply marks that reply; the learner's own save marks none", (t) => {
+    const store = new Store(join(mkdtempSync(join(tmpdir(), 'tt-memory-')), 'trees.sqlite'));
+    t.after(() => store.close());
+    const tree = store.create('Memory', 'claude').id;
+    const [first, second] = ['a', 'b'].map((text) =>
+        store.message(tree, 'assistant', text, 'completed'),
+    );
+    store.saveMemoryNote('- Knows Python', second);
+    store.saveMemoryNote('- Knows Rust');
+    assert.deepEqual(
+        store.tree(tree).messages.map((m) => [m.id === first, !!m.memoryUpdated]),
+        [
+            [true, false],
+            [false, true],
+        ],
+    );
+});

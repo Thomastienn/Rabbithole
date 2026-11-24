@@ -1,7 +1,7 @@
 import { isEndpoint } from '../http/roles.mjs';
 import { readPage } from './readPage.mjs';
 import { pythonWorkspace } from './python.mjs';
-import { editMemoryNote, MEMORY_NOTE_LIMIT, tooLong } from './memoryNote.mjs';
+import { applyMemoryEdit, MEMORY_EDIT } from './memoryNote.mjs';
 
 export const TUTOR_TOOLS = {
     web_search: 'Web search',
@@ -112,32 +112,9 @@ const TOOLS = {
             'Change the memory note about this learner, shared across all learning trees and shown in every prompt. ' +
             'One operation per call: add (text, optionally under heading), rewrite (exact old_text replaced by text) or delete (exact old_text). ' +
             'old_text must match note text exactly once. Keep entries short, one markdown line each.',
-        parameters: {
-            type: 'object',
-            properties: {
-                operation: { type: 'string', enum: ['add', 'rewrite', 'delete'] },
-                text: { type: 'string', description: 'New entry text, for add and rewrite.' },
-                old_text: {
-                    type: 'string',
-                    description: 'Exact existing entry text, for rewrite and delete.',
-                },
-                heading: {
-                    type: 'string',
-                    description: 'Optional heading to add the entry under; created if missing.',
-                },
-            },
-            required: ['operation'],
-            additionalProperties: false,
-        },
-        // Synchronous read and save, so concurrent turns cannot interleave an edit.
+        parameters: MEMORY_EDIT,
         run: (input, turn, options) => {
-            const current = options.memory.memoryNote();
-            const next = editMemoryNote(current, input);
-            if (tooLong(next, current))
-                throw new Error(
-                    `The memory note would pass its ${MEMORY_NOTE_LIMIT}-character limit; rewrite or delete entries to make room.`,
-                );
-            options.memory.saveMemoryNote(next);
+            applyMemoryEdit(options.memory, input, turn.reply);
             return 'Updated memory note.';
         },
     },

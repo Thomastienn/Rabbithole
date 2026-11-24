@@ -1,4 +1,4 @@
-import type { RefObject } from 'react';
+import { useId, useState, type RefObject } from 'react';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Text } from '@astryxdesign/core/Text';
 import { IconButton } from '@astryxdesign/core/IconButton';
@@ -312,5 +312,29 @@ export function TokenStatsToggle({ open, toggle }: { open: boolean; toggle: () =
             size="sm"
             onClick={toggle}
         />
+    );
+}
+
+// A reply's token line behind a muted button, closed on every visit (docs/reply-reading-polish-spec.md, Usage disclosure).
+export function ReplyUsage({ line }: { line: string }) {
+    const id = useId();
+    const [open, setOpen] = useState(false);
+    return (
+        <HStack gap={2} vAlign="center">
+            <Button
+                label="Usage"
+                variant="ghost"
+                size="sm"
+                className="reply-usage-toggle"
+                aria-expanded={open}
+                aria-controls={id}
+                onClick={() => setOpen(!open)}
+            />
+            {open && (
+                <Text id={id} type="supporting" color="secondary" className="reply-usage">
+                    {line}
+                </Text>
+            )}
+        </HStack>
     );
 }

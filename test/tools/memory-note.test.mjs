@@ -54,7 +54,11 @@ test('bad edits fail with a clear error', () => {
 
 test('the runner offers the tool to every provider, follows its switch and saves edits', async () => {
     let saved = '- Knows Python';
-    const memory = { memoryNote: () => saved, saveMemoryNote: (t) => (saved = t) };
+    const by = [];
+    const memory = {
+        memoryNote: () => saved,
+        saveMemoryNote: (t, message) => ((saved = t), by.push(message)),
+    };
     const runner = toolRunner({ memory });
     for (const provider of ['openai:x', 'codex', 'claude']) {
         const names = async (settings) =>
@@ -84,6 +88,7 @@ test('the runner offers the tool to every provider, follows its switch and saves
         'Updated memory note.',
     );
     assert.equal(saved, '- Knows Python\n- Likes diagrams');
+    assert.deepEqual(by, ['r', 'r'], 'each write records the reply that caused it');
     await assert.rejects(run({ operation: 'delete', old_text: 'Rust' }), /not in the memory note/);
     assert.equal(saved, '- Knows Python\n- Likes diagrams');
     saved = 'x'.repeat(7991);

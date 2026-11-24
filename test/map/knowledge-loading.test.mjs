@@ -22,10 +22,7 @@ test('knowledge loading, empty/error states and refresh ignore stale activity re
         loads.push(p);
         return p.promise;
     });
-    let dom;
-    const { container, act, cleanup } = await render(h(Fixture), (w) => {
-        dom = setup(w);
-    });
+    const { container, act, cleanup } = await render(h(Fixture), setup);
     t.after(cleanup);
     assert.match(container.textContent, /Loading knowledge/);
     await act(async () => loads[0].reject(new Error('Read failed')));
@@ -41,19 +38,6 @@ test('knowledge loading, empty/error states and refresh ignore stale activity re
     await act(async () => loads[2].resolve({ topics: [], concepts: [], links: [] }));
     assert.equal(container.querySelectorAll('[data-concept]').length, 2);
     assert.ok(calls.every(([p]) => p === '/api/graph'));
-    const trigger = button(container, 'Merge concepts');
-    await act(async () => {
-        trigger.focus();
-        trigger.click();
-    });
-    assert.ok(document.querySelector('dialog[open]'));
-    assert.match(document.querySelector('dialog button[aria-expanded]').textContent, /Mutex/);
-    assert.equal(button(document.querySelector('dialog'), 'Merge concepts').disabled, true);
-    await act(async () => {
-        button(document.querySelector('dialog'), 'Cancel merge').click();
-        dom.frames();
-    });
-    assert.equal(document.querySelector('dialog[open]'), null);
-    assert.equal(document.activeElement, trigger);
+    assert.equal(button(container, 'Merge concepts'), undefined, 'merges are automatic');
     assert.equal(button(container, 'I know this'), undefined, 'no correction controls');
 });

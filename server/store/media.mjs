@@ -89,11 +89,19 @@ export const media = {
                 .run(writeSaved(data), conversation, id, attempt).changes > 0
         );
     },
+    // The current attempt's clock starts with its job; a Retry or new version runs a new job, so it restarts.
+    videoStarted(conversation, id, attempt, at = Date.now()) {
+        this.db
+            .prepare(
+                "UPDATE artifacts SET started=?,playableAt=NULL WHERE conversation=? AND id=? AND attempt=? AND kind='video' AND status='pending'",
+            )
+            .run(at, conversation, id, attempt);
+    },
     finishVideo(conversation, id, attempt, { title, description, duration } = {}, error = null) {
         this.transaction(() => {
             const done = this.db
                 .prepare(
-                    "UPDATE artifacts SET status=?,title=COALESCE(?,title),description=COALESCE(?,description),duration=?,error=? WHERE conversation=? AND id=? AND attempt=? AND kind='video' AND status='pending'",
+                    "UPDATE artifacts SET status=?,title=COALESCE(?,title),description=COALESCE(?,description),duration=?,error=?,playableAt=? WHERE conversation=? AND id=? AND attempt=? AND kind='video' AND status='pending'",
                 )
                 .run(
                     error ? 'failed' : 'ready',
@@ -101,6 +109,7 @@ export const media = {
                     error ? null : description,
                     error ? null : duration,
                     error,
+                    error ? null : Date.now(),
                     conversation,
                     id,
                     attempt,
@@ -148,7 +157,8 @@ export const media = {
             .run(conversation, id);
         return result.changes ? this.artifact(conversation, id) : null;
     },
-    regenerateArtifact(conversation, id) {
+    // A visual's current version moves into its single previous slot; the frozen input records the instruction.
+    regenerateArtifact(conversation, id, instruction) {
         const artifact = this.artifact(conversation, id);
         if (
             artifact?.status !== 'ready' ||
@@ -158,13 +168,26 @@ export const media = {
             return null;
         // A new video id leaves its previous library entry/file intact; updating the row preserves chat order.
         const next = artifact.kind === 'video' ? randomUUID() : id;
-        const input = JSON.stringify({ ...JSON.parse(artifact.input), differentVersion: true });
+        const input = JSON.stringify({
+            ...JSON.parse(artifact.input),
+            differentVersion: true,
+            instruction: instruction || undefined,
+        });
         const result = this.db
             .prepare(
-                "UPDATE artifacts SET id=?,status='pending',source=NULL,error=NULL,duration=NULL,input=?,attempt=? WHERE conversation=? AND id=? AND status='ready'",
+                "UPDATE artifacts SET id=?,status='pending',previous=CASE WHEN kind='visual' THEN json_object('source',source,'title',title,'description',description) END,source=NULL,error=NULL,duration=NULL,input=?,attempt=? WHERE conversation=? AND id=? AND status='ready'",
             )
             .run(next, input, artifact.kind === 'video' ? randomUUID() : null, conversation, id);
         return result.changes ? this.artifact(conversation, next) : null;
+    },
+    // Swaps a ready visual's current and previous versions; SQLite reads every right-hand value from the old row.
+    switchVersion(conversation, id) {
+        const result = this.db
+            .prepare(
+                "UPDATE artifacts SET source=previous->>'source',title=previous->>'title',description=previous->>'description',previous=json_object('source',source,'title',title,'description',description) WHERE conversation=? AND id=? AND kind='visual' AND status='ready' AND previous IS NOT NULL",
+            )
+            .run(conversation, id);
+        return result.changes ? this.artifact(conversation, id) : null;
     },
     // `origin` is the title of the conversation still holding this video, or null once it is deleted or regenerated.
     library() {

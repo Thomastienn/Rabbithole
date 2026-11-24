@@ -198,7 +198,11 @@ test('branch validates exact UTF-16 anchors, saves atomically, inherits model an
         );
         assert.doesNotMatch(captured.text, /Explain second occurrence/);
         assert.match(captured.text, /🌲 same phrase and same phrase/);
-        assert.deepEqual(store.tree(parent.id), before);
+        assert.deepEqual(
+            { ...store.tree(parent.id), branchPreviews: before.branchPreviews },
+            before,
+            'only the branch previews list the new child',
+        );
         store.message(parent.id, 'user', 'Later parent change', 'completed');
         await (
             await fetch(`${origin}/api/trees/${child.id}/messages`, {

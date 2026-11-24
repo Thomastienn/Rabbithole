@@ -50,7 +50,8 @@ const Reply = memo(function Reply({
     resources?: Resource[];
     onArtifactAction?: (
         id: string,
-        action: 'cancel' | 'retry' | 'regenerate' | 'install',
+        action: 'cancel' | 'retry' | 'regenerate' | 'install' | 'previous',
+        instruction?: string,
     ) => Promise<void>;
     onDiscussionReply?: DiscussionReply;
 }) {
@@ -133,7 +134,12 @@ const Reply = memo(function Reply({
                                         }
                                         onRegenerate={
                                             onArtifactAction &&
-                                            (() => action.current!(v.id, 'regenerate'))
+                                            ((instruction) =>
+                                                action.current!(v.id, 'regenerate', instruction))
+                                        }
+                                        onPrevious={
+                                            onArtifactAction &&
+                                            (() => action.current!(v.id, 'previous'))
                                         }
                                     />
                                 ),
