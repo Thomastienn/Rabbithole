@@ -139,6 +139,8 @@ export function replyTurn(
                 { provider: tree.provider, model: store.header(id)?.model ?? tree.model },
                 usage,
             );
+        // Shutdown has stopped the background jobs; the startup run embeds these messages.
+        if (!ctx.stopping) ctx.embedMessages();
         if (status === 'completed' || status === 'failed')
             store.finishModel(id, status === 'completed');
         // The verdict judges the learner message, so a retried reply replaces that message's observations.

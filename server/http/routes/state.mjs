@@ -44,7 +44,14 @@ export async function stateRoutes(req, res, url, ctx) {
             ),
         );
     if (url.pathname === '/api/search')
-        return json(res, 200, store.search((url.searchParams.get('q') ?? '').slice(0, 200)));
+        return json(
+            res,
+            200,
+            store.search(
+                (url.searchParams.get('q') ?? '').slice(0, 200),
+                url.searchParams.get('tree') ?? undefined,
+            ),
+        );
     if (url.pathname === '/api/previews') {
         const ids = [...new Set(url.searchParams.getAll('id'))];
         if (ids.length > 500) return json(res, 400, { error: 'Too many conversations requested.' });

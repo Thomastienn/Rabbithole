@@ -27,6 +27,8 @@ export type Artifact = ArtifactSummary & {
     position?: number | null;
     // A visual beside the section after its position; null sits in the flow.
     side?: 'left' | 'right' | null;
+    // A visual keeps one previous version, a switch away.
+    hasPrevious?: true;
     phase?:
         | 'planning'
         | 'pieces'
@@ -43,6 +45,9 @@ export type Artifact = ArtifactSummary & {
     frames?: number;
     startedAt?: number;
     phaseStartedAt?: number;
+    // Videos: when the current attempt started and became playable; null on videos made before they were saved.
+    started?: number | null;
+    playableAt?: number | null;
     // Pending videos: one row per cut (its state may move back) and the set pieces still being drawn.
     cutRows?: {
         cut: number;

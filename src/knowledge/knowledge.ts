@@ -12,6 +12,7 @@ export type Graph = {
     topics: string[];
     concepts: Concept[];
     links: { from: string; to: string; kind: 'related' | 'builds on' }[];
+    anchors?: Record<string, { x: number; y: number }>;
 };
 export const LEVELS = [
     'Misconception',
@@ -29,7 +30,7 @@ export const fill = (c: Concept) =>
 export const MIN_SCALE = 0.2;
 export const LABEL_SCALE = 0.75;
 export const graphShape = (graph: Graph) =>
-    JSON.stringify([graph.concepts.map((c) => [c.name, c.topics]), graph.links]);
+    JSON.stringify([graph.concepts.map((c) => [c.name, c.topics]), graph.links, graph.anchors]);
 
 export function conceptLines(links: Graph['links'], at: Map<string, Placed>, selected?: string) {
     return links.flatMap((l) => {

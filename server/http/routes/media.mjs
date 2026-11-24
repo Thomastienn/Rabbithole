@@ -317,7 +317,7 @@ export async function mediaRoutes(req, res, url, ctx, body) {
         return json(res, 200, { trashed: !!info, missing: !info });
     }
     const jobMatch = url.pathname.match(
-        /^\/api\/trees\/([^/]+)\/artifacts\/([^/]+)\/(cancel|retry|regenerate|install)$/,
+        /^\/api\/trees\/([^/]+)\/artifacts\/([^/]+)\/(cancel|retry|regenerate|install|previous)$/,
     );
     if (!jobMatch) return false;
     const [, id, artifactId, action] = jobMatch,
@@ -326,6 +326,9 @@ export async function mediaRoutes(req, res, url, ctx, body) {
     if (action === 'regenerate') {
         if (!tree || !['visual', 'video'].includes(artifact?.kind))
             return json(res, 404, { error: 'Visual or video not found in this conversation.' });
+        const instruction = body?.instruction ?? '';
+        if (typeof instruction !== 'string' || instruction.trim().length > 500)
+            return json(res, 400, { error: 'Describe the change in 500 characters or fewer.' });
         // A published video's remaining work is cleanup; its new version gets a different id.
         if (
             (jobs.get('video', artifactId) || jobs.get('drawing', artifactId)) &&
@@ -334,7 +337,7 @@ export async function mediaRoutes(req, res, url, ctx, body) {
             return json(res, 409, {
                 error: 'Wait for the current generation to finish, then try a different version.',
             });
-        const job = store.regenerateArtifact(id, artifactId);
+        const job = store.regenerateArtifact(id, artifactId, instruction.trim());
         if (!job)
             return json(res, 409, {
                 error: !artifact.input
@@ -350,6 +353,14 @@ export async function mediaRoutes(req, res, url, ctx, body) {
                     : undefined,
             );
         return json(res, 200, live(job));
+    }
+    if (action === 'previous') {
+        if (!tree || artifact?.kind !== 'visual')
+            return json(res, 404, { error: 'Visual not found in this conversation.' });
+        const switched = !jobs.get('drawing', artifactId) && store.switchVersion(id, artifactId);
+        if (!switched)
+            return json(res, 409, { error: 'This visual has no previous version to switch to.' });
+        return json(res, 200, live(switched));
     }
     if (tree && ['mermaid', 'visual'].includes(artifact?.kind) && action === 'retry') {
         // Retry reruns the worker from the stored request; diagrams saved before stored requests cannot.

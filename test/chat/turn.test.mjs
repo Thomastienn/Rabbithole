@@ -184,27 +184,30 @@ test('underline ranges are the exact slices, as they stream and once ready, neve
     });
     const second = at('same', 5),
         emoji = at('😀'),
-        code = at('x = 1');
+        code = at('x = 1'),
+        overlap = {
+            start: second.start + 1,
+            end: second.end + 2,
+            text: text.slice(second.start + 1, second.end + 2),
+        };
     const passages = [
         code,
         second,
         emoji,
         { ...at('Say'), text: 'Sai' },
-        {
-            start: second.start + 1,
-            end: second.end + 2,
-            text: text.slice(second.start + 1, second.end + 2),
-        },
+        overlap,
         { start: 30, end: 99, text: text.slice(30) },
     ];
+    // An overlapping passage keeps its underline: a briefed selection may cross a suggestion.
+    const drawn = [second, overlap, emoji, code].map(({ start, end }) => ({ start, end }));
     assert.deepEqual(
         underlineRanges(text, { message: 'm', status: 'ready', passages, usage: null }),
-        [second, emoji, code].map(({ start, end }) => ({ start, end })),
+        drawn,
     );
     // The tutor's marks underline while the reply streams.
     assert.deepEqual(
         underlineRanges(text, { message: 'm', status: 'pending', passages, usage: null }),
-        [second, emoji, code].map(({ start, end }) => ({ start, end })),
+        drawn,
     );
     assert.deepEqual(
         underlineRanges(text, { message: 'm', status: 'failed', passages, usage: null }),
@@ -236,12 +239,18 @@ test('underline ranges are the exact slices, as they stream and once ready, neve
         ),
         [{ start: emoji.start, end: emoji.end, child: 'c1' }],
     );
-    // Explored passages may overlap or nest, outer first; an unexplored suggestion overlapping one is dropped.
+    // Passages may overlap or nest, outer first: a briefed selection inside or around a suggestion keeps both underlines.
+    // An unexplored suggestion is dropped only where an explored passage covers the same words.
     const slice = (start, end) => ({ start, end, text: text.slice(start, end) });
     assert.deepEqual(
         underlineRanges(
             text,
-            { message: 'm', status: 'ready', passages: [slice(1, 3)], usage: null },
+            {
+                message: 'm',
+                status: 'ready',
+                passages: [slice(1, 3), slice(2, 4), slice(1, 2)],
+                usage: null,
+            },
             [
                 { ...slice(2, 4), child: 'inner' },
                 { ...slice(0, 6), child: 'outer' },
@@ -250,6 +259,8 @@ test('underline ranges are the exact slices, as they stream and once ready, neve
         ),
         [
             { start: 0, end: 6, child: 'outer' },
+            { start: 1, end: 3 },
+            { start: 1, end: 2 },
             { start: 2, end: 4, child: 'inner' },
             { start: 2, end: 4, child: 'twin' },
         ],

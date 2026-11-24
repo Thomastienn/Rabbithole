@@ -18,8 +18,7 @@
 .branch-form,
 .astryx-popover,
 .astryx-dialog,
-.astryx-alert-dialog,
-.merge-dialog {
+.astryx-alert-dialog {
     border: 1.5px solid var(--color-border-emphasized);
     border-radius: var(--radius-container);
     background: var(--color-background-popover);

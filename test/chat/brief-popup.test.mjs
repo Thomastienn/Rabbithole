@@ -112,3 +112,43 @@ test('a brief explanation shows bold, italics, code and math inline, never headi
         /^Loops To repeat is to run again: for runs .+ times\. once more More$/,
     );
 });
+
+test('a briefed selection inside a suggestion underlines, shows its own brief and opens the passage textbox', async (t) => {
+    const { container, act, update, branched } = await passage(t);
+    const tip = () => container.querySelector('[role="tooltip"]');
+    // The tutor's suggestion, and the learner's briefed selection inside it with no concept.
+    const outer = { start: 10, end: 19, text: 'repeat 😀', concept: 'Repeat' },
+        inner = { start: 10, end: 16, text: 'repeat' };
+    const briefs = [
+        { message: 'reply', start: 10, end: 19, explanation: 'Do it again.' },
+        { message: 'reply', start: 10, end: 16, explanation: 'Once more.' },
+    ];
+    await act(async () =>
+        update((v) => ({
+            ...v,
+            briefs,
+            suggestions: { message: 'reply', status: 'ready', passages: [outer, inner] },
+        })),
+    );
+    const stops = [...container.querySelectorAll('u[tabindex]')];
+    assert.deepEqual(
+        stops.map((u) => u.getAttribute('aria-label')),
+        ['Suggested passage: repeat 😀', 'Suggested passage: repeat'],
+    );
+    const piece = container.querySelector('[data-u="1"]');
+    assert.equal(piece.parentElement.getAttribute('data-u'), '0');
+    await act(async () => point(piece));
+    assert.equal(tip().textContent, 'Once more.');
+    await act(async () => piece.click());
+    assert.equal(container.querySelector('.branch-picker'), null);
+    assert.deepEqual(
+        [branched.at(-1)[0].start, branched.at(-1)[0].end, branched.at(-1)[0].suggestion],
+        [10, 16, true],
+    );
+    // The part only the tutor's suggestion covers still answers for it.
+    const rest = [...container.querySelectorAll('[data-u="0"]')].find((u) => !u.contains(piece));
+    await act(async () => point(rest));
+    assert.equal(tip().textContent, 'Do it again.');
+    await act(async () => rest.click());
+    assert.deepEqual([branched.at(-1)[0].start, branched.at(-1)[0].end], [10, 19]);
+});

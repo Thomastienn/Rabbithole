@@ -61,10 +61,6 @@ test('knowledge points, relations, zoom labels retain accessible state', async (
         'url(#knowledge-arrow)',
     );
     assert.equal(container.querySelector('[data-kind=related]').getAttribute('marker-end'), null);
-    assert.equal(
-        container.querySelector('.knowledge-key').textContent,
-        'UnfamiliarSome familiarityFamiliarLine: relatedArrow: builds on',
-    );
     const names = () => [...container.querySelectorAll('[data-concept]')].map((e) => e.textContent);
     const beforeNames = names();
     await act(async () => {
@@ -90,4 +86,25 @@ test('knowledge points, relations, zoom labels retain accessible state', async (
         for (let i = 0; i < 8; i++) button(container, 'Zoom in').click();
     });
     assert.equal(container.querySelectorAll('.concept-name:not(.sr-only)').length, 3);
+});
+
+test('concepts wear their main topic hue and each topic draws a hull; a concept without a topic stays neutral', async (t) => {
+    const graph = initial();
+    graph.concepts.push({ ...graph.concepts[0], name: 'Loose', topics: [] });
+    fakeServer(t, async () => graph);
+    const { container, cleanup } = await render(h(KnowledgePage, { activity: '' }), setup);
+    t.after(cleanup);
+    const hue = (name) => container.querySelector(`[data-concept="${name}"]`).dataset.hue;
+    const hulls = [...container.querySelectorAll('.knowledge-regions path')];
+    assert.deepEqual(
+        hulls.map((p) => p.dataset.topic),
+        ['Concurrency', 'Operating systems'],
+    );
+    assert.equal(hue('Mutex'), hulls[0].style.getPropertyValue('--h'));
+    assert.equal(hue('Mutual exclusion'), hue('Mutex'));
+    assert.equal(hue('Scheduler'), hulls[1].style.getPropertyValue('--h'));
+    assert.notEqual(hue('Scheduler'), hue('Mutex'));
+    assert.equal(hue('Loose'), undefined);
+    // Familiarity keeps its ring form under the hue.
+    assert.equal(container.querySelector('[data-concept="Mutex"] .fam').dataset.fill, 'none');
 });

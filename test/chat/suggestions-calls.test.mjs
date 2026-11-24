@@ -50,6 +50,7 @@ test('phrase-only suggestions anchor in order, then anywhere, then across whites
             answer: reply.text,
             knownConcepts: {},
             familiarity: {},
+            memoryNote: '',
         });
         assert.equal(
             request.split(JSON.stringify(reply.text)).length - 1,
@@ -87,6 +88,7 @@ test('a completed reply without a notes block gets one cheap-model fallback call
         answer: 'Authoritative original',
         knownConcepts: {},
         familiarity: {},
+        memoryNote: '',
     });
     assert.deepEqual(strip(saved.suggestions), [
         {
