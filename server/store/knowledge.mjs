@@ -28,7 +28,7 @@ export const knowledge = {
     graph() {
         const concepts = this.db
             .prepare(
-                "SELECT c.id, c.name, c.embedding, COALESCE((SELECT json_group_array(t.name) FROM (SELECT t.name FROM concept_topics ct JOIN topics t ON t.id=ct.topic WHERE ct.concept=c.id ORDER BY t.name) t),'[]') AS topics FROM concepts c ORDER BY c.name",
+                "SELECT c.id, c.name, COALESCE((SELECT json_group_array(t.name) FROM (SELECT t.name FROM concept_topics ct JOIN topics t ON t.id=ct.topic WHERE ct.concept=c.id ORDER BY t.name) t),'[]') AS topics FROM concepts c ORDER BY c.name",
             )
             .all();
         const links = this.db
@@ -49,7 +49,6 @@ export const knowledge = {
                 .all()
                 .map((r) => [r.concept, r.n]),
         );
-        for (const c of concepts) c.topics = JSON.parse(c.topics);
         return {
             topics: this.db
                 .prepare('SELECT name FROM topics ORDER BY name')
@@ -57,14 +56,22 @@ export const knowledge = {
                 .map((t) => t.name),
             concepts: concepts.map((c) => ({
                 name: c.name,
-                topics: c.topics,
+                topics: JSON.parse(c.topics),
                 ...summary(observed.get(c.id) ?? [], met.get(c.id) ?? 0),
             })),
             links: links.map((l) => ({ ...l })),
-            anchors: topicAnchors(
-                concepts.map((c) => ({ topics: c.topics, embedding: vector(c.embedding) })),
-            ),
         };
+    },
+    // Kept out of graph(): each tutor reply reads the graph, and only the Knowledge page needs anchors.
+    topicAnchors() {
+        return topicAnchors(
+            this.db
+                .prepare(
+                    "SELECT c.embedding, COALESCE((SELECT json_group_array(t.name) FROM concept_topics ct JOIN topics t ON t.id=ct.topic WHERE ct.concept=c.id),'[]') AS topics FROM concepts c ORDER BY c.name",
+                )
+                .all()
+                .map((c) => ({ topics: JSON.parse(c.topics), embedding: vector(c.embedding) })),
+        );
     },
     // Familiarity is derived from observations, never stored; "met" is counted for display and never moves it.
     familiarity(concept) {

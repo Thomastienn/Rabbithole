@@ -1,6 +1,7 @@
 // The knowledge graph and learner merges; familiarity has no learner correction.
 export function knowledgeRoutes(req, res, url, { store, json }, body) {
-    if (req.method === 'GET' && url.pathname === '/api/graph') return json(res, 200, store.graph());
+    const graph = () => ({ ...store.graph(), anchors: store.topicAnchors() });
+    if (req.method === 'GET' && url.pathname === '/api/graph') return json(res, 200, graph());
     if (req.method === 'POST' && url.pathname === '/api/graph/merge') {
         const names = [body?.from, body?.into];
         if (names.some((n) => typeof n !== 'string' || !n.trim()))
@@ -10,7 +11,7 @@ export function knowledgeRoutes(req, res, url, { store, json }, body) {
             return json(res, 404, { error: 'Concept not found. Refresh Knowledge and try again.' });
         if (!store.mergeConcepts(name, into))
             return json(res, 400, { error: 'Choose two different concepts to merge.' });
-        return json(res, 200, store.graph());
+        return json(res, 200, graph());
     }
     return false;
 }

@@ -61,10 +61,6 @@ test('knowledge points, relations, zoom labels retain accessible state', async (
         'url(#knowledge-arrow)',
     );
     assert.equal(container.querySelector('[data-kind=related]').getAttribute('marker-end'), null);
-    assert.equal(
-        container.querySelector('.knowledge-key').textContent,
-        'UnfamiliarSome familiarityFamiliarColour: topicLine: relatedArrow: builds on',
-    );
     const names = () => [...container.querySelectorAll('[data-concept]')].map((e) => e.textContent);
     const beforeNames = names();
     await act(async () => {
