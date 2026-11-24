@@ -53,11 +53,11 @@ The exact contiguous text of a tutor reply, or of a line in a discussion, that a
 _Avoid_: Selection, highlight, anchor
 
 **Suggestion**:
-A term or short phrase in a tutor reply that the tutor marked, while answering, as worth breaking down into a branch: a technical, academic or uncommon term the learner may not know or may want to explore, even when the reply explains it. Its underline appears as the term arrives, so the learner can branch while still reading. It carries no proposed question.
+A term or short phrase in a tutor reply marked as worth breaking down into a branch: a technical, academic or uncommon term the learner may not know or may want to explore, even when the reply explains it. The tutor marks most of them while answering, including terms it would otherwise only bold as important, and their underlines appear as the terms arrive, so the learner can branch while still reading. A passage the learner selected and asked a brief explanation of becomes a suggestion too, so they never have to select it again. It carries no proposed question.
 _Avoid_: Candidate, Explore further item
 
 **Brief explanation**:
-About two or three short sentences about a term or passage of a tutor reply, read at a glance and free to bold or italicise a key word, shown above the branch question box so the learner can understand it without branching. It appears on its own when the learner opens an unexplored suggestion, and only on request for a passage they selected themselves. It explains whatever the term needs in context, such as what it is or why it holds. It is kept and shows again when the learner points at that suggestion, even after it has been branched; a branched suggestion without one shows the start of its child's first reply instead. It is not part of the conversation and the tutor never sees it. Opening one for a suggestion counts as weak evidence that the learner has seen the concept: it lifts an unknown concept a little and dips a well-known one a little.
+About two or three short sentences about a term or passage of a tutor reply, read at a glance and free to bold or italicise a key word, shown above the branch question box so the learner can understand it without branching. It appears on its own when the learner opens an unexplored suggestion, and only on request for a passage they selected themselves. It explains whatever the term needs in context, such as what it is or why it holds. It is kept and shows again when the learner points at that suggestion. Once a branch from it has a reply, pointing at it shows the branch question and the start of the child's first reply instead, as for any branched passage. It is not part of the conversation and the tutor never sees it. Opening one for a suggestion counts as weak evidence that the learner has seen the concept: it lifts an unknown concept a little and dips a well-known one a little.
 _Avoid_: Peek, tooltip, definition, summary
 
 **Brief batch**:
@@ -73,7 +73,7 @@ A question the learner might ask next, offered under the latest tutor reply: one
 _Avoid_: Follow-up, suggested question, prompt, suggestion
 
 **Quick thinking model**:
-The learner-chosen model for compacting prior discussion into inherited context for child conversations and naming new conversations, with its own configurable effort. After each tutor reply it judges familiarity and records the concepts and links the reply touched. It marks suggestions, groundwork and next questions only for a reply that arrives without the tutor's own.
+The learner-chosen model for compacting prior discussion into inherited context for child conversations and naming new conversations, with its own configurable effort. After each tutor reply it judges familiarity, records the concepts and links the reply touched, merges any that duplicate known ones and may edit the memory note. It marks suggestions, groundwork and next questions only for a reply that arrives without the tutor's own.
 _Avoid_: Helper model, cheap model
 
 **Suggestion model**:
@@ -125,11 +125,11 @@ The single record, across all learning trees, of concepts the learner has met an
 _Avoid_: Learner profile, skill map
 
 **Concept**:
-One thing the learner can know, such as "Peterson's algorithm"; shown as a point in the knowledge graph.
+One thing the learner can know, such as "Peterson's algorithm"; shown as a point in the knowledge graph. Different names for one concept, such as "thread" and "Threads", are merged into one automatically, the other names kept as aliases.
 _Avoid_: Term, skill, node
 
 **Topic**:
-A broad, named group of related concepts, such as "Concurrency". Topics stay general and few; narrow ones are merged into broader ones. A concept belongs to one or two topics.
+A broad, named group of related concepts, such as "Concurrency". Topics stay general and few; narrow or overlapping ones are merged into broader ones automatically. A concept belongs to one or two topics.
 _Avoid_: Section, category, area
 
 **Concept link**:
@@ -161,7 +161,7 @@ The fixed background a child conversation receives at branch creation: the exact
 _Avoid_: Summary, compacted context
 
 **Memory note**:
-One short note about the learner that the tutor keeps across all learning trees: background, goals, preferences and notable progress. The tutor sees the whole note in every conversation and changes it only when it learns something lasting, adding, rewriting or removing entries. The learner can read and edit it.
+One short note about the learner kept across all learning trees: background, goals, preferences and notable progress. The tutor sees the whole note in every conversation. The tutor, or the quick thinking model after a reply, changes it only when something lasting is learned, rewriting or removing entries rather than adding so it stays short. A quiet "Memory updated" mark shows on the reply that changed it. The learner can read and edit it.
 _Avoid_: Learner profile, memory (alone), notes
 
 **Usage history**:
@@ -197,6 +197,10 @@ _Avoid_: Template, theme, design
 **Visual**:
 An interactive HTML/SVG/JS fragment shown inside a tutor reply where the tutor placed it, running in an isolated sandbox with no network or access to the app. Older Mermaid diagrams stay diagrams.
 _Avoid_: Widget, canvas, artifact (in UI copy)
+
+**New version**:
+A redraw of a visual or video that the learner asks for, made from the current version and following their own instruction when they give one, otherwise taking a different approach. The version it replaces stays one switch away; older ones are not kept.
+_Avoid_: Regenerate, retry, variant
 
 **Visual part**:
 A drawn object in a visual that the learner can point at and ask about, such as the reactor of a power plant. Visual parts nest: a larger part holds the smaller parts drawn within it, such as the reactor's control rods, so the learner can ask about a whole component or one of its details. Every meaningful object in a visual is a visual part; the visual's own controls, such as its buttons and sliders, are not.
