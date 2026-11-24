@@ -200,6 +200,7 @@ export default function ChatThread({
                                           text: t.passage,
                                           child: t.id,
                                           title: t.title,
+                                          ...tree.branchPreviews?.[t.id],
                                       },
                                   ]
                                 : [],
