@@ -14,6 +14,7 @@ import type { Appearance, ThemeChoice } from './appearance';
 import type { MapActions } from '../map/TreeOverview';
 import MapMenu from '../map/MapMenu';
 import MapView from '../map/MapView';
+import { rootOf } from '../map/mapState';
 import KnowledgePage from '../knowledge/KnowledgePage';
 import VideoLibrary from '../media/VideoLibrary';
 import PieceLibrary from '../media/PieceLibrary';
@@ -276,7 +277,11 @@ export default function ChatPage({
                         );
                 }}
                 searchSource={titleSearch}
-                onValueChange={(id) => id && openTree(id)}
+                onValueChange={(id) => {
+                    // A branch result opens that conversation; a root reopens its tree as saved.
+                    const root = id && rootOf(id, state?.trees ?? []);
+                    if (root) openTree(root, undefined, root === id ? undefined : id);
+                }}
             />
             <HStack gap={0} style={{ flex: 1, minHeight: 0 }}>
                 {!mobile && band}
