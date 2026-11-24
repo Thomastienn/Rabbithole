@@ -156,13 +156,14 @@ test('with no chat model chosen, the first question asks for one in Settings', a
 
 test('while the first question is sending, the box stays editable but Send, Enter and Attach wait', async (t) => {
     const submitted = [];
+    const attached = [];
     function Fixture() {
         const [draft, setDraft] = useState('');
         return h(FirstQuestion, {
             draft,
             setDraft,
             files: [],
-            setFiles() {},
+            setFiles: (files) => attached.push(files),
             busy: true,
             available: true,
             modelMenu: null,
@@ -189,5 +190,16 @@ test('while the first question is sending, the box stays editable but Send, Ente
         ),
     );
     assert.deepEqual(submitted, []);
+    // The editable box must not become a way round the disabled Attach button.
+    const paste = new Event('paste', { bubbles: true, cancelable: true });
+    Object.defineProperty(paste, 'clipboardData', {
+        value: {
+            files: [new File(['a'], 'notes.md', { type: 'text/markdown' })],
+            types: ['Files'],
+            getData: () => '',
+        },
+    });
+    await act(async () => editor.dispatchEvent(paste));
+    assert.deepEqual(attached, []);
     assert.equal(container.querySelector('[role=textbox]').textContent, 'And lichens?');
 });
