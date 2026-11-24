@@ -221,6 +221,24 @@ test('library choices must name offered pieces and never rewrite a reused one', 
             ),
         /outside the brief/,
     );
+    assert.throws(
+        () =>
+            pieceChoices(
+                answer(
+                    ['Champ', 'Loser'].map((name) => ({
+                        name,
+                        use: 'improve',
+                        reason: 'fits',
+                        id: 'a',
+                    })),
+                    'export function Champ() {}\nexport function Loser() {}',
+                ),
+                ['Champ', 'Loser'],
+                [matches[0], matches[0]],
+                brief,
+            ),
+        /already improves/,
+    );
     assert.throws(() => pieceChoices(pieces, ['Champ'], matches, brief), /JSON/);
     const module = assemblePieces("import { colors } from './kit';\nconst a = 1;", [
         { name: 'Champ', inner: 'Winner', source: pieces },

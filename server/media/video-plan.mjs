@@ -422,6 +422,7 @@ export function pieceChoices(raw, names, matches, brief, solid = false) {
     } catch {}
     if (typeof answer?.code !== 'string' || !Array.isArray(answer.pieces))
         throw new Error('set pieces answer is not {"pieces", "code"} JSON.');
+    const improved = new Set();
     const choices = names.map((name, i) => {
         const c = answer.pieces.find((p) => p?.name === name);
         if (!c || !USES.includes(c.use))
@@ -431,6 +432,12 @@ export function pieceChoices(raw, names, matches, brief, solid = false) {
         const piece = c.use === 'new' ? null : matches[i]?.find((m) => m.id === c.id);
         if (c.use !== 'new' && !piece)
             throw choiceError(`${name} names a piece that was not offered.`);
+        // Two improvements of one saved piece would overwrite each other in the library.
+        if (c.use === 'improve' && improved.has(c.id))
+            throw choiceError(
+                `${name} improves a piece another object already improves; make it new.`,
+            );
+        if (c.use === 'improve') improved.add(c.id);
         if (
             c.roles !== undefined &&
             !(
