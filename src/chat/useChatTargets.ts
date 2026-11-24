@@ -9,7 +9,12 @@ import type { Tree } from './types';
 export function useChatTargets({ overview }: Pick<ChatState, 'overview'>, tree: Tree | undefined) {
     const [reveal, setReveal] = useState<{ tree: string; source: Source }>();
     const [figureTarget, setFigureTarget] = useState<{ conversation: string; artifact: string }>();
-    const [messageTarget, setMessageTarget] = useState<{ conversation: string; message: string }>();
+    // No message opens at the title; `words` are marked briefly once the target shows.
+    const [messageTarget, setMessageTarget] = useState<{
+        conversation: string;
+        message?: string;
+        words?: string[];
+    }>();
     const composer = useRef<ChatComposerInputHandle>(null);
     // Set to focus the composer once the next chat shows.
     const focusComposer = useRef(false);
@@ -44,7 +49,9 @@ export function useChatTargets({ overview }: Pick<ChatState, 'overview'>, tree: 
             frames = 0;
         const tick = () => {
             const message = document.querySelector<HTMLElement>(
-                `.focused-chat [data-chat-message="${CSS.escape(messageTarget.message)}"]`,
+                messageTarget.message
+                    ? `.focused-chat [data-chat-message="${CSS.escape(messageTarget.message)}"]`
+                    : '.focused-chat .chat-title',
             );
             if (message && document.activeElement !== message) {
                 message.tabIndex = -1;
@@ -52,7 +59,15 @@ export function useChatTargets({ overview }: Pick<ChatState, 'overview'>, tree: 
             }
             message?.scrollIntoView({ block: 'start' });
             if (++frames < 12) frame = requestAnimationFrame(tick);
-            else setMessageTarget(undefined);
+            else {
+                if (message && messageTarget.words?.length)
+                    markWords(
+                        messageTarget.message ? message : message.closest('.focused-chat')!,
+                        messageTarget.words,
+                        !!messageTarget.message,
+                    );
+                setMessageTarget(undefined);
+            }
         };
         frame = requestAnimationFrame(tick);
         return () => cancelAnimationFrame(frame);
@@ -65,6 +80,12 @@ export function useChatTargets({ overview }: Pick<ChatState, 'overview'>, tree: 
         setMessageTarget(message ? { conversation: id, message } : undefined);
         focusComposer.current = !source && !artifact && !message;
     }
+    // A search result opens on its matched message, or at the title for a title, passage or question match.
+    function find(conversation: string, message: string | undefined, words: string[]) {
+        goTo(conversation);
+        focusComposer.current = false;
+        setMessageTarget({ conversation, message, words });
+    }
     // A turn rail pick scrolls the open conversation to that message and keeps its other targets.
     const jump = (conversation: string, message: string) =>
         setMessageTarget({ conversation, message });
@@ -74,7 +95,36 @@ export function useChatTargets({ overview }: Pick<ChatState, 'overview'>, tree: 
     const focusNext = () => {
         focusComposer.current = true;
     };
-    return { reveal, composer, focusNext, goTo, jump, drop };
+    return { reveal, composer, focusNext, goTo, find, jump, drop };
+}
+
+// Paints `words` inside `root` with the search-match highlight for two seconds: every match in a
+// message, the first of each word elsewhere (so the title or passage, not the whole chat).
+export function markWords(root: Element, words: string[], all: boolean) {
+    if (typeof Highlight === 'undefined') return;
+    const ranges: Range[] = [],
+        walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT),
+        left = new Set(words.map((w) => w.toLocaleLowerCase()).filter(Boolean));
+    for (let node = walker.nextNode(); node && left.size; node = walker.nextNode()) {
+        const text = node.textContent!.toLocaleLowerCase();
+        for (const word of [...left]) {
+            for (let at = text.indexOf(word); at >= 0; at = text.indexOf(word, at + word.length)) {
+                const range = document.createRange();
+                range.setStart(node, at);
+                range.setEnd(node, at + word.length);
+                ranges.push(range);
+                if (!all) {
+                    left.delete(word);
+                    break;
+                }
+            }
+        }
+    }
+    const mine = new Highlight(...ranges);
+    CSS.highlights.set('search-match', mine);
+    setTimeout(() => {
+        if (CSS.highlights.get('search-match') === mine) CSS.highlights.delete('search-match');
+    }, 2000);
 }
 
 export type ChatTargets = ReturnType<typeof useChatTargets>;

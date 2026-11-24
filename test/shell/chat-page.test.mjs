@@ -424,7 +424,7 @@ test('Search from the narrow drawer returns focus to Contents when the palette c
     });
     const drawer = document.querySelector('dialog[open]');
     // A pointer press or Enter leaves focus on the drawer's Search; the palette takes it as its opener.
-    const search = button(drawer, 'Search learning trees');
+    const search = button(drawer, 'Search conversations');
     await act(async () => {
         search.focus();
         search.click();
@@ -470,4 +470,60 @@ test('narrow screens keep the header and contents drawer, also after saved focus
     Object.defineProperty(exit, 'propertyName', { value: 'transform' });
     await act(async () => drawer.dispatchEvent(exit));
     assert.ok(!document.querySelector('dialog[open]'));
+});
+
+test('Ctrl+K searches with the open tree first and a result opens its chat at the matched message, a title match at the title', async (t) => {
+    const hit = (field, message) => ({
+        conversation: 't1',
+        root: 't1',
+        tree: 'Fungi',
+        address: '1',
+        title: 'Fungi',
+        field,
+        snippet: field === 'title' ? 'Fungi' : 'Thin threads.',
+        ranges: [[0, 4]],
+        message,
+    });
+    let found;
+    const { act, calls, settle, scrolls } = await mount(t, [summary], {
+        respond: (path) =>
+            path.startsWith('/api/search?') && { ok: true, json: async () => [found] },
+    });
+    const search = async (result) => {
+        found = result;
+        await act(async () =>
+            document.body.dispatchEvent(
+                new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }),
+            ),
+        );
+        const input = document.querySelector('dialog[open] input');
+        await act(async () => {
+            Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(
+                input,
+                'thin',
+            );
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            await new Promise((resolve) => setTimeout(resolve, 150));
+        });
+        await act(async () =>
+            input.dispatchEvent(
+                new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }),
+            ),
+        );
+        await act(async () =>
+            input.dispatchEvent(
+                new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+            ),
+        );
+        scrolls.length = 0;
+        for (let i = 0; i < 12; i++) await settle();
+        return scrolls.at(-1);
+    };
+    const reply = await search(hit('reply', 'a1'));
+    assert.ok(calls.includes('/api/search?q=thin&tree=t1'), 'the open tree ranks first');
+    assert.equal(reply.element.dataset.chatMessage, 'a1');
+    assert.deepEqual(reply.options, { block: 'start' });
+    assert.equal(document.activeElement, reply.element, 'focus lands on the matched message');
+    const title = await search(hit('title'));
+    assert.ok(title.element.classList.contains('chat-title'), 'a title match opens at the top');
 });

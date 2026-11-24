@@ -16,7 +16,7 @@ import {
 import { foldHierarchy } from '../../src/map/canvas.ts';
 import { conversationAddresses, inkStyle, markLibraryScrolling } from '../../src/map/treeList.ts';
 import { withLiveTurn, previewRequests, replyingPreviews } from '../../src/map/previews.ts';
-import { treeSearchSource } from '../../src/shell/treeSearchSource.ts';
+import { recentTrees, treeSearchSource } from '../../src/shell/treeSearchSource.ts';
 import { fakeServer } from '../support/fake-server.mjs';
 
 const tree = (id, parent = null, created = 0) => ({
@@ -442,11 +442,30 @@ test('search waits after typing, cancels stale requests, names the current tree 
         return [result];
     });
     let current = 'new';
+    let library = [];
     const source = treeSearchSource(
         (e) => errors.push(e),
         () => current,
+        () => library,
     );
-    assert.deepEqual(source.bootstrap(), []);
+    assert.deepEqual(source.bootstrap(), [], 'an empty library lists nothing');
+    // Seven trees a day apart, the newest with one branch: the empty query lists the six newest.
+    const day = (n) => new Date(2026, 10, 24 - n, 12).getTime();
+    library = [
+        ...[0, 1, 2, 3, 4, 5, 6].map((n) => tree(`t${n}`, null, day(n))),
+        tree('t0b', 't0', day(0)),
+    ];
+    const recent = recentTrees(library, new Date(2026, 10, 24, 18));
+    assert.deepEqual(
+        recent.map((r) => r.id),
+        ['t0', 't1', 't2', 't3', 't4', 't5'],
+    );
+    assert.deepEqual(
+        recent.slice(0, 2).map((r) => r.auxiliaryData.recent),
+        ['Today · 2 conversations', 'Yesterday · 1 conversation'],
+    );
+    assert.ok(recent.every((r) => r.auxiliaryData.group === 'Recent learning trees'));
+    assert.equal(source.bootstrap().length, 6);
     const stale = source.search('wa');
     const latest = source.search('O & ?');
     t.mock.timers.tick(119);
@@ -460,7 +479,7 @@ test('search waits after typing, cancels stale requests, names the current tree 
         ['/api/search?q=O%20%26%20%3F&tree=new'],
     );
     assert.equal(item.id, 'child');
-    assert.equal(item.auxiliaryData.group, 'Roman roads');
+    assert.equal(item.auxiliaryData.group, 'Roman roads · This tree', 'the current tree is marked');
     assert.equal(item.auxiliaryData.message, 'm1');
     current = undefined;
     fail = true;
