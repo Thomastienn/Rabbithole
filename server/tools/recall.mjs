@@ -9,8 +9,8 @@ const CANDIDATES = 5;
 const MATCH_THRESHOLD = 0.45;
 // Characters of conversation JSON read_conversation returns whole; longer ones arrive compacted.
 export const READ_BUDGET = 20000;
-// shortcut: at most this many unembedded messages per search, newest first; a big backlog fills over several searches.
-const BACKFILL = 256;
+// Messages per background embedding batch; the job yields between batches.
+const BATCH = 16;
 const EMBED_CHARS = 2000;
 const LINE_CHARS = 200;
 const COMPACT =
@@ -40,6 +40,27 @@ const required = (value, name, what) => {
     return value.trim();
 };
 
+// Embeds completed messages that lack a vector, newest first, BATCH at a time, until none remain, as one
+// background job. fill() during a run is absorbed: each batch re-reads the backlog. A failure ends the run with
+// a warning and leaves the rest unembedded until the next fill.
+export function messageEmbeddings({ store, embed, jobs, onWarning }) {
+    const run = async ({ controller: { signal } }) => {
+        for (let batch; !signal.aborted && (batch = store.unembeddedMessages(BATCH)).length;) {
+            const vectors = await embed(batch.map((m) => plain(m).slice(0, EMBED_CHARS)));
+            if (signal.aborted) return;
+            let saved = false;
+            for (const [i, m] of batch.entries())
+                if (vectors[i] && store.embedMessage(m.id, m.text, vectors[i])) saved = true;
+            // A batch that saved nothing (rewritten or deleted meanwhile) ends the run rather than spinning.
+            if (!saved) return;
+            await new Promise((resolve) => setImmediate(resolve));
+        }
+    };
+    return () =>
+        jobs.get('embeddings', 'messages') ??
+        jobs.start('embeddings', 'messages', null, (job) => run(job).catch(onWarning));
+}
+
 // Lookup and recall tools. compact(prompt, conversation) resolves to one paragraph from the compaction job.
 export function recallTools({ store, embed = null, compact }) {
     const compacted = new Map();
@@ -61,20 +82,11 @@ export function recallTools({ store, embed = null, compact }) {
             );
             const messages = store.recallMessages();
             let query = null;
+            // Only the query is embedded; messages the background job has not reached match by keyword.
             if (embed)
                 try {
-                    const pending = messages.filter((m) => !m.embedding).slice(0, BACKFILL);
-                    const [q, ...vectors] = await embed([
-                        text,
-                        ...pending.map((m) => plain(m).slice(0, EMBED_CHARS)),
-                    ]);
+                    [query] = await embed([text]);
                     turn.signal?.throwIfAborted();
-                    for (const [i, m] of pending.entries())
-                        if (vectors[i]) {
-                            store.embedMessage(m.id, m.text, vectors[i]);
-                            m.embedding = vectors[i];
-                        }
-                    query = q;
                 } catch {
                     turn.signal?.throwIfAborted();
                     // Local embeddings are optional; keyword matches still answer the question.

@@ -54,6 +54,7 @@ const open = ({ saveEvery = 100, overrides = {}, stopping = false } = {}) => {
         jobs: { get: () => null, remove: record('jobs.remove') },
         startVerdicts: record('startVerdicts'),
         noteSuggestions: record('noteSuggestions'),
+        embedMessages: record('embedMessages'),
     };
     const turn = replyTurn(ctx, {
         id: 'c',

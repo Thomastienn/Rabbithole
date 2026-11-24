@@ -139,6 +139,7 @@ export function replyTurn(
                 { provider: tree.provider, model: store.header(id)?.model ?? tree.model },
                 usage,
             );
+        ctx.embedMessages();
         if (status === 'completed' || status === 'failed')
             store.finishModel(id, status === 'completed');
         // The verdict judges the learner message, so a retried reply replaces that message's observations.
