@@ -481,10 +481,20 @@ export const trees = {
             )
             .all();
     },
-    // The text guard skips a message rewritten while the embedder ran.
+    // Completed messages without an embedding, newest first, for the background embedder.
+    unembeddedMessages(limit) {
+        return this.db
+            .prepare(
+                "SELECT id, role, text FROM messages WHERE status='completed' AND embedding IS NULL ORDER BY seq DESC LIMIT ?",
+            )
+            .all(limit);
+    },
+    // The text guard skips a message rewritten while the embedder ran; returns whether it was saved.
     embedMessage(id, text, embedding) {
-        this.db
-            .prepare('UPDATE messages SET embedding=? WHERE id=? AND text=?')
-            .run(blob(embedding), id, text);
+        return (
+            this.db
+                .prepare('UPDATE messages SET embedding=? WHERE id=? AND text=?')
+                .run(blob(embedding), id, text).changes > 0
+        );
     },
 };

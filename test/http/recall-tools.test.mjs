@@ -1,7 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fakeOpenAI, streamReply, streamToolCalls } from '../support/fake-openai.mjs';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { open } from '../support/openai-kit.mjs';
+import { Store } from '../../server/store.mjs';
 import { recallTools } from '../../server/tools/recall.mjs';
 
 // Lock-like wording shares one direction, so a reworded query matches only through the embedder.
@@ -10,13 +14,15 @@ const LOCKING = /mutex|exclusive|one thread/i;
 async function launch(t) {
     const fake = await fakeOpenAI(t);
     fake.models = [{ id: 'tooled', capabilities: { tools: true } }];
-    const embedder = { down: false };
+    const embedder = { down: false, calls: [] },
+        warnings = [];
     const env = await open(
         t,
         {},
         {
-            log: () => {},
+            log: (line) => line.includes(' WARN ') && warnings.push(line),
             videoEmbed: async (texts) => {
+                embedder.calls.push(texts);
                 if (embedder.down) throw new Error('Embedder unavailable.');
                 return texts.map((text) => (LOCKING.test(text) ? [1, 0] : [0, 1]));
             },
@@ -55,6 +61,7 @@ async function launch(t) {
         ...env,
         current,
         embedder,
+        warnings,
         call,
         compactions: () => compactions,
         offered: () => offered,
@@ -103,7 +110,7 @@ test('recall tools return their shapes, mix embedding and keyword matches, and a
     const env = await launch(t);
     const { concurrency, child, garden } = seed(env.store);
 
-    // Embedder down: keywords still find an exact-word match, and messages wait to be embedded.
+    // Embedder down: keywords still find an exact-word match; the background job warns and leaves messages unembedded.
     env.embedder.down = true;
     const keyword = await env.call('search_conversations', { description: 'blueberries' });
     assert.deepEqual(keyword.conversations, [
@@ -115,13 +122,28 @@ test('recall tools return their shapes, mix embedding and keyword matches, and a
             match: 'Blueberries prefer acidic soil.',
         },
     ]);
-    assert.ok(env.store.recallMessages().some((m) => !m.embedding));
+    await env.app.settled();
+    assert.ok(env.store.recallMessages().every((m) => !m.embedding));
+    assert.match(env.warnings.join('\n'), /message embedding failed.*Embedder unavailable/);
 
-    // Embedder back: the backlog is embedded and a reworded query finds the branch in another learning tree.
+    // Embedder back: the search embeds only the query, so unembedded messages match by keyword alone.
     env.embedder.down = false;
-    const reworded = await env.call('search_conversations', {
-        description: 'exclusive lock for threads',
-    });
+    const description = 'exclusive lock for threads';
+    const early = await env.call('search_conversations', { description });
+    assert.deepEqual(
+        early.conversations.map((c) => c.conversation_id),
+        [child.id],
+    );
+    assert.deepEqual(
+        env.embedder.calls.filter((texts) => texts.includes(description)),
+        [[description]],
+    );
+    // The settled reply started the background job, which embedded every completed message.
+    await env.app.settled();
+    assert.ok(env.store.recallMessages().every((m) => m.embedding));
+
+    // Now a reworded query also finds the branch's parent by meaning, in another learning tree.
+    const reworded = await env.call('search_conversations', { description });
     assert.deepEqual(reworded.conversations[0], {
         conversation_id: child.id,
         learning_tree: 'Concurrency',
@@ -131,13 +153,6 @@ test('recall tools return their shapes, mix embedding and keyword matches, and a
     });
     assert.ok(reworded.conversations.some((c) => c.conversation_id === concurrency.id));
     assert.ok(!reworded.conversations.some((c) => c.conversation_id === env.current.id));
-    // Messages saved after the search (this reply) wait for the next one.
-    assert.ok(
-        env.store
-            .recallMessages()
-            .filter((m) => m.tree !== env.current.id)
-            .every((m) => m.embedding),
-    );
 
     // One call answers several items, in order, one entry each.
     const { lookups } = await env.call('look_up_concept', {
@@ -184,6 +199,29 @@ test('recall tools return their shapes, mix embedding and keyword matches, and a
     });
     assert.equal(env.compactions(), 0);
     assert.deepEqual(env.store.resources(env.current.id), []);
+});
+
+test('on startup older unembedded messages are embedded in small batches until none remain', async (t) => {
+    const store = new Store(join(mkdtempSync(join(tmpdir(), 'tt-recall-')), 'trees.sqlite'));
+    const tree = store.create('Backlog');
+    for (let i = 0; i < 40; i++) store.message(tree.id, 'user', `Question ${i}`, 'completed');
+    store.message(tree.id, 'assistant', 'Half', 'interrupted');
+    const batches = [];
+    const env = await open(
+        t,
+        {},
+        {
+            store,
+            log: () => {},
+            videoEmbed: async (texts) => {
+                batches.push(texts.length);
+                return texts.map(() => [1, 0]);
+            },
+        },
+    );
+    await env.app.settled();
+    assert.deepEqual(batches, [16, 16, 8]);
+    assert.ok(store.recallMessages().every((m) => m.embedding));
 });
 
 test('a long conversation arrives as one cached compact paragraph until it changes', async (t) => {
