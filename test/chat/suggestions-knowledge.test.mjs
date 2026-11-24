@@ -15,6 +15,8 @@ const GRAPH = {
         { name: "Peterson's algorithm", topics: ['Concurrency'] },
     ],
     links: [{ from: "Peterson's algorithm", to: 'Mutual exclusion', kind: 'builds on' }],
+    // The fixture embeds nothing, so every topic keeps its even-circle slot.
+    anchors: {},
 };
 
 test('the same suggestion call fills one global knowledge graph that survives restart and reuses concepts across learning trees', async (t) => {

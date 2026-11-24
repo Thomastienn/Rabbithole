@@ -1,6 +1,7 @@
 import { familiarity } from '../familiarity.mjs';
 import { blob, vector } from './embeddings.mjs';
 import { mentions } from '../neighbourhood.mjs';
+import { topicAnchors } from '../topicAnchors.mjs';
 
 const summary = (observations, met) => {
     const counts = [0, 0, 0, 0, 0, 0];
@@ -60,6 +61,17 @@ export const knowledge = {
             })),
             links: links.map((l) => ({ ...l })),
         };
+    },
+    // Kept out of graph(): each tutor reply reads the graph, and only the Knowledge page needs anchors.
+    topicAnchors() {
+        return topicAnchors(
+            this.db
+                .prepare(
+                    "SELECT c.embedding, COALESCE((SELECT json_group_array(t.name) FROM concept_topics ct JOIN topics t ON t.id=ct.topic WHERE ct.concept=c.id),'[]') AS topics FROM concepts c ORDER BY c.name",
+                )
+                .all()
+                .map((c) => ({ topics: JSON.parse(c.topics), embedding: vector(c.embedding) })),
+        );
     },
     // Familiarity is derived from observations, never stored; "met" is counted for display and never moves it.
     familiarity(concept) {
