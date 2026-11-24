@@ -1,4 +1,6 @@
 import { knownConcepts, suggest } from '../../suggestions.mjs';
+import { applyMemoryEdit } from '../../tools/memoryNote.mjs';
+import { formatLog } from '../../log.mjs';
 
 // One quick thinking call after a completed reply (ADR 0016): the hidden notes for the tutor's marks, or every note for a reply that never ended. Detached from the reply stream so chat stays usable; stop() leaves the row pending and the next start marks it failed.
 export function suggestionJobs(ctx) {
@@ -32,7 +34,14 @@ export function suggestionJobs(ctx) {
                 const result = await suggest(
                     ctx.logged(pick(selection), 'suggestions', message, selection),
                     await ctx.quickModel(tree, true),
-                    { inheritedContext, question, answer, knownConcepts: known, familiarity },
+                    {
+                        inheritedContext,
+                        question,
+                        answer,
+                        knownConcepts: known,
+                        familiarity,
+                        memoryNote: store.memoryNote(),
+                    },
                     running.controller.signal,
                     ctx.suggestionTimeout,
                     {
@@ -42,6 +51,21 @@ export function suggestionJobs(ctx) {
                     },
                 );
                 store.addGraph(result.graph, message);
+                // Before the row settles, so the poll that sees the suggestions also sees the mark.
+                for (const edit of result.memory) {
+                    const fields = { id: message, conversation, task: 'memory' };
+                    try {
+                        applyMemoryEdit(store, edit, message);
+                        ctx.log(formatLog('info', 'suggestions', 'memory edit', fields));
+                    } catch (error) {
+                        ctx.log(
+                            formatLog('warn', 'suggestions', 'memory edit refused', {
+                                ...fields,
+                                cause: error.message,
+                            }),
+                        );
+                    }
+                }
                 if (marked)
                     return store.nameSuggestions(
                         conversation,

@@ -226,6 +226,7 @@ export default function ChatPage({
         explainBrief: branchForm.explainBrief,
         pickPart: branchForm.pickPart,
         startBranch: branchForm.startBranch,
+        openSettings,
     };
     const firstQuestion = (
         <FirstQuestion
