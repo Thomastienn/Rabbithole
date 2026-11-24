@@ -53,15 +53,6 @@
     overflow: visible;
     pointer-events: none;
 }
-/* A topic hue, mixed toward the ink so it reads on light and dark variants. */
-.knowledge-regions path,
-.concept-point[data-hue] {
-    --topic: color-mix(
-        in oklch,
-        light-dark(oklch(0.5 0.13 var(--h)), oklch(0.8 0.12 var(--h))) 85%,
-        var(--color-text-primary)
-    );
-}
 /* The wide round stroke pads the hull past its concepts' rings; opacity keeps overlaps soft. */
 .knowledge-regions path {
     fill: var(--topic);

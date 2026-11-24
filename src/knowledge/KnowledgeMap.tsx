@@ -105,6 +105,7 @@ export default function KnowledgeMap(knowledge: KnowledgeState) {
                                         key={r.name}
                                         data-topic={r.name}
                                         d={`M${r.hull.join('L')}Z`}
+                                        data-hue={r.hue}
                                         style={{ '--h': r.hue } as CSSProperties}
                                     />
                                 ))}
