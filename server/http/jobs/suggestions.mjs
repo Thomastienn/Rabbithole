@@ -17,7 +17,8 @@ export function suggestionJobs(ctx) {
                 ctx.metered(pick(selection), 'merge', message, selection, { message }),
                 quick,
                 pairs,
-                signal,
+                // Bounded like the suggestions call, so a hung provider cannot hold the job open.
+                AbortSignal.any([signal, AbortSignal.timeout(ctx.suggestionTimeout ?? 120000)]),
                 { capable, mcp: ctx.mcp },
             );
             for (const { kind, names } of confirmed) {

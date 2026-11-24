@@ -38,5 +38,6 @@ test('knowledge loading, empty/error states and refresh ignore stale activity re
     await act(async () => loads[2].resolve({ topics: [], concepts: [], links: [] }));
     assert.equal(container.querySelectorAll('[data-concept]').length, 2);
     assert.ok(calls.every(([p]) => p === '/api/graph'));
+    assert.equal(button(container, 'Merge concepts'), undefined, 'merges are automatic');
     assert.equal(button(container, 'I know this'), undefined, 'no correction controls');
 });
