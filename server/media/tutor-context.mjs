@@ -1,5 +1,12 @@
 import { modelMessage } from '../attachments.mjs';
 import { discussionText } from './discussion-context.mjs';
+import { readSaved } from './video-workspace.mjs';
+
+// A ready video's narration script as plain text; its cut code and plan details stay private.
+const narration = (source) =>
+    readSaved(source)
+        ?.plan?.cuts?.map((c) => c.narration)
+        .join('\n\n') ?? '';
 
 export function tutorContext(tree) {
     const { artifacts = [], suggestions, briefs, ...context } = tree; // suggestions and brief explanations never reach the tutor
@@ -35,9 +42,15 @@ export function tutorContext(tree) {
                           (ready.every((a) => a.kind === 'mermaid') ? 'diagrams' : 'artifacts') +
                           ' (artifact metadata): ' +
                           JSON.stringify(
-                              ready.map(({ id, kind, title, description }) =>
+                              ready.map(({ id, kind, title, description, source }) =>
                                   kind === 'video'
-                                      ? { id, kind, title, description }
+                                      ? {
+                                            id,
+                                            kind,
+                                            title,
+                                            description,
+                                            narration: narration(source),
+                                        }
                                       : { id, title, description },
                               ),
                           ),

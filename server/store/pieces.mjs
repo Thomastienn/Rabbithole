@@ -134,6 +134,9 @@ export const pieces = {
                 .map((p) => ({ ...p, videos: used.all(p.id).map((v) => ({ ...v })) })),
         };
     },
+    hasPieces() {
+        return !!this.db.prepare('SELECT 1 FROM pieces LIMIT 1').get();
+    },
     // Pieces saved while no embedder was usable, to embed when one is.
     unembeddedPieces() {
         return this.db

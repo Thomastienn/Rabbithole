@@ -209,7 +209,7 @@ test('explicit video request creates one job with frozen input, publishes owned 
             ).includes('PRIVATE_SOURCE_MARKER'),
         );
 
-        // Tutor history and provider-switch history carry only id, kind, title and description; compaction sees one "[Video: title — description]" line.
+        // Tutor history and provider-switch history carry only id, kind, title, description and narration; compaction sees one "[Video: title — description]" line.
         await (
             await env.post(`/api/trees/${child.id}/messages`, { text: 'Thanks, continue.' })
         ).text();
@@ -232,6 +232,7 @@ test('explicit video request creates one job with frozen input, publishes owned 
                                 kind: 'video',
                                 title: task.title,
                                 description: ready.description,
+                                narration: 'Winners advance.',
                             },
                         ]),
                 ),
@@ -250,6 +251,7 @@ test('explicit video request creates one job with frozen input, publishes owned 
             for (const secret of [
                 'PRIVATE_SOURCE_MARKER',
                 'remotion',
+                'Winner at position',
                 env.dir,
                 'video-work',
                 ready.attempt,
