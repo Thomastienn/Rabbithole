@@ -21,6 +21,13 @@ export function visualProgress(
         return { state: a.status, partial: false };
 }
 
+// The badge a visual shows for its displayed state.
+export function visualBadge({ state, elapsed }: VisualProgress) {
+    if (state === 'drawing') return { variant: 'info', label: `Drawing… ${elapsed}` } as const;
+    if (state === 'interactive') return { variant: 'success', label: 'Interactive' } as const;
+    return { variant: 'error', label: state === 'failed' ? 'Failed' : 'Interrupted' } as const;
+}
+
 // "n of m visuals ready" while any of a reply's visuals is still drawing; videos are not counted.
 export function visualsReady(artifacts: Pick<ArtifactSummary, 'kind' | 'status'>[] = []) {
     const visuals = artifacts.filter((a) => a.kind === 'visual' && a.status !== 'canceled');

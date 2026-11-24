@@ -21,7 +21,7 @@ import {
 async function plan(attempts, { pieces = [], embed } = {}) {
     const dir = mkdtempSync(join(tmpdir(), 'tt-plan-calls-'));
     const store = new Store(join(dir, 'trees.sqlite'));
-    for (const piece of pieces) store.savePiece(piece);
+    const ids = pieces.map((piece) => store.savePiece(piece));
     const tree = store.create('Video', 'codex');
     const message = store.message(tree.id, 'assistant', 'Reply.', 'completed');
     const artifact = store.pendingArtifact(
@@ -63,7 +63,7 @@ async function plan(attempts, { pieces = [], embed } = {}) {
         (e) => e.message,
     );
     const row = store.artifact(tree.id, artifact.id);
-    return { error, row, plans, results, saved: row.source && JSON.parse(row.source).plan };
+    return { error, row, plans, results, ids, saved: row.source && JSON.parse(row.source).plan };
 }
 
 test('a plan built through valid native calls produces a video as before', async () => {
@@ -109,7 +109,7 @@ test('with saved pieces the planner looks up the 5 nearest by name and role, wit
               ]
             : [c],
     );
-    const { plans, results, saved: stored } = await plan([calls], { pieces: saved, embed });
+    const { plans, results, ids, saved: stored } = await plan([calls], { pieces: saved, embed });
     assert.ok(plans[0].instructions.includes(PIECES_PLAN_NOTE));
     assert.match(PIECES_PLAN_NOTE, /adopt the saved piece's look and name it as piece/);
     const at = calls.findIndex((c) => c[0] === 'add_object');
@@ -126,7 +126,11 @@ test('with saved pieces the planner looks up the 5 nearest by name and role, wit
         results[at + 2],
         'Error: piece must name a saved piece find_pieces returned for this object.',
     );
-    assert.deepEqual(stored.styleBrief.recurringObjects, [{ ...winner, piece: 'Saved0' }]);
+    assert.deepEqual(
+        stored.styleBrief.recurringObjects,
+        [{ ...winner, piece: 'Saved0', pieceId: ids[0] }],
+        'the plan keeps the adopted piece for the piece writer',
+    );
 
     // Text-mode calls get no result back, so they keep today's tools and need no lookup.
     const builder = planBuilder({ pieces: async () => [] });

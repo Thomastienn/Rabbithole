@@ -8,6 +8,7 @@ import {
     conceptLines,
     fitKnowledge,
 } from '../../src/knowledge/knowledge.ts';
+import { topicAnchors } from '../../server/topicAnchors.mjs';
 
 const names = Array.from({ length: 40 }, (_, i) => `Concept ${i}`);
 const graph = {
@@ -107,6 +108,64 @@ test('topics attract their concepts and a shared concept sits between its topics
         Math.abs(bridge.x - (a.x + b.x) / 2) < POINT_SPACE,
         'shared attraction uses both topics',
     );
+});
+
+test('topic anchors are deterministic, put related topics near each other and skip topics without embeddings', () => {
+    const concepts = [
+        { topics: ['Mycology'], embedding: [1, 0.1, 0, 0] },
+        { topics: ['Mycology', 'Fermentation'], embedding: [0.9, 0.2, 0, 0] },
+        { topics: ['Fermentation'], embedding: [0.8, 0.3, 0.1, 0] },
+        { topics: ['Ecology'], embedding: [0.5, 0.6, 0.2, 0] },
+        { topics: ['Orbital mechanics'], embedding: [0, 0, 0.1, 1] },
+        { topics: ['Orbital mechanics'], embedding: [0, 0.1, 0, 0.9] },
+        { topics: ['Unembedded'], embedding: null },
+        { topics: ['Other model'], embedding: [1, 0] },
+    ];
+    const anchors = topicAnchors(concepts);
+    assert.deepEqual(topicAnchors(concepts), anchors);
+    assert.deepEqual(Object.keys(anchors), [
+        'Ecology',
+        'Fermentation',
+        'Mycology',
+        'Orbital mechanics',
+    ]);
+    const gap = (a, b) => Math.hypot(anchors[a].x - anchors[b].x, anchors[a].y - anchors[b].y);
+    assert.ok(gap('Mycology', 'Fermentation') < gap('Mycology', 'Ecology'));
+    assert.ok(gap('Mycology', 'Ecology') < gap('Mycology', 'Orbital mechanics'));
+    assert.equal(Math.max(...Object.values(anchors).map((a) => Math.hypot(a.x, a.y))), 1);
+    // One placeable topic, or none, places nothing: the even circle takes over.
+    assert.deepEqual(topicAnchors(concepts.slice(0, 1)), {});
+    assert.deepEqual(topicAnchors([{ topics: ['A'], embedding: null }]), {});
+});
+
+test('layout pins topics to their anchors, falls back to the even circle and orders hues by angle', () => {
+    const topics = ['East', 'North', 'South', 'West'];
+    const concepts = topics.map((t) => ({ name: `${t} concept`, topics: [t] }));
+    const anchors = { East: { x: 1, y: 0 }, North: { x: 0, y: -1 }, South: { x: 0, y: 1 } };
+    const { regions } = layoutConcepts({ concepts, links: [], anchors });
+    const radius = POINT_SPACE * 4;
+    assert.deepEqual(
+        regions.map((r) => [r.name, r.x + 0, r.y + 0]),
+        [
+            ['East', radius, 0],
+            ['North', 0, -radius],
+            ['South', 0, radius],
+            // No anchor: West keeps its slot (the fourth of four) on the even circle.
+            ['West', 0, -radius],
+        ],
+    );
+    const moved = layoutConcepts({
+        concepts,
+        links: [],
+        anchors: { ...anchors, West: { x: -1, y: 0 } },
+    });
+    // Round the wheel from North: East, South, West; neighbouring topics get neighbouring hues.
+    assert.deepEqual(Object.fromEntries(moved.regions.map((r) => [r.name, r.hue])), {
+        North: 250,
+        East: 340,
+        South: 70,
+        West: 160,
+    });
 });
 
 test('familiarity labels and ring forms agree at thresholds', () => {

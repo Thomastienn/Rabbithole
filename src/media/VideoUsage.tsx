@@ -12,6 +12,7 @@ type Row = {
     output: number;
     cacheRead: number;
     reasoning: number | null;
+    time: number | null;
 };
 const STAGE: Record<string, string> = {
     plan: 'Plan',
@@ -23,8 +24,22 @@ const STAGE: Record<string, string> = {
     repair: 'Repair',
 };
 
-// Tokens only, no prices (spec "Usage record"); fetched when opened, so a closed card costs nothing.
-export default function VideoUsage({ url, title }: { url: string; title: string }) {
+const span = (ms: number) => {
+    const s = Math.round(ms / 1000);
+    return s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${s % 60} s`;
+};
+
+// Tokens and time, no prices (spec "Usage record"); fetched when opened, so a closed card costs nothing.
+// made: ms from start to playable; null for videos made before it was saved, which show no time line.
+export default function VideoUsage({
+    url,
+    title,
+    made = null,
+}: {
+    url: string;
+    title: string;
+    made?: number | null;
+}) {
     const id = useId();
     const [rows, setRows] = useState<Row[] | null | 'error'>(null);
     const [open, setOpen] = useState(false);
@@ -50,6 +65,7 @@ export default function VideoUsage({ url, title }: { url: string; title: string 
             />
             {open && (
                 <div id={id}>
+                    {made !== null && <Text type="supporting">Made in {span(made)}</Text>}
                     {rows === 'error' ? (
                         <Text type="supporting">Token use could not be loaded.</Text>
                     ) : rows && !rows.length ? (
@@ -66,6 +82,7 @@ export default function VideoUsage({ url, title }: { url: string; title: string 
                                         <th>Output</th>
                                         <th>Reasoning</th>
                                         <th>Cached</th>
+                                        <th>Time</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -93,6 +110,7 @@ export default function VideoUsage({ url, title }: { url: string; title: string 
                                             ) : (
                                                 <td colSpan={4}>Not reported</td>
                                             )}
+                                            <td>{r.time === null ? '—' : span(r.time)}</td>
                                         </tr>
                                     ))}
                                 </tbody>

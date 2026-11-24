@@ -1,5 +1,6 @@
 import { readCall } from '../media/reply-parser.mjs';
 import { PLAN_TEXT_TOOLS } from '../media/plan-calls.mjs';
+import { MEMORY_EDIT } from './memoryNote.mjs';
 
 // The quick thinking model's structured answers (ADR 0013): one plain tool call each, checked by the server.
 const names = { type: 'array', items: { type: 'string' } };
@@ -47,6 +48,11 @@ const fields = {
         },
     },
     next_questions: names,
+    memory: {
+        type: 'array',
+        items: MEMORY_EDIT,
+        description: 'Edits to the memory note, applied in order; usually none.',
+    },
 };
 
 export const NAME_CONVERSATION = {
@@ -78,21 +84,39 @@ export const RECORD_VERDICTS = {
 export const MARK_SUGGESTIONS = {
     name: 'mark_suggestions',
     description:
-        'Record the marked passages, groundwork, concepts, links and next questions. Call it exactly once; leave a list empty or out when nothing qualifies.',
+        'Record the marked passages, groundwork, concepts, links, next questions and memory note edits. Call it exactly once; leave a list empty or out when nothing qualifies.',
     parameters: {
         type: 'object',
         properties: Object.fromEntries(
-            ['suggestions', 'groundwork', 'concepts', 'links', 'next_questions'].map((k) => [
-                k,
-                fields[k],
-            ]),
+            ['suggestions', 'groundwork', 'concepts', 'links', 'next_questions', 'memory'].map(
+                (k) => [k, fields[k]],
+            ),
         ),
         required: ['suggestions'],
     },
 };
-export const QUICK_TOOLS = [NAME_CONVERSATION, RECORD_VERDICTS, MARK_SUGGESTIONS].map(
-    (t) => t.name,
-);
+export const CONFIRM_MERGES = {
+    name: 'confirm_merges',
+    description:
+        'Record which pairs name the same concept or topic. Call it exactly once; an empty list when none do.',
+    parameters: {
+        type: 'object',
+        properties: {
+            same: {
+                type: 'array',
+                items: { type: 'integer' },
+                description: 'The numbers of the pairs whose two names mean the same thing.',
+            },
+        },
+        required: ['same'],
+    },
+};
+export const QUICK_TOOLS = [
+    NAME_CONVERSATION,
+    RECORD_VERDICTS,
+    MARK_SUGGESTIONS,
+    CONFIRM_MERGES,
+].map((t) => t.name);
 
 const CALLS = /<tool_call>([\s\S]*?)(?:<\/tool_call>|$)/g;
 

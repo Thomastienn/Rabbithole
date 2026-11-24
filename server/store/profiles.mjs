@@ -216,12 +216,14 @@ export const profiles = {
     memoryNote() {
         return this.db.prepare('SELECT text FROM memory_note WHERE id=1').get()?.text ?? '';
     },
-    saveMemoryNote(text) {
+    // message: the reply whose tutor tool or post-reply call caused the write; the learner's own saves pass none.
+    saveMemoryNote(text, message = null) {
         this.db
             .prepare(
                 'INSERT INTO memory_note(id,text) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET text=excluded.text',
             )
             .run(text);
+        if (message) this.db.prepare('UPDATE messages SET memory=1 WHERE id=?').run(message);
         return this.memoryNote();
     },
     searxngUrl() {

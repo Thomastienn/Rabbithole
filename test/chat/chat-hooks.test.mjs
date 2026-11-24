@@ -493,3 +493,26 @@ test('polling refreshes media usage during an owning reply stream while preservi
         await sending;
     });
 });
+
+test('a briefed selection joins the open reply suggestions so it underlines without reloading', async (t) => {
+    const row = {
+        message: 'reply',
+        status: 'ready',
+        passages: [{ start: 2, end: 6, text: 'heap' }],
+        groundwork: [],
+    };
+    const page = await mount(t, ({ path }, { data }) => {
+        if (path === '/api/trees/a/brief')
+            return json({ explanation: 'A tree kept in order.', suggestions: row });
+        if (path === '/api/trees/a')
+            return json({
+                ...data.get('a'),
+                suggestions: [{ message: 'reply', status: 'ready', passages: [], groundwork: [] }],
+            });
+    });
+    await page.act(async () => page.current.trees.openConversation('a'));
+    const anchor = { messageId: 'reply', start: 2, end: 6, text: 'heap' };
+    await page.act(async () => page.current.branch.explainBrief('a', anchor));
+    assert.deepEqual(page.current.trees.tree.suggestions, [row]);
+    assert.equal(page.current.trees.tree.briefs[0].explanation, 'A tree kept in order.');
+});

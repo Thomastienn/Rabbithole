@@ -156,7 +156,7 @@ test('restart fails orphaned pending artifacts once, without replaying generatio
         const read = await (
             await fetch(`${origin}/api/trees/${tree.id}/artifacts/${orphan.id}`)
         ).json();
-        const { input, attempt, ...visible } = recovered.artifacts[0];
+        const { input, attempt, previous, ...visible } = recovered.artifacts[0];
         assert.deepEqual(read, visible);
         assert.equal(calls.length, 0, 'reading recovered state never starts inference');
         await (

@@ -128,14 +128,16 @@ export function piecesDrawn(text, names) {
     return { drawing, drawn: names.length - drawing.length, total: names.length };
 }
 
-// Returns the accepted module, each name's and part's reuse/variant/new choice when anything was offered,
+// Returns the accepted module, each name's and part's reuse/improve/new choice when anything was offered,
 // and the parts ({name, look}) the module exports besides the named pieces.
+// piece: (id) => the saved piece tree the plan adopted for an object (its pieceId), offered first and marked chosen.
 export async function writeSetPieces({
     plan,
     names,
     write,
     matches,
     signal,
+    piece = () => null,
     onDrawing = () => {},
     // Reference photos ({name, image}) the writer sees as images.
     photos = [],
@@ -145,7 +147,11 @@ export async function writeSetPieces({
     const solid = plan.cuts.some((c) => c.dimension === '3d');
     const found = await matches(objects.map((o) => o.look));
     signal.throwIfAborted();
-    const library = names.map((_, i) => found[i] ?? []);
+    const library = names.map((_, i) => {
+        const chosen = objects[i]?.pieceId && piece(objects[i].pieceId);
+        const near = found[i] ?? [];
+        return chosen ? [chosen, ...near.filter((m) => m.id !== chosen.id)] : near;
+    });
     let parts = null,
         // The module that last failed its check: its code and how to put a patched code back into an answer.
         failed = null;
@@ -176,6 +182,7 @@ export async function writeSetPieces({
                 ...(offered && {
                     library: all.map((name, i) => ({
                         name,
+                        // A match marked chosen is the piece the plan adopted, with its full source to start from.
                         matches: library[i].map(
                             ({
                                 id,
@@ -189,6 +196,7 @@ export async function writeSetPieces({
                                 parts,
                             }) => ({
                                 id,
+                                ...(id === objects[i]?.pieceId && { chosen: true }),
                                 name,
                                 look,
                                 props,
@@ -278,7 +286,7 @@ export async function writeSetPieces({
                             : []),
                     ];
                 });
-            // Reused pieces bring their true colours as hex literals, and a variant may copy them; the module
+            // Reused pieces bring their true colours as hex literals, and an improvement may copy them; the module
             // accepts the offered pieces' true colours too.
             const kept = Object.assign({}, ...library.flat().map((m) => withParts(m).trueColors));
             const brief = {
@@ -380,6 +388,7 @@ export async function drawPieces(video, deps) {
         write: deps.write,
         matches,
         signal,
+        piece: (id) => deps.store.pieceTree(id),
         onDrawing: video.onDrawing,
         // The piece writer sees the reference photos only if it reads images.
         photos: deps.readsImages
@@ -390,27 +399,44 @@ export async function drawPieces(video, deps) {
             : [],
     });
     data.pieces = source;
+    // Each choice stays with the video, so its reuse rate can be counted.
+    if (choices)
+        data.pieceChoices = choices.map((c) => ({
+            piece: c.name,
+            choice: c.use,
+            reason: c.reason,
+        }));
     video.persist();
-    // Accepted variant and new pieces join the library, reused ones record this video. Parts are saved before the
-    // pieces built from them, which record their ids instead of copies.
+    for (const c of choices ?? [])
+        deps.onStage('piece', { piece: c.name, choice: c.use, reason: c.reason });
+    // New pieces join the library, improved ones become a new version of their saved piece, reused ones record
+    // this video. Parts are saved before the pieces built from them, which record their ids instead of copies.
     try {
         for (const c of choices?.filter((c) => c.use === 'reuse') ?? []) {
             deps.store.usePiece(c.piece.id, artifact.id);
             video.library[c.name] = c.piece.id;
         }
+        const improving = new Map(
+            choices?.filter((c) => c.use === 'improve').map((c) => [c.name, c.piece.id]),
+        );
         const entries = libraryPieces(source, plan.styleBrief, names, parts);
-        const save = (entry) =>
-            (video.library[entry.name] ??= deps.store.savePiece(
-                {
-                    ...entry,
-                    parts: entry.parts.map((name) => ({
-                        name,
-                        id: save(entries.find((e) => e.name === name)),
-                    })),
-                    embedding: vectors.get(entry.look) ?? null,
-                },
-                artifact.id,
-            ));
+        const save = (entry) => {
+            if (video.library[entry.name]) return video.library[entry.name];
+            const saved = {
+                ...entry,
+                trueColors: entry.trueColors ?? {},
+                parts: entry.parts.map((name) => ({
+                    name,
+                    id: save(entries.find((e) => e.name === name)),
+                })),
+                embedding: vectors.get(entry.look) ?? null,
+            };
+            const id = improving.get(entry.name);
+            if (!id) return (video.library[entry.name] = deps.store.savePiece(saved, artifact.id));
+            deps.store.improvePiece(id, saved);
+            deps.store.usePiece(id, artifact.id);
+            return (video.library[entry.name] = id);
+        };
         entries.forEach(save);
         deps.stills();
     } catch (error) {
@@ -425,7 +451,12 @@ export async function improveSaved(video, id, why, deps) {
     try {
         const piece = deps.store.piece(id);
         if (piece) {
-            deps.store.improvePiece(id, await improvePiece({ piece, why, call: deps.call }));
+            const { source, source3d, props, roles } = await improvePiece({
+                piece,
+                why,
+                call: deps.call,
+            });
+            deps.store.improvePiece(id, { source, source3d, props, roles });
             deps.stills();
         }
     } catch (error) {

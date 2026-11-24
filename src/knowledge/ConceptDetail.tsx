@@ -24,6 +24,7 @@ export default function ConceptDetail({ selected, graph }: { selected: Concept; 
         <aside
             id="concept-detail"
             className="knowledge-detail"
+            tabIndex={-1}
             aria-label={`${selected.name} details`}
         >
             <VStack gap={3}>

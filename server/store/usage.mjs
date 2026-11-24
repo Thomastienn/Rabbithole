@@ -18,9 +18,10 @@ export const usage = {
             Number.isSafeInteger(usage?.reasoning) && usage.reasoning >= 0 ? usage.reasoning : null;
         this.db
             .prepare(
-                `INSERT INTO usage_events(id,at,provider,model,task,input,output,cacheRead,reasoning,message,stage,cut)
-         VALUES(?,?,?,?,?,?,?,?,?,(SELECT id FROM messages WHERE id=?),?,?)
-         ON CONFLICT(id) DO UPDATE SET provider=excluded.provider,model=excluded.model,
+                // at stays the call's start; ended moves with each record of the same call.
+                `INSERT INTO usage_events(id,at,ended,provider,model,task,input,output,cacheRead,reasoning,message,stage,cut)
+         VALUES(?,?,?,?,?,?,?,?,?,?,(SELECT id FROM messages WHERE id=?),?,?)
+         ON CONFLICT(id) DO UPDATE SET provider=excluded.provider,model=excluded.model,ended=excluded.ended,
            input=coalesce(excluded.input,usage_events.input),
            output=coalesce(excluded.output,usage_events.output),
            cacheRead=coalesce(excluded.cacheRead,usage_events.cacheRead),
@@ -28,6 +29,7 @@ export const usage = {
             )
             .run(
                 id,
+                at,
                 at,
                 selection?.provider ?? null,
                 selection?.model ?? null,
@@ -42,11 +44,13 @@ export const usage = {
             );
     },
     // A video's current attempt by stage and model; stage NULL = recorded before stages were kept.
+    // time: ms from the stage's first call start to its last call end; NULL when recorded before ends were kept.
     videoUsage(conversation, id) {
         return this.db
             .prepare(
                 `SELECT u.stage,u.model,COUNT(*) AS calls,COUNT(u.input) AS reported,
-          COALESCE(SUM(u.input),0) AS input,COALESCE(SUM(u.output),0) AS output,COALESCE(SUM(u.cacheRead),0) AS cacheRead,SUM(u.reasoning) AS reasoning
+          COALESCE(SUM(u.input),0) AS input,COALESCE(SUM(u.output),0) AS output,COALESCE(SUM(u.cacheRead),0) AS cacheRead,SUM(u.reasoning) AS reasoning,
+          MAX(u.ended)-MIN(u.at) AS time
         FROM artifacts a JOIN usage_events u ON u.id LIKE 'video:'||a.attempt||':%'
         WHERE a.conversation=? AND a.id=? AND a.kind='video'
         GROUP BY u.stage,u.model ORDER BY MIN(u.at),MIN(u.rowid)`,

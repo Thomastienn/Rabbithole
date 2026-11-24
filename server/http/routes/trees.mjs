@@ -287,13 +287,18 @@ export async function treeRoutes(req, res, url, ctx, body) {
         const concept = tree.suggestions
             .find((s) => s.message === message && s.status === 'ready')
             ?.passages.find((p) => p.start === start && p.end === end)?.concept;
-        const opened = () => concept && store.observeBrief({ message, start, end, concept });
+        // A briefed selection becomes a suggestion; the reply's updated row goes back so it underlines at once.
+        const answer = (explanation) => {
+            if (concept) store.observeBrief({ message, start, end, concept });
+            const added =
+                !anchor.artifactId &&
+                store.suggestBriefed(id, { message, start, end, text }) &&
+                store.tree(id).suggestions.find((s) => s.message === message);
+            return json(res, 200, { explanation, ...(added && { suggestions: added }) });
+        };
         // Briefs are saved by reply offsets, which a visual part has none of.
         const saved = !anchor.artifactId && store.brief(message, start, end);
-        if (saved) {
-            opened();
-            return json(res, 200, { explanation: saved });
-        }
+        if (saved) return answer(saved);
         const reply = tree.messages.find((m) => m.id === message).text;
         try {
             const explanation = await ctx.writeBrief(id, reply, {
@@ -303,8 +308,7 @@ export async function treeRoutes(req, res, url, ctx, body) {
                 text,
                 concept,
             });
-            opened();
-            return json(res, 200, { explanation });
+            return answer(explanation);
         } catch {
             return json(res, 502, { error: 'Brief explanation failed. Retry.' });
         }

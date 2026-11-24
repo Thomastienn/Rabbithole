@@ -98,14 +98,14 @@ test('diagram request saves an owned artifact and keeps directive, worker prompt
         );
         assert.equal(next.tree.artifacts, undefined);
         const reopened = new Store(env.path);
-        // HTTP returns the stored rows minus the server-side request (input) and attempt.
+        // HTTP returns the stored rows minus the server-side request (input), attempt and previous version.
         try {
             const saved = reopened.tree(reply.id);
             assert.deepEqual(
                 JSON.parse(
                     JSON.stringify({
                         ...saved,
-                        artifacts: saved.artifacts.map(({ input, attempt, ...a }) => a),
+                        artifacts: saved.artifacts.map(({ input, attempt, previous, ...a }) => a),
                     }),
                 ),
                 await (await env.get(`/api/trees/${reply.id}`)).json(),

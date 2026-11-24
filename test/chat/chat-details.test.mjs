@@ -188,9 +188,10 @@ test('chat details show per-reply media and task totals, including running and u
     assert.doesNotMatch(container.textContent, /\$|price/i);
 });
 
-test('the reply usage line sits behind a closed Usage button, including while the reply is still streaming', async (t) => {
+test('the reply usage line sits behind a closed Usage button, including while the reply is still streaming, and a memory write opens the note', async (t) => {
     const { default: ChatThread } = await import('../../src/chat/ChatThread.tsx');
     const counts = { input: 10, output: 2, cacheRead: 1 };
+    const opened = [];
     const { container, act, cleanup } = await render(
         h(
             ChatThread,
@@ -206,6 +207,7 @@ test('the reply usage line sits behind a closed Usage button, including while th
                             status: 'completed',
                             text: 'Answer',
                             usage: counts,
+                            memoryUpdated: true,
                             mediaUsage: [
                                 { task: 'diagram', ...counts },
                                 { task: 'video', ...counts },
@@ -224,6 +226,7 @@ test('the reply usage line sits behind a closed Usage button, including while th
                     ],
                 },
                 active: true,
+                openSettings: (...args) => opened.push(args),
             }),
         ),
         ui,
@@ -237,6 +240,15 @@ test('the reply usage line sits behind a closed Usage button, including while th
     assert.equal(toggles[0].getAttribute('aria-expanded'), 'false');
     await act(async () => toggles.forEach((b) => b.click()));
     assert.equal(toggles[0].getAttribute('aria-expanded'), 'true');
+    // Only the reply that wrote the note carries the mark, and it opens the note in Settings.
+    const marks = [...container.querySelectorAll('.reply-memory')];
+    assert.equal(marks.length, 1);
+    assert.ok(container.querySelector('[data-chat-message="r"]').contains(marks[0]));
+    marks[0].click();
+    assert.deepEqual(
+        opened.map(([tab, focus, opener]) => [tab, focus, opener === marks[0]]),
+        [['models', '#memory-note', true]],
+    );
     const lines = [...container.querySelectorAll('.reply-usage')].map((e) => e.textContent);
     assert.match(
         lines[0],

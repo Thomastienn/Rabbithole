@@ -34,7 +34,7 @@ import { windowsSandbox } from './media/video-sandbox.mjs';
 import { downloadRoutes } from './http/routes/downloads.mjs';
 import { tesseractOcr } from './ocr.mjs';
 import { toolRunner } from './tools/runner.mjs';
-import { recallTools } from './tools/recall.mjs';
+import { recallTools, messageEmbeddings } from './tools/recall.mjs';
 import { searxngSearch } from './tools/searxng.mjs';
 import { toolMcp } from './tools/mcp.mjs';
 import { retrieveNeighbourhood } from './neighbourhood.mjs';
@@ -169,6 +169,21 @@ export function createApp({
                   ),
           })
         : { fill: () => {}, stop: () => {} };
+    // Called when a reply settles (the job also embeds the learner message before it) and at startup.
+    ctx.embedMessages = videoEmbed
+        ? messageEmbeddings({
+              store,
+              embed: videoEmbed,
+              jobs: ctx.jobs,
+              onWarning: (error) =>
+                  log(
+                      formatLog('warn', 'recall', 'message embedding failed', {
+                          task: 'embeddings',
+                          cause: errorCause(error, []),
+                      }),
+                  ),
+          })
+        : () => {};
     Object.assign(ctx, roles(ctx));
     Object.assign(ctx, quickCalls(ctx));
     ctx.syncEndpoints();
@@ -186,6 +201,8 @@ export function createApp({
     const { json } = ctx;
     let stopped;
     recoverStaged(store, dir);
+    // Older messages left unembedded fill in from startup.
+    ctx.embedMessages();
     const server = http.createServer(async (req, res) => {
         const started = performance.now();
         const url = URL.parse(req.url, ctx.origin());

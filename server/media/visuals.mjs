@@ -21,6 +21,10 @@ const VISUAL_PATCH_NOTE =
     DIFF +
     ' of previousFragment, no Markdown fences or commentary.';
 
+// Appended to a new version's first call, whose task carries the version it changes.
+const VERSION_NOTE =
+    '\ncurrentVersion, the visual the learner has now, follows the JSON task as raw lines after a line reading currentVersion:. Write a whole new fragment from it under the same rules.';
+
 // Loadable skills; `uses` spots output that needs the skill, so the server can enforce loading it.
 const SKILLS = {
     threejs: {
@@ -241,9 +245,11 @@ export async function generateVisual(
                         instructions:
                             INSTRUCTIONS +
                             [...given].map((name) => '\n\n' + SKILLS[name].text).join('') +
-                            (input.differentVersion
-                                ? '\nCreate a different version: take a different approach than the previous version while explaining the same request.'
-                                : '') +
+                            (input.instruction
+                                ? `\nChange it as the learner asks: ${input.instruction}`
+                                : input.differentVersion
+                                  ? '\nCreate a different version: take a different approach than the previous version while explaining the same request.'
+                                  : '') +
                             '\nCurrent theme palette: ' +
                             JSON.stringify(paletteFor(input.theme)) +
                             note,
@@ -289,7 +295,15 @@ export async function generateVisual(
                   )
                 : null;
             const { answer, overflow } =
-                fix === null ? await ask('', JSON.stringify(task), true) : { answer: fix };
+                fix !== null
+                    ? { answer: fix }
+                    : input.current
+                      ? await ask(
+                            VERSION_NOTE,
+                            withSource(task, 'currentVersion', input.current),
+                            true,
+                        )
+                      : await ask('', JSON.stringify(task), true);
             const fragment = answer.replace(CALLS, '');
             let result, error;
             try {
