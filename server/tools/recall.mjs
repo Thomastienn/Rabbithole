@@ -41,8 +41,8 @@ const required = (value, name, what) => {
 };
 
 // Embeds completed messages that lack a vector, newest first, BATCH at a time, until none remain, as one
-// background job. fill() during a run is absorbed: each batch re-reads the backlog. A failure ends the run with
-// a warning and leaves the rest unembedded until the next fill.
+// background job. A call during a run is absorbed: each batch re-reads the backlog. A failure ends the run with
+// a warning and leaves the rest unembedded until the next call.
 export function messageEmbeddings({ store, embed, jobs, onWarning }) {
     const run = async ({ controller: { signal } }) => {
         for (let batch; !signal.aborted && (batch = store.unembeddedMessages(BATCH)).length;) {

@@ -198,4 +198,9 @@ for (const [who, stopping] of [
         assert.deepEqual(env.saves().at(-1), ['Half an answer', 'interrupted', who]);
         assert.deepEqual(env.events.at(-1), { type: 'done', status: 'interrupted' });
         assert.ok(!env.calls.some(([name]) => name === 'finishModel'));
+        // Shutdown has already stopped the background jobs, so it must not start the embedding job again.
+        assert.equal(
+            env.calls.some(([name]) => name === 'embedMessages'),
+            !stopping,
+        );
     });
