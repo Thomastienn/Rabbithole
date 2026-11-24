@@ -217,7 +217,7 @@ test('deleting a conversation while its request block is streaming cannot recrea
     }
 });
 
-test('Try a different version gives a ready video a new job; the chat shows only the newest and the library keeps both', async () => {
+test('Try a new version plans from the current video as the learner asks; the chat shows only the newest, the library keeps both and Previous version switches back', async () => {
     const workers = [];
     let release,
         held = false;
@@ -253,8 +253,10 @@ test('Try a different version gives a ready video a new job; the chat shows only
             ).status,
             404,
         );
+        const firstPlan = JSON.parse(env.store.artifact(tree.id, first.id).source).plan;
         held = true;
-        const response = await env.post(url, { input: 'UNTRUSTED' });
+        assert.equal((await env.post(url, { instruction: 'x'.repeat(501) })).status, 400);
+        const response = await env.post(url, { input: 'UNTRUSTED', instruction: ' Slower pace ' });
         assert.equal(response.status, 200);
         const next = await response.json();
         assert.notEqual(next.id, first.id);
@@ -295,14 +297,67 @@ test('Try a different version gives a ready video a new job; the chat shows only
         );
         const [a, b] = workers.map((w) => JSON.parse(w.text));
         assert.deepEqual(
-            { ...b, differentVersion: undefined },
-            { ...a, differentVersion: undefined },
+            { ...b, differentVersion: undefined, instruction: undefined, currentPlan: undefined },
+            { ...a, differentVersion: undefined, instruction: undefined, currentPlan: undefined },
             'same frozen request and selection',
         );
         assert.equal(b.differentVersion, true);
-        assert.notEqual(workers[1].tree.instructions, workers[0].tree.instructions);
+        assert.deepEqual(b.currentPlan, firstPlan, 'plans from the current version');
+        assert.equal(a.currentPlan, undefined);
+        assert.match(
+            workers[1].tree.instructions,
+            /Change it as the learner asks: Slower pace(\n|$)/,
+        );
+        assert.doesNotMatch(workers[1].tree.instructions, /take a different approach/);
         assert.doesNotMatch(workers[1].text, /UNTRUSTED/);
         assert.equal(workers[1].tree.thread, null);
+        // Previous version swaps the whole video back, cuts and all, with no new job; the library keeps both.
+        const chat = async () =>
+            (await (await env.get(`/api/trees/${tree.id}`)).json()).artifacts.map((v) => [
+                v.id,
+                v.status,
+                v.hasPrevious,
+            ]);
+        assert.deepEqual(await chat(), [[next.id, 'ready', true]]);
+        const back = await (
+            await env.post(`/api/trees/${tree.id}/artifacts/${next.id}/previous`)
+        ).json();
+        assert.deepEqual([back.id, back.status, back.title], [first.id, 'ready', first.title]);
+        assert.deepEqual(await chat(), [[first.id, 'ready', true]]);
+        assert.equal(
+            (await env.get(`/api/trees/${tree.id}/artifacts/${first.id}/cuts`)).status,
+            200,
+        );
+        assert.equal(
+            (await (await env.post(`/api/trees/${tree.id}/artifacts/${first.id}/previous`)).json())
+                .id,
+            next.id,
+        );
+        assert.equal(workers.length, 2, 'switching redraws nothing');
+        assert.deepEqual(
+            (await (await env.get('/api/videos')).json()).map((v) => v.id).sort(),
+            [first.id, next.id].sort(),
+        );
+        // A second new version, with no instruction, builds on the current one and takes the different-approach line.
+        const nextPlan = JSON.parse(env.store.artifact(tree.id, next.id).source).plan;
+        held = false;
+        const third = await (
+            await env.post(`/api/trees/${tree.id}/artifacts/${next.id}/regenerate`)
+        ).json();
+        await until(() =>
+            env.store
+                .tree(tree.id)
+                .artifacts.find((v) => v.id === third.id && v.status === 'ready'),
+        );
+        const c = JSON.parse(workers[2].text);
+        assert.deepEqual(c.currentPlan, nextPlan);
+        assert.equal(c.instruction, undefined);
+        assert.match(workers[2].tree.instructions, /take a different approach/);
+        assert.equal(
+            JSON.parse(env.store.artifact(tree.id, third.id).previous).id,
+            next.id,
+            'the single previous slot holds the replaced version',
+        );
     } finally {
         release?.();
         env.close();

@@ -4,6 +4,7 @@ import { Heading, Text } from '@astryxdesign/core/Text';
 import { Skeleton } from '@astryxdesign/core/Skeleton';
 import { Button } from '@astryxdesign/core/Button';
 import { IconButton } from '@astryxdesign/core/IconButton';
+import { DropdownMenu } from '@astryxdesign/core/DropdownMenu';
 import {
     ArrowPathIcon,
     ArrowsPointingOutIcon,
@@ -16,6 +17,7 @@ import type { Artifact } from './artifacts';
 import LivePlayer from './LivePlayer';
 import ExportButton from './ExportButton';
 import VideoUsage from './VideoUsage';
+import { useNewVersion } from './NewVersion';
 import { clock, elapsed, estimateVideoProgress, videoStep, videoStepDetail } from './videoProgress';
 
 const STATUS = {
@@ -94,9 +96,13 @@ export default function VideoCard({
         | 'phaseStartedAt'
         | 'cutRows'
         | 'drawing'
+        | 'hasPrevious'
     > & { error?: string | null };
     inline?: boolean;
-    onAction?: (action: 'cancel' | 'retry' | 'regenerate' | 'install') => Promise<void>;
+    onAction?: (
+        action: 'cancel' | 'retry' | 'regenerate' | 'install' | 'previous',
+        instruction?: string,
+    ) => Promise<void>;
     media?: string;
     cuts?: string;
     actions?: ReactNode;
@@ -131,6 +137,11 @@ export default function VideoCard({
         exported ? setEnlarged(true) : void stage.current?.requestFullscreen().catch(() => {});
     const exportButton = state === 'ready' && (
         <ExportButton id={artifact.id} title={artifact.title} onExported={onExported} />
+    );
+    const versions = useNewVersion(
+        artifact.hasPrevious,
+        onAction && ((instruction) => onAction('regenerate', instruction)),
+        onAction && (() => onAction('previous')),
     );
     const [now, setNow] = useState(Date.now);
     useEffect(() => {
@@ -287,13 +298,20 @@ export default function VideoCard({
                         )}
                         {exportButton}
                         {state === 'ready' && onAction && (
-                            <IconButton
-                                label={`Try a different version of video: ${artifact.title}`}
-                                tooltip="Try a different version"
-                                icon={<ArrowPathIcon />}
-                                variant="ghost"
-                                size="sm"
-                                clickAction={() => onAction('regenerate')}
+                            <DropdownMenu
+                                presentation="popover"
+                                alignment="end"
+                                renderTrigger={(props) => (
+                                    <IconButton
+                                        {...props}
+                                        label={`Video versions: ${artifact.title}`}
+                                        tooltip="Versions"
+                                        icon={<ArrowPathIcon />}
+                                        variant="ghost"
+                                        size="sm"
+                                    />
+                                )}
+                                items={versions.items}
                             />
                         )}
                         {/* Keep the action mounted so Cancel → Retry/Open large preserves keyboard focus. */}
@@ -337,6 +355,7 @@ export default function VideoCard({
                         )}
                     </VStack>
                 </section>
+                {state === 'ready' && versions.box}
                 {drafting && (artifact.cutRows?.length || artifact.drawing) && (
                     <ol className="video-cut-rows" aria-live="polite" aria-label="Cuts">
                         {artifact.drawing && (

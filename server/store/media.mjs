@@ -148,7 +148,8 @@ export const media = {
             .run(conversation, id);
         return result.changes ? this.artifact(conversation, id) : null;
     },
-    // A visual's current version moves into its single previous slot; the frozen input records the instruction.
+    // The current version moves into the single previous slot (a video's keeps its id, attempt and cuts on disk);
+    // the frozen input records the instruction.
     regenerateArtifact(conversation, id, instruction) {
         const artifact = this.artifact(conversation, id);
         if (
@@ -166,19 +167,22 @@ export const media = {
         });
         const result = this.db
             .prepare(
-                "UPDATE artifacts SET id=?,status='pending',previous=CASE WHEN kind='visual' THEN json_object('source',source,'title',title,'description',description) END,source=NULL,error=NULL,duration=NULL,input=?,attempt=? WHERE conversation=? AND id=? AND status='ready'",
+                "UPDATE artifacts SET id=?,status='pending',previous=json_object('id',id,'attempt',attempt,'source',source,'title',title,'description',description,'duration',duration),source=NULL,error=NULL,duration=NULL,input=?,attempt=? WHERE conversation=? AND id=? AND status='ready'",
             )
             .run(next, input, artifact.kind === 'video' ? randomUUID() : null, conversation, id);
         return result.changes ? this.artifact(conversation, next) : null;
     },
-    // Swaps a ready visual's current and previous versions; SQLite reads every right-hand value from the old row.
+    // Swaps a ready visual's or video's current and previous versions; SQLite reads every right-hand value from the
+    // old row. A video takes back its own id and attempt, so its library entry, cuts and usage follow it.
     switchVersion(conversation, id) {
+        const previous = this.artifact(conversation, id)?.previous;
+        const next = (previous && JSON.parse(previous).id) || id;
         const result = this.db
             .prepare(
-                "UPDATE artifacts SET source=previous->>'source',title=previous->>'title',description=previous->>'description',previous=json_object('source',source,'title',title,'description',description) WHERE conversation=? AND id=? AND kind='visual' AND status='ready' AND previous IS NOT NULL",
+                "UPDATE artifacts SET id=COALESCE(previous->>'id',id),attempt=previous->>'attempt',source=previous->>'source',title=previous->>'title',description=previous->>'description',duration=previous->>'duration',previous=json_object('id',id,'attempt',attempt,'source',source,'title',title,'description',description,'duration',duration) WHERE conversation=? AND id=? AND kind IN ('visual','video') AND status='ready' AND previous IS NOT NULL",
             )
             .run(conversation, id);
-        return result.changes ? this.artifact(conversation, id) : null;
+        return result.changes ? this.artifact(conversation, next) : null;
     },
     // `origin` is the title of the conversation still holding this video, or null once it is deleted or regenerated.
     library() {
