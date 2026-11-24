@@ -95,9 +95,28 @@ export const MARK_SUGGESTIONS = {
         required: ['suggestions'],
     },
 };
-export const QUICK_TOOLS = [NAME_CONVERSATION, RECORD_VERDICTS, MARK_SUGGESTIONS].map(
-    (t) => t.name,
-);
+export const CONFIRM_MERGES = {
+    name: 'confirm_merges',
+    description:
+        'Record which pairs name the same concept or topic. Call it exactly once; an empty list when none do.',
+    parameters: {
+        type: 'object',
+        properties: {
+            same: {
+                type: 'array',
+                items: { type: 'integer' },
+                description: 'The numbers of the pairs whose two names mean the same thing.',
+            },
+        },
+        required: ['same'],
+    },
+};
+export const QUICK_TOOLS = [
+    NAME_CONVERSATION,
+    RECORD_VERDICTS,
+    MARK_SUGGESTIONS,
+    CONFIRM_MERGES,
+].map((t) => t.name);
 
 const CALLS = /<tool_call>([\s\S]*?)(?:<\/tool_call>|$)/g;
 

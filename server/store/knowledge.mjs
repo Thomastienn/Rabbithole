@@ -231,11 +231,16 @@ export const knowledge = {
             return true;
         });
     },
-    // Names resolve case-insensitively to existing rows; a link needs both ends in the graph after this reply's concepts are added.
+    // Names resolve case-insensitively to existing rows or aliases; a link needs both ends in the graph after this reply's concepts are added.
     // Every concept in the reply was met there; the message id makes it count once per reply.
+    // Returns the concept and topic names this call created, for the automatic merge check (ADR 0022).
     addGraph({ concepts, links }, message = null) {
+        const added = { concepts: [], topics: [] };
         const id = (table, name) => {
-            this.db.prepare(`INSERT OR IGNORE INTO ${table}(name) VALUES (?)`).run(name);
+            if (
+                this.db.prepare(`INSERT OR IGNORE INTO ${table}(name) VALUES (?)`).run(name).changes
+            )
+                added[table].push(name);
             return this.db.prepare(`SELECT id FROM ${table} WHERE name=?`).get(name).id;
         };
         this.transaction(() => {
@@ -245,7 +250,7 @@ export const knowledge = {
                 for (const t of c.topics)
                     this.db
                         .prepare('INSERT OR IGNORE INTO concept_topics VALUES (?,?)')
-                        .run(concept, id('topics', t));
+                        .run(concept, this.topic(t)?.id ?? id('topics', t));
             }
             const find = (name) => this.concept(name)?.id;
             for (const l of links) {
@@ -257,6 +262,53 @@ export const knowledge = {
                         .run(a, b, l.kind);
             }
         });
+        return added;
+    },
+    topic(name) {
+        return this.db
+            .prepare(
+                'SELECT id, name FROM topics WHERE id=(SELECT id FROM topics WHERE name=? UNION ALL SELECT topic FROM topic_aliases WHERE name=? LIMIT 1)',
+            )
+            .get(name, name);
+    },
+    // A topic merge moves the other topic's concepts to the kept one and keeps its name as an alias.
+    mergeTopics(from, into) {
+        this.transaction(() => {
+            this.db
+                .prepare(
+                    'INSERT OR IGNORE INTO concept_topics SELECT concept, ? FROM concept_topics WHERE topic=?',
+                )
+                .run(into.id, from.id);
+            this.db.prepare('DELETE FROM concept_topics WHERE topic=?').run(from.id);
+            this.db.prepare('UPDATE topic_aliases SET topic=? WHERE topic=?').run(into.id, from.id);
+            this.db
+                .prepare('INSERT INTO topic_aliases(name,topic) VALUES (?,?)')
+                .run(from.name, into.id);
+            this.db.prepare('DELETE FROM topics WHERE id=?').run(from.id);
+        });
+    },
+    // Automatic merge (ADR 0022): the name with more evidence stays, the older (lower id) on a tie, and the other becomes its alias.
+    // A concept's evidence is its evidence and observation rows; a topic's is its concepts. Null when both already name one row.
+    mergeDuplicate(kind, a, b) {
+        const topic = kind === 'topic';
+        const weight = topic
+            ? (id) =>
+                  this.db.prepare('SELECT COUNT(*) AS n FROM concept_topics WHERE topic=?').get(id)
+                      .n
+            : (id) =>
+                  this.db
+                      .prepare(
+                          'SELECT (SELECT COUNT(*) FROM evidence WHERE concept=?)+(SELECT COUNT(*) FROM observations WHERE concept=?) AS n',
+                      )
+                      .get(id, id).n;
+        const rows = [a, b].map((name) => (topic ? this.topic(name) : this.concept(name)));
+        if (!rows[0] || !rows[1] || rows[0].id === rows[1].id) return null;
+        const [kept, merged] = rows
+            .map((r) => ({ ...r, n: weight(r.id) }))
+            .sort((x, y) => y.n - x.n || x.id - y.id);
+        if (topic) this.mergeTopics(merged, kept);
+        else this.mergeConcepts(merged.name, kept.name);
+        return { kept: kept.name, merged: merged.name };
     },
     // No selection: the tutor's own notes block, so no call is recorded and the reply shows no suggestions usage.
     finishSuggestions(conversation, message, passages, usage, selection, groundwork = []) {
