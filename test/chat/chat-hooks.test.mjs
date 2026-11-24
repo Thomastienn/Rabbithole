@@ -493,3 +493,40 @@ test('polling refreshes media usage during an owning reply stream while preservi
         await sending;
     });
 });
+
+test('a question typed while the first reply starts becomes the next draft and is never cleared or sent', async (t) => {
+    const created = deferred();
+    let reply;
+    const page = await mount(t, ({ path }, { data, state }) => {
+        if (path === '/api/trees') return created.promise;
+        if (path === '/api/trees/c/messages')
+            return new Response(
+                new ReadableStream({
+                    start(controller) {
+                        reply = controller;
+                    },
+                }),
+            );
+    });
+    let creating;
+    await page.act(async () => {
+        creating = page.current.stream.create('Why fungi?');
+    });
+    await page.act(async () => page.current.stream.setDraft('first', 'And lichens?'));
+    await page.act(async () => {
+        page.data.set('c', conversation('c'));
+        page.state.trees.push(summary('c'));
+        created.resolve(json(conversation('c')));
+    });
+    assert.equal(page.current.stream.drafts.c, 'And lichens?');
+    await page.act(async () => {
+        page.data.set('c', {
+            ...conversation('c'),
+            messages: [{ id: 'q', role: 'user', text: 'Why fungi?', status: 'completed' }],
+        });
+        reply.close();
+        await creating;
+    });
+    assert.equal(page.current.stream.drafts.c, 'And lichens?');
+    assert.equal(page.calls.filter((c) => c.path.endsWith('/messages')).length, 1);
+});

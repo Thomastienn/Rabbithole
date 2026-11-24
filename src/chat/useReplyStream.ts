@@ -130,7 +130,8 @@ export function useReplyStream(
             });
             if (isRemoved(id)) return;
             if (!retry) {
-                setDrafts((d) => ({ ...d, [id]: '' }));
+                // Only the sent question goes; anything typed since the reply began stays.
+                setDrafts((d) => ({ ...d, [id]: d[id] === text ? '' : d[id] }));
                 setPendingFiles((p) => ({ ...p, [id]: [] }));
             }
             for await (const event of events) {
@@ -225,7 +226,7 @@ export function useReplyStream(
                         c.setOverview(false);
                         c.setExpanded(false);
                         await select(next.id);
-                        setDrafts((d) => ({ ...d, first: '', [next.id]: question }));
+                        setDrafts((d) => ({ ...d, first: '', [next.id]: d.first || question }));
                         setPendingFiles((p) => ({ ...p, first: [], [next.id]: files }));
                     },
                 },

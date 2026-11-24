@@ -153,3 +153,41 @@ test('with no chat model chosen, the first question asks for one in Settings', a
     assert.deepEqual(opened, [open]);
     assert.equal(button(container, 'Send').disabled, true);
 });
+
+test('while the first question is sending, the box stays editable but Send, Enter and Attach wait', async (t) => {
+    const submitted = [];
+    function Fixture() {
+        const [draft, setDraft] = useState('');
+        return h(FirstQuestion, {
+            draft,
+            setDraft,
+            files: [],
+            setFiles() {},
+            busy: true,
+            available: true,
+            modelMenu: null,
+            submit: (text) => submitted.push(text),
+            modelError: '',
+            loadModels() {},
+            noModels: false,
+        });
+    }
+    const { container, act, cleanup } = await render(h(Fixture), ui);
+    t.after(cleanup);
+    const editor = container.querySelector('[role=textbox]');
+    assert.equal(editor.getAttribute('contenteditable'), 'true');
+    assert.equal(editor.getAttribute('aria-disabled'), null);
+    await act(async () => {
+        editor.textContent = 'And lichens?';
+        editor.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    assert.equal(button(container, 'Send').disabled, true);
+    assert.equal(button(container, 'Attach files').disabled, true);
+    await act(async () =>
+        editor.dispatchEvent(
+            new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+        ),
+    );
+    assert.deepEqual(submitted, []);
+    assert.equal(container.querySelector('[role=textbox]').textContent, 'And lichens?');
+});
