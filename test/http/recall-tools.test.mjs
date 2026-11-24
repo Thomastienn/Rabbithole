@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fakeOpenAI, streamReply, streamToolCalls } from '../support/fake-openai.mjs';
 import { open } from '../support/openai-kit.mjs';
+import { recallTools } from '../../server/tools/recall.mjs';
 
 // Lock-like wording shares one direction, so a reworded query matches only through the embedder.
 const LOCKING = /mutex|exclusive|one thread/i;
@@ -138,7 +139,15 @@ test('recall tools return their shapes, mix embedding and keyword matches, and a
             .every((m) => m.embedding),
     );
 
-    const concept = await env.call('look_up_concept', { description: 'one thread at a time' });
+    // One call answers several items, in order, one entry each.
+    const { lookups } = await env.call('look_up_concept', {
+        concepts: ['one thread at a time', 'Semaphore'],
+    });
+    assert.deepEqual(
+        lookups.map((l) => l.query),
+        ['one thread at a time', 'Semaphore'],
+    );
+    const [concept, semaphore] = lookups;
     assert.equal(concept.concepts[0].name, 'Mutex');
     assert.deepEqual(Object.keys(concept.concepts[0]).sort(), [
         'familiarity',
@@ -151,14 +160,15 @@ test('recall tools return their shapes, mix embedding and keyword matches, and a
     assert.deepEqual(concept.concepts[0].links, [
         { from: 'Mutex', to: 'Semaphore', kind: 'builds on' },
     ]);
-    const semaphore = await env.call('look_up_concept', { description: 'Semaphore' });
     assert.equal(semaphore.concepts[0].name, 'Semaphore');
     assert.equal(typeof semaphore.concepts[0].guess, 'number');
+    // Embedder down: an unobserved concept and an item with no match are both unknown.
     env.embedder.down = true;
-    assert.equal(
-        (await env.call('look_up_concept', { description: 'Soil' })).concepts[0].familiarity,
-        'unknown',
-    );
+    const [soil, missing] = (
+        await env.call('look_up_concept', { concepts: ['Soil', 'Quasar spectroscopy'] })
+    ).lookups;
+    assert.equal(soil.concepts[0].familiarity, 'unknown');
+    assert.deepEqual(missing, { query: 'Quasar spectroscopy', familiarity: 'unknown' });
 
     assert.deepEqual(await env.call('read_conversation', { conversation_id: child.id }), {
         title: 'Why only one?',
@@ -201,14 +211,25 @@ test('each recall tool has its own Settings switch, on by default', async (t) =>
             { name: 'read_conversation', label: 'Read earlier conversations', enabled: true },
         ],
     );
-    await env.call('look_up_concept', { description: 'x' });
+    await env.call('look_up_concept', { concepts: ['x'] });
     assert.deepEqual(
         env.offered().filter((name) => recall.includes(name)),
         recall,
     );
     for (const name of recall) {
         await env.post('/api/settings/tutor-tools', { name, enabled: false });
-        await env.call('look_up_concept', { description: 'x' }).catch(() => {});
+        await env.call('look_up_concept', { concepts: ['x'] }).catch(() => {});
         assert.ok(!env.offered().includes(name), `${name} is switched off`);
     }
+});
+
+test('look_up_concept refuses an empty list and one longer than 10', async (t) => {
+    const env = await launch(t);
+    const { lookUpConcept } = recallTools({ store: env.store });
+    for (const concepts of [[], Array(11).fill('Mutex'), undefined, ['']])
+        await assert.rejects(lookUpConcept({ concepts }, {}), /Give concepts/);
+    assert.equal(
+        JSON.parse(await lookUpConcept({ concepts: Array(10).fill('Mutex') }, {})).lookups.length,
+        10,
+    );
 });
