@@ -238,12 +238,15 @@ export default function Passage({
                 piece.classList.toggle('lit', lit.has(piece.getAttribute('data-u')!)),
             );
     }
+    // Only an overlap of explored passages has no single target; elsewhere the innermost passage answers.
+    const several = (under: ReturnType<typeof underlinesAt>) =>
+        !!under[0]?.u.child && under.filter((x) => x.u.child).length > 1;
     // A suggestion's saved brief explanation, else its child's first reply; never a model call.
     function point(target: EventTarget | null, focused: boolean) {
         const under = underlinesAt(target);
         if (!focused) light(under.map((x) => x.u));
-        // A focused stop is its own passage; an overlap the pointer rests on has no single tip.
-        const { piece, u } = (focused || under.length === 1) && under[0] ? under[0] : {};
+        // A focused stop is its own passage; an overlap of chats the pointer rests on has no single tip.
+        const { piece, u } = (focused || !several(under)) && under[0] ? under[0] : {};
         const p =
             u &&
             suggestions?.status === 'ready' &&
@@ -275,12 +278,14 @@ export default function Passage({
     function activate(target: EventTarget, keyboard: boolean) {
         const under = underlinesAt(target);
         if (!under.length) return false;
-        if (!keyboard && under.length > 1) {
+        if (!keyboard && several(under)) {
             setTip(undefined);
             setPicker({
                 at: below(under[0].piece),
                 piece: under[0].piece,
-                branches: under.map(({ u }) => ({ child: u.child!, ...addresses.get(u.child!) })),
+                branches: under
+                    .filter(({ u }) => u.child)
+                    .map(({ u }) => ({ child: u.child!, ...addresses.get(u.child!) })),
             });
             return true;
         }
