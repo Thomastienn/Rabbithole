@@ -24,6 +24,9 @@ const FIELDS = new Set([
     'engine',
     'requestId',
     'request',
+    'piece',
+    'choice',
+    'reason',
 ]);
 
 // Only diagnostic metadata reaches the terminal; unknown fields are dropped.
