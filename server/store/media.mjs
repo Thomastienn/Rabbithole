@@ -89,11 +89,19 @@ export const media = {
                 .run(writeSaved(data), conversation, id, attempt).changes > 0
         );
     },
+    // The current attempt's clock starts with its job; a Retry or new version runs a new job, so it restarts.
+    videoStarted(conversation, id, attempt, at = Date.now()) {
+        this.db
+            .prepare(
+                "UPDATE artifacts SET started=?,playableAt=NULL WHERE conversation=? AND id=? AND attempt=? AND kind='video' AND status='pending'",
+            )
+            .run(at, conversation, id, attempt);
+    },
     finishVideo(conversation, id, attempt, { title, description, duration } = {}, error = null) {
         this.transaction(() => {
             const done = this.db
                 .prepare(
-                    "UPDATE artifacts SET status=?,title=COALESCE(?,title),description=COALESCE(?,description),duration=?,error=? WHERE conversation=? AND id=? AND attempt=? AND kind='video' AND status='pending'",
+                    "UPDATE artifacts SET status=?,title=COALESCE(?,title),description=COALESCE(?,description),duration=?,error=?,playableAt=? WHERE conversation=? AND id=? AND attempt=? AND kind='video' AND status='pending'",
                 )
                 .run(
                     error ? 'failed' : 'ready',
@@ -101,6 +109,7 @@ export const media = {
                     error ? null : description,
                     error ? null : duration,
                     error,
+                    error ? null : Date.now(),
                     conversation,
                     id,
                     attempt,

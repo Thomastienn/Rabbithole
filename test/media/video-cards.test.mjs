@@ -264,6 +264,7 @@ test('a finished inline video hides its token breakdown until the ⋯ button ope
             output,
             cacheRead,
             reasoning = null,
+            time = null,
         ) => ({
             stage,
             model,
@@ -273,16 +274,25 @@ test('a finished inline video hides its token breakdown until the ⋯ button ope
             output,
             cacheRead,
             reasoning,
+            time,
         });
         return Response.json([
-            row('plan', 'smart', 2, 2, 1200, 300, 100, 250),
-            row('repair', 'chat', 2, 1, 50, 5, 0),
-            row('fix', 'chat', 1, 0, 0, 0, 0),
+            row('plan', 'smart', 2, 2, 1200, 300, 100, 250, 42000),
+            row('repair', 'chat', 2, 1, 50, 5, 0, null, 372000),
+            row('fix', 'chat', 1, 0, 0, 0, 0, null, 0),
             row(null, 'chat', 3, 3, 9, 9, 9),
         ]);
     });
     const { container, act, cleanup } = await render(
-        h(VideoCard, { artifact: video('done', 'ready'), inline: true }),
+        h(
+            'div',
+            null,
+            h(VideoCard, {
+                artifact: video('done', 'ready', { started: 1000, playableAt: 373000 }),
+                inline: true,
+            }),
+            h(VideoCard, { artifact: video('old', 'ready'), inline: true }),
+        ),
         ui,
     );
     t.after(cleanup);
@@ -293,18 +303,26 @@ test('a finished inline video hides its token breakdown until the ⋯ button ope
     await act(async () => more.click());
     assert.equal(more.getAttribute('aria-expanded'), 'true');
     assert.deepEqual(urls, ['/api/trees/root/artifacts/done/usage']);
+    assert.equal(
+        container.querySelector('.video-usage > div > *').textContent,
+        'Made in 6 min 12 s',
+    );
     assert.deepEqual(
         [...container.querySelectorAll('.video-usage tr')].map((tr) =>
             [...tr.children].map((c) => c.textContent),
         ),
         [
-            ['Stage', 'Model', 'Calls', 'Input', 'Output', 'Reasoning', 'Cached'],
-            ['Plan', 'smart', '2', '1,200', '300', '250', '100'],
-            ['Repair', 'chat', '2, 1 not reported', '50', '5', '—', '0'],
-            ['Fix', 'chat', '1, 1 not reported', 'Not reported'],
-            ['Not recorded', 'chat', '3', '9', '9', '—', '9'],
+            ['Stage', 'Model', 'Calls', 'Input', 'Output', 'Reasoning', 'Cached', 'Time'],
+            ['Plan', 'smart', '2', '1,200', '300', '250', '100', '42 s'],
+            ['Repair', 'chat', '2, 1 not reported', '50', '5', '—', '0', '6 min 12 s'],
+            ['Fix', 'chat', '1, 1 not reported', 'Not reported', '0 s'],
+            ['Not recorded', 'chat', '3', '9', '9', '—', '9', '—'],
         ],
     );
     await act(async () => more.click());
     assert.equal(container.querySelector('.video-usage table'), null);
+    // A video made before times were saved shows no time line.
+    await act(async () => button(container, 'Token use: old').click());
+    assert.ok(container.querySelector('.video-usage table'));
+    assert.doesNotMatch(container.textContent, /Made in/);
 });

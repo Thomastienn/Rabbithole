@@ -92,6 +92,8 @@ export default function VideoCard({
         | 'cuts'
         | 'startedAt'
         | 'phaseStartedAt'
+        | 'started'
+        | 'playableAt'
         | 'cutRows'
         | 'drawing'
     > & { error?: string | null };
@@ -386,6 +388,11 @@ export default function VideoCard({
                     <VideoUsage
                         url={`/api/trees/${artifact.conversation}/artifacts/${artifact.id}/usage`}
                         title={artifact.title}
+                        made={
+                            artifact.started && artifact.playableAt
+                                ? artifact.playableAt - artifact.started
+                                : null
+                        }
                     />
                 )}
                 {exported && enlarged && (
