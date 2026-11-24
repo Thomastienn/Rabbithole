@@ -69,14 +69,14 @@ export function useTreeActions(
     async function videoAction(
         id: string,
         artifactId: string,
-        action: 'cancel' | 'retry' | 'regenerate' | 'install',
+        action: 'cancel' | 'retry' | 'regenerate' | 'install' | 'previous',
+        instruction?: string,
     ) {
         setError('');
         try {
-            const next: Artifact = await api(
-                `/api/trees/${id}/artifacts/${artifactId}/${action}`,
-                {},
-            );
+            const next: Artifact = await api(`/api/trees/${id}/artifacts/${artifactId}/${action}`, {
+                instruction,
+            });
             const focused =
                 document.activeElement
                     ?.closest('[data-artifact]')

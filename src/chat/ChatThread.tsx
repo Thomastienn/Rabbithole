@@ -156,8 +156,8 @@ export default function ChatThread({
                         onVisualPart={openVisualPart}
                         visualBranches={visualBranches}
                         discussionBranches={discussionBranches}
-                        onArtifactAction={(artifactId, action) =>
-                            videoAction(tree.id, artifactId, action)
+                        onArtifactAction={(artifactId, action, instruction) =>
+                            videoAction(tree.id, artifactId, action, instruction)
                         }
                         onDiscussionReply={replyDiscussion}
                         inlineArtifacts={
@@ -281,9 +281,10 @@ export default function ChatThread({
                                     }
                                     onPart={openVisualPart}
                                     onRetry={() => videoAction(tree.id, artifact.id, 'retry')}
-                                    onRegenerate={() =>
-                                        videoAction(tree.id, artifact.id, 'regenerate')
+                                    onRegenerate={(instruction) =>
+                                        videoAction(tree.id, artifact.id, 'regenerate', instruction)
                                     }
+                                    onPrevious={() => videoAction(tree.id, artifact.id, 'previous')}
                                 />
                             ) : artifact.kind === 'video' ? (
                                 <VideoCard
