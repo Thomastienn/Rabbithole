@@ -1,4 +1,4 @@
-import { type DragEvent, useEffect, useRef, useState } from 'react';
+import { type DragEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { Popover } from '@astryxdesign/core/Popover';
 import {
@@ -55,6 +55,11 @@ export const noModelNote = (
     </p>
 );
 
+// While a reply is in flight Enter sends nothing and keeps the draft; an IME still commits with it.
+export const holdEnter = (e: KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) e.preventDefault();
+};
+
 // Paperclip, paste and drop all add here: unsupported files are refused on the spot, the rest join the tray.
 // Spread `zone` on the composer; render `notices` (refusal line, drop note) inside its frame.
 export function useAttach(files: File[], setFiles: (files: File[]) => void, isDisabled = false) {
@@ -63,6 +68,7 @@ export function useAttach(files: File[], setFiles: (files: File[]) => void, isDi
     // Enter/leave fire for every child the drag crosses; count them so the state does not flicker.
     const depth = useRef(0);
     const add = (more: File[]) => {
+        if (isDisabled) return;
         const ok = more.filter((f) => canAttach(f.type));
         setRefused(more.filter((f) => !canAttach(f.type)).map((f) => f.name));
         if (ok.length) setFiles([...files, ...ok]);
