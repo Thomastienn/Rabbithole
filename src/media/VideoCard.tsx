@@ -92,6 +92,8 @@ export default function VideoCard({
         | 'cuts'
         | 'startedAt'
         | 'phaseStartedAt'
+        | 'started'
+        | 'playableAt'
         | 'cutRows'
         | 'drawing'
     > & { error?: string | null };
