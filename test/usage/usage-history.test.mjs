@@ -399,6 +399,10 @@ test('a video keeps its start and playable times across restart; a Retry or new 
     const input = JSON.stringify({ title: 'Winners' });
     let video = store.pendingArtifact(tree.id, message, 'Winners', 'Two winners.', 'video', input);
     store.videoStarted(tree.id, video.id, video.attempt, 1000);
+    // A call records at its start and again at its end; the stage's time is the span between them.
+    for (const at of [1000, 5000])
+        store.record(`video:${video.attempt}:plan`, 'video', null, null, at, null, 'plan');
+    assert.equal(store.videoUsage(tree.id, video.id)[0].time, 4000);
     store.finishVideo(tree.id, video.id, video.attempt, {
         description: 'Two winners.',
         duration: 2,
