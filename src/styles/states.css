@@ -458,7 +458,7 @@
         animation: none;
     }
 }
-/* A saved brief explanation, shown while a suggestion underline is pointed at or focused. */
+/* A saved brief explanation or a branch preview, shown while an underline is pointed at or focused. */
 .brief-tip {
     position: absolute;
     z-index: 3;
@@ -469,4 +469,11 @@
     border-radius: var(--radius-container);
     background: var(--color-background-popover);
     font-family: var(--rabbithole-font-reading);
+}
+.brief-tip .tip-question {
+    display: block;
+    overflow: hidden;
+    font-weight: var(--font-weight-semibold);
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }

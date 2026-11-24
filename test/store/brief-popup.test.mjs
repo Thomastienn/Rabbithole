@@ -7,13 +7,17 @@ import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
 const { excerpt } = await import('../../src/markdown/markdownText.ts');
 
-test('excerpt keeps short text and cuts long text at a word boundary with an ellipsis', () => {
+test('excerpt keeps a short first paragraph and cuts a long one at a word boundary with an ellipsis', () => {
     assert.equal(excerpt('A **heap** is a tree.'), 'A heap is a tree.');
+    assert.equal(excerpt('## Heaps\n\nA heap is a tree.\n\nIt sorts.'), 'A heap is a tree.');
+    const long = excerpt(`${'word '.repeat(80)}end`);
+    assert.ok(long.length <= 281 && long.length > 270, 'cut at about 280 characters');
+    assert.match(long, /^word( word)*…$/);
     assert.equal(excerpt('one two three four', 9), 'one two…');
     assert.equal(excerpt('abcdefghijkl', 5), 'abcde…');
 });
 
-test('a conversation carries its saved brief explanations and branched suggestions a preview of their child', () => {
+test("a conversation carries its saved brief explanations and each passage branch's question and child reply start", () => {
     const store = new Store(join(mkdtempSync(join(tmpdir(), 'rabbithole-popup-')), 'db.sqlite'));
     const root = store.create('Root');
     store.message(root.id, 'user', 'What is heapsort?', 'completed');
@@ -46,6 +50,11 @@ test('a conversation carries its saved brief explanations and branched suggestio
         `A **heap** keeps ${'the largest item on top '.repeat(20)}`,
         'completed',
     );
+    const mine = store.branch(
+        store.tree(root.id),
+        { messageId: reply, start: 0, end: 8, text: 'Heapsort', question: 'And this?' },
+        '',
+    );
     store.saveBrief({ message: reply, start: 0, end: 8, text: 'Heapsort' }, 'Sorting with a heap.');
     const observations = () => store.db.prepare('SELECT COUNT(*) AS n FROM observations').get().n;
     const before = observations();
@@ -54,10 +63,18 @@ test('a conversation carries its saved brief explanations and branched suggestio
         tree.briefs.map((b) => ({ ...b })),
         [{ message: reply, start: 0, end: 8, explanation: 'Sorting with a heap.' }],
     );
-    const [heap, sift] = tree.suggestions[0].passages;
-    assert.match(heap.preview, /^A heap keeps the largest item on top .* on…$/);
-    assert.ok(heap.preview.length <= 201);
-    assert.equal(sift.preview, undefined, 'an unexplored suggestion has none');
+    assert.deepEqual(tree.branchPreviews[child.id].question, 'Why?');
+    assert.match(
+        tree.branchPreviews[child.id].preview,
+        /^A heap keeps the largest item on top .* the…$/,
+    );
+    assert.ok(tree.branchPreviews[child.id].preview.length <= 281);
+    assert.equal(tree.branchPreviews[mine.id].question, 'And this?');
+    assert.equal(
+        tree.branchPreviews[mine.id].preview,
+        undefined,
+        'a child without a reply has none',
+    );
     assert.equal(observations(), before, 'reading saved explanations records nothing');
     store.close();
 });

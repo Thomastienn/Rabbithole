@@ -76,14 +76,12 @@ export function conversationContext(conversation: {
 export type Suggestions = {
     message: string;
     status: 'pending' | 'ready' | 'failed';
-    // preview: the start of a branched passage's child's first reply.
     passages: {
         start: number;
         end: number;
         text: string;
         child?: string;
         concept?: string;
-        preview?: string;
     }[];
     // Background concepts the reply relies on without naming, at most three.
     groundwork?: string[];

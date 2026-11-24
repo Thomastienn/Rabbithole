@@ -55,7 +55,15 @@ export default function Passage({
     onDiscussionReply?: DiscussionReply;
     suggestions?: Suggestions;
     briefs?: Brief[];
-    branched: { start: number; end: number; text: string; child: string; title?: string }[];
+    branched: {
+        start: number;
+        end: number;
+        text: string;
+        child: string;
+        title?: string;
+        question?: string;
+        preview?: string;
+    }[];
     onBranch: (anchor: Anchor, origin: React.RefObject<HTMLElement | null>) => void;
     onOpenChild: (id: string) => void;
     reveal?: Source;
@@ -72,6 +80,7 @@ export default function Passage({
         start: number;
         text: string;
         brief: boolean;
+        question?: string;
         at: React.CSSProperties;
         piece?: HTMLElement;
     }>();
@@ -238,26 +247,29 @@ export default function Passage({
                 piece.classList.toggle('lit', lit.has(piece.getAttribute('data-u')!)),
             );
     }
-    // A suggestion's saved brief explanation, else its child's first reply; never a model call.
+    // A branch's question over its child's first reply, else the saved brief; a suggestion's saved brief. Never a model call.
     function point(target: EventTarget | null, focused: boolean) {
         const under = underlinesAt(target);
         if (!focused) light(under.map((x) => x.u));
         // A focused stop is its own passage; an overlap the pointer rests on has no single tip.
         const { piece, u } = (focused || under.length === 1) && under[0] ? under[0] : {};
-        const p =
-            u &&
-            suggestions?.status === 'ready' &&
-            suggestions.passages.find((p) => p.start === u.start && p.end === u.end);
-        const brief = p && briefs?.find((b) => b.start === p.start && b.end === p.end)?.explanation;
-        const text = brief ?? (p && u.child ? p.preview : undefined);
-        if (!text || !piece || !u) return setTip(undefined);
+        const b = u?.child ? branched.find((x) => x.child === u.child) : undefined;
+        const saved = u && briefs?.find((x) => x.start === u.start && x.end === u.end)?.explanation;
+        const brief = b?.preview ? undefined : saved;
+        const text = b?.preview ?? brief ?? '';
+        const question = b?.question;
+        if ((!text && !question) || !piece || !u) return setTip(undefined);
         setTip((t) =>
-            t?.start === u.start && t.text === text && !!t.piece === focused
+            t?.start === u.start &&
+            t.text === text &&
+            t.question === question &&
+            !!t.piece === focused
                 ? t
                 : {
                       start: u.start,
                       text,
                       brief: !!brief,
+                      question,
                       at: below(piece),
                       piece: focused ? piece : undefined,
                   },
@@ -423,6 +435,7 @@ export default function Passage({
                     style={tip.at}
                     onPointerLeave={() => setTip(undefined)}
                 >
+                    {tip.question && <span className="tip-question">{tip.question}</span>}
                     {tip.brief ? renderInline(tip.text) : tip.text}
                 </Text>
             )}
