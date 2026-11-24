@@ -24,6 +24,9 @@ const FIELDS = new Set([
     'engine',
     'requestId',
     'request',
+    'piece',
+    'choice',
+    'reason',
     // Automatic merges log both names and the kept one (ADR 0022).
     'names',
     'kept',

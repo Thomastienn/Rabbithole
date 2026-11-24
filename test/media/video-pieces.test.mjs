@@ -454,8 +454,11 @@ test('a wrong piece choice is rewritten whole, since a code patch keeps the choi
     };
     const inputs = [];
     const answers = [
-        { pieces: [{ name: 'Winner', use: 'reuse', id: 'gone' }], code: 'const unused = 1;' },
-        { pieces: [{ name: 'Winner', use: 'reuse', id: 'w' }], code: '' },
+        {
+            pieces: [{ name: 'Winner', use: 'reuse', reason: 'fits', id: 'gone' }],
+            code: 'const unused = 1;',
+        },
+        { pieces: [{ name: 'Winner', use: 'reuse', reason: 'fits', id: 'w' }], code: '' },
     ];
     const { choices } = await writeSetPieces({
         plan,

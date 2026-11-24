@@ -5,7 +5,7 @@ import { dirname } from 'node:path';
 
 const ARTIFACTS = `CREATE TABLE IF NOT EXISTS artifacts (id TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), message TEXT NOT NULL,
         kind TEXT NOT NULL CHECK(kind IN ('mermaid','video','visual','discussion')), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed','canceled','interrupted')),
-        title TEXT NOT NULL, description TEXT NOT NULL, source TEXT, error TEXT, created INTEGER NOT NULL, input TEXT, attempt TEXT, duration REAL, position INTEGER, side TEXT,
+        title TEXT NOT NULL, description TEXT NOT NULL, source TEXT, error TEXT, created INTEGER NOT NULL, input TEXT, attempt TEXT, duration REAL, position INTEGER, side TEXT, previous TEXT,
         FOREIGN KEY(message, conversation) REFERENCES messages(id, tree));
       CREATE INDEX IF NOT EXISTS artifacts_conversation ON artifacts(conversation, created);`;
 const BRANCHES = `CREATE TABLE IF NOT EXISTS branches (child TEXT PRIMARY KEY REFERENCES trees(id), parent TEXT NOT NULL REFERENCES trees(id), messageId TEXT NOT NULL REFERENCES messages(id), start INTEGER, end INTEGER, text TEXT NOT NULL, question TEXT NOT NULL, snapshot TEXT NOT NULL, artifactId TEXT, label TEXT, explanation TEXT, line INTEGER, speaker TEXT, discussion TEXT);`;
@@ -49,6 +49,9 @@ export function open(path) {
         // A visual's side beside the section after its position; NULL on older rows, which sit in the flow.
         if (!hasColumn('artifacts', 'side'))
             this.db.exec('ALTER TABLE artifacts ADD COLUMN side TEXT');
+        // A visual's single previous version as JSON {source,title,description}; NULL when it has none.
+        if (!hasColumn('artifacts', 'previous'))
+            this.db.exec('ALTER TABLE artifacts ADD COLUMN previous TEXT');
         for (const name of ['effort', 'working_effort']) {
             if (!hasColumn('trees', name))
                 this.db.exec(`ALTER TABLE trees ADD COLUMN ${name} TEXT`);
@@ -292,6 +295,10 @@ export function open(path) {
         // The true colours a piece keeps on reuse, as {role or name: hex}; older pieces have none (ADR 0009).
         if (!hasColumn('pieces', 'true_colors'))
             this.db.exec('ALTER TABLE pieces ADD COLUMN true_colors TEXT');
+        // Older versions of a piece, replaced by an improvement; the pieces row is the current one.
+        this.db.exec(
+            'CREATE TABLE IF NOT EXISTS piece_versions (piece TEXT NOT NULL REFERENCES pieces(id) ON DELETE CASCADE, name TEXT NOT NULL, look TEXT NOT NULL, props TEXT NOT NULL, source TEXT NOT NULL, source3d TEXT, roles TEXT NOT NULL, true_colors TEXT, parts TEXT, improved INTEGER NOT NULL)',
+        );
         // Discussion kind and reply positions migrate in place; existing rows keep their content and positions.
         this.transaction(() => this.rebuildArtifacts("'discussion'"));
         // Visual passages keep their source artifact and part instead of inventing reply offsets.

@@ -27,6 +27,8 @@ export type Artifact = ArtifactSummary & {
     position?: number | null;
     // A visual beside the section after its position; null sits in the flow.
     side?: 'left' | 'right' | null;
+    // A visual keeps one previous version, a switch away.
+    hasPrevious?: true;
     phase?:
         | 'planning'
         | 'pieces'

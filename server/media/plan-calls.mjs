@@ -169,7 +169,7 @@ export const PLAN_TEXT_TOOLS =
     '\nYou cannot call tools natively. Write each call as <tool_call>{"name": "<tool>", "arguments": {...}}</tool_call>, in order; no result comes back, so check each call against its rules before writing it. Tools: ';
 
 // One plan built from the smart model's calls into today's plan shape; each call is checked as it arrives.
-// pieces: an async (text) => [{name, look}] of the nearest saved pieces, given only while the library has pieces.
+// pieces: an async (text) => [{id, name, look}] of the nearest saved pieces, given only while the library has pieces.
 export function planBuilder({ exhibits = false, clips = false, pieces = null } = {}) {
     const plan = {
         title: undefined,
@@ -235,12 +235,11 @@ export function planBuilder({ exhibits = false, clips = false, pieces = null } =
         async find_pieces({ name, role }) {
             if (!text(name)) fail('name must name the object.');
             if (!text(role)) fail('role must say what the object is and does in this video.');
-            const matches = (await pieces(`${name}: ${role}`)).map((p) => ({
-                name: p.name,
-                look: p.look,
-            }));
+            const matches = await pieces(`${name}: ${role}`);
             found.set(name, matches);
-            return matches.length ? JSON.stringify(matches) : 'No saved pieces match.';
+            return matches.length
+                ? JSON.stringify(matches.map((p) => ({ name: p.name, look: p.look })))
+                : 'No saved pieces match.';
         },
         add_object(input) {
             if (!text(input.name)) fail('name must name the object.');
@@ -258,7 +257,12 @@ export function planBuilder({ exhibits = false, clips = false, pieces = null } =
                 (!text(input.referenceQuery) || input.referenceQuery.length > 200)
             )
                 fail('referenceQuery must be search words, at most 200 characters.');
-            brief.recurringObjects.push(pick(input, OBJECT_FIELDS));
+            // The adopted piece's library id, so the piece writer gets that exact piece's source.
+            const chosen = found.get(input.name)?.find((p) => p.name === input.piece);
+            brief.recurringObjects.push({
+                ...pick(input, OBJECT_FIELDS),
+                ...(chosen && { pieceId: chosen.id }),
+            });
             return 'Object added.';
         },
         add_term(input) {
