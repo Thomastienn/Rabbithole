@@ -53,9 +53,23 @@
     overflow: visible;
     pointer-events: none;
 }
-/* Topics are ground-coloured islands on the deep field; colour stays with the learning tree lines. */
-.knowledge-regions circle {
-    fill: var(--color-background-body);
+/* A topic hue, mixed toward the ink so it reads on light and dark variants. */
+.knowledge-regions path,
+.concept-point[data-hue] {
+    --topic: color-mix(
+        in oklch,
+        light-dark(oklch(0.5 0.13 var(--h)), oklch(0.8 0.12 var(--h))) 85%,
+        var(--color-text-primary)
+    );
+}
+/* The wide round stroke pads the hull past its concepts' rings; opacity keeps overlaps soft. */
+.knowledge-regions path {
+    fill: var(--topic);
+    stroke: var(--topic);
+    stroke-width: 44px;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    opacity: 0.14;
 }
 .topic-label {
     position: absolute;
@@ -106,6 +120,9 @@
     width: 14px;
     height: 14px;
 }
+.concept-point[data-hue] .fam {
+    --fam-ink: var(--topic);
+}
 .concept-point:hover:not([aria-pressed='true']) .fam {
     outline: 2px solid var(--color-border-emphasized);
     outline-offset: 3px;
@@ -130,25 +147,25 @@
     color: var(--rabbithole-paper);
     font-size: 15px;
 }
-/* Familiarity is ring form (empty, half, full), never hue: readable without colour. */
+/* Familiarity is ring form (empty, half, full), never hue: readable without colour. Hue shows the topic. */
 .fam {
     display: inline-block;
     flex: none;
     width: 10px;
     height: 10px;
-    border: 2px solid var(--rabbithole-paper);
+    border: 2px solid var(--fam-ink, var(--rabbithole-paper));
     border-radius: 50%;
     background: var(--color-background-muted);
 }
 .fam[data-fill='some'] {
     background: linear-gradient(
         90deg,
-        var(--rabbithole-paper) 50%,
+        var(--fam-ink, var(--rabbithole-paper)) 50%,
         var(--color-background-muted) 50%
     );
 }
 .fam[data-fill='full'] {
-    background: var(--rabbithole-paper);
+    background: var(--fam-ink, var(--rabbithole-paper));
 }
 .knowledge-key {
     position: absolute;

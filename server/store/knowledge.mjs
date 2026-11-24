@@ -1,6 +1,7 @@
 import { familiarity } from '../familiarity.mjs';
 import { blob, vector } from './embeddings.mjs';
 import { mentions } from '../neighbourhood.mjs';
+import { topicAnchors } from '../topicAnchors.mjs';
 
 const summary = (observations, met) => {
     const counts = [0, 0, 0, 0, 0, 0];
@@ -27,7 +28,7 @@ export const knowledge = {
     graph() {
         const concepts = this.db
             .prepare(
-                "SELECT c.id, c.name, COALESCE((SELECT json_group_array(t.name) FROM (SELECT t.name FROM concept_topics ct JOIN topics t ON t.id=ct.topic WHERE ct.concept=c.id ORDER BY t.name) t),'[]') AS topics FROM concepts c ORDER BY c.name",
+                "SELECT c.id, c.name, c.embedding, COALESCE((SELECT json_group_array(t.name) FROM (SELECT t.name FROM concept_topics ct JOIN topics t ON t.id=ct.topic WHERE ct.concept=c.id ORDER BY t.name) t),'[]') AS topics FROM concepts c ORDER BY c.name",
             )
             .all();
         const links = this.db
@@ -48,6 +49,7 @@ export const knowledge = {
                 .all()
                 .map((r) => [r.concept, r.n]),
         );
+        for (const c of concepts) c.topics = JSON.parse(c.topics);
         return {
             topics: this.db
                 .prepare('SELECT name FROM topics ORDER BY name')
@@ -55,10 +57,13 @@ export const knowledge = {
                 .map((t) => t.name),
             concepts: concepts.map((c) => ({
                 name: c.name,
-                topics: JSON.parse(c.topics),
+                topics: c.topics,
                 ...summary(observed.get(c.id) ?? [], met.get(c.id) ?? 0),
             })),
             links: links.map((l) => ({ ...l })),
+            anchors: topicAnchors(
+                concepts.map((c) => ({ topics: c.topics, embedding: vector(c.embedding) })),
+            ),
         };
     },
     // Familiarity is derived from observations, never stored; "met" is counted for display and never moves it.
