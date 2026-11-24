@@ -25,14 +25,9 @@ export function open(path) {
         chmodSync(path, 0o600);
         // A fresh database starts with no model profile and no assumed provider; existing installs keep theirs.
         const fresh = !this.db.prepare("SELECT 1 FROM sqlite_master WHERE type='table'").get();
-        if (version < 1 && !fresh) {
-            const backupPath = `${path}.backup-${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID().slice(0, 8)}.sqlite`;
-            // SQLite copies a consistent snapshot, including committed WAL pages, before any upgrade writes.
-            writeFileSync(backupPath + '.tmp', '', { mode: 0o600, flag: 'wx' });
-            this.db.prepare('VACUUM INTO ?').run(backupPath + '.tmp');
-            renameSync(backupPath + '.tmp', backupPath);
-            this.backupPath = backupPath;
-        }
+        this.path = path;
+        // Before any upgrade writes.
+        if (version < 1 && !fresh) this.backupPath = this.backup();
         this.db.exec('PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;');
         if (version < 1) {
             this.transaction(() => {
@@ -335,6 +330,10 @@ export function open(path) {
             this.db
                 .exec(`CREATE TABLE first_run (id INTEGER PRIMARY KEY CHECK(id=1), finished INTEGER NOT NULL CHECK(finished IN (0,1)));
           INSERT INTO first_run SELECT 1, EXISTS(SELECT 1 FROM profiles) OR EXISTS(SELECT 1 FROM trees);`);
+        // The one-time duplicate merge cleanup (ADR 0022): a row once it ran.
+        this.db.exec(
+            'CREATE TABLE IF NOT EXISTS merge_cleanup (id INTEGER PRIMARY KEY CHECK(id=1), at INTEGER NOT NULL)',
+        );
         // Trees on a fresh database may have no provider; older databases keep assuming the default provider.
         this.assumesProvider = !!this.db
             .prepare('PRAGMA table_info(trees)')
@@ -351,6 +350,20 @@ export function open(path) {
 }
 
 export const schema = {
+    // SQLite copies a consistent snapshot beside the database, including committed WAL pages; returns its path.
+    backup(label = '') {
+        const backupPath = `${this.path}.backup-${label}${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID().slice(0, 8)}.sqlite`;
+        writeFileSync(backupPath + '.tmp', '', { mode: 0o600, flag: 'wx' });
+        this.db.prepare('VACUUM INTO ?').run(backupPath + '.tmp');
+        renameSync(backupPath + '.tmp', backupPath);
+        return backupPath;
+    },
+    mergeCleanupRan() {
+        return !!this.db.prepare('SELECT 1 FROM merge_cleanup').get();
+    },
+    finishMergeCleanup() {
+        this.db.prepare('INSERT OR IGNORE INTO merge_cleanup VALUES (1, ?)').run(Date.now());
+    },
     migrate(fresh) {
         this.db
             .exec(`CREATE TABLE IF NOT EXISTS trees (id TEXT PRIMARY KEY, title TEXT NOT NULL, thread TEXT, created INTEGER NOT NULL);

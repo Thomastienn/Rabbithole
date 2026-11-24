@@ -75,6 +75,7 @@ try {
         suggestions: true,
         verdicts: true,
         briefs: true,
+        mergeCleanup: true,
         searxng: searxng.status,
         python: pythonTool({ dir }),
         videoEmbed: embed,

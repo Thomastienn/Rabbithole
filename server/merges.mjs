@@ -20,16 +20,14 @@ export function candidates(rows, added, threshold) {
     for (const a of rows)
         if (a.embedding && fresh.has(a.name.toLowerCase()))
             for (const b of rows) {
+                if (b === a || !b.embedding || cosine(a.embedding, b.embedding) < threshold)
+                    continue;
+                // Built only for close pairs: the one-time cleanup compares every name with every other.
                 const key = [a.name, b.name]
                     .map((n) => n.toLowerCase())
                     .sort()
                     .join('\n');
-                if (
-                    b !== a &&
-                    b.embedding &&
-                    !seen.has(key) &&
-                    cosine(a.embedding, b.embedding) >= threshold
-                ) {
+                if (!seen.has(key)) {
                     seen.add(key);
                     pairs.push([a.name, b.name]);
                 }

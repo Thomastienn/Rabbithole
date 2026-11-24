@@ -64,6 +64,7 @@ test('previews list every message in order, bound each text and survive reload w
             'evidence',
             'first_run',
             'memory_note',
+            'merge_cleanup',
             'messages',
             'observations',
             'piece_versions',

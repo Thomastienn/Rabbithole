@@ -81,6 +81,8 @@ export function createApp({
     verdicts = false,
     // Off in tests like verdicts, so suggestion tests count no brief batch calls.
     briefs = false,
+    // The one-time duplicate merge cleanup at startup (ADR 0022); off in tests like briefs.
+    mergeCleanup = false,
     suggestionTimeout,
     desktop = systemDesktop,
     recognize = tesseractOcr(dir),
@@ -203,6 +205,7 @@ export function createApp({
     recoverStaged(store, dir);
     // Older messages left unembedded fill in from startup.
     ctx.embedMessages();
+    if (mergeCleanup) ctx.cleanupMerges();
     const server = http.createServer(async (req, res) => {
         const started = performance.now();
         const url = URL.parse(req.url, ctx.origin());

@@ -28,6 +28,8 @@ Before upgrading the source, stop Rabbithole and make a full directory backup. A
 
 The database records its schema version in SQLite's `user_version`. An older, unversioned database is copied to **trees.sqlite.backup-<UTC date>-<unique suffix>.sqlite** in the same directory before migration writes. The backup includes committed WAL data and stays at its original schema. Migration commits atomically; a failed migration rolls back. Startup prints the backup path. If backup or migration fails, startup stops so you can fix storage access or free disk space and retry. A newer, unsupported schema is refused without rewriting it. Ordinary restart/shutdown recovery marks unfinished jobs interrupted without creating a migration backup.
 
+Once, in the background after startup, Rabbithole merges duplicate concepts and topics that already exist in the knowledge graph. Before the first merge it copies the database the same way to **trees.sqlite.backup-merge-<UTC date>-<unique suffix>.sqlite**; restore it like a migration backup to undo the cleanup.
+
 For a full backup, stop the server and use the actual directory printed at startup:
 
 ```sh

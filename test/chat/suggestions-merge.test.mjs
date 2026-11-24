@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
@@ -144,4 +144,82 @@ test('a duplicate merge keeps the name with more evidence even when it is newer'
         merged: 'JavaScript',
     });
     assert.deepEqual(store.graph().topics, ['Async']);
+});
+
+test('the one-time cleanup backs up the database, confirms existing duplicates in batches and never runs again', async (t) => {
+    const dir = mkdtempSync(join(tmpdir(), 'tt-merge-cleanup-'));
+    const store = new Store(join(dir, 'trees.sqlite'));
+    t.after(() => store.close());
+    // 21 duplicate concept pairs and one topic pair: two confirmation calls of at most 20 pairs.
+    const groups = Array.from({ length: 21 }, (_, i) => [`Idea ${i}`, `Ideas ${i}`]);
+    groups.push(['Networking', 'Computer networking']);
+    const group = new Map(groups.flatMap((g, i) => g.map((n) => [n, i])));
+    const embedOwn = async (texts) =>
+        texts.map((text) => {
+            if (!group.has(text)) group.set(text, group.size);
+            return Array.from({ length: 256 }, (_, i) => (i === group.get(text) ? 1 : 0));
+        });
+    for (const [i, [a, b]] of groups.slice(0, 21).entries())
+        store.addGraph(
+            {
+                concepts: [
+                    { name: a, topics: [i ? 'Networking' : 'Computer networking'] },
+                    { name: b, topics: ['Networking'] },
+                ],
+                links: [],
+            },
+            `m${i}`,
+        );
+    const calls = [],
+        meters = [];
+    const quick = {
+        generate: async ({ role }, text, emit) => {
+            const pairs = JSON.parse(text.slice(text.lastIndexOf('\n') + 1)).pairs;
+            calls.push({ role, pairs });
+            // Idea 0 stays apart from Ideas 0.
+            const same = pairs.filter((p) => !p.names.includes('Idea 0')).map((p) => p.pair);
+            emit({ type: 'item', item: 'a', text: JSON.stringify({ same }) });
+            emit({ type: 'status', status: 'completed' });
+        },
+    };
+    const jobs = backgroundJobs();
+    const { cleanupMerges } = suggestionJobs({
+        store,
+        jobs,
+        videoEmbed: embedOwn,
+        pick: () => quick,
+        metered: (provider, task) => (meters.push(task), provider),
+        log: () => {},
+        toolCapable: async () => false,
+        chatDefault: () => ({ provider: 'claude', model: null, effort: null }),
+        quickModel: async () => ({ provider: 'claude', model: 'haiku', effort: null }),
+    });
+    cleanupMerges();
+    await jobs.get('merge-cleanup', 'all').done;
+
+    assert.deepEqual(
+        calls.map((c) => [c.role, c.pairs.length]),
+        [
+            ['merge', 20],
+            ['merge', 2],
+        ],
+    );
+    assert.deepEqual(meters, ['merge', 'merge']);
+    assert.equal(store.concept('Ideas 5').name, 'Idea 5', 'merged with the other kept as an alias');
+    assert.equal(store.concept('Ideas 0').name, 'Ideas 0', 'an unconfirmed pair stays apart');
+    assert.deepEqual(store.graph().topics, ['Networking']);
+    // The backup holds the graph as it was before any merge.
+    const backups = readdirSync(dir).filter((f) =>
+        /^trees\.sqlite\.backup-merge-.*\.sqlite$/.test(f),
+    );
+    assert.equal(backups.length, 1);
+    const before = new Store(join(dir, backups[0]));
+    assert.equal(before.concept('Ideas 5').name, 'Ideas 5');
+    assert.equal(before.mergeCleanupRan(), false);
+    before.close();
+
+    assert.equal(store.mergeCleanupRan(), true);
+    cleanupMerges();
+    assert.equal(jobs.get('merge-cleanup', 'all'), undefined, 'never runs again');
+    assert.equal(calls.length, 2);
 });
