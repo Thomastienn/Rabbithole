@@ -174,6 +174,7 @@ export default function KnowledgeStats({ graph, setChosen }: KnowledgeState) {
     const [error, setError] = useState('');
     // Refetched with every graph load, so Refresh and new activity update both.
     useEffect(() => {
+        if (!graph?.concepts.length) return;
         let live = true;
         api('/api/graph/stats').then(
             (s: Stats) => live && (setStats(s), setError('')),
