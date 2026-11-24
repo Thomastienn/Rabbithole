@@ -1,10 +1,46 @@
 import { knownConcepts, suggest } from '../../suggestions.mjs';
 import { applyMemoryEdit } from '../../tools/memoryNote.mjs';
-import { formatLog } from '../../log.mjs';
+import { errorCause, formatLog } from '../../log.mjs';
+import { confirmMerges, mergeCandidates } from '../../merges.mjs';
 
 // One quick thinking call after a completed reply (ADR 0016): the hidden notes for the tutor's marks, or every note for a reply that never ended. Detached from the reply stream so chat stays usable; stop() leaves the row pending and the next start marks it failed.
 export function suggestionJobs(ctx) {
     const { store, pick } = ctx;
+    // Automatic merge (ADR 0022) after the row settles, so suggestions never wait on it; any failure merges nothing.
+    const merge = async (added, { message, conversation, selection, quick, capable, signal }) => {
+        if (!ctx.videoEmbed) return;
+        const fields = { id: message, conversation, task: 'merge' };
+        try {
+            const pairs = await mergeCandidates(store, ctx.videoEmbed, added, signal);
+            if (!pairs.length) return;
+            const confirmed = await confirmMerges(
+                ctx.metered(pick(selection), 'merge', message, selection, { message }),
+                quick,
+                pairs,
+                signal,
+                { capable, mcp: ctx.mcp },
+            );
+            for (const { kind, names } of confirmed) {
+                const merged = store.mergeDuplicate(kind, ...names);
+                if (merged)
+                    ctx.log(
+                        formatLog('info', 'suggestions', `${kind} merged`, {
+                            ...fields,
+                            names: names.join(', '),
+                            kept: merged.kept,
+                        }),
+                    );
+            }
+        } catch (error) {
+            if (!ctx.stopping && !signal.aborted)
+                ctx.log(
+                    formatLog('warn', 'suggestions', 'merge skipped', {
+                        ...fields,
+                        cause: errorCause(error, []),
+                    }),
+                );
+        }
+    };
     // marked: the tutor's saved passages and groundwork, so the call only names concepts and writes the graph.
     const startSuggestions = (conversation, message, question, answer, marked = null) => {
         const settings = store.suggestionSettings();
@@ -31,9 +67,11 @@ export function suggestionJobs(ctx) {
                 // Without a quick thinking model the cheap default needs a subscription conversation; a pinned model may be any connected provider.
                 if (!settings.model && !['claude', 'codex'].includes(tree.provider))
                     throw new Error('Suggestions require a signed-in subscription provider.');
+                const quick = await ctx.quickModel(tree, true),
+                    capable = await ctx.toolCapable(selection).catch(() => false);
                 const result = await suggest(
                     ctx.logged(pick(selection), 'suggestions', message, selection),
-                    await ctx.quickModel(tree, true),
+                    quick,
                     {
                         inheritedContext,
                         question,
@@ -45,12 +83,12 @@ export function suggestionJobs(ctx) {
                     running.controller.signal,
                     ctx.suggestionTimeout,
                     {
-                        capable: await ctx.toolCapable(selection).catch(() => false),
+                        capable,
                         mcp: ctx.mcp,
                         marked,
                     },
                 );
-                store.addGraph(result.graph, message);
+                const added = store.addGraph(result.graph, message);
                 // Before the row settles, so the poll that sees the suggestions also sees the mark.
                 for (const edit of result.memory) {
                     const fields = { id: message, conversation, task: 'memory' };
@@ -67,23 +105,33 @@ export function suggestionJobs(ctx) {
                     }
                 }
                 if (marked)
-                    return store.nameSuggestions(
+                    store.nameSuggestions(
                         conversation,
                         message,
                         result.passages,
                         result.usage,
                         selection,
                     );
-                if (result.questions.length) store.nextQuestions(message, result.questions);
-                store.finishSuggestions(
-                    conversation,
+                else {
+                    if (result.questions.length) store.nextQuestions(message, result.questions);
+                    store.finishSuggestions(
+                        conversation,
+                        message,
+                        result.passages,
+                        result.usage,
+                        selection,
+                        result.groundwork,
+                    );
+                    ctx.startBriefs(conversation, message);
+                }
+                await merge(added, {
                     message,
-                    result.passages,
-                    result.usage,
+                    conversation,
                     selection,
-                    result.groundwork,
-                );
-                ctx.startBriefs(conversation, message);
+                    quick,
+                    capable,
+                    signal: running.controller.signal,
+                });
             })()
                 .catch((error) => {
                     if (!ctx.stopping && !marked)

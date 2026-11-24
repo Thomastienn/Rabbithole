@@ -124,7 +124,7 @@ test('meeting replies, naming concepts, branching and ignored suggestions do not
     assert.equal(sent[P], estimate);
 });
 
-test('Knowledge merge combines topics, observations and links; aliases and passages keep working after restart', async (t) => {
+test('a concept merge combines topics, observations and links; aliases and passages keep working after restart', async (t) => {
     const dir = mkdtempSync(join(tmpdir(), 'tt-merge-'));
     let env = await start(dir);
     t.after(async () => env.close());
@@ -163,9 +163,8 @@ test('Knowledge merge combines topics, observations and links; aliases and passa
         { concept: from, level: 4, confidence: 'high' },
     ]);
     // A message observed under both names keeps the target concept's verdict.
-    const merged = await env.request('/api/graph/merge', { from: keep, into: from });
-    assert.equal(merged.status, 200);
-    let graph = await merged.json(),
+    assert.equal(env.store.mergeConcepts(keep, from), true);
+    let graph = await env.get('/api/graph'),
         c = graph.concepts.find((c) => c.name === from);
     assert.equal(graph.concepts.length, 2);
     assert.deepEqual(c.topics, ['Algorithms', 'Concurrency']);
@@ -184,7 +183,7 @@ test('Knowledge merge combines topics, observations and links; aliases and passa
         concepts: [{ name: 'Peterson mutex', topics: ['Concurrency'] }],
         links: [],
     });
-    await env.post('/api/graph/merge', { from, into: 'Peterson mutex' });
+    env.store.mergeConcepts(from, 'Peterson mutex');
     assert.equal(
         (await env.get(`/api/trees/${b.id}`)).suggestions[0].passages[0].concept,
         'Peterson mutex',
@@ -224,28 +223,12 @@ test('Knowledge merge combines topics, observations and links; aliases and passa
     assert.equal(familiarity[keep], c.familiarity);
     assert.equal(familiarity[from], c.familiarity);
     const before = graph;
-    for (const body of [
-        null,
-        {},
-        { from },
-        { from, into: from },
-        { from: 'Peterson mutex', into: keep },
+    for (const [a, b] of [
+        [from, from],
+        ['Peterson mutex', keep],
+        ['missing', from],
     ])
-        assert.equal((await env.request('/api/graph/merge', body)).status, 400);
-    assert.equal(
-        (await env.request('/api/graph/merge', { from: 'missing', into: from })).status,
-        404,
-    );
-    assert.equal(
-        (
-            await env.request(
-                '/api/graph/merge',
-                { from: mutex, into: from },
-                { 'X-Rabbithole-CSRF': '' },
-            )
-        ).status,
-        403,
-    );
+        assert.equal(env.store.mergeConcepts(a, b), false);
     assert.deepEqual(
         await env.get('/api/graph'),
         before,
@@ -253,7 +236,7 @@ test('Knowledge merge combines topics, observations and links; aliases and passa
     );
 });
 
-test('a failed Knowledge merge rolls back observations, met, topics, links, aliases and saved passage references', async (t) => {
+test('a failed concept merge rolls back observations, met, topics, links, aliases and saved passage references', async (t) => {
     const dir = mkdtempSync(join(tmpdir(), 'tt-merge-rollback-')),
         env = await start(dir);
     t.after(async () => env.close());
@@ -268,26 +251,13 @@ test('a failed Knowledge merge rolls back observations, met, topics, links, alia
     env.store.db.exec(
         "CREATE TRIGGER reject_concept_delete BEFORE DELETE ON concepts BEGIN SELECT RAISE(ABORT, 'fixture merge failure'); END;",
     );
-    assert.equal(
-        (
-            await env.request('/api/graph/merge', {
-                from: "Peterson's algorithm",
-                into: 'Mutual exclusion',
-            })
-        ).status,
-        500,
+    assert.throws(
+        () => env.store.mergeConcepts("Peterson's algorithm", 'Mutual exclusion'),
+        /fixture merge failure/,
     );
     assert.deepEqual(await env.get('/api/graph'), graph);
     assert.deepEqual(await env.get(`/api/trees/${tree.id}`), saved);
     assert.deepEqual(env.store.db.prepare('PRAGMA foreign_key_check').all(), []);
     env.store.db.exec('DROP TRIGGER reject_concept_delete');
-    assert.equal(
-        (
-            await env.request('/api/graph/merge', {
-                from: "Peterson's algorithm",
-                into: 'Mutual exclusion',
-            })
-        ).status,
-        200,
-    );
+    assert.equal(env.store.mergeConcepts("Peterson's algorithm", 'Mutual exclusion'), true);
 });
