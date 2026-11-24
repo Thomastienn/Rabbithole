@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
     DEFAULT_TUTOR_STYLE,
+    LOOKUP_RULE,
     MEMORY_RULE,
     TUTOR_RULES,
     TOOL_VISUAL_RULES,
@@ -68,6 +69,17 @@ test('the fixed memory rule appears only when update_memory_note is offered', ()
     assert.ok(rule.includes(MEMORY_RULE));
     assert.ok(!tutorSystem(tool('read_page')).includes(MEMORY_RULE));
     assert.ok(!tutorSystem({ tutorStyle: 'Mine.' }).includes(MEMORY_RULE));
+});
+
+test('the concept lookup rule appears only when look_up_concept is offered', () => {
+    const tool = (name) => ({ tutorStyle: 'Mine.', tools: [{ name }] });
+    assert.match(
+        LOOKUP_RULE,
+        /concepts the concept neighbourhood does not cover, such as those in an attachment or a request like 'explain the concepts in this', look them up together with look_up_concept before you explain\./,
+    );
+    assert.ok(tutorSystem(tool('look_up_concept')).includes(LOOKUP_RULE));
+    assert.ok(!tutorSystem(tool('read_page')).includes(LOOKUP_RULE));
+    assert.ok(!tutorSystem({ tutorStyle: 'Mine.' }).includes(LOOKUP_RULE));
 });
 
 test('the teaching skill carries everyday-analogy guidance to replies, visuals and narration, never discussions', async () => {
@@ -139,7 +151,10 @@ test('the tool-path tutor prompt before learner data is no larger than before vi
     const text = tutorSystem({ textTools: APP_TOOLS }).replace(definitions, '');
     // The visual and discussion marker rules replaced show_visual and start_discussion (ADR 0018), so they count against the
     // tool-path total at 3b6b9d0: that prompt plus its app tool definitions.
-    const MARKER_BEFORE = 9987 + 6121;
+    // The bold-term suggestion sentence (docs/reply-reading-polish-spec.md) is allowed on top.
+    const BOLD =
+        'When you would bold a term because it matters, the learner may not fully understand it yet, so mark it as a suggestion instead of only bolding it. ';
+    const MARKER_BEFORE = 9987 + 6121 + BOLD.length;
     for (const prompt of [native, text])
         assert.ok(prompt.length + definitions.length <= MARKER_BEFORE, `${prompt.length}`);
     for (const part of [

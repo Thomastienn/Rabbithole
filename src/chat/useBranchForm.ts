@@ -4,6 +4,7 @@ import { partTrail, visualPassage } from '../media/artifacts';
 import type { PartAction, VisualBranch } from '../media/VisualFrame';
 import type { DiscussionBranch } from '../media/DiscussionCard';
 import type { Tree } from './types';
+import type { Suggestions } from './turn';
 import type { ChatState } from './useChatState';
 import { request as api } from '../serverAccess';
 import type { LearningTrees } from './useLearningTrees';
@@ -233,7 +234,7 @@ export function useBranchForm(
     // A visual part's explanation is not saved.
     const explainBrief = (parent: string, anchor: Anchor) =>
         api(`/api/trees/${parent}/brief`, branchRequest(anchor)).then(
-            ({ explanation }: { explanation: string }) => {
+            ({ explanation, suggestions }: { explanation: string; suggestions?: Suggestions }) => {
                 if (anchor.artifactId !== undefined) return explanation;
                 const saved = {
                     message: anchor.messageId,
@@ -256,6 +257,15 @@ export function useBranchForm(
                                   ),
                                   saved,
                               ],
+                              // A briefed selection comes back as the reply's suggestions, now holding it.
+                              ...(suggestions && {
+                                  suggestions: [
+                                      ...(t.suggestions ?? []).filter(
+                                          (s) => s.message !== suggestions.message,
+                                      ),
+                                      suggestions,
+                                  ],
+                              }),
                           }
                         : t,
                 );

@@ -41,6 +41,7 @@ export default function MemoryNoteSettings() {
             description="What the tutor remembers about you across all learning trees, in markdown. Every chat model receives the whole note as data, not instructions. Fix or delete anything wrong; empty text clears it."
         >
             <TextArea
+                id="memory-note"
                 label="Memory note"
                 isLabelHidden
                 value={text}

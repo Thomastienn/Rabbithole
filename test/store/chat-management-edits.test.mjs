@@ -47,7 +47,11 @@ test('delete a branch cascades only its descendants, cleans files and layout, an
         });
         assert.equal(env.store.tree(env.child.id), undefined);
         assert.equal(env.store.tree(env.grandchild.id), undefined);
-        assert.deepEqual(env.store.tree(env.root.id), parent);
+        assert.deepEqual(
+            { ...env.store.tree(env.root.id), branchPreviews: parent.branchPreviews },
+            parent,
+            'only the branch previews drop the deleted child',
+        );
         assert.deepEqual(env.store.tree(env.sibling.id), sibling);
         assert.deepEqual(env.store.tree(env.other.id), other);
         assert.deepEqual(env.store.list().find((t) => t.id === env.root.id).layout, {

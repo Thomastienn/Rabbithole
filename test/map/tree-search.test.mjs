@@ -5,7 +5,7 @@ import { createElement as h, useState } from 'react';
 import { render } from '../support/render.mjs';
 const { default: TreeSearch } = await import('../../src/shell/TreeSearch.tsx');
 
-test('title search opens focused, names empty states, selects with arrows/Enter or click and returns focus on Escape', async (t) => {
+test('conversation search opens focused, marks snippet matches, selects with arrows/Enter or click and returns focus on Escape', async (t) => {
     const chosen = [];
     let query;
     const source = {
@@ -14,9 +14,13 @@ test('title search opens focused, names empty states, selects with arrows/Enter 
             q === 'missing'
                 ? []
                 : [
-                      { id: 'roman', label: 'Roman roads' },
-                      { id: 'photo', label: 'Photosynthesis' },
-                  ],
+                      ['roman', 'Roman roads', '1', 'Roads ran straight.', [[0, 5]]],
+                      ['photo', 'Light reactions', '1.2', '…leaves use light.', [[12, 17]]],
+                  ].map(([id, title, address, snippet, ranges]) => ({
+                      id,
+                      label: title,
+                      auxiliaryData: { group: title, address, title, snippet, ranges },
+                  })),
     };
     function Fixture() {
         const [open, setOpen] = useState(false);
@@ -71,14 +75,18 @@ test('title search opens focused, names empty states, selects with arrows/Enter 
     const dialog = await open();
     assert.ok(dialog.getAttribute('aria-label'), 'named for assistive tech');
     assert.equal(document.activeElement.tagName, 'INPUT');
-    assert.match(dialog.textContent, /Type part of a learning tree’s title\./);
+    assert.match(dialog.textContent, /Type words from any conversation\./);
     query = await type('missing');
-    assert.match(dialog.textContent, /No learning tree titles match\./);
+    assert.match(dialog.textContent, /No conversations match\./);
     assert.equal(dialog.querySelectorAll('[role=option]').length, 0);
     query = await type('O');
+    const options = [...dialog.querySelectorAll('[role=option]')];
+    assert.equal(options.length, 2);
+    assert.match(options[1].textContent, /1\.2 Light reactions/, 'address and title');
     assert.deepEqual(
-        [...dialog.querySelectorAll('[role=option]')].map((e) => e.textContent),
-        ['Roman roads', 'Photosynthesis'],
+        options.map((o) => o.querySelector('mark')?.textContent),
+        ['Roads', 'light'],
+        'snippet ranges are marked',
     );
     await key(query, 'ArrowDown');
     const first = query.getAttribute('aria-activedescendant');

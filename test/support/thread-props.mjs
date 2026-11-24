@@ -26,5 +26,6 @@ export const threadProps = (props) => ({
     explainBrief: noop,
     pickPart: noop,
     startBranch: noop,
+    openSettings: noop,
     ...props,
 });
