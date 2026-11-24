@@ -2,5 +2,7 @@
 export function knowledgeRoutes(req, res, url, { store, json }) {
     if (req.method === 'GET' && url.pathname === '/api/graph')
         return json(res, 200, { ...store.graph(), anchors: store.topicAnchors() });
+    if (req.method === 'GET' && url.pathname === '/api/graph/stats')
+        return json(res, 200, store.graphStats());
     return false;
 }

@@ -22,10 +22,10 @@ export const LEVELS = [
     'Applies it',
     'Teaches it',
 ];
-export const level = (c: Concept) =>
+export const level = (c: Pick<Concept, 'familiarity'>) =>
     c.familiarity >= 0.8 ? 'Familiar' : c.familiarity >= 0.35 ? 'Some familiarity' : 'Unfamiliar';
 // Familiarity is drawn by form (empty, half, full ring), never hue alone.
-export const fill = (c: Concept) =>
+export const fill = (c: Pick<Concept, 'familiarity'>) =>
     c.familiarity >= 0.8 ? 'full' : c.familiarity >= 0.35 ? 'some' : 'none';
 export const MIN_SCALE = 0.2;
 export const LABEL_SCALE = 0.75;
