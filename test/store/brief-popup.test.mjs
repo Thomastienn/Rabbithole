@@ -61,3 +61,18 @@ test('a conversation carries its saved brief explanations and branched suggestio
     assert.equal(observations(), before, 'reading saved explanations records nothing');
     store.close();
 });
+
+test('a briefed selection becomes a suggestion of a finished reply with no suggestions, never of a streaming one', () => {
+    const store = new Store(join(mkdtempSync(join(tmpdir(), 'rabbithole-briefed-')), 'db.sqlite'));
+    const root = store.create('Root');
+    const live = store.message(root.id, 'assistant', 'A heap streams', 'streaming');
+    const done = store.message(root.id, 'assistant', 'A heap is a tree.', 'completed');
+    const heap = { start: 2, end: 6, text: 'heap' };
+    assert.equal(store.suggestBriefed(root.id, { message: live, ...heap }), false);
+    assert.equal(store.suggestBriefed(root.id, { message: done, ...heap }), true);
+    assert.equal(store.suggestBriefed(root.id, { message: done, ...heap }), false);
+    assert.deepEqual(store.tree(root.id).suggestions, [
+        { message: done, status: 'ready', passages: [heap], groundwork: [] },
+    ]);
+    store.close();
+});

@@ -174,6 +174,41 @@ export const knowledge = {
             )
             .run(this.conceptId(concept), `brief:${message}:${start}:${end}`, Date.now());
     },
+    // A briefed selection becomes a ready suggestion of its reply with no concept; true when one was added.
+    // shortcut: a pending row is skipped, as finishSuggestions replaces its passages; merge there if briefs during naming must stick.
+    suggestBriefed(conversation, { message, start, end, text }) {
+        return this.transaction(() => {
+            const row = this.db
+                .prepare(
+                    'SELECT status,passages FROM suggestions WHERE conversation=? AND message=?',
+                )
+                .get(conversation, message);
+            // A finished reply without a row (suggestions off) gets one, so its pending run is never blocked.
+            if (!row)
+                return (
+                    this.db
+                        .prepare(
+                            "INSERT INTO suggestions(message,conversation,status,passages,groundwork) SELECT ?,?,'ready',?,'[]' WHERE EXISTS(SELECT 1 FROM messages WHERE id=? AND tree=? AND status IN ('completed','interrupted'))",
+                        )
+                        .run(
+                            message,
+                            conversation,
+                            JSON.stringify([{ start, end, text }]),
+                            message,
+                            conversation,
+                        ).changes > 0
+                );
+            const passages = JSON.parse(row.passages ?? '[]');
+            if (row.status !== 'ready' || passages.some((p) => p.start === start && p.end === end))
+                return false;
+            passages.push({ start, end, text });
+            passages.sort((a, b) => a.start - b.start);
+            this.db
+                .prepare('UPDATE suggestions SET passages=? WHERE conversation=? AND message=?')
+                .run(JSON.stringify(passages), conversation, message);
+            return true;
+        });
+    },
     mergeConcepts(from, into) {
         const source = this.concept(from),
             target = this.concept(into);
