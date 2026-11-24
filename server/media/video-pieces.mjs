@@ -342,6 +342,16 @@ export async function improvePiece({ piece, why, call }) {
     return { ...libraryPieces(cutSource(raw, brief, names), brief, [name])[0], trueColors };
 }
 
+// Each text's vector; the same call embeds pieces saved while no embedder was usable.
+export async function embedded(texts, deps, signal) {
+    const pending = deps.store.unembeddedPieces();
+    const out = await deps.embed([...texts, ...pending.map((p) => p.look)]);
+    signal.throwIfAborted();
+    for (const [i, p] of pending.entries())
+        if (out[texts.length + i]) deps.store.embedPiece(p.id, out[texts.length + i]);
+    return out.slice(0, texts.length);
+}
+
 // The pipeline's set-piece step: a new video whose cuts draw pieces writes them once, from library matches when the
 // embedder is usable, and saves them to the piece library; video.library maps each piece to its library id, so audits
 // can flag a poor one. The library never fails the video.
@@ -355,11 +365,7 @@ export async function drawPieces(video, deps) {
     const matches = async (looks) => {
         if (!deps.embed) return [];
         try {
-            const pending = deps.store.unembeddedPieces();
-            const out = await deps.embed([...looks, ...pending.map((p) => p.look)]);
-            signal.throwIfAborted();
-            for (const [i, p] of pending.entries())
-                if (out[looks.length + i]) deps.store.embedPiece(p.id, out[looks.length + i]);
+            const out = await embedded(looks, deps, signal);
             looks.forEach((look, i) => out[i] && vectors.set(look, out[i]));
             return looks.map((_, i) => (out[i] ? deps.store.nearestPieces(out[i]) : []));
         } catch (error) {

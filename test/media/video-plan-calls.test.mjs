@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
 import { generateVideo, videoEngines } from '../../server/media/videos.mjs';
-import { planBuilder } from '../../server/media/plan-calls.mjs';
+import { planBuilder, PIECES_PLAN_NOTE } from '../../server/media/plan-calls.mjs';
 import { fakeNarration } from '../support/fake-narration.mjs';
 import {
     planFor,
@@ -17,9 +17,11 @@ import {
 } from '../support/video-kit.mjs';
 
 // A planner that calls tools natively: each attempt's calls go through tree.runTool, whose errors it reads back.
-async function plan(attempts) {
+// pieces are saved to the library first; embed is the embedder.
+async function plan(attempts, { pieces = [], embed } = {}) {
     const dir = mkdtempSync(join(tmpdir(), 'tt-plan-calls-'));
     const store = new Store(join(dir, 'trees.sqlite'));
+    for (const piece of pieces) store.savePiece(piece);
     const tree = store.create('Video', 'codex');
     const message = store.message(tree.id, 'assistant', 'Reply.', 'completed');
     const artifact = store.pendingArtifact(
@@ -54,6 +56,7 @@ async function plan(attempts) {
             store,
             engines: videoEngines({ snapshot: noSnapshot }),
             narrate: fakeNarration,
+            embed,
         },
     ).then(
         () => null,
@@ -75,6 +78,65 @@ test('a plan built through valid native calls produces a video as before', async
         'native planners get no text-call note',
     );
     assert.deepEqual(saved, want);
+    // An empty library offers no piece lookup.
+    assert.ok(!plans[0].tools.some((t) => t.name === 'find_pieces'));
+    assert.ok(!plans[0].instructions.includes(PIECES_PLAN_NOTE));
+});
+
+test('with saved pieces the planner looks up the 5 nearest by name and role, without source, before writing a look', async () => {
+    const saved = Array.from({ length: 6 }, (_, i) => ({
+        name: `Saved${i}`,
+        look: `look ${i}`,
+        props: ['x', 'y'],
+        source: `export function Saved${i}() { return null; }`,
+        roles: [],
+        embedding: [1, i],
+    }));
+    const queries = [];
+    const embed = async (texts) => {
+        queries.push(...texts);
+        return texts.map(() => [1, 0]);
+    };
+    const want = planFor(composition, 1);
+    const winner = { name: 'Winner', position: 'centre', colorRole: 'winner', look: 'look 0' };
+    const calls = planCalls(want).flatMap((c) =>
+        c[0] === 'add_object'
+            ? [
+                  ['add_object', winner],
+                  ['find_pieces', { name: 'Winner', role: 'the crowned finalist' }],
+                  ['add_object', { ...winner, piece: 'Saved5' }],
+                  ['add_object', { ...winner, piece: 'Saved0' }],
+              ]
+            : [c],
+    );
+    const { plans, results, saved: stored } = await plan([calls], { pieces: saved, embed });
+    assert.ok(plans[0].instructions.includes(PIECES_PLAN_NOTE));
+    assert.match(PIECES_PLAN_NOTE, /adopt the saved piece's look and name it as piece/);
+    const at = calls.findIndex((c) => c[0] === 'add_object');
+    assert.equal(
+        results[at],
+        'Error: call find_pieces with its name and role before giving it a look.',
+    );
+    assert.deepEqual(
+        JSON.parse(results[at + 1]),
+        [0, 1, 2, 3, 4].map((i) => ({ name: `Saved${i}`, look: `look ${i}` })),
+    );
+    assert.ok(queries.includes('Winner: the crowned finalist'));
+    assert.equal(
+        results[at + 2],
+        'Error: piece must name a saved piece find_pieces returned for this object.',
+    );
+    assert.deepEqual(stored.styleBrief.recurringObjects, [{ ...winner, piece: 'Saved0' }]);
+
+    // Text-mode calls get no result back, so they keep today's tools and need no lookup.
+    const builder = planBuilder({ pieces: async () => [] });
+    assert.ok(!builder.textTools.includes('find_pieces"'));
+    assert.ok(!builder.textTools.includes('"piece"'));
+    const { colorRole, ...plain } = winner;
+    builder.read(
+        `<tool_call>${JSON.stringify({ name: 'add_object', arguments: plain })}</tool_call>`,
+    );
+    assert.deepEqual(builder.plan().styleBrief.recurringObjects, [plain]);
 });
 
 test('a bad field gets an error naming it, the corrected call is accepted and a bad join becomes a scene change', async () => {
