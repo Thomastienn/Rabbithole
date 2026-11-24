@@ -6,6 +6,7 @@ import { conversationAddresses } from '../../src/map/treeList.ts';
 import { plainText } from '../../src/markdown/markdownText.ts';
 
 const CANDIDATES = 5;
+const LOOKUP_LIMIT = 10;
 const MATCH_THRESHOLD = 0.45;
 // Characters of conversation JSON read_conversation returns whole; longer ones arrive compacted.
 export const READ_BUDGET = 20000;
@@ -44,15 +45,25 @@ const required = (value, name, what) => {
 export function recallTools({ store, embed = null, compact }) {
     const compacted = new Map();
     return {
-        lookUpConcept: async (input, turn) =>
-            JSON.stringify(
-                await lookUpConcept(
-                    store,
-                    embed,
-                    required(input.description, 'description', 'the concept to look up'),
-                    turn.signal,
-                ),
-            ),
+        async lookUpConcept(input, turn) {
+            const items = input.concepts;
+            if (!Array.isArray(items) || items.length < 1 || items.length > LOOKUP_LIMIT)
+                throw new Error(
+                    `Give concepts: a list of 1 to ${LOOKUP_LIMIT} concepts to look up.`,
+                );
+            const queries = items.map((c) =>
+                required(c, 'concepts', 'concept names or short descriptions'),
+            );
+            const lookups = [];
+            // shortcut: one embed call per item; batch the queries if lookups grow slow.
+            for (const query of queries) {
+                const { concepts } = await lookUpConcept(store, embed, query, turn.signal);
+                lookups.push(
+                    concepts.length ? { query, concepts } : { query, familiarity: 'unknown' },
+                );
+            }
+            return JSON.stringify({ lookups });
+        },
         async searchConversations(input, turn) {
             const text = required(
                 input.description,

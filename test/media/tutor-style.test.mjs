@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
     DEFAULT_TUTOR_STYLE,
+    LOOKUP_RULE,
     MEMORY_RULE,
     TUTOR_RULES,
     VERDICT_RULE,
@@ -67,6 +68,17 @@ test('the fixed memory rule appears only when update_memory_note is offered', ()
     assert.ok(rule.includes(MEMORY_RULE));
     assert.ok(!tutorSystem(tool('read_page')).includes(MEMORY_RULE));
     assert.ok(!tutorSystem({ tutorStyle: 'Mine.' }).includes(MEMORY_RULE));
+});
+
+test('the concept lookup rule appears only when look_up_concept is offered', () => {
+    const tool = (name) => ({ tutorStyle: 'Mine.', tools: [{ name }] });
+    assert.match(
+        LOOKUP_RULE,
+        /concepts the concept neighbourhood does not cover, such as those in an attachment or a request like 'explain the concepts in this', look them up together with look_up_concept before you explain\./,
+    );
+    assert.ok(tutorSystem(tool('look_up_concept')).includes(LOOKUP_RULE));
+    assert.ok(!tutorSystem(tool('read_page')).includes(LOOKUP_RULE));
+    assert.ok(!tutorSystem({ tutorStyle: 'Mine.' }).includes(LOOKUP_RULE));
 });
 
 test('the teaching skill carries everyday-analogy guidance to replies, visuals and narration, never discussions', async () => {
