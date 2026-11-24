@@ -55,6 +55,7 @@ test('previews list every message in order, bound each text and survive reload w
             'briefs',
             'chat_settings',
             'citations',
+            'cleanups',
             'concept_aliases',
             'concept_links',
             'concept_topics',

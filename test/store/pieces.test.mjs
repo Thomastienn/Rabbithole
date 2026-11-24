@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import { Store } from '../../server/store.mjs';
 
 const entry = (name, embedding) => ({
@@ -174,4 +175,58 @@ test('a piece records the saved parts it is built from; its tree carries their c
     );
     store.db.prepare('UPDATE pieces SET parts=NULL WHERE id=?').run(town);
     assert.deepEqual(store.pieceTree(town).parts, [], 'pieces saved before parts load without any');
+});
+
+test('a one-time cleanup backs up, then folds pieces sharing a name into one with every version and video link', (t) => {
+    const path = join(mkdtempSync(join(tmpdir(), 'tt-pieces-')), 'trees.sqlite');
+    let store = new Store(path);
+    t.after(() => store.close());
+    const older = store.savePiece(entry('Earth', [1, 0]), 'video-a');
+    store.improvePiece(older, {
+        ...entry('Earth'),
+        source: 'export function Earth() { return 1; }',
+    });
+    const newest = store.savePiece(entry('Earth', [0, 1]), 'video-b');
+    store.usePiece(older, 'video-b');
+    const moon = store.savePiece(entry('Moon', null), 'video-a');
+    const scene = store.savePiece({ ...entry('Scene'), parts: [{ name: 'Earth', id: older }] });
+    // A database from before the cleanup: no record that it ran.
+    store.db.exec('DROP TABLE cleanups');
+    store.close();
+
+    store = new Store(path);
+    assert.ok(store.backupPath, 'the database is backed up first');
+    const saved = new DatabaseSync(store.backupPath, { readOnly: true });
+    assert.equal(saved.prepare("SELECT COUNT(*) AS n FROM pieces WHERE name='Earth'").get().n, 2);
+    saved.close();
+    const earths = store.db.prepare("SELECT id FROM pieces WHERE name='Earth'").all();
+    assert.deepEqual(
+        earths.map((r) => r.id),
+        [newest],
+        'one Earth remains, the newest current',
+    );
+    assert.deepEqual(store.piece(newest).videos, ['video-b', 'video-a']);
+    assert.deepEqual(
+        store.db
+            .prepare('SELECT source FROM piece_versions WHERE piece=? ORDER BY improved, rowid')
+            .all(newest)
+            .map((r) => r.source),
+        [entry('Earth').source, 'export function Earth() { return 1; }'],
+        'both older versions are kept under the remaining piece',
+    );
+    assert.deepEqual(
+        store.pieceTree(scene).parts.map((p) => p.piece.id),
+        [newest],
+    );
+    assert.ok(store.piece(moon), 'a piece with a unique name is untouched');
+    const snapshot = () =>
+        ['pieces', 'piece_versions', 'piece_videos'].map((table) =>
+            store.db.prepare(`SELECT * FROM ${table} ORDER BY rowid`).all(),
+        );
+    const before = snapshot();
+    store.close();
+
+    store = new Store(path);
+    assert.equal(store.backupPath, undefined, 'a second start makes no backup');
+    assert.deepEqual(snapshot(), before, 'a second start changes nothing');
 });
