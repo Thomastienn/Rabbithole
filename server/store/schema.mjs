@@ -339,6 +339,8 @@ export function open(path) {
             .prepare('PRAGMA table_info(trees)')
             .all()
             .find((c) => c.name === 'provider').notnull;
+        // After every table rebuild above, which would drop the index's triggers.
+        this.searchIndex();
         this.interrupt();
     } catch (error) {
         error.backupPath = this.backupPath;

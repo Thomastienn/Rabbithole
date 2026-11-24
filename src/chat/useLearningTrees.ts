@@ -210,7 +210,10 @@ export function useLearningTrees(c: View) {
             .catch((e) => setError(e.message));
     }
     useEffect(loadInitial, []);
-    const titleSearch = useMemo(() => treeSearchSource(setError), []);
+    // Search ranks the open learning tree first; a ref, so the source keeps its pending request.
+    const searchRoot = useRef(root);
+    searchRoot.current = root;
+    const titleSearch = useMemo(() => treeSearchSource(setError, () => searchRoot.current), []);
     function changeView(showOverview: boolean, id?: string) {
         // Snapshotting thousands of preview rows stalls large maps; their viewport still animates.
         if (
