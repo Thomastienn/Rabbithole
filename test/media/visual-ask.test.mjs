@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createElement as h } from 'react';
 import { render } from '../support/render.mjs';
-import { ui, button } from '../support/ui.mjs';
+import { ui, button, inputValue } from '../support/ui.mjs';
 import { conversation, json, mount, summary } from '../support/chat-hooks-kit.mjs';
 const { default: VisualFrame } = await import('../../src/media/VisualFrame.tsx');
 
@@ -33,10 +33,12 @@ test('Ask appears only on ready visuals, opens the branch form with the whole vi
             ...['pending', 'failed', 'ready'].map((status) =>
                 h(VisualFrame, {
                     key: status,
-                    artifact: visual(status),
+                    artifact: { ...visual(status), hasPrevious: true },
                     onPart,
                     onRetry: async () => {},
-                    onRegenerate: async () => void calls.push(['regenerate']),
+                    onRegenerate: async (instruction) =>
+                        void calls.push(['regenerate', instruction]),
+                    onPrevious: async () => void calls.push(['previous']),
                 }),
             ),
         ),
@@ -74,12 +76,34 @@ test('Ask appears only on ready visuals, opens the branch form with the whole vi
         const items = [...document.querySelectorAll('[role=menuitem]')];
         assert.deepEqual(
             items.map((e) => e.textContent.trim()),
-            ['Try a different version', 'Enlarge'],
+            ['Try a new version…', 'Previous version', 'Enlarge'],
         );
         await act(async () => items.find((e) => e.textContent.trim() === label).click());
     };
-    await menuItem('Try a different version');
-    assert.deepEqual(calls.shift(), ['regenerate']);
+    const key = (target, key) =>
+        target.dispatchEvent(
+            new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }),
+        );
+    // The box takes focus; Escape closes it without a call, Enter sends the trimmed instruction.
+    await menuItem('Try a new version…');
+    let input = figure.querySelector('.new-version input');
+    assert.ok(document.activeElement === input, 'the instruction field takes focus');
+    await act(async () => key(input, 'Escape'));
+    assert.equal(figure.querySelector('.new-version'), null);
+    await menuItem('Try a new version…');
+    input = figure.querySelector('.new-version input');
+    await act(async () => inputValue(input, 'x'.repeat(501)));
+    await act(async () => key(input, 'Enter'));
+    assert.equal(calls.length, 0, 'over 500 characters is not sent');
+    await act(async () => inputValue(input, '  Label the rounds  '));
+    await act(async () => key(input, 'Enter'));
+    assert.deepEqual(calls.shift(), ['regenerate', 'Label the rounds']);
+    assert.equal(figure.querySelector('.new-version'), null, 'the box closes once sent');
+    await menuItem('Try a new version…');
+    await act(async () => button(figure, 'Make new version').click());
+    assert.deepEqual(calls.shift(), ['regenerate', ''], 'empty asks for a different approach');
+    await menuItem('Previous version');
+    assert.deepEqual(calls.shift(), ['previous']);
     await menuItem('Enlarge');
     const viewer = document.querySelector('dialog.visual-viewer, .visual-viewer');
     assert.ok(viewer, 'enlarged view opens');

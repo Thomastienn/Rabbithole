@@ -1,8 +1,7 @@
 import './tsx.mjs';
 import { createElement as h } from 'react';
 import { useKnowledge } from '../../src/knowledge/useKnowledge.ts';
-const { KnowledgeHeader, KnowledgeMerge } =
-    await import('../../src/knowledge/KnowledgeControls.tsx');
+const { KnowledgeHeader } = await import('../../src/knowledge/KnowledgeControls.tsx');
 import { ui } from './ui.mjs';
 
 const concept = (name, topics = ['Concurrency']) => ({
@@ -41,6 +40,5 @@ export function KnowledgeFixture({ activity }) {
         state.graph?.concepts.map((c) =>
             h('button', { key: c.name, 'data-concept': c.name }, c.name),
         ),
-        h(KnowledgeMerge, state),
     );
 }

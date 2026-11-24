@@ -55,6 +55,27 @@ const OBJECT = tool(
     },
     ['name', 'position'],
 );
+// Offered only while the piece library has pieces: matching comes before the look is written.
+const FIND = tool(
+    'find_pieces',
+    'Before add_object for an object with a look: up to 5 nearest saved pieces, each with its name and look.',
+    {
+        name: str('Object name, as add_object will give it.'),
+        role: str('What the object is and does in this video, in a few words.'),
+    },
+);
+const PIECED_OBJECT = {
+    ...OBJECT,
+    parameters: {
+        ...OBJECT.parameters,
+        properties: {
+            ...OBJECT.parameters.properties,
+            piece: str('The saved piece from find_pieces whose look it adopts, to start from.'),
+        },
+    },
+};
+export const PIECES_PLAN_NOTE =
+    "\nSaved pieces: before add_object for a recurring object with a look, call find_pieces with its name and role; it returns up to 5 nearest pieces saved in the learner's piece library, each with its name and look. When a match is the same real object, adopt the saved piece's look and name it as piece in add_object, the piece to start from; describe a new look only for a different object or when the saved look cannot serve this video.";
 const TERM = tool('add_term', 'Add one exact term every cut spells the same way.', {
     term: str('The exact term.'),
 });
@@ -118,7 +139,7 @@ const CUT_FIELDS = [
     'endState',
     'emphasis',
 ];
-const OBJECT_FIELDS = ['name', 'position', 'colorRole', 'look', 'referenceQuery'];
+const OBJECT_FIELDS = ['name', 'position', 'colorRole', 'look', 'referenceQuery', 'piece'];
 const pick = (input, fields) =>
     Object.fromEntries(Object.entries(input).filter(([k, v]) => fields.includes(k) && v != null));
 const FIX = {
@@ -148,7 +169,8 @@ export const PLAN_TEXT_TOOLS =
     '\nYou cannot call tools natively. Write each call as <tool_call>{"name": "<tool>", "arguments": {...}}</tool_call>, in order; no result comes back, so check each call against its rules before writing it. Tools: ';
 
 // One plan built from the smart model's calls into today's plan shape; each call is checked as it arrives.
-export function planBuilder({ exhibits = false, clips = false } = {}) {
+// pieces: an async (text) => [{id, name, look}] of the nearest saved pieces, given only while the library has pieces.
+export function planBuilder({ exhibits = false, clips = false, pieces = null } = {}) {
     const plan = {
         title: undefined,
         description: undefined,
@@ -157,13 +179,16 @@ export function planBuilder({ exhibits = false, clips = false } = {}) {
     };
     const brief = plan.styleBrief,
         rejected = [];
+    // Each object's offered pieces, by object name; text calls get no results back, so no matching.
+    const found = new Map();
     let finished = false,
-        accepted = 0;
+        accepted = 0,
+        texting = false;
     const tools = [
         START,
         AREA,
         COLOUR,
-        OBJECT,
+        ...(pieces ? [FIND, PIECED_OBJECT] : [OBJECT]),
         TERM,
         CUT,
         ...(exhibits ? [exhibitTool(clips)] : []),
@@ -207,8 +232,21 @@ export function planBuilder({ exhibits = false, clips = false } = {}) {
             brief.paletteRoles[role] = name;
             return 'Colour added.';
         },
+        async find_pieces({ name, role }) {
+            if (!text(name)) fail('name must name the object.');
+            if (!text(role)) fail('role must say what the object is and does in this video.');
+            const matches = await pieces(`${name}: ${role}`);
+            found.set(name, matches);
+            return matches.length
+                ? JSON.stringify(matches.map((p) => ({ name: p.name, look: p.look })))
+                : 'No saved pieces match.';
+        },
         add_object(input) {
             if (!text(input.name)) fail('name must name the object.');
+            if (pieces && !texting && input.look != null && !found.has(input.name))
+                fail('call find_pieces with its name and role before giving it a look.');
+            if (input.piece != null && !found.get(input.name)?.some((p) => p.name === input.piece))
+                fail('piece must name a saved piece find_pieces returned for this object.');
             if (!text(input.position)) fail('position must say where it lives in the frame.');
             if (input.look != null && !text(input.look))
                 fail('look must describe its shape, parts and size.');
@@ -219,7 +257,12 @@ export function planBuilder({ exhibits = false, clips = false } = {}) {
                 (!text(input.referenceQuery) || input.referenceQuery.length > 200)
             )
                 fail('referenceQuery must be search words, at most 200 characters.');
-            brief.recurringObjects.push(pick(input, OBJECT_FIELDS));
+            // The adopted piece's library id, so the piece writer gets that exact piece's source.
+            const chosen = found.get(input.name)?.find((p) => p.name === input.piece);
+            brief.recurringObjects.push({
+                ...pick(input, OBJECT_FIELDS),
+                ...(chosen && { pieceId: chosen.id }),
+            });
             return 'Object added.';
         },
         add_term(input) {
@@ -280,12 +323,19 @@ export function planBuilder({ exhibits = false, clips = false } = {}) {
     return {
         tools,
         run,
-        textTools: PLAN_TEXT_TOOLS + JSON.stringify(tools),
+        textTools:
+            PLAN_TEXT_TOOLS +
+            JSON.stringify(
+                tools.filter((t) => t !== FIND).map((t) => (t === PIECED_OBJECT ? OBJECT : t)),
+            ) +
+            (pieces ? '\nfind_pieces is unavailable here: write each look as usual.' : ''),
         // Text-mode (or leaked) calls in the answer, run in order; a rejected one is kept for the retry note.
         read(raw) {
+            texting = true;
             for (const [, json] of raw.matchAll(/<tool_call>([\s\S]*?)(?:<\/tool_call>|$)/g)) {
                 const call = readCall({ json });
                 try {
+                    if (call?.name === 'find_pieces') fail('find_pieces is unavailable here.');
                     if (call) run(call.name, call.input);
                 } catch (e) {
                     rejected.push(`${call.name}: ${e.message}`);

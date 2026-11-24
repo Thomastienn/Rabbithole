@@ -6,11 +6,12 @@ import { conversationAddresses } from '../../src/map/treeList.ts';
 import { plainText } from '../../src/markdown/markdownText.ts';
 
 const CANDIDATES = 5;
+const LOOKUP_LIMIT = 10;
 const MATCH_THRESHOLD = 0.45;
 // Characters of conversation JSON read_conversation returns whole; longer ones arrive compacted.
 export const READ_BUDGET = 20000;
-// shortcut: at most this many unembedded messages per search, newest first; a big backlog fills over several searches.
-const BACKFILL = 256;
+// Messages per background embedding batch; the job yields between batches.
+const BATCH = 16;
 const EMBED_CHARS = 2000;
 const LINE_CHARS = 200;
 const COMPACT =
@@ -40,19 +41,50 @@ const required = (value, name, what) => {
     return value.trim();
 };
 
+// Embeds completed messages that lack a vector, newest first, BATCH at a time, until none remain, as one
+// background job. A call during a run is absorbed: each batch re-reads the backlog. A failure ends the run with
+// a warning and leaves the rest unembedded until the next call.
+export function messageEmbeddings({ store, embed, jobs, onWarning }) {
+    const run = async ({ controller: { signal } }) => {
+        for (let batch; !signal.aborted && (batch = store.unembeddedMessages(BATCH)).length;) {
+            const vectors = await embed(batch.map((m) => plain(m).slice(0, EMBED_CHARS)));
+            if (signal.aborted) return;
+            let saved = false;
+            for (const [i, m] of batch.entries())
+                if (vectors[i] && store.embedMessage(m.id, m.text, vectors[i])) saved = true;
+            // A batch that saved nothing (rewritten or deleted meanwhile) ends the run rather than spinning.
+            if (!saved) return;
+            await new Promise((resolve) => setImmediate(resolve));
+        }
+    };
+    return () =>
+        jobs.get('embeddings', 'messages') ??
+        jobs.start('embeddings', 'messages', null, (job) => run(job).catch(onWarning));
+}
+
 // Lookup and recall tools. compact(prompt, conversation) resolves to one paragraph from the compaction job.
 export function recallTools({ store, embed = null, compact }) {
     const compacted = new Map();
     return {
-        lookUpConcept: async (input, turn) =>
-            JSON.stringify(
-                await lookUpConcept(
-                    store,
-                    embed,
-                    required(input.description, 'description', 'the concept to look up'),
-                    turn.signal,
-                ),
-            ),
+        async lookUpConcept(input, turn) {
+            const items = input.concepts;
+            if (!Array.isArray(items) || items.length < 1 || items.length > LOOKUP_LIMIT)
+                throw new Error(
+                    `Give concepts: a list of 1 to ${LOOKUP_LIMIT} concepts to look up.`,
+                );
+            const queries = items.map((c) =>
+                required(c, 'concepts', 'concept names or short descriptions'),
+            );
+            const lookups = [];
+            // shortcut: one embed call per item; batch the queries if lookups grow slow.
+            for (const query of queries) {
+                const { concepts } = await lookUpConcept(store, embed, query, turn.signal);
+                lookups.push(
+                    concepts.length ? { query, concepts } : { query, familiarity: 'unknown' },
+                );
+            }
+            return JSON.stringify({ lookups });
+        },
         async searchConversations(input, turn) {
             const text = required(
                 input.description,
@@ -61,20 +93,11 @@ export function recallTools({ store, embed = null, compact }) {
             );
             const messages = store.recallMessages();
             let query = null;
+            // Only the query is embedded; messages the background job has not reached match by keyword.
             if (embed)
                 try {
-                    const pending = messages.filter((m) => !m.embedding).slice(0, BACKFILL);
-                    const [q, ...vectors] = await embed([
-                        text,
-                        ...pending.map((m) => plain(m).slice(0, EMBED_CHARS)),
-                    ]);
+                    [query] = await embed([text]);
                     turn.signal?.throwIfAborted();
-                    for (const [i, m] of pending.entries())
-                        if (vectors[i]) {
-                            store.embedMessage(m.id, m.text, vectors[i]);
-                            m.embedding = vectors[i];
-                        }
-                    query = q;
                 } catch {
                     turn.signal?.throwIfAborted();
                     // Local embeddings are optional; keyword matches still answer the question.

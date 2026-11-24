@@ -236,7 +236,11 @@ test('a new video embeds each accepted set piece look and saves it to the piece 
         env.store.tree(chat.id).artifacts.find((a) => ['ready', 'failed'].includes(a.status)),
     );
     assert.equal(row.status, 'ready', row.error);
-    assert.deepEqual(embedded, [look]);
+    // The chat's messages are embedded too, in the background.
+    assert.deepEqual(
+        embedded.filter((text) => text === look),
+        [look],
+    );
     const [match] = env.store.nearestPieces([0.6, 0.8]);
     assert.equal(match.name, 'Winner');
     assert.deepEqual(match.videos, [row.id]);
@@ -450,8 +454,11 @@ test('a wrong piece choice is rewritten whole, since a code patch keeps the choi
     };
     const inputs = [];
     const answers = [
-        { pieces: [{ name: 'Winner', use: 'reuse', id: 'gone' }], code: 'const unused = 1;' },
-        { pieces: [{ name: 'Winner', use: 'reuse', id: 'w' }], code: '' },
+        {
+            pieces: [{ name: 'Winner', use: 'reuse', reason: 'fits', id: 'gone' }],
+            code: 'const unused = 1;',
+        },
+        { pieces: [{ name: 'Winner', use: 'reuse', reason: 'fits', id: 'w' }], code: '' },
     ];
     const { choices } = await writeSetPieces({
         plan,

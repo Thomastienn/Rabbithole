@@ -22,7 +22,8 @@ import {
     type PartNode,
     type VisualPart,
 } from './artifacts';
-import { visualProgress } from './visualProgress';
+import { visualBadge, visualProgress } from './visualProgress';
+import { useNewVersion } from './NewVersion';
 
 export type VisualBranch = VisualPart & { child: string; address?: string; ink?: number };
 // box: a picked part's bounds in viewport coordinates, where the ask box floats.
@@ -260,6 +261,7 @@ export default function VisualFrame({
     onPart,
     onRetry,
     onRegenerate,
+    onPrevious,
 }: {
     artifact: Artifact;
     explored?: VisualBranch[];
@@ -267,7 +269,8 @@ export default function VisualFrame({
     reveal?: VisualPart;
     onPart?: PartAction;
     onRetry?: () => Promise<void>;
-    onRegenerate?: () => Promise<void>;
+    onRegenerate?: (instruction: string) => Promise<void>;
+    onPrevious?: () => Promise<void>;
 }) {
     const [enlarged, setEnlarged] = useState(false);
     const [retried, setRetried] = useState(false);
@@ -323,14 +326,22 @@ export default function VisualFrame({
         if (retried && artifact.status === 'ready' && document.activeElement === document.body)
             figure.current?.focus();
     }, [retried, artifact.status]);
-    async function run(action: () => Promise<void>) {
-        setRetried(true);
-        await action();
+    const refocus = () =>
         requestAnimationFrame(() => {
             if (document.activeElement === document.body)
                 (figure.current?.querySelector<HTMLElement>('button') ?? figure.current)?.focus();
         });
+    async function run(action: () => Promise<void>) {
+        setRetried(true);
+        await action();
+        refocus();
     }
+    const versions = useNewVersion(
+        artifact.hasPrevious,
+        onRegenerate && ((instruction) => run(() => onRegenerate(instruction))),
+        onPrevious,
+        refocus,
+    );
     if (!progress) return null;
     const announcement =
         progress.state === 'drawing'
@@ -360,26 +371,7 @@ export default function VisualFrame({
             <Text className="sr-only" role="status">
                 {announcement}
             </Text>
-            <Badge
-                className="visual-badge"
-                aria-hidden
-                variant={
-                    progress.state === 'interactive'
-                        ? 'success'
-                        : progress.state === 'drawing'
-                          ? 'info'
-                          : 'error'
-                }
-                label={
-                    progress.state === 'drawing'
-                        ? `Drawing… ${progress.elapsed}`
-                        : progress.state === 'interactive'
-                          ? 'Interactive'
-                          : progress.state === 'failed'
-                            ? 'Failed'
-                            : 'Interrupted'
-                }
-            />
+            <Badge className="visual-badge" aria-hidden {...visualBadge(progress)} />
             {drawing && <span className="visual-drawing-ring" aria-hidden />}
             {(artifact.status === 'pending' || artifact.status === 'ready') && (
                 <Frame
@@ -425,18 +417,12 @@ export default function VisualFrame({
                                 />
                             )}
                             items={[
-                                ...(onRegenerate
-                                    ? [
-                                          {
-                                              label: 'Try a different version',
-                                              onClick: () => void run(onRegenerate),
-                                          },
-                                      ]
-                                    : []),
+                                ...versions.items,
                                 { label: 'Enlarge', onClick: () => setEnlarged(true) },
                             ]}
                         />
                     </HStack>
+                    {versions.box}
                     {enlarged && (
                         <Dialog
                             ref={viewer}
