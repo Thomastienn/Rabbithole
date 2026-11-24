@@ -50,7 +50,8 @@ export default function Passage({
     discussionBranches?: Record<string, DiscussionBranch[]>;
     onArtifactAction?: (
         id: string,
-        action: 'cancel' | 'retry' | 'regenerate' | 'install',
+        action: 'cancel' | 'retry' | 'regenerate' | 'install' | 'previous',
+        instruction?: string,
     ) => Promise<void>;
     onDiscussionReply?: DiscussionReply;
     suggestions?: Suggestions;

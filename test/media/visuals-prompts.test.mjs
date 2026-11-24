@@ -276,7 +276,7 @@ for (const name of [TEST_PROVIDER])
         }
     });
 
-test('Try a different version replaces a ready visual in place from the frozen request, only once at a time, with guards', async () => {
+test('Try a new version changes the current visual as the learner asks, keeps one previous version a switch away, with guards', async () => {
     const calls = [],
         hold = deferred();
     let output = source,
@@ -285,7 +285,8 @@ test('Try a different version replaces a ready visual in place from the frozen r
         { generate: async (_tree, _text, emit) => complete(emit, 'See this.' + block()) },
         {
             generate: async (tree, text, emit) => {
-                calls.push({ tree, input: JSON.parse(text) });
+                const [task, current] = text.split('\n\ncurrentVersion:\n');
+                calls.push({ tree, input: JSON.parse(task), current });
                 if (held) await hold.promise;
                 complete(emit, output);
             },
@@ -325,7 +326,13 @@ test('Try a different version replaces a ready visual in place from the frozen r
         });
         output = source.replace('A → Final ← B', 'Bracket view');
         held = true;
-        const response = await env.post(url, { input: 'UNTRUSTED', source: '<p>x</p>' });
+        for (const instruction of ['x'.repeat(501), 5])
+            assert.equal((await env.post(url, { instruction })).status, 400);
+        const response = await env.post(url, {
+            instruction: '  Label the rounds  ',
+            input: 'UNTRUSTED',
+            source: '<p>x</p>',
+        });
         assert.equal(response.status, 200);
         const pending = await response.json();
         assert.equal(pending.id, artifact.id);
@@ -345,10 +352,10 @@ test('Try a different version replaces a ready visual in place from the frozen r
                 'ready',
         );
         const after = await env.get(`/api/trees/${env.tree.id}`);
-        assert.equal(after.artifacts.length, 1, 'no history is kept');
+        assert.equal(after.artifacts.length, 1, 'replaced in place');
         assert.deepEqual(
             { ...after.artifacts[0], source: undefined },
-            { ...artifact, source: undefined },
+            { ...artifact, source: undefined, hasPrevious: true },
         );
         assert.match(after.artifacts[0].source, /Bracket view/);
         assert.deepEqual(
@@ -365,12 +372,11 @@ test('Try a different version replaces a ready visual in place from the frozen r
                     : m,
             ),
         );
-        assert.deepEqual(
-            calls[1].input,
-            calls[0].input,
-            'same frozen request; previous source is never sent',
-        );
-        assert.doesNotMatch(JSON.stringify(calls[1]), /A → Final|UNTRUSTED/);
+        assert.deepEqual(calls[1].input, calls[0].input, 'same frozen request');
+        assert.equal(calls[0].current, undefined);
+        assert.equal(calls[1].current, source, 'changes the current version');
+        assert.match(calls[1].tree.instructions, /Label the rounds\n/);
+        assert.doesNotMatch(JSON.stringify(calls[1]), /UNTRUSTED/);
         assert.equal(calls[1].tree.effort, 'high', 'frozen smart selection');
         assert.equal(calls[1].tree.thread, null);
         assert.notEqual(
@@ -382,15 +388,37 @@ test('Try a different version replaces a ready visual in place from the frozen r
             (await env.get('/api/usage')).events.filter((e) => e.task === 'diagram').length,
             2,
         );
+        // The switch swaps current and previous, both ways.
+        const previous = `/api/trees/${env.tree.id}/artifacts/${artifact.id}/previous`;
+        const switched = async () => (await (await env.post(previous)).json()).source;
+        assert.equal(await switched(), source);
+        assert.match(await switched(), /Bracket view/);
+        assert.equal(await switched(), source);
+        // The next version builds on the chosen one, with the different-approach line, and replaces the previous slot.
+        held = false;
+        output = source.replace('A → Final ← B', 'Ladder view');
+        assert.equal((await env.post(url, { instruction: '   ' })).status, 200);
+        await until(
+            async () =>
+                (await env.get(`/api/trees/${env.tree.id}/artifacts/${artifact.id}`)).status ===
+                'ready',
+        );
+        assert.equal(calls[2].current, source);
+        assert.doesNotMatch(calls[2].tree.instructions, /Label the rounds/);
+        assert.notEqual(calls[2].tree.instructions, calls[0].tree.instructions);
+        assert.equal(await switched(), source);
+        assert.match(await switched(), /Ladder view/);
         // Only ready visuals regenerate.
         output = '<script>fetch("/api/state")</script>';
         await (await env.post(`/api/trees/${env.tree.id}/messages`, { text: 'Draw again' })).text();
         const failed = (await env.get(`/api/trees/${env.tree.id}`)).artifacts.at(-1);
         assert.equal(failed.status, 'failed');
-        assert.equal(
-            (await env.post(`/api/trees/${env.tree.id}/artifacts/${failed.id}/regenerate`)).status,
-            409,
-        );
+        for (const action of ['regenerate', 'previous'])
+            assert.equal(
+                (await env.post(`/api/trees/${env.tree.id}/artifacts/${failed.id}/${action}`))
+                    .status,
+                409,
+            );
     } finally {
         hold.resolve();
         await env.close();
