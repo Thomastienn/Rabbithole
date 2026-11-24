@@ -97,7 +97,10 @@ export function Globe({ x, y }) { return <div style={{ left: x, top: y, backgrou
         matches: async () => [[saved]],
         signal: new AbortController().signal,
         write: async () =>
-            JSON.stringify({ pieces: [{ name: 'Planet', use: 'reuse', id }], code: '' }),
+            JSON.stringify({
+                pieces: [{ name: 'Planet', use: 'reuse', reason: 'fits', id }],
+                code: '',
+            }),
     });
     assert.match(source, /background: "#2b6cb0"/, 'the true colour stays');
     assert.match(source, /borderColor: colors\.planet/, 'the ink role is remapped');

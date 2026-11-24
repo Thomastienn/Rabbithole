@@ -43,14 +43,38 @@ export const pieces = {
         if (video) this.usePiece(id, video);
         return id;
     },
-    // A validated rewrite replaces the entry for future videos; saved videos are rendered files and never change.
-    // Both forms are replaced together so they never drift apart; their stills are rendered again.
-    improvePiece(id, { source, source3d = null, props, roles }) {
-        this.db
-            .prepare(
-                'UPDATE pieces SET source=?, source3d=?, props=?, roles=?, improved=?, still=NULL, still3d=NULL WHERE id=?',
-            )
-            .run(source, source3d, JSON.stringify(props), JSON.stringify(roles), Date.now(), id);
+    // A validated rewrite becomes the current version for future videos; the replaced one is kept in piece_versions,
+    // and saved videos keep the module they were made with. Both forms are replaced together so they never drift
+    // apart; their stills are rendered again. A new look replaces the embedding too (null until backfilled).
+    improvePiece(
+        id,
+        { name, look, source, source3d = null, props, roles, trueColors, parts, embedding = null },
+    ) {
+        this.transaction(() => {
+            this.db
+                .prepare(
+                    'INSERT INTO piece_versions(piece,name,look,props,source,source3d,roles,true_colors,parts,improved) SELECT id,name,look,props,source,source3d,roles,true_colors,parts,improved FROM pieces WHERE id=?',
+                )
+                .run(id);
+            this.db
+                .prepare(
+                    'UPDATE pieces SET name=COALESCE(?,name), look=COALESCE(?,look), source=?, source3d=?, props=?, roles=?, true_colors=COALESCE(?,true_colors), parts=COALESCE(?,parts), embedding=CASE WHEN ? IS NULL THEN embedding ELSE ? END, improved=?, still=NULL, still3d=NULL WHERE id=?',
+                )
+                .run(
+                    name ?? null,
+                    look ?? null,
+                    source,
+                    source3d,
+                    JSON.stringify(props),
+                    JSON.stringify(roles),
+                    trueColors ? JSON.stringify(trueColors) : null,
+                    parts ? JSON.stringify(parts) : null,
+                    look ?? null,
+                    blob(embedding),
+                    Date.now(),
+                    id,
+                );
+        });
     },
     // Pieces whose stills are missing, saved earlier or just saved or improved, oldest first.
     unstilledPieces() {

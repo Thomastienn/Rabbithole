@@ -288,6 +288,10 @@ export function open(path) {
         // The true colours a piece keeps on reuse, as {role or name: hex}; older pieces have none (ADR 0009).
         if (!hasColumn('pieces', 'true_colors'))
             this.db.exec('ALTER TABLE pieces ADD COLUMN true_colors TEXT');
+        // Older versions of a piece, replaced by an improvement; the pieces row is the current one.
+        this.db.exec(
+            'CREATE TABLE IF NOT EXISTS piece_versions (piece TEXT NOT NULL REFERENCES pieces(id) ON DELETE CASCADE, name TEXT NOT NULL, look TEXT NOT NULL, props TEXT NOT NULL, source TEXT NOT NULL, source3d TEXT, roles TEXT NOT NULL, true_colors TEXT, parts TEXT, improved INTEGER NOT NULL)',
+        );
         // Discussion kind and reply positions migrate in place; existing rows keep their content and positions.
         this.transaction(() => this.rebuildArtifacts("'discussion'"));
         // Visual passages keep their source artifact and part instead of inventing reply offsets.
