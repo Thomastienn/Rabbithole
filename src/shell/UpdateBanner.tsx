@@ -12,9 +12,9 @@ import {
     XMarkIcon,
 } from '@heroicons/react/24/outline';
 
-// The desktop shell's update state (desktop/shell.mjs updateState); null shows nothing.
+// The desktop shell's update state (desktop/shell.mjs updateState); null and current show no banner.
 export type Update = {
-    stage: 'available' | 'downloading' | 'ready' | 'failed' | 'restarting';
+    stage: 'current' | 'available' | 'downloading' | 'ready' | 'failed' | 'restarting';
     version: string;
     current: string;
     percent?: number;

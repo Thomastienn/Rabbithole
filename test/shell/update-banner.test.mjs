@@ -41,9 +41,11 @@ test('the update card offers Install, shows progress, Restart and Retry, and hid
     });
     t.after(cleanup);
     const card = () => container.querySelector('.update-card');
-    assert.equal(card(), null, 'nothing shows without a newer release');
+    assert.equal(card(), null, 'nothing shows before the check');
     const push = (update) => act(async () => desktop.push(update));
     const base = { version: '1.0.214', current: '1.0.198' };
+    await push({ stage: 'current', version: '1.0.198', current: '1.0.198' });
+    assert.equal(card(), null, 'nothing shows without a newer release');
 
     await push({ ...base, stage: 'available' });
     assert.match(card().textContent, /1\.0\.214.*1\.0\.198/);

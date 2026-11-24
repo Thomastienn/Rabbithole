@@ -1,4 +1,8 @@
 import { LABELS, isEndpoint } from '../roles.mjs';
+import pkg from '../../../package.json' with { type: 'json' };
+
+// The desktop shell passes its own version, which CI stamps; a browser-run server has the repo's.
+const version = process.env.RABBITHOLE_VERSION || pkg.version;
 
 // App state, usage history, search, conversation previews and the model list.
 export async function stateRoutes(req, res, url, ctx) {
@@ -7,6 +11,7 @@ export async function stateRoutes(req, res, url, ctx) {
     if (url.pathname === '/api/state')
         return json(res, 200, {
             csrf: ctx.csrf,
+            version,
             auth: ctx.auth.status(),
             firstRun: !store.setupFinished(),
             trees: store.list(),

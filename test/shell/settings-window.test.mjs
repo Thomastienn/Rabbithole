@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createElement as h, useState } from 'react';
 import { render } from '../support/render.mjs';
-import { ui } from '../support/ui.mjs';
+import { ui, button } from '../support/ui.mjs';
 import { fakeServer } from '../support/fake-server.mjs';
 const { default: SettingsWindow } = await import('../../src/settings/SettingsWindow.tsx');
 
@@ -47,4 +47,50 @@ test('opening Settings at a section scrolls to it; switching pages focuses the h
         assert.equal(document.activeElement.id, `settings-section-${tab}`);
     }
     assert.deepEqual(scrolls, ['settings-section-usage'], 'nav switches never scroll');
+});
+
+const settings = (version) =>
+    h(SettingsWindow, {
+        request: {},
+        version,
+        close() {},
+        modelError: '',
+        async loadModels() {},
+        profileActivated() {},
+        async signIn() {},
+        vim: false,
+        setVim() {},
+        appearance: 'light',
+        setAppearance() {},
+        theme: 'main',
+        setTheme() {},
+    });
+
+test("Settings' foot shows the version, and in the desktop app the update state with an Update button", async (t) => {
+    fakeServer(t, () => ({ first: null, events: [] }));
+    let listener;
+    const asked = [];
+    const browser = await render(settings('1.0.198'), (w) => ui(w));
+    const foot = () => document.querySelector('.settings-foot');
+    assert.equal(foot().textContent, 'Rabbithole 1.0.198');
+    assert.equal(foot().querySelector('button'), null, 'a browser has no update controls');
+    await browser.cleanup();
+
+    const page = await render(settings('1.0.198'), (w) => {
+        ui(w);
+        w.rabbitholeDesktop = {
+            update: async (action) => (asked.push(action), null),
+            onUpdate: (next) => ((listener = next), () => {}),
+        };
+    });
+    t.after(page.cleanup);
+    assert.equal(foot().textContent, 'Rabbithole 1.0.198', 'a failed check adds nothing');
+    const push = (update) => page.act(async () => listener(update));
+    await push({ stage: 'current', version: '1.0.198', current: '1.0.198' });
+    assert.equal(foot().textContent, 'Rabbithole 1.0.198 · Up to date');
+    assert.equal(foot().querySelector('button'), null);
+    await push({ stage: 'available', version: '1.0.214', current: '1.0.198' });
+    assert.match(foot().textContent, /^Rabbithole 1\.0\.198 · Latest is 1\.0\.214/);
+    await page.act(async () => button(foot(), 'Update').click());
+    assert.equal(asked.at(-1), 'install', 'Update installs like the banner');
 });
