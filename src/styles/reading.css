@@ -450,3 +450,6 @@ mark {
 .tool-calls pre:focus-visible {
     outline: medium solid var(--color-text-primary);
 }
+.chat-reply .reply-usage-toggle {
+    color: var(--color-text-secondary);
+}
