@@ -5,7 +5,7 @@ import { dirname } from 'node:path';
 
 const ARTIFACTS = `CREATE TABLE IF NOT EXISTS artifacts (id TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), message TEXT NOT NULL,
         kind TEXT NOT NULL CHECK(kind IN ('mermaid','video','visual','discussion')), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed','canceled','interrupted')),
-        title TEXT NOT NULL, description TEXT NOT NULL, source TEXT, error TEXT, created INTEGER NOT NULL, input TEXT, attempt TEXT, duration REAL, position INTEGER, side TEXT,
+        title TEXT NOT NULL, description TEXT NOT NULL, source TEXT, error TEXT, created INTEGER NOT NULL, input TEXT, attempt TEXT, duration REAL, position INTEGER, side TEXT, started INTEGER, playableAt INTEGER,
         FOREIGN KEY(message, conversation) REFERENCES messages(id, tree));
       CREATE INDEX IF NOT EXISTS artifacts_conversation ON artifacts(conversation, created);`;
 const BRANCHES = `CREATE TABLE IF NOT EXISTS branches (child TEXT PRIMARY KEY REFERENCES trees(id), parent TEXT NOT NULL REFERENCES trees(id), messageId TEXT NOT NULL REFERENCES messages(id), start INTEGER, end INTEGER, text TEXT NOT NULL, question TEXT NOT NULL, snapshot TEXT NOT NULL, artifactId TEXT, label TEXT, explanation TEXT, line INTEGER, speaker TEXT, discussion TEXT);`;
@@ -49,6 +49,11 @@ export function open(path) {
         // A visual's side beside the section after its position; NULL on older rows, which sit in the flow.
         if (!hasColumn('artifacts', 'side'))
             this.db.exec('ALTER TABLE artifacts ADD COLUMN side TEXT');
+        // When a video's current attempt started and became playable; NULL on older rows, which show no time.
+        for (const name of ['started', 'playableAt']) {
+            if (!hasColumn('artifacts', name))
+                this.db.exec(`ALTER TABLE artifacts ADD COLUMN ${name} INTEGER`);
+        }
         for (const name of ['effort', 'working_effort']) {
             if (!hasColumn('trees', name))
                 this.db.exec(`ALTER TABLE trees ADD COLUMN ${name} TEXT`);
@@ -128,6 +133,9 @@ export function open(path) {
         // Reasoning tokens are part of output, kept apart where the provider reports them; older rows keep NULL (not reported).
         if (!hasColumn('usage_events', 'reasoning'))
             this.db.exec('ALTER TABLE usage_events ADD COLUMN reasoning INTEGER');
+        // A call's last recorded moment, so a video stage shows its time; older rows keep NULL (not recorded).
+        if (!hasColumn('usage_events', 'ended'))
+            this.db.exec('ALTER TABLE usage_events ADD COLUMN ended INTEGER');
         // Additive table: brief explanations sit beside tutor replies, keyed by reply and passage; the tutor never reads them.
         this.db.exec(
             'CREATE TABLE IF NOT EXISTS briefs (message TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE, start INTEGER NOT NULL, end INTEGER NOT NULL, text TEXT NOT NULL, concept TEXT, explanation TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY(message, start, end))',

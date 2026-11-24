@@ -43,6 +43,9 @@ export type Artifact = ArtifactSummary & {
     frames?: number;
     startedAt?: number;
     phaseStartedAt?: number;
+    // Videos: when the current attempt started and became playable; null on videos made before they were saved.
+    started?: number | null;
+    playableAt?: number | null;
     // Pending videos: one row per cut (its state may move back) and the set pieces still being drawn.
     cutRows?: {
         cut: number;

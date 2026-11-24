@@ -138,6 +138,7 @@ test('usage history migrates once, keeps attribution and unavailable calls, surv
             'stage',
             'cut',
             'reasoning',
+            'ended',
         ],
     );
     assert.ok(
@@ -295,8 +296,14 @@ test('video worker attempts record their own reported usage, including failed an
 
     const first = await video('Make a video of winners');
     await settle(first, 'failed');
+    assert.equal(typeof store.artifact(tree.id, first).started, 'number');
+    assert.equal(store.artifact(tree.id, first).playableAt, null, 'a failed attempt never played');
+    store.db.prepare('UPDATE artifacts SET started=1 WHERE id=?').run(first);
     await post(`/api/trees/${tree.id}/artifacts/${first}/retry`);
     await settle(first, 'ready');
+    const timed = store.artifact(tree.id, first);
+    assert.ok(timed.started > 1, 'Retry restarts the clock');
+    assert.ok(timed.playableAt >= timed.started);
     const hold = await video('Make a video, hold');
     await held; // cancel once the worker call is in flight
     await post(`/api/trees/${tree.id}/artifacts/${hold}/cancel`);
@@ -335,6 +342,7 @@ test('video worker attempts record their own reported usage, including failed an
     // An older row (no stage) and an unreported repair in the current attempt.
     const { attempt: current } = store.artifact(tree.id, first);
     store.record(`video:${current}:old`, 'video', by, { input: 1, output: 1, cacheRead: 0 });
+    store.db.prepare('UPDATE usage_events SET ended=NULL WHERE id=?').run(`video:${current}:old`);
     store.record(`video:${current}:lost`, 'video', by, null, undefined, null, 'repair', 1);
     const rows = (
         stage,
@@ -354,8 +362,15 @@ test('video worker attempts record their own reported usage, including failed an
         cacheRead,
         reasoning,
     });
+    const usage = store.videoUsage(tree.id, first).map((r) => ({ ...r }));
     assert.deepEqual(
-        store.videoUsage(tree.id, first).map((r) => ({ ...r })),
+        usage.map((r) => r.time === null),
+        [false, false, true, false],
+        'a stage times its calls; a row from before ends were kept has no time',
+    );
+    assert.ok(usage.every((r) => r.time === null || r.time >= 0));
+    assert.deepEqual(
+        usage.map(({ time, ...r }) => r),
         [
             rows('plan', 11, 5, 2),
             rows('cut', 12, 5, 2),
@@ -374,6 +389,37 @@ test('video worker attempts record their own reported usage, including failed an
             .events.filter((e) => e.task === 'chat')
             .every((e) => e.input === null),
     );
+});
+
+test('a video keeps its start and playable times across restart; a Retry or new version restarts them', () => {
+    const path = join(mkdtempSync(join(tmpdir(), 'tt-video-time-')), 'trees.sqlite');
+    let store = new Store(path);
+    const tree = store.create('Video', 'codex');
+    const message = store.message(tree.id, 'assistant', 'Here.', 'completed');
+    const input = JSON.stringify({ title: 'Winners' });
+    let video = store.pendingArtifact(tree.id, message, 'Winners', 'Two winners.', 'video', input);
+    store.videoStarted(tree.id, video.id, video.attempt, 1000);
+    store.finishVideo(tree.id, video.id, video.attempt, {
+        description: 'Two winners.',
+        duration: 2,
+    });
+    const { playableAt } = store.artifact(tree.id, video.id);
+    assert.ok(playableAt > 1000);
+    store.close();
+    store = new Store(path);
+    assert.deepEqual(
+        { ...store.artifact(tree.id, video.id) },
+        { ...store.artifact(tree.id, video.id), started: 1000, playableAt },
+    );
+    video = store.regenerateArtifact(tree.id, video.id);
+    store.videoStarted(tree.id, video.id, video.attempt, 3000);
+    assert.equal(store.artifact(tree.id, video.id).started, 3000, 'a new version restarts');
+    assert.equal(store.artifact(tree.id, video.id).playableAt, null);
+    store.finishVideo(tree.id, video.id, video.attempt, {}, 'Failed.');
+    video = store.retryVideo(tree.id, video.id);
+    store.videoStarted(tree.id, video.id, video.attempt, 5000);
+    assert.equal(store.artifact(tree.id, video.id).started, 5000, 'a Retry restarts');
+    store.close();
 });
 
 test('usage events name the learning tree their message belongs to; branches roll up to their root', (t) => {
