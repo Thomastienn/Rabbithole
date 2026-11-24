@@ -52,6 +52,8 @@ export type Message = {
     attachments?: Attachment[];
     tools?: ToolCall[];
     questions?: string[];
+    // The tutor's tool or the post-reply call wrote the memory note during this reply.
+    memoryUpdated?: boolean;
 };
 export const usageLine = (u: Usage) =>
     `${u.input.toLocaleString()} input · ${u.output.toLocaleString()} output · ${u.cacheRead.toLocaleString()} cache-read tokens`;

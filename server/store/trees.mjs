@@ -186,10 +186,10 @@ export const trees = {
                 branch: this.branchOf(id),
                 messages: this.db
                     .prepare(
-                        'SELECT id,role,text,status,stopped,usage,questions FROM messages WHERE tree=? ORDER BY seq',
+                        'SELECT id,role,text,status,stopped,usage,questions,memory FROM messages WHERE tree=? ORDER BY seq',
                     )
                     .all(id)
-                    .map(({ usage, stopped, questions, ...m }) => {
+                    .map(({ usage, stopped, questions, memory, ...m }) => {
                         if (m.role !== 'assistant') {
                             const attachments = this.attachments(id, m.id);
                             return attachments.length ? { ...m, attachments } : m;
@@ -201,6 +201,7 @@ export const trees = {
                             ...(tools.length && { tools }),
                             ...(stopped && { stopped }),
                             ...(questions && { questions: JSON.parse(questions) }),
+                            ...(memory && { memoryUpdated: true }),
                             usage: JSON.parse(usage),
                             ...(mediaUsage.length && { mediaUsage }),
                         };

@@ -248,6 +248,9 @@ export function open(path) {
         // Next questions from the tutor's notes block, a JSON array; NULL when the reply had none.
         if (!hasColumn('messages', 'questions'))
             this.db.exec('ALTER TABLE messages ADD COLUMN questions TEXT');
+        // 1 when this reply's tutor tool or post-reply call wrote the memory note; NULL otherwise.
+        if (!hasColumn('messages', 'memory'))
+            this.db.exec('ALTER TABLE messages ADD COLUMN memory INTEGER');
         // Observations: the tutor's verdict on what one learner message showed about a concept; familiarity derives from them.
         // Created once: the old familiarity evidence (asked, used, ignored and corrections) was test data and goes; met stays.
         if (!this.db.prepare("SELECT 1 FROM sqlite_master WHERE name='observations'").get())
