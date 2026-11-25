@@ -18,10 +18,11 @@ export function defineControls(view: Window & typeof globalThis) {
     let ids = 0;
     const make = <K extends keyof HTMLElementTagNameMap>(
         tag: K,
-        props: Partial<HTMLElementTagNameMap[K]> = {},
+        props: object = {},
         ...children: (Node | string)[]
     ) => {
-        const e = Object.assign(document.createElement(tag), props);
+        const e = document.createElement(tag);
+        Object.assign(e, props);
         e.append(...children);
         return e;
     };
