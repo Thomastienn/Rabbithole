@@ -1,9 +1,19 @@
 import assert from 'node:assert/strict';
-import { resolve } from 'node:path';
+import {
+    chmodSync,
+    existsSync,
+    mkdirSync,
+    mkdtempSync,
+    readFileSync,
+    writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import test from 'node:test';
 import { dataDir } from '../../server/desktop.mjs';
 import {
     installedDataDir,
+    moveOldData,
     navigation,
     saveLayout,
     serverUrl,
@@ -93,6 +103,68 @@ test('the installed Windows app keeps its data and profile in its install folder
     );
     assert.equal(installedDataDir('win32', false, 'C:\\dev\\electron.exe'), null);
     assert.equal(installedDataDir('linux', true, '/tmp/.mount_Rabbit/rabbithole-desktop'), null);
+});
+
+// An old %APPDATA% folder with a learning tree database and Electron's profile, and the install folder's data path.
+function upgrade() {
+    const root = mkdtempSync(join(tmpdir(), 'rabbithole-move-'));
+    const [from, to] = [join(root, 'old'), join(root, 'install', 'data')];
+    mkdirSync(join(from, 'tools', 'manim'), { recursive: true });
+    mkdirSync(join(root, 'install'));
+    writeFileSync(join(from, 'trees.sqlite'), 'trees');
+    writeFileSync(join(from, 'Preferences'), 'layout');
+    writeFileSync(join(from, 'tools', 'manim', 'bin'), 'add-on');
+    return { from, to };
+}
+const kept = (dir) =>
+    ['trees.sqlite', 'Preferences', join('tools', 'manim', 'bin')].map((f) =>
+        readFileSync(join(dir, f), 'utf8'),
+    );
+const exdev = () => {
+    throw Object.assign(new Error('cross-device link not permitted'), { code: 'EXDEV' });
+};
+
+test('an upgrade moves the old data folder into the install folder, by rename or by a checked copy across drives', () => {
+    for (const rename of [undefined, exdev]) {
+        const { from, to } = upgrade();
+        assert.equal(moveOldData(from, to, assert.fail, rename), to);
+        assert.deepEqual(kept(to), ['trees', 'layout', 'add-on']);
+        assert.equal(existsSync(from), false);
+        assert.equal(existsSync(`${to}.moving`), false);
+    }
+});
+
+test('a failed move keeps the old folder untouched and uses it; data that already moved stays put', () => {
+    const logs = [];
+    const locked = upgrade();
+    const busy = () => {
+        throw Object.assign(new Error('resource busy'), { code: 'EBUSY' });
+    };
+    assert.equal(
+        moveOldData(locked.from, locked.to, (l) => logs.push(l), busy),
+        locked.from,
+    );
+    assert.deepEqual(kept(locked.from), ['trees', 'layout', 'add-on']);
+    assert.equal(existsSync(locked.to), false);
+    // A file the copy cannot read stops it before anything lands in data (root reads it anyway).
+    if (process.getuid?.() !== 0) {
+        const unreadable = upgrade();
+        chmodSync(join(unreadable.from, 'Preferences'), 0);
+        assert.equal(
+            moveOldData(unreadable.from, unreadable.to, (l) => logs.push(l), exdev),
+            unreadable.from,
+        );
+        chmodSync(join(unreadable.from, 'Preferences'), 0o644);
+        assert.deepEqual(kept(unreadable.from), ['trees', 'layout', 'add-on']);
+        assert.equal(existsSync(unreadable.to), false);
+        assert.equal(existsSync(`${unreadable.to}.moving`), false);
+    }
+    assert.ok(logs.every((l) => l.includes('could not move')) && logs.length > 0);
+    const done = upgrade();
+    mkdirSync(done.to);
+    writeFileSync(join(done.to, 'trees.sqlite'), 'moved');
+    assert.equal(moveOldData(done.from, done.to, assert.fail), done.to);
+    assert.deepEqual(kept(done.from), ['trees', 'layout', 'add-on']);
 });
 
 test('the update banner appears only for a newer release, downloads on Install and quietly ignores a failed check', () => {
