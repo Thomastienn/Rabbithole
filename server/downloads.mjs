@@ -63,16 +63,24 @@ export function downloadManager(tools, { file = null } = {}) {
         percent: item.percent,
         ...(item.update && { update: true }),
         ...(item.error && { error: item.error }),
+        ...(item.seen && { seen: true }),
     });
     // A ready download stays listed until the learner has opened the list once.
-    const list = () => [...items.values()].filter((i) => !i.seen).map(view);
+    const list = (includeSeen = false) =>
+        [...items.values()].filter((i) => includeSeen || !i.seen).map(view);
     const changed = () => {
         const current = list();
         for (const listener of listeners) listener(current);
     };
     const run = async (item) => {
         if (controller.signal.aborted) return;
-        Object.assign(item, { state: 'running', bytes: null, total: null, percent: null });
+        Object.assign(item, {
+            state: 'running',
+            bytes: null,
+            total: null,
+            percent: null,
+            error: undefined,
+        });
         changed();
         const report = ({ bytes = null, total = null, percent = null }) => {
             // Only a whole-percent change is streamed, so chunked downloads do not flood the client.
@@ -160,6 +168,14 @@ export function downloadManager(tools, { file = null } = {}) {
             ...(failed && { error: failed.error }),
         };
     };
+    // Runs a tool at once, beside the add-on queue, as a listed download; asking while it runs joins it.
+    const now = (tool) => {
+        const item = items.get(tool.id) ?? { id: tool.id, name: tool.name, tool, now: true };
+        if (item.state === 'running') return item.done;
+        item.seen = false;
+        items.set(item.id, item);
+        return (item.done = run(item));
+    };
     return {
         list,
         addons: () => ADDONS.map(addonView),
@@ -191,10 +207,12 @@ export function downloadManager(tools, { file = null } = {}) {
             await queue(addon);
             return true;
         },
+        now,
         retry(id) {
             const item = items.get(id);
             if (item?.state !== 'failed') return false;
-            enqueue(item);
+            if (item.now) void now(item.tool);
+            else enqueue(item);
             return true;
         },
         seen() {

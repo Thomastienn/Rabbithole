@@ -1,11 +1,16 @@
+import { cliInstaller, installable } from '../../providers/install.mjs';
+
 // The download list streams as server-sent events; the actions are Retry and "seen". Add-ons list, install and retry by id.
 export async function downloadRoutes(req, res, url, ctx) {
     const { downloads, json } = ctx;
     if (!url.pathname.startsWith('/api/downloads')) return false;
     if (!downloads) return json(res, 404, { error: 'Downloads are not managed by this server.' });
     if (req.method === 'GET' && url.pathname === '/api/downloads') {
+        const includeSeen = url.searchParams.get('includeSeen') === '1';
         res.writeHead(200, { 'Content-Type': 'text/event-stream', 'X-Accel-Buffering': 'no' });
-        const send = (list) => res.write(`data: ${JSON.stringify(list)}\n\n`);
+        // A setup view needs completion even if the learner dismissed it from the sidebar.
+        const send = (list) =>
+            res.write(`data: ${JSON.stringify(includeSeen ? downloads.list(true) : list)}\n\n`);
         send(downloads.list());
         const unsubscribe = downloads.subscribe(send);
         ctx.downloadStreams.add(res);
@@ -20,6 +25,13 @@ export async function downloadRoutes(req, res, url, ctx) {
     if (req.method !== 'POST') return false;
     if (url.pathname === '/api/downloads/seen') {
         downloads.seen();
+        return json(res, 200, downloads.list());
+    }
+    // Claude Code or Codex: their installer runs at once, listed like a download.
+    const cli = url.pathname.match(/^\/api\/downloads\/install\/(\w+)$/);
+    if (cli) {
+        if (!installable(cli[1])) return json(res, 404, { error: 'No such tool.' });
+        void downloads.now(cliInstaller(cli[1]));
         return json(res, 200, downloads.list());
     }
     // Retry is an install that queues again only what failed.

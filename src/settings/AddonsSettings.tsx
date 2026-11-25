@@ -17,6 +17,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useSandbox } from './SandboxSettings';
 import { request as api } from '../serverAccess';
+import { subscribeDownloads } from '../shell/useDownloadRows';
 
 type Addon = {
     id: string;
@@ -245,10 +246,7 @@ export function useAddons() {
                 .catch(() => {});
         load();
         // The download stream changes with every whole percent, so each change reloads the rows.
-        if (typeof EventSource === 'undefined') return;
-        const source = new EventSource('/api/downloads');
-        source.onmessage = load;
-        return () => source.close();
+        return subscribeDownloads(load);
     }, []);
     function install(addon: Addon) {
         setError('');
