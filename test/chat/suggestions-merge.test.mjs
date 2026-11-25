@@ -83,8 +83,10 @@ test('one confirmation call per reply merges only confirmed pairs, keeping the o
         neighbourhood: async () => ({ concepts: [] }),
         pick: () => quick,
         logged: (provider) => provider,
+        // Records like the real meter does before each call, so the usage table must accept the task.
         metered: (provider, task, id, selection, detail) => (
             meters.push([task, id, detail]),
+            real.record(`${task}:${id}`, task, selection, null, undefined, detail?.message),
             provider
         ),
         log: (line) => logs.push(line),
@@ -117,6 +119,7 @@ test('one confirmation call per reply merges only confirmed pairs, keeping the o
     real.addGraph({ concepts: [{ name: 'UDP', topics: ['computer networking'] }], links: [] });
     assert.deepEqual(topicsOf(real, 'UDP'), ['Networking']);
     assert.deepEqual(meters, [['merge', 'r', { message: 'r' }]]);
+    assert.equal(real.usageEvents().events.filter((e) => e.task === 'merge').length, 1);
     assert.equal(logs.length, 2);
     assert.match(
         logs[0],
@@ -268,4 +271,40 @@ test('a malformed batch leaves the duplicates apart and the next startup retries
     t.after(() => reopened.close());
     await cleanupJob(reopened, embed, answer([1])).done;
     assert.equal(reopened.concept('thread').name, 'Threads');
+});
+
+test('the usage task check widens to merge on an existing database and keeps every row', () => {
+    const path = join(mkdtempSync(join(tmpdir(), 'tt-merge-usage-')), 'trees.sqlite');
+    const old = new Store(path);
+    old.record(
+        'video:a:1',
+        'video',
+        {},
+        { input: 1, output: 2, cacheRead: 3, reasoning: 1 },
+        5,
+        null,
+        'plan',
+        2,
+    );
+    old.record('brief:x', 'brief', { provider: 'claude', model: 'haiku' }, null, 6);
+    const sql = old.db.prepare("SELECT sql FROM sqlite_master WHERE name='usage_events'").get().sql;
+    old.db.exec(`ALTER TABLE usage_events RENAME TO usage_events_new;
+    ${sql.replace(",'merge'", '')};
+    INSERT INTO usage_events SELECT * FROM usage_events_new;
+    DROP TABLE usage_events_new;`);
+    assert.throws(() => old.record('merge:r', 'merge', {}, null), /CHECK/);
+    const rows = () => old.db.prepare('SELECT * FROM usage_events ORDER BY id').all();
+    const before = rows().map((r) => ({ ...r }));
+    old.close();
+    const store = new Store(path);
+    assert.deepEqual(
+        store.db
+            .prepare('SELECT * FROM usage_events ORDER BY id')
+            .all()
+            .map((r) => ({ ...r })),
+        before,
+    );
+    store.record('merge:r', 'merge', { provider: 'claude', model: 'haiku' }, null);
+    assert.equal(store.usageEvents().events.at(-1).task, 'merge');
+    store.close();
 });
