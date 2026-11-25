@@ -86,7 +86,10 @@ test('Enter, Space and arrow keys step once each and keep focus on an enabled co
 test('keys inside the visual itself do not step', () => {
     const { window, root, indicator, key } = setup();
     const slider = root.appendChild(window.document.createElement('input'));
+    const toggle = root.appendChild(window.document.createElement('button'));
     assert.equal(key(slider, 'ArrowRight'), false);
+    assert.equal(key(toggle, ' '), false);
+    assert.equal(key(toggle, ' ', 'keyup'), false);
     assert.equal(indicator.textContent, 'Step 1 of 3');
 });
 

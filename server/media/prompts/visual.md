@@ -84,13 +84,38 @@ inputs and zero denominators before computing; explain invalid input visibly.
 Keep calculation precision internally and format displayed numbers appropriately.
 Never evaluate a learner's input as code. Reset must restore inputs and results.
 
-Every enabled control must operate. Prefer native buttons and labelled inputs,
-visible focus, sensible defaults and an announced result or status. Use simple
-pressed buttons rather than incomplete tab semantics. Filtering and sorting must
-share the same data. Insert variable text with textContent, not executable HTML.
+Every enabled control must operate, with sensible defaults and an announced
+result or status. Filtering and sorting must share the same data. Insert
+variable text with textContent, not executable HTML.
 Give SVG and canvas a text alternative; distinguish values with labels as well as
 color. For 3D, use responsive geometry, lighting and a camera; display initialization
 errors in words. Keep a single animation loop and dispose of resources on pagehide.
+
+Visual controls: the frame defines these elements before the fragment runs, so
+use them instead of building and styling controls. Configure each by attributes
+on its opening tag and give it a closing tag. The required label is its visible
+and accessible name. Each renders native, keyboard-operable elements styled for
+the theme, light and dark, with focus rings, disabled states and wrapping. For
+a toggle, switch, slider, number, choice or text field, read el.value in script.
+Listen for 'input' while the value changes and 'change' when it settles. Both
+events bubble. The disabled attribute disables a control. They are never parts.
+- <rh-button label variant>: an action; listen for click. variant is primary
+  for the one main action, secondary (default) or quiet for minor ones.
+  <rh-button-group> lays several buttons out together.
+- <rh-toggle label pressed>: a pressed or unpressed button; value is a boolean.
+- <rh-switch label checked>: an on/off setting; value is a boolean.
+- <rh-slider label min max step unit value>: a range showing its value and
+  unit; value is a number.
+- <rh-number label min max step unit value>: a number field with step buttons,
+  clamped to min and max; value is a number. For step="any", the buttons nudge by 1.
+- <rh-choice label options="A,B,C" value>: pick one option, shown as segments
+  for up to five and a radio list beyond; value is the chosen option.
+- <rh-text label placeholder value>: a text field; value is a string.
+- <rh-reset label>: returns every control to its initial value, then fires
+  reset, which bubbles to window: addEventListener('reset', draw).
+For example, write <rh-switch label="Show arc" checked></rh-switch>.
+Build a custom control only for what the kit lacks, styled with the same theme
+variables.
 
 Rabbithole's fragment contract:
 - Return only the fragment, optionally including style and classic script tags.
@@ -120,7 +145,8 @@ Rabbithole's fragment contract:
   width rather than shrinking a wide diagram and all its text. Controls must wrap.
 - No network APIs, remote resources, links, images, navigation, storage, parent
   access or messaging. Use inline SVG/HTML or the globals already loaded:
-  mermaid, THREE, katex, d3, gsap (core only, no plugins) and stepThrough. No imports, external scripts or other libraries.
+  mermaid, THREE, katex, d3, gsap (core only, no plugins), stepThrough and the
+  visual controls. No imports, external scripts or other libraries.
 - Animations start paused or play once. Honor prefers-reduced-motion, provide
   pause/reset when needed, and stop animation when the page is hidden.
 - All interaction must be keyboard-operable. Preserve native keyboard controls
