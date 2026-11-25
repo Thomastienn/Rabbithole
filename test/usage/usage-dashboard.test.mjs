@@ -89,12 +89,12 @@ test('usage dashboard totals, charts and breakdowns agree, never estimate unrepo
     const u = await mount(t, serve(events));
     const { container, act, radio, text, rows, bars } = u;
     assert.equal(container.querySelector('.usage-dashboard').getAttribute('aria-busy'), 'false');
-    assert.match(text('.usage-total'), /^3,070 tokens in March/);
+    assert.match(text('.usage-total'), /^3\.1k tokens in March/);
     assert.deepEqual(
         [...container.querySelectorAll('.usage-legend b')].map((b) => b.textContent),
-        ['1,800', '390', '880'],
+        ['1.8k', '390', '880'],
     );
-    assert.match(text('.usage-legend'), /390 output \(120 reasoning\)/);
+    assert.match(text('.usage-legend'), /Output 390 \(120 reasoning\)/);
     assert.match(text('.usage-legend'), /5 calls, 2 without reported counts/);
     assert.equal(
         container.querySelector('svg[role=group]').getAttribute('aria-label'),
@@ -115,8 +115,8 @@ test('usage dashboard totals, charts and breakdowns agree, never estimate unrepo
     );
     assert.equal(models[0].share, '91.9% of reported tokens', '2,820 of 3,070');
     const unreported = models.find((r) => r.cells[0].startsWith('gpt-5'));
-    assert.deepEqual(unreported.cells.slice(1, 5), ['—', '—', '—', '—']);
-    assert.match(unreported.cells[5], /1 unreported/);
+    // Replies, then a dash for tokens and words for the share.
+    assert.deepEqual(unreported.cells.slice(1), ['1', '—', 'No count reported']);
     assert.equal(unreported.share, undefined, 'no share bar for a model with no count');
     assert.equal(unreported.note, 'No count reported');
     await radio('By task');
@@ -126,9 +126,9 @@ test('usage dashboard totals, charts and breakdowns agree, never estimate unrepo
     );
     await radio('By tree');
     assert.deepEqual(
-        rows().map((r) => [r.cells[0], r.cells[4]]),
+        rows().map((r) => [r.cells[0], r.cells[2]]),
         [
-            ['How do fungi trade?', '2,550'],
+            ['How do fungi trade?', '2.6k'],
             ['No tree (background work or deleted trees)', '520'],
             ['TCP loss', '—'],
         ],
@@ -146,7 +146,7 @@ test('usage dashboard totals, charts and breakdowns agree, never estimate unrepo
             .click(),
     );
     await u.settle();
-    assert.match(text('.usage-total'), /^8,550 tokens in 2025/);
+    assert.match(text('.usage-total'), /^8\.6k tokens in 2025/);
     assert.equal(bars().length, 12);
     assert.deepEqual(
         rows()
@@ -157,8 +157,8 @@ test('usage dashboard totals, charts and breakdowns agree, never estimate unrepo
     assert.deepEqual(
         rows()
             .find((r) => r.cells[0].startsWith('Videos'))
-            .cells.slice(1, 5),
-        ['—', '—', '—', '—'],
+            .cells.slice(1),
+        ['1', '—', 'No count reported'],
     );
     assert.match(
         container.querySelector('table[aria-label="Values for each month"]').textContent,
@@ -201,7 +201,7 @@ test('a newer range replaces a slow response without showing the old totals', as
     assert.equal(u.container.querySelector('.usage-dashboard').getAttribute('aria-busy'), 'true');
     await u.radio('All time');
     await u.act(async () => release());
-    assert.match(u.text('.usage-total'), /^11,620 tokens all time/);
+    assert.match(u.text('.usage-total'), /^12k tokens all time/);
 });
 
 test('unreported-only ranges show dashes and no estimated bars', async (t) => {
@@ -209,13 +209,8 @@ test('unreported-only ranges show dashes and no estimated bars', async (t) => {
     const unreported = await mount(t, serve([ev(+now, 'chat', 'openai:local', 'qwen3:32b', null)]));
     await unreported.radio('Today');
     assert.match(unreported.text('.usage-total'), /^— tokens today/);
-    assert.deepEqual(unreported.rows()[0].cells.slice(1, 5), ['—', '—', '—', '—']);
+    assert.deepEqual(unreported.rows()[0].cells.slice(1), ['1', '—', 'No count reported']);
     assert.equal(unreported.container.querySelectorAll('.usage-bar rect[data-series]').length, 0);
-    assert.deepEqual(
-        [...unreported.container.querySelectorAll('.usage-scale span')].map((s) => s.textContent),
-        ['3', '2', '1', '0'],
-        'scale ticks stay whole and distinct',
-    );
     assert.ok(
         unreported
             .bars()
@@ -225,4 +220,11 @@ test('unreported-only ranges show dashes and no estimated bars', async (t) => {
                     .includes('Token counts not reported; 1 call, 1 without reported counts'),
             ),
     );
+});
+
+test('before the first reply Usage says there is none yet', async (t) => {
+    t.mock.timers.enable({ apis: ['Date'], now });
+    const u = await mount(t, serve([]));
+    assert.match(u.text('.usage-none'), /^No usage yet.*after your first reply\.$/);
+    assert.equal(u.text('.usage-total'), undefined);
 });

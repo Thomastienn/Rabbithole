@@ -37,17 +37,17 @@ test('Interface shows labelled appearance/theme controls, selections and opt-in 
     });
     t.after(cleanup);
     await act(async () => dom.frames());
-    assert.match(
-        container.querySelector('[role=radiogroup]').getAttribute('aria-label') ??
-            container.querySelector('[role=radiogroup]').textContent,
-        /Appearance|Dark/,
-    );
+    // Appearance: one segmented choice (mockup Settings), System, Light, Dark with icons.
+    const appearance = container.querySelector('[role=radiogroup][aria-label=Appearance]');
+    const segment = (value) => appearance.querySelector(`[data-value=${value}]`);
     assert.deepEqual(
-        [...container.querySelector('[role=radiogroup]').querySelectorAll('input[type=radio]')].map(
-            (e) => document.getElementById(e.getAttribute('aria-labelledby')).textContent.trim(),
-        ),
-        ['Dark', 'Light', 'System'],
+        [...appearance.querySelectorAll('[role=radio]')].map((e) => e.textContent.trim()),
+        ['System', 'Light', 'Dark'],
     );
+    assert.ok(
+        [...appearance.querySelectorAll('[role=radio]')].every((e) => e.querySelector('svg')),
+    );
+    assert.equal(segment('dark').getAttribute('aria-checked'), 'true');
     const themeLabels = [...container.querySelectorAll('.theme-choice')];
     assert.deepEqual(
         themeLabels.map((e) => e.querySelector('input').value),
@@ -65,8 +65,8 @@ test('Interface shows labelled appearance/theme controls, selections and opt-in 
     );
     assert.equal(container.querySelectorAll('.bubble-tint-swatch').length, 0);
     for (const value of ['light', 'system', 'dark']) {
-        await act(async () => container.querySelector(`input[value=${value}]`).click());
-        assert.equal(container.querySelector(`input[value=${value}]`).checked, true);
+        await act(async () => segment(value).click());
+        assert.equal(segment(value).getAttribute('aria-checked'), 'true');
         assert.deepEqual(changes.at(-1), ['appearance', value]);
     }
     await act(async () => container.querySelector('input[value=ferry]').click());
@@ -79,43 +79,64 @@ test('Interface shows labelled appearance/theme controls, selections and opt-in 
             .closest('label')
             .querySelector('.theme-choice-name svg'),
     );
-    assert.equal(container.querySelector('input[value=dark]').checked, true);
+    assert.equal(segment('dark').getAttribute('aria-checked'), 'true');
     assert.deepEqual(changes.at(-1), ['theme', 'ferry']);
-    // Font choices: named radio lists after Theme, each switching only its own <html> attribute.
-    const groups = [...container.querySelectorAll('[role=radiogroup]')];
-    const labelsOf = (g) =>
-        [...g.querySelectorAll('input[type=radio]')].map((e) =>
-            document.getElementById(e.getAttribute('aria-labelledby')).textContent.trim(),
-        );
+    // Branch family inks: the four lines of the current theme, in order.
     assert.deepEqual(
-        groups.map((g) =>
-            g
-                .getAttribute('aria-labelledby')
-                .split(' ')
-                .map((id) => document.getElementById(id).textContent.trim())
-                .join(' '),
-        ),
-        ['Appearance', 'Reading font', 'Interface font'],
+        [...container.querySelectorAll('.settings-inks li')].map((e) => [
+            e.textContent,
+            e.querySelector('s').style.background,
+        ]),
+        [
+            ['First branch', 'var(--rabbithole-ink-1)'],
+            ['Second', 'var(--rabbithole-ink-2)'],
+            ['Third', 'var(--rabbithole-ink-3)'],
+            ['Fourth', 'var(--rabbithole-ink-4)'],
+        ],
     );
-    assert.deepEqual(labelsOf(groups[1]), ['Atkinson Hyperlegible Next', 'System']);
-    assert.deepEqual(labelsOf(groups[2]), ['Barlow', 'System']);
-    assert.equal(groups[1].querySelector('input[value=atkinson]').checked, true);
-    assert.equal(groups[2].querySelector('input[value=barlow]').checked, true);
+    // Fonts: two select buttons side by side, each switching only its own <html> attribute.
+    const [interfaceFont, readingFont] = container.querySelectorAll(
+        '.settings-fonts [role=combobox]',
+    );
+    assert.deepEqual(
+        [interfaceFont, readingFont].map((b) => [b.labels?.[0]?.textContent, b.textContent]),
+        [
+            ['Interface font', 'Barlow'],
+            ['Reading font', 'Atkinson Hyperlegible Next'],
+        ],
+    );
+    const choose = async (box, label) => {
+        await act(async () => box.click());
+        await act(async () => dom.frames());
+        const options = [
+            ...document
+                .getElementById(box.getAttribute('aria-controls'))
+                .querySelectorAll('[role=option]'),
+        ];
+        assert.deepEqual(
+            options.map((o) => o.textContent.trim()).includes(label),
+            true,
+            `${label} offered`,
+        );
+        await act(async () => options.find((o) => o.textContent.trim() === label).click());
+        await act(async () => dom.frames());
+    };
     const html = document.documentElement;
-    await act(async () => groups[1].querySelector('input[value=system]').click());
-    assert.equal(groups[1].querySelector('input[value=system]').checked, true);
+    await choose(readingFont, 'System');
+    assert.equal(readingFont.textContent, 'System');
     assert.equal(html.getAttribute('data-reading-font'), 'system');
     assert.notEqual(html.getAttribute('data-interface-font'), 'system');
     assert.equal(localStorage.getItem('rabbithole.reading-font'), 'system');
-    await act(async () => groups[2].querySelector('input[value=system]').click());
-    await act(async () => groups[1].querySelector('input[value=atkinson]').click());
+    await choose(interfaceFont, 'System');
+    await choose(readingFont, 'Atkinson Hyperlegible Next');
     assert.equal(html.getAttribute('data-reading-font'), 'atkinson');
     assert.equal(html.getAttribute('data-interface-font'), 'system');
     assert.equal(localStorage.getItem('rabbithole.interface-font'), 'system');
-    assert.equal(container.querySelector('input[value=dark]').checked, true);
-    const vim = container.querySelector('input[type=checkbox]');
+    assert.equal(segment('dark').getAttribute('aria-checked'), 'true');
+    // Vim: a switch with its keys listed below.
+    const vim = container.querySelector('input[role=switch]');
     assert.equal(vim.checked, false);
-    assert.ok(vim.labels[0], 'the checkbox is labelled');
+    assert.ok(vim.labels[0], 'the switch is labelled');
     assert.match(
         container.textContent,
         /h j k l act as arrows.*Never while typing, selecting text or using menus/,

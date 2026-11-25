@@ -221,12 +221,19 @@ html[data-interface-font='system'] [data-astryx-theme] {
 /* The update card sits above Downloads and Settings; its height stays steady between states. */
 .update-card {
     display: grid;
+    /* Title, body, then the action or bar pinned to the foot: every state is as tall as Available. */
+    grid-template-rows: auto auto 1fr;
+    min-height: calc(16.5 * var(--rabbithole-module));
     gap: var(--rabbithole-module);
     margin-block-end: var(--rabbithole-module);
     padding: calc(1.5 * var(--rabbithole-module));
     border: 1.5px solid var(--color-border-emphasized);
     border-radius: var(--radius-element);
     background: var(--color-background-surface);
+    font-size: 13px;
+}
+.update-card > :nth-child(3) {
+    align-self: end;
 }
 .update-card > button {
     justify-self: start;
@@ -244,6 +251,11 @@ html[data-interface-font='system'] [data-astryx-theme] {
 }
 .update-head > :nth-child(2) {
     flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    font-size: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .update-head > button {
     margin: -6px -6px 0 0;
@@ -349,4 +361,22 @@ html[data-interface-font='system'] [data-astryx-theme] {
     .downloads-ring circle {
         transition: none;
     }
+}
+/* Progress (mockup .bar): 4px, rounded. */
+.astryx-progress-bar-track,
+.astryx-progress-bar-fill {
+    height: 4px;
+}
+/* Menu groups (mockup Model menu): small-caps provider headings, a seam between groups. */
+.astryx-dropdown-menu-section-heading {
+    padding: 8px 10px 4px;
+    font: 600 12px/1.2 var(--font-family-heading);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--color-text-secondary);
+}
+.astryx-dropdown-menu [role='group']:has(> .astryx-dropdown-menu-section-heading) + [role='group'] {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid var(--color-border);
 }

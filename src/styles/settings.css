@@ -2,25 +2,21 @@
 /* Settings page (mockup Settings, Usage): page head, sticky section nav, one page at a time. */
 .settings-content {
     --color-border-emphasized: var(--color-text-secondary);
-    max-width: 1120px;
-    margin-inline: auto;
-    padding: calc(5 * var(--rabbithole-module)) calc(4 * var(--rabbithole-module))
-        calc(8 * var(--rabbithole-module));
+    max-width: 70rem;
+    padding: 36px 56px 64px;
 }
 .settings-content :focus-visible {
     outline: var(--focus-outline-width) solid var(--rabbithole-paper);
     outline-offset: var(--focus-outline-offset);
 }
-.settings-head h1 {
-    font-size: 34px;
-    line-height: 1.12;
-    font-weight: 700;
-    letter-spacing: -0.015em;
+/* Return link (mockup .ret): the ghost button sits flush with the nav, 20px above it. */
+.settings-head {
+    margin: 0 0 -12px -12px;
 }
 .settings-layout {
     display: grid;
-    grid-template-columns: 216px minmax(0, 640px);
-    gap: 48px;
+    grid-template-columns: 200px minmax(0, 640px);
+    gap: 56px;
     align-items: start;
 }
 .settings-nav {
@@ -35,10 +31,9 @@
     scroll-margin-top: calc(5 * var(--rabbithole-module));
 }
 .settings-group > :first-child h2 {
-    font-size: 20px;
+    font-size: 24px;
     line-height: 1.2;
     font-weight: 700;
-    letter-spacing: -0.01em;
 }
 .settings-keys {
     display: grid;
@@ -59,9 +54,7 @@
 }
 /* Models page (mockup Models): profile bar, then one compact row per role; display: contents keeps ARIA rows inside the grid. */
 .settings-profile {
-    padding: var(--spacing-3) var(--spacing-3) var(--spacing-3) var(--spacing-4);
-    border-radius: var(--radius-container);
-    background: var(--color-background-surface);
+    margin-bottom: 4px;
 }
 .settings-profile .astryx-selector,
 .settings-profile > :first-child {
@@ -72,8 +65,8 @@
 }
 .settings-roles {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 248px 152px;
-    column-gap: var(--spacing-3);
+    grid-template-columns: minmax(0, 1fr) 200px 150px;
+    column-gap: 12px;
 }
 .settings-roles [role='cell']:not(.settings-roles__note) {
     display: flex;
@@ -83,15 +76,20 @@
     display: contents;
 }
 .settings-roles [role='columnheader'] {
-    padding-bottom: 6px;
-    font-size: 12px;
-    font-weight: 600;
+    padding-bottom: 8px;
+    font: 600 12px/1.2 var(--font-family-heading);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
     color: var(--color-text-secondary);
+    border-bottom: 1px solid var(--color-border);
 }
 .settings-roles [role='rowheader'],
 .settings-roles [role='rowheader'] ~ [role='cell'] {
-    padding: 10px 0;
-    border-top: thin solid var(--color-border);
+    padding: 12px 0;
+    border-bottom: 1px solid var(--color-border);
+}
+.settings-roles .model-picker-field {
+    max-width: 100%;
 }
 .settings-roles__role b {
     display: block;
@@ -99,7 +97,7 @@
 }
 .settings-roles__role small {
     display: block;
-    font-size: 12px;
+    font-size: 13px;
     color: var(--color-text-secondary);
 }
 .settings-roles__note {
@@ -115,8 +113,10 @@
     .settings-roles [role='rowheader'] {
         grid-column: 1 / -1;
     }
+    .settings-roles [role='rowheader'] {
+        border-bottom: 0;
+    }
     .settings-roles [role='rowheader'] ~ [role='cell'] {
-        border-top: 0;
         padding-top: 0;
     }
     .settings-roles [role='columnheader'] {
@@ -133,11 +133,71 @@
 }
 /* Settings sections: seams and small-caps labels, not cards (spec, Settings window). */
 .settings-panel h3 {
-    font-size: var(--font-size-base);
-    font-weight: 600;
-    font-variant-caps: all-small-caps;
-    letter-spacing: 0.06em;
+    font: 600 12px/1.2 var(--font-family-heading);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
     color: var(--color-text-secondary);
+}
+/* Problem status (mockup .err): scarlet words after a warning triangle. */
+.settings-problem.astryx-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    color: var(--color-text-error);
+}
+.settings-problem[role='alert'] {
+    font-weight: 400;
+}
+/* Fonts side by side (mockup .frow); each picker hugs its value. */
+.settings-fonts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+.settings-fonts .astryx-selector {
+    width: fit-content;
+    max-width: 100%;
+}
+.settings-fonts .astryx-field-label,
+.settings-fonts label {
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--color-text-secondary);
+}
+/* Branch family inks (mockup .inks): a short length of each line, then its name. */
+.settings-inks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 20px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 13px;
+}
+.settings-inks s {
+    display: inline-block;
+    width: 22px;
+    height: 5px;
+    margin-right: 8px;
+    border-radius: var(--radius-inner);
+    vertical-align: 3px;
+}
+/* One provider (mockup .conn): name and status, what it uses, Check again on the right. */
+.settings-conn {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 4px 16px;
+    align-items: center;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--color-border);
+}
+.settings-conn > :not(.settings-conn__check) {
+    grid-column: 1;
+}
+.settings-conn__check {
+    grid-row: 1 / span 2;
+    grid-column: 2;
 }
 * {
     scrollbar-color: var(--color-border) var(--color-background-surface);
@@ -186,21 +246,18 @@
 }
 .model-picker-field {
     justify-content: space-between;
+    font-weight: 400;
 }
 .model-picker-field[data-unavailable] {
     border-color: var(--color-border-error);
 }
 /* Usage page: summary total, chart and breakdown. */
 .usage-total.astryx-text {
-    font-size: 34px;
-    line-height: 1.12;
-    font-weight: 700;
-    letter-spacing: -0.015em;
+    font: 700 38px/1 var(--font-family-heading);
+    color: var(--rabbithole-paper);
 }
 .usage-total small {
-    font-size: 20px;
-    font-weight: 600;
-    letter-spacing: -0.01em;
+    font: 500 20px var(--font-family-heading);
     color: var(--color-text-secondary);
 }
 .usage-legend b {
@@ -214,36 +271,27 @@
 .usage-section-head h3 {
     color: var(--color-text-secondary);
 }
+/* Chart (mockup Usage): bars on a baseline, no y scale; first, middle and last period below. */
 .usage-chart {
     display: grid;
-    grid-template-columns: max-content minmax(0, 1fr);
-    gap: var(--spacing-2) var(--spacing-3);
+    gap: 6px;
 }
 .usage-chart svg {
     width: 100%;
-    height: 11rem;
+    height: 200px;
     display: block;
     overflow: visible;
-}
-.usage-scale {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    height: 11rem;
-    text-align: end;
-    font-size: 11px;
-    color: var(--color-text-secondary);
-}
-.usage-grid {
-    stroke: var(--color-border);
-    stroke-width: 1px;
-    vector-effect: non-scaling-stroke;
-}
-.usage-axis {
-    grid-column: 2;
+    border-bottom: 1.5px solid var(--color-border-emphasized);
 }
 .usage-axis .astryx-text {
-    font-size: 11px;
+    font-size: 12px;
+}
+/* Table heads in small caps (mockup .tbl th). */
+.usage-dashboard th {
+    font: 600 12px/1.2 var(--font-family-heading);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--color-text-secondary);
 }
 .usage-bar {
     outline: none;
@@ -290,9 +338,9 @@
     height: 0;
 }
 .usage-swatch {
-    inline-size: 12px;
-    block-size: 12px;
-    border-radius: var(--radius-tick);
+    inline-size: 14px;
+    block-size: 5px;
+    margin-right: 2px;
     display: inline-block;
 }
 .usage-dashboard {
@@ -304,10 +352,18 @@
 .usage-name {
     overflow-wrap: anywhere;
 }
+.usage-none {
+    align-items: center;
+    padding: 72px 0;
+    text-align: center;
+}
+.usage-none h2 {
+    font-size: 20px;
+}
 .usage-share {
     display: block;
     height: 3px;
-    margin-block-start: var(--spacing-1);
+    margin-block-start: 5px;
     border-radius: var(--radius-tick);
     background: var(--color-border);
 }
@@ -349,7 +405,7 @@
     width: 40px;
     height: 40px;
     border-radius: var(--radius-element);
-    background: var(--color-background-muted);
+    background: var(--color-background-gray);
     color: var(--color-accent);
     display: grid;
     place-items: center;
@@ -363,6 +419,15 @@
     flex-wrap: wrap;
     gap: 4px 10px;
     align-items: baseline;
+}
+.addon__name > .astryx-text {
+    font-size: 15px;
+}
+/* What it enables (mockup .addon p): a 13px block, at most 52 characters wide. */
+.addon > div > .astryx-text[data-type='supporting'] {
+    display: block;
+    max-width: 52ch;
+    margin-top: 2px;
 }
 .addon__meta {
     display: flex;

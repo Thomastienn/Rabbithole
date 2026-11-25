@@ -70,17 +70,53 @@ export const lineDiagramRoles = (
     const hairline = `inset 0 0 0 1px light-dark(${seam[0]}, ${seam[1]})`;
     return {
         // Neutral bumps secondary text to its own greys in these states; keep the theme's muted ink instead.
-        components: Object.fromEntries(
-            [
-                ['item', 'selected'],
-                ['tree-list-item', 'selected'],
-                ['file-input', 'mode:dropzone'],
-                ['citation', 'variant:number'],
-            ].map(([name, state]) => [
-                name,
-                { [state]: { '--color-text-secondary': `light-dark(${muted[0]}, ${muted[1]})` } },
-            ]),
-        ),
+        components: {
+            ...Object.fromEntries(
+                [
+                    ['item', 'selected'],
+                    ['tree-list-item', 'selected'],
+                    ['file-input', 'mode:dropzone'],
+                    ['citation', 'variant:number'],
+                ].map(([name, state]) => [
+                    name,
+                    {
+                        [state]: {
+                            '--color-text-secondary': `light-dark(${muted[0]}, ${muted[1]})`,
+                        },
+                    },
+                ]),
+            ),
+            // Default button (mockup .btn): outlined at 40% ink, 36px (30px small), semibold; primary keeps its fill.
+            button: {
+                'variant:secondary': {
+                    backgroundColor: 'transparent',
+                    boxShadow: `inset 0 0 0 1px light-dark(${ink[0]}66, ${ink[1]}66)`,
+                    fontWeight: '600',
+                    ':hover': { backgroundColor: 'var(--color-background-gray)' },
+                },
+                'variant:secondary+size:md': { height: '36px' },
+                'variant:secondary+size:sm': { height: '30px', fontSize: '13px' },
+            },
+            // Progress (mockup .bar): a hairline-seam track under the porcelain fill.
+            'progress-bar': {
+                base: { '--color-background-muted': `light-dark(${seam[0]}, ${seam[1]})` },
+            },
+            // Select button (mockup .selb): 36px like the default button.
+            selector: { 'size:md': { height: '36px' } },
+            // Segmented choice (mockup .seg): raised track, the chosen segment in porcelain.
+            'segmented-control': {
+                base: { backgroundColor: `light-dark(${raised[0]}, ${raised[1]})` },
+                'size:md': { height: '36px', padding: '3px' },
+            },
+            'segmented-control-item': {
+                'size:md': { height: '30px' },
+                selected: {
+                    backgroundColor: `light-dark(${porcelain[0]}, ${porcelain[1]})`,
+                    color: `light-dark(${onPorcelain[0]}, ${onPorcelain[1]})`,
+                    fontWeight: '600',
+                },
+            },
+        },
         localTokens: {
             // Reply and question reading face.
             '--rabbithole-font-reading':
@@ -115,6 +151,10 @@ export const lineDiagramRoles = (
             '--radius-chat': '8px',
 
             '--focus-outline-color': porcelain,
+
+            // Hints and option descriptions (mockup .hint, .opt p): 13px at the body's leading.
+            '--text-supporting-size': '13px',
+            '--text-supporting-leading': '1.45',
 
             // Ground, raised, deep field and hover.
             '--color-background-body': ground,

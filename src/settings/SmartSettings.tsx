@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { VStack } from '@astryxdesign/core/Layout';
 import { Text } from '@astryxdesign/core/Text';
 import Choice from './Choice';
+import { Selector } from '@astryxdesign/core/Selector';
 import ModelPicker from './ModelPicker';
 import { Button } from '@astryxdesign/core/Button';
 import {
@@ -164,15 +165,13 @@ export default function SmartSettings({
                     />
                 </div>
                 <div role="cell">
-                    <Choice
+                    <Selector
                         label="Smart effort"
                         isLabelHidden
                         status={incompatible ? { type: 'error' } : undefined}
                         value={
                             !saved || saved.followEffort ? 'follow' : (saved.effort ?? 'default')
                         }
-                        size="sm"
-                        width="100%"
                         isDisabled={!saved || !!pending || !selected}
                         options={[
                             {

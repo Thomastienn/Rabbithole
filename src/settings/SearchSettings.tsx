@@ -3,7 +3,7 @@ import { HStack } from '@astryxdesign/core/Layout';
 import { Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { TextInput } from '@astryxdesign/core/TextInput';
-import { Done, Section } from './InterfaceSettings';
+import { Done, Problem, Section } from './InterfaceSettings';
 import { request as api } from '../serverAccess';
 
 type SearchStatus = {
@@ -116,11 +116,7 @@ export default function SearchSettings() {
                 </Text>
             )}
             {message && <Done>{message}</Done>}
-            {error && (
-                <Text type="supporting" role="alert" style={{ color: 'var(--color-text-error)' }}>
-                    {error}
-                </Text>
-            )}
+            {error && <Problem role="alert">{error}</Problem>}
         </Section>
     );
 }

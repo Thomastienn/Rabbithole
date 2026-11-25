@@ -6,7 +6,7 @@ import { Divider } from '@astryxdesign/core/Divider';
 import { SideNav, SideNavItem } from '@astryxdesign/core/SideNav';
 import { Icon } from '@astryxdesign/core/Icon';
 import {
-    ArrowUturnLeftIcon,
+    ArrowLeftIcon,
     ChartBarIcon,
     CpuChipIcon,
     LinkIcon,
@@ -29,7 +29,7 @@ import CliInstall from '../shell/CliInstall';
 import type { Model } from './models';
 import type { ModelSelection, Providers } from '../chat/types';
 import type { Appearance, ThemeChoice } from '../shell/appearance';
-import InterfaceSettings, { Done, Section } from './InterfaceSettings';
+import InterfaceSettings, { Done, Problem, Section } from './InterfaceSettings';
 import { useDesktopUpdate } from '../shell/UpdateBanner';
 
 export type SettingsTab = 'models' | 'connections' | 'interface' | 'addons' | 'usage';
@@ -40,21 +40,19 @@ const TABS: { id: SettingsTab; label: string; description: string; icon: typeof 
     {
         id: 'interface',
         label: 'Interface',
-        description: 'How Rabbithole looks and how you move around it. Saved in this browser.',
+        description: 'How Rabbithole looks and how its keys behave.',
         icon: SwatchIcon,
     },
     {
         id: 'models',
         label: 'Models',
-        description:
-            'A profile holds a model and effort for each role. Swapping profiles changes all three at once.',
+        description: 'Which model does which job.',
         icon: CpuChipIcon,
     },
     {
         id: 'connections',
         label: 'Connections',
-        description:
-            'Providers that answer your questions. Trees save on this computer; questions go to the provider you pick for each conversation.',
+        description: 'Where replies come from.',
         icon: LinkIcon,
     },
     {
@@ -67,8 +65,7 @@ const TABS: { id: SettingsTab; label: string; description: string; icon: typeof 
     {
         id: 'usage',
         label: 'Usage',
-        description:
-            'Tokens providers reported for replies, suggestions and media. Kept even after content is deleted.',
+        description: 'Tokens Rabbithole has sent and received. Costs depend on your provider.',
         icon: ChartBarIcon,
     },
 ];
@@ -98,6 +95,44 @@ function AppVersion({ version }: { version?: string }) {
                 />
             )}
         </HStack>
+    );
+}
+
+// One provider (mockup Connections): name then status, what it uses, and Check again re-reading the provider status.
+function Connection({
+    name,
+    status,
+    ok,
+    note,
+    check,
+    children,
+}: {
+    name: string;
+    status: string;
+    ok: boolean;
+    note: string;
+    check: () => Promise<void>;
+    children?: ReactNode;
+}) {
+    return (
+        <div className="settings-conn" role="group" aria-label={name}>
+            <HStack gap={2} vAlign="center" wrap="wrap">
+                <Text weight="semibold">{name}</Text>
+                {ok ? <Done>{status}</Done> : <Problem>{status}</Problem>}
+            </HStack>
+            <Text type="supporting" color="secondary">
+                {note}
+            </Text>
+            <Button
+                className="settings-conn__check"
+                label={`Check ${name} again`}
+                variant="secondary"
+                onClick={() => void check()}
+            >
+                Check again
+            </Button>
+            {children && <VStack gap={2}>{children}</VStack>}
+        </div>
     );
 }
 
@@ -196,9 +231,7 @@ export default function SettingsWindow({
                     <Heading level={2} id={`settings-section-${id}`} tabIndex={-1}>
                         {t.label}
                     </Heading>
-                    <Text type="supporting" color="secondary">
-                        {t.description}
-                    </Text>
+                    <Text color="secondary">{t.description}</Text>
                 </VStack>
                 {children}
             </VStack>
@@ -270,83 +303,94 @@ export default function SettingsWindow({
                         <TutorStyleSettings />
                         <Divider />
                         <MemoryNoteSettings />
+                        <Divider />
+                        <SearchSettings />
                     </>,
                 )}
             {tab === 'connections' &&
                 group(
                     'connections',
                     <>
-                        <Section
-                            title="Claude"
-                            description="Uses your own Claude plan through Claude Code on this computer."
-                        >
-                            {providers?.claude?.installed === false ? (
-                                <CliInstall
-                                    cli="claude"
-                                    command={providers.claude.command}
-                                    check={() => void loadModels()}
-                                />
-                            ) : providers && !modelError && providers.claude?.connected ? (
-                                <Done>Claude: signed in through Claude Code</Done>
-                            ) : (
-                                <Text type="supporting">
-                                    Claude:{' '}
-                                    {providers && !modelError
-                                        ? 'not signed in'
-                                        : 'sign-in status unavailable'}
-                                </Text>
-                            )}
-                            {modelError && (
-                                <Text type="supporting" role="alert">
-                                    {modelError}
-                                </Text>
-                            )}
-                            {!providers?.claude?.connected &&
-                                providers?.claude?.installed !== false && (
-                                    <ClaudeSignIn loadModels={loadModels} variant="secondary" />
+                        <div>
+                            <Connection
+                                name="Claude"
+                                status={
+                                    providers?.claude?.installed === false
+                                        ? 'Not installed'
+                                        : providers && !modelError && providers.claude?.connected
+                                          ? 'Connected'
+                                          : providers && !modelError
+                                            ? 'Not signed in'
+                                            : 'Status unavailable'
+                                }
+                                ok={!!providers && !modelError && !!providers.claude?.connected}
+                                note={
+                                    providers?.claude?.connected
+                                        ? 'Signed in through Claude Code on this computer.'
+                                        : 'Uses your own Claude plan through Claude Code on this computer.'
+                                }
+                                check={loadModels}
+                            >
+                                {providers?.claude?.installed === false && (
+                                    <CliInstall
+                                        cli="claude"
+                                        command={providers.claude.command}
+                                        check={() => void loadModels()}
+                                    />
                                 )}
-                        </Section>
-                        <Divider />
-                        <Section title="Codex" description="Uses your own ChatGPT plan.">
-                            {providers?.codex?.installed === false && (
-                                <CliInstall
-                                    cli="codex"
-                                    command={providers.codex.command}
-                                    check={() => void loadModels()}
-                                />
-                            )}
-                            {auth?.connected ? (
-                                <Done>Codex: connected {auth.email ?? 'to ChatGPT'}</Done>
-                            ) : (
-                                <Text type="supporting">Codex: not connected</Text>
-                            )}
-                            <HStack>
-                                <Button
-                                    label={
-                                        auth?.connected
+                                {modelError && (
+                                    <Text type="supporting" role="alert">
+                                        {modelError}
+                                    </Text>
+                                )}
+                                {!providers?.claude?.connected &&
+                                    providers?.claude?.installed !== false && (
+                                        <ClaudeSignIn loadModels={loadModels} variant="secondary" />
+                                    )}
+                            </Connection>
+                            <Connection
+                                name="Codex"
+                                status={auth?.connected ? 'Connected' : 'Not connected'}
+                                ok={!!auth?.connected}
+                                note={
+                                    auth?.connected
+                                        ? `Uses your own ChatGPT plan, signed in ${auth.email ? `as ${auth.email}` : 'to ChatGPT'}.`
+                                        : 'Uses your own ChatGPT plan. Continue with ChatGPT, then check again.'
+                                }
+                                check={loadModels}
+                            >
+                                {providers?.codex?.installed === false && (
+                                    <CliInstall
+                                        cli="codex"
+                                        command={providers.codex.command}
+                                        check={() => void loadModels()}
+                                    />
+                                )}
+                                <HStack>
+                                    <Button
+                                        label={
+                                            auth?.connected
+                                                ? 'Reconnect ChatGPT'
+                                                : 'Continue with ChatGPT'
+                                        }
+                                        variant="secondary"
+                                        size="sm"
+                                        data-oai-siwc-button=""
+                                        onClick={() => void connect()}
+                                    >
+                                        {auth?.connected
                                             ? 'Reconnect ChatGPT'
-                                            : 'Continue with ChatGPT'
-                                    }
-                                    variant="secondary"
-                                    size="sm"
-                                    data-oai-siwc-button=""
-                                    onClick={() => void connect()}
-                                >
-                                    {auth?.connected
-                                        ? 'Reconnect ChatGPT'
-                                        : 'Continue with ChatGPT'}
-                                </Button>
-                            </HStack>
-                            {authError && (
-                                <Text type="supporting" role="alert">
-                                    {authError}
-                                </Text>
-                            )}
-                        </Section>
-                        <Divider />
+                                            : 'Continue with ChatGPT'}
+                                    </Button>
+                                </HStack>
+                                {authError && (
+                                    <Text type="supporting" role="alert">
+                                        {authError}
+                                    </Text>
+                                )}
+                            </Connection>
+                        </div>
                         <EndpointSettings models={models} changed={loadModels} />
-                        <Divider />
-                        <SearchSettings />
                     </>,
                 )}
         </VStack>
@@ -372,24 +416,19 @@ export default function SettingsWindow({
         <main hidden={!request} className="knowledge-panel settings-page" aria-label="Settings">
             {request && (
                 <VStack gap={8} className="settings-content">
-                    <HStack
-                        gap={4}
-                        vAlign="end"
-                        hAlign="between"
-                        wrap="wrap"
-                        className="settings-head"
-                    >
-                        <Heading level={1} id="settings-heading" tabIndex={-1}>
-                            Settings
-                        </Heading>
+                    {/* Same return link as Knowledge, Videos and Pieces (ReturnPanel); the page name is for screen readers. */}
+                    <HStack className="settings-head">
                         <Button
                             id="settings-return"
                             label="Return to learning tree"
-                            variant="secondary"
-                            icon={<ArrowUturnLeftIcon />}
+                            variant="ghost"
+                            icon={<ArrowLeftIcon />}
                             onClick={close}
                         />
                     </HStack>
+                    <h1 id="settings-heading" tabIndex={-1} className="sr-only">
+                        Settings
+                    </h1>
                     <div className="settings-layout">
                         {nav}
                         {panel}

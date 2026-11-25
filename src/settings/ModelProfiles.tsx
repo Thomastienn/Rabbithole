@@ -11,6 +11,7 @@ import {
     DropdownMenuItem,
 } from '@astryxdesign/core/DropdownMenu';
 import {
+    ArrowPathIcon,
     EllipsisHorizontalIcon,
     PencilSquareIcon,
     PlusIcon,
@@ -166,7 +167,6 @@ export default function ModelProfiles({
                         label="Model profile"
                         isLabelHidden
                         value={list?.active ?? ''}
-                        size="sm"
                         isDisabled={!list || pending}
                         options={(list?.profiles ?? []).map((p) => ({
                             value: p.id,
@@ -286,18 +286,13 @@ export default function ModelProfiles({
             <HStack gap={2} wrap="wrap">
                 <Button
                     label="Refresh models"
-                    size="sm"
-                    variant="ghost"
+                    variant="secondary"
+                    icon={<ArrowPathIcon />}
                     isDisabled={refreshing}
                     isLoading={refreshing}
                     onClick={() => void refresh()}
                 />
-                <Button
-                    label="Manage connections"
-                    size="sm"
-                    variant="ghost"
-                    onClick={connections}
-                />
+                <Button label="Manage connections" variant="ghost" onClick={connections} />
             </HStack>
             {!refreshing && models && !models.some((m) => providers?.[m.provider]?.connected) && (
                 <Text type="supporting">

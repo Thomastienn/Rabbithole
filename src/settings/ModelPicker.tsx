@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Button } from '@astryxdesign/core/Button';
 import { Text } from '@astryxdesign/core/Text';
 import { TextInput } from '@astryxdesign/core/TextInput';
+import { Icon } from '@astryxdesign/core/Icon';
+import { ChevronDownIcon } from '@heroicons/react/24/outline';
 import {
     DropdownMenu,
     DropdownMenuGroup,
@@ -92,9 +94,8 @@ export default function ModelPicker({
                     data-unavailable={isUnavailable || undefined}
                     label={label}
                     variant="secondary"
-                    size="sm"
-                    width="100%"
                     isDisabled={isDisabled}
+                    endContent={<Icon icon={ChevronDownIcon} size="sm" />}
                 >
                     {current?.label ?? ''}
                 </Button>

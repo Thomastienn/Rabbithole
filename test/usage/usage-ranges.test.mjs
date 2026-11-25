@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { span, buckets, totals, breakdown } from '../../src/usage/usage.ts';
+import { span, buckets, totals, breakdown, compact } from '../../src/usage/usage.ts';
 
 const ev = (d, task = 'chat', counts = [10, 2, 5], model = 'm') => ({
     at: +d,
@@ -107,4 +107,18 @@ test('reasoning totals count only calls that reported it; none reported stays nu
         days.map((d) => d.reasoning),
         [null, null, null, null, 1, 1, 1],
     );
+});
+
+test('compact token counts round to k and M without a 1000k', () => {
+    assert.deepEqual([0, 390, 999, 1000, 3070, 9960, 386400, 999600, 1234567].map(compact), [
+        '0',
+        '390',
+        '999',
+        '1k',
+        '3.1k',
+        '10k',
+        '386k',
+        '1M',
+        '1.2M',
+    ]);
 });

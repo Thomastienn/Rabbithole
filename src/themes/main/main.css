@@ -128,9 +128,9 @@
     --text-code-size: var(--font-size-base);
     --text-code-weight: var(--font-weight-normal);
     --text-code-leading: 1.4286;
-    --text-supporting-size: var(--font-size-sm);
+    --text-supporting-size: 13px;
     --text-supporting-weight: var(--font-weight-normal);
-    --text-supporting-leading: 1.6667;
+    --text-supporting-leading: 1.45;
     --text-display-1-size: var(--font-size-5xl);
     --text-display-1-weight: var(--font-weight-normal);
     --text-display-1-leading: 1.2381;
@@ -448,6 +448,25 @@
     color: var(--color-on-error-muted);
   }
 
+  .astryx-button[data-variant="secondary"] {
+    background-color: transparent;
+    box-shadow: inset 0 0 0 1px light-dark(#141b3a66, #e9ecf766);
+    font-weight: 600;
+  }
+
+  .astryx-button[data-variant="secondary"]:hover:where(:not(:disabled,[aria-disabled="true"])) {
+    background-color: var(--color-background-gray);
+  }
+
+  .astryx-button[data-variant="secondary"][data-size="md"] {
+    height: 36px;
+  }
+
+  .astryx-button[data-variant="secondary"][data-size="sm"] {
+    height: 30px;
+    font-size: 13px;
+  }
+
   .astryx-badge[data-variant="neutral"] {
     background-color: var(--color-background-gray);
     color: var(--color-text-gray);
@@ -505,7 +524,14 @@
 
   .astryx-segmented-control {
     padding: var(--spacing-1);
+    background-color: light-dark(#ffffff, #141d42);
     --_segmented-control-padding: var(--spacing-1);
+  }
+
+  .astryx-segmented-control[data-size="md"] {
+    height: 36px;
+    padding: 3px;
+    --_segmented-control-padding: 3px;
   }
 
   .astryx-segmented-control-item[data-size="sm"] {
@@ -513,7 +539,7 @@
   }
 
   .astryx-segmented-control-item[data-size="md"] {
-    height: calc(var(--size-element-md) - 8px);
+    height: 30px;
   }
 
   .astryx-segmented-control-item[data-size="lg"] {
@@ -522,6 +548,9 @@
 
   .astryx-segmented-control-item[data-selected="selected"] {
     box-shadow: none;
+    background-color: light-dark(#0b1230, #ffffff);
+    color: light-dark(#ffffff, #0b1230);
+    font-weight: 600;
   }
 
   .astryx-switch {
@@ -529,7 +558,7 @@
   }
 
   .astryx-progress-bar {
-    --color-background-muted: var(--color-border-emphasized);
+    --color-background-muted: light-dark(#0b123024, #ffffff22);
   }
 
   .astryx-card {
@@ -538,6 +567,10 @@
 
   .astryx-section {
     --astryx-section-padding: var(--spacing-3);
+  }
+
+  .astryx-selector[data-size="md"] {
+    height: 36px;
   }
 
   .astryx-text[data-color="primary"] { color: var(--color-text-primary); }

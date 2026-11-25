@@ -162,3 +162,35 @@ test('Connections offers Install and the shown command for a missing CLI, beside
     await row('ready');
     assert.equal(checks, 1, 'completion refreshes models once without clicking Check again');
 });
+
+test('Connections lists each provider by name then status, and Check again re-reads it', async (t) => {
+    fakeServer(t, (path) => (path === '/api/settings/endpoints' ? [] : {}));
+    let checks = 0;
+    const page = await render(
+        h(SettingsWindow, {
+            ...settings().props,
+            async loadModels() {
+                checks++;
+            },
+            providers: {
+                claude: { label: 'Claude', connected: true, installed: true },
+                codex: { label: 'Codex', connected: false, installed: true },
+            },
+            auth: { connected: false, email: null },
+        }),
+        ui,
+    );
+    t.after(page.cleanup);
+    assert.equal(document.getElementById('settings-heading').className, 'sr-only');
+    assert.ok(button(page.container, 'Return to learning tree'));
+    await page.act(async () => document.getElementById('settings-connections').click());
+    const row = (name) => page.container.querySelector(`.settings-conn[aria-label=${name}]`);
+    assert.match(row('Claude').textContent, /^Claude\s*Connected/);
+    assert.match(row('Codex').textContent, /^Codex\s*Not connected/);
+    assert.ok(
+        row('Codex').querySelector('.settings-problem svg'),
+        'a warning triangle, not colour alone',
+    );
+    await page.act(async () => button(row('Codex'), 'Check Codex again').click());
+    assert.equal(checks, 1);
+});

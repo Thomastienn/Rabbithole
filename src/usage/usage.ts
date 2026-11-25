@@ -134,3 +134,11 @@ export const label = (d: Date, unit: Unit) =>
           : unit === 'month'
             ? d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
             : String(d.getFullYear());
+
+// Compact token counts (mockup Usage): 386k, 3.1k, 1.2M; under a thousand stays whole.
+export function compact(v: number): string {
+    // 999,500 rounds to 1M, not 1000k.
+    const [d, s] = v >= 999_500 ? [1e6, 'M'] : v >= 1e3 ? [1e3, 'k'] : [1, ''];
+    const x = v / d;
+    return `${x < 10 && d > 1 ? Math.round(x * 10) / 10 : Math.round(x)}${s}`;
+}

@@ -1,11 +1,17 @@
 import { useState, type ReactNode } from 'react';
 import { VStack } from '@astryxdesign/core/Layout';
 import { Heading, Text } from '@astryxdesign/core/Text';
-import { Divider } from '@astryxdesign/core/Divider';
-import { CheckboxInput } from '@astryxdesign/core/CheckboxInput';
-import { RadioList, RadioListItem } from '@astryxdesign/core/RadioList';
+import { Switch } from '@astryxdesign/core/Switch';
+import { Selector } from '@astryxdesign/core/Selector';
+import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
 import { Icon } from '@astryxdesign/core/Icon';
-import { CheckIcon } from '@heroicons/react/24/outline';
+import {
+    CheckIcon,
+    ComputerDesktopIcon,
+    ExclamationTriangleIcon,
+    MoonIcon,
+    SunIcon,
+} from '@heroicons/react/24/outline';
 import {
     applyFont,
     appearances,
@@ -79,34 +85,34 @@ export function Done({ children }: { children: ReactNode }) {
     );
 }
 
+// A problem status: scarlet words with a warning triangle, never colour alone.
+export function Problem({ children, role }: { children: ReactNode; role?: 'alert' }) {
+    return (
+        <Text type="supporting" className="settings-problem" role={role}>
+            <Icon icon={ExclamationTriangleIcon} size="sm" />
+            {children}
+        </Text>
+    );
+}
+
+// Mockup Settings order: System, Light, Dark, each with its icon.
+const APPEARANCE_ICONS = { system: ComputerDesktopIcon, light: SunIcon, dark: MoonIcon };
+const BRANCH_INKS = ['First branch', 'Second', 'Third', 'Fourth'];
+
 // Owns its state: the choice lives on <html> and in storage, applied at startup by main.tsx.
-function FontChoice({
-    kind,
-    title,
-    description,
-}: {
-    kind: FontKind;
-    title: string;
-    description: string;
-}) {
+function FontChoice({ kind, title }: { kind: FontKind; title: string }) {
     const [font, setFont] = useState(() => savedFont(kind));
     return (
-        <Section title={title} description={description}>
-            <RadioList
-                label={title}
-                isLabelHidden
-                value={font}
-                onChange={(value) => {
-                    setFont(value);
-                    applyFont(kind, value);
-                    savePreference(kind, value);
-                }}
-            >
-                {fontChoices[kind].map((f) => (
-                    <RadioListItem key={f.id} value={f.id} label={f.label} />
-                ))}
-            </RadioList>
-        </Section>
+        <Selector
+            label={title}
+            value={font}
+            options={fontChoices[kind].map((f) => ({ value: f.id, label: f.label }))}
+            onChange={(value) => {
+                setFont(value);
+                applyFont(kind, value);
+                savePreference(kind, value);
+            }}
+        />
     );
 }
 
@@ -127,26 +133,23 @@ export default function InterfaceSettings({
 }) {
     return (
         <>
-            <Section
-                title="Appearance"
-                description="Dark, light, or System to follow your operating system. Saved in this browser."
-            >
-                <RadioList
+            <Section title="Appearance">
+                <SegmentedControl
                     label="Appearance"
-                    isLabelHidden
                     value={appearance}
                     onChange={(value) => setAppearance(value as Appearance)}
                 >
-                    {appearances.map((a) => (
-                        <RadioListItem key={a.id} value={a.id} label={a.label} />
+                    {[...appearances].reverse().map((a) => (
+                        <SegmentedControlItem
+                            key={a.id}
+                            value={a.id}
+                            label={a.label}
+                            icon={<Icon icon={APPEARANCE_ICONS[a.id]} size="sm" />}
+                        />
                     ))}
-                </RadioList>
+                </SegmentedControl>
             </Section>
-            <Divider />
-            <Section
-                title="Theme"
-                description="A theme sets the ground and the four line colours. Appearance picks its light or dark side. Saved in this browser."
-            >
+            <Section title="Theme">
                 <fieldset className="theme-tiles">
                     <legend className="sr-only">Theme</legend>
                     {themeChoices.map((t) => (
@@ -188,22 +191,34 @@ export default function InterfaceSettings({
                         </label>
                     ))}
                 </fieldset>
+                <Text type="supporting" color="secondary">
+                    A theme sets the ground and the four line colours. Appearance picks its light or
+                    dark side.
+                </Text>
             </Section>
-            <Divider />
-            <FontChoice
-                kind="reading-font"
-                title="Reading font"
-                description="For replies and other long text. Code stays monospace. Saved in this browser."
-            />
-            <Divider />
-            <FontChoice
-                kind="interface-font"
-                title="Interface font"
-                description="For controls, labels and headings. Saved in this browser."
-            />
-            <Divider />
+            <Section title="Fonts">
+                <div className="settings-fonts">
+                    <FontChoice kind="interface-font" title="Interface font" />
+                    <FontChoice kind="reading-font" title="Reading font" />
+                </div>
+            </Section>
+            {/* The four family lines of the current theme; each first-level branch takes the next. */}
+            <Section title="Branch family inks">
+                <ul className="settings-inks">
+                    {BRANCH_INKS.map((name, i) => (
+                        <li key={name}>
+                            <s style={{ background: `var(--rabbithole-ink-${i + 1})` }} />
+                            {name}
+                        </li>
+                    ))}
+                </ul>
+                <Text type="supporting" color="secondary">
+                    Each branch off the trunk takes the next ink, and every conversation below it
+                    keeps that ink.
+                </Text>
+            </Section>
             <Section title="Keyboard">
-                <CheckboxInput
+                <Switch
                     label="Vim canvas bindings"
                     description="With the map or a conversation box focused: h j k l act as arrows, H J K L move farther, = + - zoom, f fits the tree. Never while typing, selecting text or using menus."
                     value={vim}

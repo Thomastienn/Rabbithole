@@ -9,6 +9,7 @@ import { Banner } from '@astryxdesign/core/Banner';
 import {
     breakdown,
     buckets,
+    compact,
     label,
     span,
     total,
@@ -44,35 +45,16 @@ const reasoning = (t: Totals) => (t.reasoning === null ? '' : ` (${n(t.reasoning
 const calls = (t: Totals) =>
     `${n(t.calls + t.unavailable)} call${t.calls + t.unavailable === 1 ? '' : 's'}${t.unavailable ? `, ${n(t.unavailable)} without reported counts` : ''}`;
 // A group with only unreported calls shows a dash, not zero tokens.
-const cell = (r: Totals, key: 'input' | 'output' | 'cacheRead' | 'total') =>
-    r.calls === 0 && r.unavailable ? '—' : n(key === 'total' ? total(r) : r[key]);
+const cell = (r: Totals, key: 'input' | 'output' | 'cacheRead' | 'total', format = n) =>
+    r.calls === 0 && r.unavailable ? '—' : format(key === 'total' ? total(r) : r[key]);
 type Row = ReturnType<typeof breakdown>[number];
-const columns = (first: string, sum?: Totals) => [
+// The values for each period: every series, exact.
+const columns = (first: string) => [
     {
         key: 'name',
         header: first,
         width: proportional(2, { minWidth: 180 }),
-        renderCell: (r: Row) => {
-            const share = sum && total(sum) ? (r.total / total(sum)) * 100 : 0;
-            return (
-                <div className="usage-name">
-                    {r.name}
-                    {sum && r.calls === 0 && r.unavailable > 0 ? (
-                        <small className="usage-unreported usage-nocount">No count reported</small>
-                    ) : (
-                        sum && (
-                            <span
-                                className="usage-share"
-                                role="img"
-                                aria-label={`${share.toLocaleString(undefined, { maximumFractionDigits: 1 })}% of reported tokens`}
-                            >
-                                <i style={{ width: `${share}%` }} />
-                            </span>
-                        )
-                    )}
-                </div>
-            );
-        },
+        renderCell: (r: Row) => <div className="usage-name">{r.name}</div>,
     },
     ...(['input', 'output', 'cacheRead', 'total'] as const).map((key) => ({
         key,
@@ -94,6 +76,51 @@ const columns = (first: string, sum?: Totals) => [
                 )}
             </span>
         ),
+    },
+];
+// Breakdown (mockup Usage): name, replies, compact tokens, then the share as a percent over a bar.
+const shareColumns = (first: string, sum: Totals) => [
+    {
+        key: 'name',
+        header: first,
+        width: proportional(3, { minWidth: 180 }),
+        renderCell: (r: Row) => <div className="usage-name">{r.name}</div>,
+    },
+    {
+        key: 'replies',
+        header: 'Replies',
+        width: proportional(1, { minWidth: 80 }),
+        align: 'end' as const,
+        renderCell: (r: Row) => n(r.calls + r.unavailable),
+    },
+    {
+        key: 'total',
+        header: 'Tokens',
+        width: proportional(1, { minWidth: 80 }),
+        align: 'end' as const,
+        renderCell: (r: Row) => cell(r, 'total', compact),
+    },
+    {
+        key: 'share',
+        header: 'Share',
+        width: proportional(2, { minWidth: 140 }),
+        renderCell: (r: Row) => {
+            if (r.calls === 0 && r.unavailable > 0)
+                return <small className="usage-unreported usage-nocount">No count reported</small>;
+            const share = total(sum) ? (r.total / total(sum)) * 100 : 0;
+            return (
+                <>
+                    {Math.round(share)}%
+                    <span
+                        className="usage-share"
+                        role="img"
+                        aria-label={`${share.toLocaleString(undefined, { maximumFractionDigits: 1 })}% of reported tokens`}
+                    >
+                        <i style={{ width: `${share}%` }} />
+                    </span>
+                </>
+            );
+        },
     },
 ];
 
@@ -160,8 +187,8 @@ export default function UsageDashboard({
         rows = buckets(events, s, cumulative),
         sum = totals(events);
     const titles = new Map(events.flatMap((e) => (e.tree ? [[e.tree, e.treeTitle ?? '']] : [])));
-    // A multiple of 3 keeps the four scale ticks whole and distinct (an empty chart read 1, 1, 0, 0).
-    const max = Math.ceil(Math.max(1, ...rows.map(total)) / 3) * 3,
+    // The tallest bar fills the chart; there is no y scale (mockup Usage).
+    const max = Math.max(1, ...rows.map(total)),
         shown = rows[active];
     const rangeLabel = {
         today: 'today',
@@ -218,24 +245,31 @@ export default function UsageDashboard({
                     Loading usage history…
                 </Text>
             )}
-            {ready && (
+            {/* Before the first reply (mockup Usage, empty). */}
+            {ready && data.first === null && (
+                <VStack gap={1} className="usage-none">
+                    <Heading level={2}>No usage yet</Heading>
+                    <Text color="secondary">Token counts appear here after your first reply.</Text>
+                </VStack>
+            )}
+            {ready && data.first !== null && (
                 <>
                     <VStack gap={3} className="usage-summary">
                         <Text className="usage-total">
-                            {cell(sum, 'total')} <small>tokens {rangeLabel}</small>
+                            {cell(sum, 'total', compact)} <small>tokens {rangeLabel}</small>
                         </Text>
                         <HStack gap={4} wrap="wrap" vAlign="center" className="usage-legend">
                             {SERIES.map(([key, name]) => (
                                 <HStack key={key} gap={1} vAlign="center">
                                     <svg
                                         className="usage-swatch"
-                                        viewBox="0 0 10 10"
+                                        viewBox="0 0 14 5"
                                         aria-hidden="true"
                                     >
-                                        <rect data-series={key} width={10} height={10} />
+                                        <rect data-series={key} width={14} height={5} rx={2.5} />
                                     </svg>
                                     <Text type="supporting" color="secondary">
-                                        <b>{cell(sum, key)}</b> {name.toLowerCase()}
+                                        {name} <b>{cell(sum, key, compact)}</b>
                                         {key === 'output' && reasoning(sum)}
                                     </Text>
                                 </HStack>
@@ -280,11 +314,6 @@ export default function UsageDashboard({
                                 </SegmentedControl>
                             </HStack>
                             <div className="usage-chart">
-                                <div className="usage-scale" aria-hidden="true">
-                                    {[max, (max * 2) / 3, max / 3, 0].map((v, i) => (
-                                        <span key={i}>{n(Math.round(v))}</span>
-                                    ))}
-                                </div>
                                 <svg
                                     ref={chart}
                                     viewBox={`0 0 ${rows.length * 10} 100`}
@@ -293,16 +322,6 @@ export default function UsageDashboard({
                                     aria-label={`${cumulative ? 'Cumulative' : 'Per-period'} token usage by ${unit}. Use arrow keys to read each ${unit}.`}
                                     onMouseLeave={() => setActive(-1)}
                                 >
-                                    {[0, 100 / 3, 200 / 3, 100].map((y) => (
-                                        <line
-                                            key={y}
-                                            className="usage-grid"
-                                            x1={0}
-                                            x2={rows.length * 10}
-                                            y1={y}
-                                            y2={y}
-                                        />
-                                    ))}
                                     {rows.map((r, i) => {
                                         let y = 100;
                                         return (
@@ -423,7 +442,6 @@ export default function UsageDashboard({
                             </HStack>
                             <Table
                                 aria-label={`Usage by ${group}`}
-                                density="compact"
                                 textOverflow="wrap"
                                 data={breakdown(events, (e) => {
                                     if (group === 'task') return TASKS[e.task] ?? e.task;
@@ -446,7 +464,7 @@ export default function UsageDashboard({
                                               'No tree (background work or deleted trees)'),
                                 }))}
                                 idKey="id"
-                                columns={columns(
+                                columns={shareColumns(
                                     { model: 'Model', task: 'Task', tree: 'Learning tree' }[group]!,
                                     sum,
                                 )}

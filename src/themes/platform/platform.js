@@ -62,9 +62,9 @@ export const platformTheme = {
     "--text-code-size": "var(--font-size-base)",
     "--text-code-weight": "var(--font-weight-normal)",
     "--text-code-leading": "1.4286",
-    "--text-supporting-size": "var(--font-size-sm)",
+    "--text-supporting-size": "13px",
     "--text-supporting-weight": "var(--font-weight-normal)",
-    "--text-supporting-leading": "1.6667",
+    "--text-supporting-leading": "1.45",
     "--text-display-1-size": "var(--font-size-5xl)",
     "--text-display-1-weight": "var(--font-weight-normal)",
     "--text-display-1-leading": "1.2381",
@@ -386,6 +386,21 @@ export const platformTheme = {
       "variant:destructive": {
         "backgroundColor": "var(--color-error-muted)",
         "color": "var(--color-on-error-muted)"
+      },
+      "variant:secondary": {
+        "backgroundColor": "transparent",
+        "boxShadow": "inset 0 0 0 1px light-dark(#1d222966, #e3e6ec66)",
+        "fontWeight": "600",
+        ":hover": {
+          "backgroundColor": "var(--color-background-gray)"
+        }
+      },
+      "variant:secondary+size:md": {
+        "height": "36px"
+      },
+      "variant:secondary+size:sm": {
+        "height": "30px",
+        "fontSize": "13px"
       }
     },
     "badge": {
@@ -436,7 +451,12 @@ export const platformTheme = {
     },
     "segmented-control": {
       "base": {
-        "padding": "var(--spacing-1)"
+        "padding": "var(--spacing-1)",
+        "backgroundColor": "light-dark(#ffffff, #1d2128)"
+      },
+      "size:md": {
+        "height": "36px",
+        "padding": "3px"
       }
     },
     "segmented-control-item": {
@@ -444,13 +464,16 @@ export const platformTheme = {
         "height": "calc(var(--size-element-sm) - 8px)"
       },
       "size:md": {
-        "height": "calc(var(--size-element-md) - 8px)"
+        "height": "30px"
       },
       "size:lg": {
         "height": "calc(var(--size-element-lg) - 8px)"
       },
       "selected": {
-        "boxShadow": "none"
+        "boxShadow": "none",
+        "backgroundColor": "light-dark(#191e27, #f3f5f9)",
+        "color": "light-dark(#ffffff, #14171d)",
+        "fontWeight": "600"
       }
     },
     "switch": {
@@ -460,7 +483,7 @@ export const platformTheme = {
     },
     "progress-bar": {
       "base": {
-        "--color-background-muted": "var(--color-border-emphasized)"
+        "--color-background-muted": "light-dark(#191e2724, #ffffff22)"
       }
     },
     "card": {
@@ -471,6 +494,11 @@ export const platformTheme = {
     "section": {
       "base": {
         "padding": "var(--spacing-3)"
+      }
+    },
+    "selector": {
+      "size:md": {
+        "height": "36px"
       }
     }
   },

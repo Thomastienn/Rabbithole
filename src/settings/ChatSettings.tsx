@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Text } from '@astryxdesign/core/Text';
-import Choice from './Choice';
+import { Selector } from '@astryxdesign/core/Selector';
 import ModelPicker from './ModelPicker';
 import { Button } from '@astryxdesign/core/Button';
 import {
@@ -122,12 +122,10 @@ export default function ChatSettings({
                     />
                 </div>
                 <div role="cell">
-                    <Choice
+                    <Selector
                         label="Chat default effort"
                         isLabelHidden
                         value={saved?.effort ?? 'default'}
-                        size="sm"
-                        width="100%"
                         isDisabled={!selected || !!pending}
                         status={incompatible ? { type: 'error' } : undefined}
                         options={effortOptions(selected ? saved?.effort : null, selected)}

@@ -163,13 +163,15 @@ test('one role table per profile: smart follows chat until pinned, quick thinkin
         await settle();
         return options(label);
     };
-    // Five options or fewer show as buttons, more as a dropdown.
-    const group = (label) => container.querySelector(`[role=radiogroup][aria-label="${label}"]`);
-    const radios = (label) => [...group(label).querySelectorAll('[role=radio]')];
+    // Every role's model and effort is a dropdown (mockup Models); listed reads one and closes it.
+    const listOf = async (label) => {
+        const found = (await open(label)).map((e) => e.textContent.trim());
+        await act(async () => trigger(label).click());
+        await settle();
+        return found;
+    };
     const choose = async (label, option) => {
-        const found = (group(label) ? radios(label) : await open(label)).find((e) =>
-            e.textContent.trim().startsWith(option),
-        );
+        const found = (await open(label)).find((e) => e.textContent.trim().startsWith(option));
         assert.ok(found, `${option} in ${label}`);
         await act(async () => found.click());
         await settle();
@@ -194,13 +196,9 @@ test('one role table per profile: smart follows chat until pinned, quick thinkin
     );
     assert.equal(table().getAttribute('aria-label'), 'Roles in Default');
 
-    assert.deepEqual(
-        radios('Chat default effort').map((e) => e.textContent.trim()),
-        ['Provider default', 'High'],
-    );
+    assert.deepEqual(await listOf('Chat default effort'), ['Provider default', 'High']);
     assert.ok(trigger('Model profile') && trigger('Chat default model'), 'lists stay dropdowns');
     await choose('Chat default model', 'Codex chat');
-    assert.equal(group('Chat default effort'), null, 'six effort options show as a dropdown');
     await choose('Chat default effort', 'High');
     assert.match(trigger('Smart model').textContent, /Follow chat default \(Codex chat\)/);
     assert.match(trigger('Smart effort').textContent, /Follow chat default \(High\)/);
@@ -219,7 +217,7 @@ test('one role table per profile: smart follows chat until pinned, quick thinkin
 
     await choose('Quick thinking model', 'Custom plain');
     assert.deepEqual(
-        radios('Quick thinking effort').map((e) => e.textContent.trim()),
+        await listOf('Quick thinking effort'),
         ['Provider default', 'Custom…'],
         'an endpoint model without listed efforts offers Provider default and Custom…',
     );
