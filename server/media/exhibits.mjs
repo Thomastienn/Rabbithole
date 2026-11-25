@@ -3,7 +3,7 @@
 import { lookup as dnsLookup } from 'node:dns';
 import { mkdir, writeFile, cp } from 'node:fs/promises';
 import { join } from 'node:path';
-import { request, body, publicAddress } from '../tools/readPage.mjs';
+import { follow, body, publicAddress } from '../tools/readPage.mjs';
 import { downloadClip } from './clips.mjs';
 import { pieceNames } from './video-plan.mjs';
 import { cutWork } from './video-workspace.mjs';
@@ -32,25 +32,15 @@ export function imageType(bytes) {
 
 async function download(url, { signal, lookup, isPublic }) {
     const timed = AbortSignal.any([AbortSignal.timeout(60000), ...(signal ? [signal] : [])]);
-    let target = new URL(url);
-    for (let redirects = 0; ; redirects++) {
-        if (!['http:', 'https:'].includes(target.protocol)) throw new Error('not an http(s) image');
-        const response = await request(target, timed, lookup, isPublic);
-        const location = response.headers.location;
-        if (response.statusCode >= 300 && response.statusCode < 400 && location && redirects < 5) {
-            response.destroy();
-            target = new URL(location, target);
-            continue;
-        }
-        if (response.statusCode >= 300) {
-            response.destroy();
-            throw new Error(`image returned HTTP ${response.statusCode}`);
-        }
-        const bytes = await body(response, MAX_IMAGE);
-        const type = imageType(bytes);
-        if (!type) throw new Error('not a PNG, JPEG, GIF or WebP image');
-        return { bytes, type };
+    const { response } = await follow(new URL(url), timed, lookup, isPublic);
+    if (response.statusCode >= 300) {
+        response.destroy();
+        throw new Error(`image returned HTTP ${response.statusCode}`);
     }
+    const bytes = await body(response, MAX_IMAGE);
+    const type = imageType(bytes);
+    if (!type) throw new Error('not a PNG, JPEG, GIF or WebP image');
+    return { bytes, type };
 }
 
 // The downloader fetches whatever a page links to, so at least the page's own host must be public.

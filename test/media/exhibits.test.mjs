@@ -12,11 +12,15 @@ const png = Buffer.concat([
     Buffer.alloc(64, 7),
 ]);
 
-// A fake image host: /photo.png is a PNG, /moved redirects to it, /page.html is not an image, /gone is 404.
+// A fake image host: /photo.png is a PNG, /moved redirects to it, /page.html is not an image, /gone is 404,
+// /loop redirects to itself and /to-private redirects to a private address.
 async function host(run) {
     const server = http.createServer((req, res) => {
         if (req.url === '/photo.png') res.writeHead(200, { 'Content-Type': 'text/plain' }).end(png);
         else if (req.url === '/moved') res.writeHead(302, { Location: '/photo.png' }).end();
+        else if (req.url === '/loop') res.writeHead(302, { Location: '/loop' }).end();
+        else if (req.url === '/to-private')
+            res.writeHead(302, { Location: 'http://10.0.0.7/p.png' }).end();
         else if (req.url === '/page.html')
             res.writeHead(200, { 'Content-Type': 'image/png' }).end('<html>not an image</html>');
         else res.writeHead(404).end();
@@ -88,6 +92,19 @@ test('an image exhibit fails when no result downloads as an image, so the caller
                 { search: searching([]), ...local },
             ),
             /no search results/,
+        );
+        const only = (path) => ({
+            search: searching([{ imageUrl: `${origin}${path}`, title: 'x', sourceUrl: origin }]),
+            isPublic: (address) => address === '127.0.0.1',
+        });
+        // Image downloads share read_page's redirect loop: same limit, same re-check of every hop.
+        await assert.rejects(
+            fetchExhibit({ kind: 'image', query: 'x', show: 'x' }, only('/loop')),
+            /too many redirects/,
+        );
+        await assert.rejects(
+            fetchExhibit({ kind: 'image', query: 'x', show: 'x' }, only('/to-private')),
+            /refuses 10\.0\.0\.7/,
         );
     });
     // Without the test override, private addresses are refused like read_page refuses them.
