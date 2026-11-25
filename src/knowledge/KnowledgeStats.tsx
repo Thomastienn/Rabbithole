@@ -4,7 +4,7 @@ import { CheckIcon } from '@heroicons/react/24/outline';
 import { request as api } from '../serverAccess';
 import type { KnowledgeState } from './useKnowledge';
 import { fill, level } from './knowledge';
-import { heatDays, HEAT_WEEKS, type Stats } from './knowledgeStats';
+import { heatDays, HEAT_WEEKS, type Stats } from './stats';
 
 const date = (at: number | Date) =>
     new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
