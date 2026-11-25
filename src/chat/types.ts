@@ -32,7 +32,10 @@ export type Tree = {
     compaction?: { status: 'compacting' | 'failed'; error?: string };
 };
 export type ModelSelection = Pick<Tree, 'provider' | 'model' | 'effort'>;
-export type Providers = Record<string, { label: string; connected: boolean; installed?: boolean }>;
+export type Providers = Record<
+    string,
+    { label: string; connected: boolean; installed?: boolean; command?: string }
+>;
 export type State = {
     csrf: string;
     version?: string;

@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join, resolve, win32 } from 'node:path';
 
 // The shell's decisions, free of Electron so node --test checks them without opening a window.
 
@@ -44,6 +44,11 @@ export const toolsDir = (cwd, env, dataDir) => join(dataFolder(cwd, env, dataDir
 // The server creates its database on its first start, so a data folder without one means a first launch.
 export const firstLaunch = (cwd, env, dataDir) =>
     !existsSync(join(dataFolder(cwd, env, dataDir), 'trees.sqlite'));
+
+// The installed Windows app keeps the learner's data, its add-ons and Electron's profile in a data folder inside the
+// install folder (ADR 0025), beside Rabbithole.exe; Linux and unpackaged runs keep the server's default.
+export const installedDataDir = (platform, packaged, execPath) =>
+    platform === 'win32' && packaged ? win32.join(win32.dirname(execPath), 'data') : null;
 
 // The update banner's state: null (nothing to show), then available, downloading, ready or failed, and restarting;
 // current when the check found nothing newer, which only Settings shows.

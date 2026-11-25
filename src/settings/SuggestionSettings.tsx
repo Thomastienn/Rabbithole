@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Switch } from '@astryxdesign/core/Switch';
 import { VStack } from '@astryxdesign/core/Layout';
 import { Text } from '@astryxdesign/core/Text';
-import { Selector } from '@astryxdesign/core/Selector';
+import Choice from './Choice';
 import ModelPicker from './ModelPicker';
 import { Button } from '@astryxdesign/core/Button';
 import { CUSTOM_EFFORT, effortOptions, effortSupported, type Model } from './models';
@@ -123,7 +123,7 @@ export default function SuggestionSettings({
                     />
                 </div>
                 <div role="cell">
-                    <Selector
+                    <Choice
                         label="Quick thinking effort"
                         isLabelHidden
                         value={saved?.effort ?? 'default'}

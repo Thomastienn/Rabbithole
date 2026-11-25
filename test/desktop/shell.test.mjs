@@ -6,6 +6,7 @@ import test from 'node:test';
 import { dataDir } from '../../server/desktop.mjs';
 import {
     firstLaunch,
+    installedDataDir,
     navigation,
     saveLayout,
     serverUrl,
@@ -95,6 +96,15 @@ test('the starting progress bar shows only while the data folder has no database
     assert.equal(firstLaunch('/app', env, none), true);
     writeFileSync(join(dir, 'trees.sqlite'), '');
     assert.equal(firstLaunch('/app', env, none), false);
+});
+
+test('the installed Windows app keeps its data and profile in its install folder; other runs keep the default', () => {
+    assert.equal(
+        installedDataDir('win32', true, 'D:\\Apps\\Rabbithole\\Rabbithole.exe'),
+        'D:\\Apps\\Rabbithole\\data',
+    );
+    assert.equal(installedDataDir('win32', false, 'C:\\dev\\electron.exe'), null);
+    assert.equal(installedDataDir('linux', true, '/tmp/.mount_Rabbit/rabbithole-desktop'), null);
 });
 
 test('the update banner appears only for a newer release, downloads on Install and quietly ignores a failed check', () => {

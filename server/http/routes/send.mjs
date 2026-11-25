@@ -133,9 +133,15 @@ export async function sendRoute(res, ctx, id, tree, action, body, job) {
         );
     if (!retried) store.attach(id, user, prepared);
     // The placeholder title shows at once; quick thinking may replace it while the title is unrenamed.
-    // An attachment-only question titles from the attachments' text, which starts with each file name.
-    if (!retried && !tree.messages.length && !tree.title_renamed)
-        ctx.startTitle(id, body.text.trim() ? body.text : prompt.slice(0, 4000));
+    if (!retried && !tree.messages.length && !tree.title_renamed) {
+        const attachmentText = prepared
+            .flatMap((a) => a.parts.filter((p) => !p.image).map((p) => p.text))
+            .join('\n\n')
+            .slice(0, 4000);
+        // A root with only native images has no text to name it from. Keep its filename title.
+        if (body.text.trim() || attachmentText || tree.branch)
+            ctx.startTitle(id, body.text, attachmentText);
+    }
     const reply = store.message(id, 'assistant', '', 'streaming');
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'X-Accel-Buffering': 'no' });
     const heartbeat = setInterval(() => {
@@ -257,6 +263,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, job) {
                                 : ctx.tools.run(name, input, { conversation: id, reply, signal }),
                     }),
                     tutorStyle: store.tutorStyle(),
+                    visualFrequency: store.visualFrequency(),
                     memoryNote: store.memoryNote(),
                     neighbourhood,
                     resources: store

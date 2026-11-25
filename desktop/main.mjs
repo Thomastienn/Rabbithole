@@ -7,6 +7,7 @@ import { app, BrowserWindow, ipcMain, nativeTheme, shell } from 'electron';
 import electronUpdater from 'electron-updater';
 import {
     firstLaunch,
+    installedDataDir,
     navigation,
     saveLayout,
     serverUrl,
@@ -20,6 +21,12 @@ const here = dirname(fileURLToPath(import.meta.url));
 const resources = app.isPackaged ? process.resourcesPath : join(here, 'stage');
 const windows = process.platform === 'win32';
 const SETPRIV = '/usr/bin/setpriv';
+// Before Electron starts, so its profile is created inside the install folder's data folder, which the server also uses.
+const installData = installedDataDir(process.platform, app.isPackaged, process.execPath);
+if (installData) {
+    process.env.RABBITHOLE_DATA_DIR ??= installData;
+    app.setPath('userData', installData);
+}
 // The server's own data-folder rule, from the staged app, so the shell and the server agree on it.
 const { dataDir } = await import(
     pathToFileURL(join(resources, 'app', 'server', 'desktop.mjs')).href

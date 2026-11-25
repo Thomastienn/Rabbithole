@@ -42,21 +42,11 @@ The **Desktop build** GitHub Actions workflow (`.github/workflows/desktop-build.
 
 Startup reports the Node requirement, whether each CLI can run, Claude's native sign-in state and whether a ChatGPT connection is saved. These checks do not send a learning question or verify model entitlement or remaining quota. Provider setup is optional until you want a new reply. There is no API-key fallback.
 
-**Claude (default):** Install the official [Claude Code CLI](https://code.claude.com/docs/en/setup). On Linux, macOS or WSL, the native install command is:
+Choose **Install** for a missing provider in first-run setup or **Map menu → Settings → Connections**. Rabbithole runs the official installer, shows progress and checks for the tool again when it finishes. The same screen shows the command for your system if you prefer to install [Claude Code](https://code.claude.com/docs/en/setup) or [Codex](https://developers.openai.com/codex/cli/) manually.
 
-```sh
-curl -fsSL https://claude.ai/install.sh | bash
-```
+**Claude (default):** Run `claude` in a terminal and sign in with your Claude plan. Reload Rabbithole to recheck sign-in. Where **Check Claude sign-in** is shown in Settings or the model menu, it also refreshes the connection. Rabbithole uses the CLI's native login, strips `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` from its environment, and does not read or copy Claude credentials.
 
-Run `claude` in a terminal and sign in with your Claude plan. Reload Rabbithole to recheck sign-in. Where **Check Claude sign-in** is shown in Settings or the model menu, it also refreshes the connection. Rabbithole uses the CLI's native login, strips `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` from its environment, and does not read or copy Claude credentials.
-
-**Codex:** Install the official [Codex CLI](https://developers.openai.com/codex/cli/):
-
-```sh
-npm install -g @openai/codex
-```
-
-In Rabbithole, open **Map menu → Settings → Continue with ChatGPT** and approve Rabbithole's use of your ChatGPT plan in the official sign-in page. A terminal Codex login alone does not connect Rabbithole: it uses its own consent and isolated Codex home. If the connection expires, choose **Reconnect ChatGPT**. Account or workspace policy can prevent consent; quota and model access can still prevent a reply after sign-in. The Codex app-server protocol was checked with CLI 0.167.0 and is experimental.
+**Codex:** In Rabbithole, open **Map menu → Settings → Connections → Continue with ChatGPT** and approve Rabbithole's use of your ChatGPT plan in the official sign-in page. A terminal Codex login alone does not connect Rabbithole: it uses its own consent and isolated Codex home. If the connection expires, choose **Reconnect ChatGPT**. Account or workspace policy can prevent consent; quota and model access can still prevent a reply after sign-in. The Codex app-server protocol was checked with CLI 0.167.0 and is experimental.
 
 Use the compact model button in the chat header to select a provider and model for that conversation. Switching keeps the saved discussion and passes it to the new provider in a fresh session. A failed reply restores the last working selection. Children start with their parent's provider and model.
 

@@ -97,6 +97,17 @@ async function pick(container, dom, act, index, label) {
     await act(async () => option.click());
     return options.map((e) => e.textContent.trim());
 }
+// Five effort options or fewer show as buttons.
+const efforts = (container) => [
+    ...container.querySelectorAll(
+        '[role=radiogroup][aria-label="Chat default effort"] [role=radio]',
+    ),
+];
+async function press(act, container, label) {
+    const option = efforts(container).find((e) => e.textContent.trim() === label);
+    assert.ok(option, `${label} in ${efforts(container).map((e) => e.textContent)}`);
+    await act(async () => option.click());
+}
 
 test('chat defaults save model and effort, keep only offered efforts and flag unavailable saved defaults', async (t) => {
     let saved = { provider: 'claude', model: null, effort: null };
@@ -121,16 +132,17 @@ test('chat defaults save model and effort, keep only offered efforts and flag un
     await pick(container, dom, act, 0, 'Codex chat');
     assert.deepEqual(writes.at(-1), { provider: 'codex', model: 'chat', effort: null });
     assert.match(container.textContent, /Chat defaults saved\. Existing conversations keep/);
-    const efforts = await pick(container, dom, act, 1, 'High');
-    assert.deepEqual(efforts, ['Provider default', 'Low', 'High']);
+    await press(act, container, 'High');
+    assert.deepEqual(
+        efforts(container).map((e) => e.textContent.trim()),
+        ['Provider default', 'Low', 'High'],
+    );
     assert.deepEqual(writes.at(-1), { provider: 'codex', model: 'chat', effort: 'high' });
     await pick(container, dom, act, 0, 'Custom chat');
     assert.deepEqual(writes.at(-1), { provider: 'openai', model: 'custom', effort: null });
     assert.match(container.textContent, /Effort changed to Provider default for this model/);
-    await act(async () => trigger(container, 1).click());
-    await act(async () => dom.frames());
     assert.deepEqual(
-        shown(trigger(container, 1)).map((e) => e.textContent.trim()),
+        efforts(container).map((e) => e.textContent.trim()),
         ['Provider default', 'Custom…'],
         'an endpoint model without advertised efforts offers Provider default and Custom…',
     );
@@ -163,7 +175,7 @@ test('a fresh install shows Not set for chat and the smart role that follows it,
     );
     t.after(cleanup);
     await act(async () => {});
-    const [chat, , smart] = container.querySelectorAll('[aria-haspopup]');
+    const [chat, smart] = container.querySelectorAll('[aria-haspopup]');
     assert.equal(chat.textContent.trim(), 'Not set');
     assert.equal(smart.textContent.trim(), 'Follow chat default (Not set)');
     assert.equal(container.querySelector('[role=alert]'), null);
@@ -186,7 +198,7 @@ test('Custom… reveals a field that saves a trimmed typed effort and rejects in
     );
     t.after(cleanup);
     await act(async () => {});
-    await pick(container, dom, act, 1, 'Custom…');
+    await press(act, container, 'Custom…');
     const input = () => container.querySelector('.custom-effort input');
     assert.ok(input(), 'custom effort field shown');
     assert.equal(writes.length, 0, 'choosing Custom… alone saves nothing');
@@ -198,6 +210,11 @@ test('Custom… reveals a field that saves a trimmed typed effort and rejects in
     await act(async () => button(container, 'Use effort').click());
     assert.deepEqual(writes.at(-1), { provider: 'openai', model: 'custom', effort: 'vendor_max' });
     assert.equal(button(container, 'Use effort'), undefined, 'field closes after saving');
-    assert.equal(trigger(container, 1).textContent.trim(), 'Vendor_max');
+    assert.equal(
+        efforts(container)
+            .find((e) => e.getAttribute('aria-checked') === 'true')
+            .textContent.trim(),
+        'Vendor_max',
+    );
     assert.equal(container.querySelector('[role=alert]'), null, 'a typed effort is never flagged');
 });

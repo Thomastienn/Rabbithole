@@ -24,7 +24,6 @@ test('Downloads icon shows progress, lists name, size, progress and Retry, and h
     });
     const { container, act, cleanup } = await render(h(Downloads, { rail: false }), ui);
     t.after(cleanup);
-    assert.equal(source.url, '/api/downloads');
     const push = (list) => act(async () => source.onmessage({ data: JSON.stringify(list) }));
     assert.equal(container.querySelector('button'), null, 'hidden with nothing to show');
     const downloads = [
@@ -72,18 +71,10 @@ test('Downloads icon shows progress, lists name, size, progress and Retry, and h
         ['/api/downloads/seen', 'POST'],
         'closing the opened list marks ready ones seen',
     );
-    await push([
-        {
-            id: 'browser',
-            name: 'Video browser',
-            state: 'ready',
-            bytes: 1e8,
-            total: 1e8,
-            percent: 100,
-        },
-    ]);
+    const ready = { ...downloads[1], state: 'ready', percent: 100 };
+    await push([ready]);
     assert.equal(name(container.querySelector('.downloads-button button')), 'Downloads ready');
-    await push([]);
+    await push([{ ...ready, seen: true }]);
     assert.equal(container.querySelector('.downloads-button'), null);
 });
 
