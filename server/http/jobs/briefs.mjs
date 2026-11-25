@@ -10,16 +10,16 @@ const BRIEF =
 const BRIEFS =
     'Explain each of "terms" as "reply" uses it, each in' +
     STYLE +
+    ' "familiarityByTerm" gives the familiarity for the terms it names.' +
     ' For each term, in the order given, write one line [[brief: term]] with the term exactly as given, then its paragraph on the following lines. Write nothing else.' +
     DATA;
 const INSTRUCTIONS =
     'You explain terms briefly. Never request or generate media. Do not use tools, access files or execute code.';
 
-// familiarity is left out when unknown.
-// shortcut: a batch carries none, as it usually starts before concepts are named; pass familiarity by term to pitch batches too.
 export const briefPrompt = (reply, term, familiarity) =>
     BRIEF + JSON.stringify({ reply, term, familiarity });
-export const briefsPrompt = (reply, terms) => BRIEFS + JSON.stringify({ reply, terms });
+export const briefsPrompt = (reply, terms, familiarityByTerm) =>
+    BRIEFS + JSON.stringify({ reply, terms, familiarityByTerm });
 const termOf = (passage) => plainText(passage.text) || passage.text;
 const keyOf = (passage) =>
     JSON.stringify([passage.message, passage.start, passage.end, passage.text]);
@@ -45,10 +45,10 @@ function closedBriefs(text, done) {
 // Quick thinking writes a brief explanation whole; concurrent requests for one passage share the call.
 export function briefJobs(ctx) {
     const { store } = ctx;
+    const conceptIdOf = (name) => (name ? store.concept(name)?.id : undefined);
     // Observed familiarity with a suggestion's concept; an unobserved or missing concept is unknown.
-    const familiarityOf = (concept) => {
-        const id = concept && store.concept(concept)?.id;
-        const known = id && store.familiarity(id);
+    const familiarityOf = (id) => {
+        const known = id === undefined ? undefined : store.familiarity(id);
         return known?.observations.some(Boolean) ? known.familiarity : undefined;
     };
     const writeBrief = (conversation, reply, passage) => {
@@ -64,7 +64,7 @@ export function briefJobs(ctx) {
                     prompt: briefPrompt(
                         plainText(reply),
                         termOf(passage),
-                        familiarityOf(passage.concept),
+                        familiarityOf(conceptIdOf(passage.concept)),
                     ),
                     read: (text) => text.trim(),
                     separator: '\n',
@@ -101,6 +101,7 @@ export function briefJobs(ctx) {
             .map((p) => ({ ...p, message }))
             .filter((p) => !store.brief(message, p.start, p.end));
         if (!ctx.briefs || !reply || !passages.length) return;
+        const passagesByTerm = Map.groupBy(passages, (p) => termOf(p).trim());
         const unsaved = (p) =>
             !store.brief(message, p.start, p.end) && !ctx.jobs.get('brief', keyOf(p));
         const closed = new Set();
@@ -126,12 +127,26 @@ export function briefJobs(ctx) {
                 const quick = await ctx.quickModel(tree);
                 // One plain text call (ADR 0021); a failure keeps the briefs it closed.
                 const batch = (terms) => {
+                    const scores = [];
+                    for (const term of terms) {
+                        const [first, ...rest] = passagesByTerm.get(term);
+                        const id = conceptIdOf(first.concept);
+                        // A single marker serves every occurrence, so it needs one shared concept.
+                        if (id === undefined || rest.some((p) => conceptIdOf(p.concept) !== id))
+                            continue;
+                        const score = familiarityOf(id);
+                        if (score !== undefined) scores.push([term, score]);
+                    }
                     const streamed = collectText();
                     return ctx
                         .askQuick('brief', quick, {
                             detail: { message },
                             instructions: INSTRUCTIONS,
-                            prompt: briefsPrompt(plainText(reply), terms),
+                            prompt: briefsPrompt(
+                                plainText(reply),
+                                terms,
+                                scores.length ? Object.fromEntries(scores) : undefined,
+                            ),
                             read: (text) => (take(terms, text, true), true),
                             separator: '\n',
                             signal: running.controller.signal,

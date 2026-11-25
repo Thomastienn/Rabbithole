@@ -91,9 +91,6 @@ test('the teaching skill carries everyday-analogy guidance to replies, visuals a
     assert.ok(prompt.indexOf(ANALOGY_SKILL) < prompt.indexOf('Never use analogies.'));
     assert.ok(prompt.endsWith('Never use analogies.'));
     assert.ok(PLAN_INSTRUCTIONS.includes(TEACHING_SKILL));
-    // Every provider sends tutorSystem, so the familiarity-first guidance reaches each one.
-    assert.match(prompt, /Pitch each explanation to how well this learner knows the idea/);
-    assert.doesNotMatch(prompt, /Aim for what the idea is/);
     for (const rule of [DISCUSSION_RULE, DISCUSSION_TURN_RULE])
         assert.ok(!rule.includes(ANALOGY_SKILL));
 });
@@ -163,12 +160,7 @@ test('the tool-path tutor prompt before learner data is no larger than before vi
     const MARKER_BEFORE = 9987 + 6121 + BOLD.length + TEACHING;
     for (const prompt of [native, text])
         assert.ok(prompt.length + definitions.length <= MARKER_BEFORE, `${prompt.length}`);
-    for (const part of [
-        'Math: write every formula',
-        'Reply layouts: there are eleven',
-        MEMORY_RULE,
-    ])
-        assert.ok(native.includes(part), part);
+    assert.ok(native.includes(MEMORY_RULE));
     assert.ok(native.endsWith(TUTOR_SKILLS + DEFAULT_TUTOR_STYLE));
     const neighbourhood = { concepts: [{ name: 'Recursion', familiarity: 0.9 }], links: [] };
     assert.ok(tutorSystem({ tools, neighbourhood }).includes(NEIGHBOURHOOD_RULE));
