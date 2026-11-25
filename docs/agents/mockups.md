@@ -34,10 +34,14 @@ selected, error) with realistic data.
    filled. Capture the mockup (`file://`) and the app with `agent-browser` at
    1440x900 in dark and light, the same state in each pair; add 390x844 when
    the mockup has a narrow view.
-3. **Compare** pair by pair, region by region, and fix every structural
-   difference and every colour used in the wrong role. A colour that differs
-   only because the theme differs is a match. The step is done when each pair
-   matches side by side.
+3. **Compare** region by region and fix every structural difference and
+   every colour used in the wrong role. A colour that differs only because the
+   theme differs is a match. Each image costs context, so keep the loop lean:
+   check sizes, spacing and fonts as text first (computed styles via
+   `agent-browser eval`), screenshot only the region you are fixing
+   (`agent-browser screenshot <selector>`), and iterate in one scheme. Take
+   the full-page pairs in every scheme once, at the end. The step is done
+   when each final pair matches side by side.
 4. **Record** the final pairs as WebP (`cwebp`) under
    `docs/verification/<issue-id>/`, named `<state>-<scheme>-mockup.webp` and
    `<state>-<scheme>-app.webp`, commit them with the code, and list them in
