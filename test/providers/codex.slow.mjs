@@ -153,6 +153,38 @@ test('failed terminal turn and process exit reject rather than report success', 
             ),
             { message: 'Codex: Fixture usage limit reached. Partial reply saved; try again.' },
         );
+        // Error notifications: a usage limit or a final error ends the reply at once, a retry keeps waiting.
+        const run = async (prompt) => {
+            const events = [];
+            const error = await client
+                .generate(
+                    {},
+                    prompt,
+                    (e) => events.push(e),
+                    () => {},
+                    new AbortController().signal,
+                )
+                .then(
+                    () => null,
+                    (e) => e.message,
+                );
+            return { error, events: events.filter((e) => e.type !== 'usage') };
+        };
+        assert.deepEqual(await run('usage limit'), {
+            error: 'Codex: stream disconnected before completion: The ChatGPT user has reached their Subscription Sharing usage limit. Partial reply saved; try again.',
+            events: [
+                { type: 'delta', item: 'answer', text: 'Partial' },
+                { type: 'item', item: 'answer', text: 'Authoritative original' },
+                { type: 'status', status: 'failed' },
+            ],
+        });
+        assert.equal(
+            (await run('final error')).error,
+            'Codex: Fixture gave up. Partial reply saved; try again.',
+        );
+        const retried = await run('retry error');
+        assert.equal(retried.error, null);
+        assert.deepEqual(retried.events.at(-1), { type: 'status', status: 'completed' });
     } finally {
         client.close();
     }

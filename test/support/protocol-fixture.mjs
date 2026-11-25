@@ -456,6 +456,30 @@ export default () => <AbsoluteFill style={{ top: -useCurrentFrame() }}>Winner</A
                     },
                 });
         }
+        // Replays a logged usage limit: Codex retries it as a disconnect and never sends turn/completed.
+        const error = (message, willRetry, ids = {}) =>
+            send({
+                method: 'error',
+                params: {
+                    threadId: params.threadId,
+                    turnId: 'turn-fixture',
+                    error: { message, codexErrorInfo: 'other' },
+                    willRetry,
+                    ...ids,
+                },
+            });
+        if (text === 'usage limit') {
+            error('MUST NOT LEAK usage limit', false, { threadId: 'foreign-thread' });
+            error('MUST NOT LEAK usage limit', false, { turnId: 'old-turn' });
+            for (let attempt = 0; attempt < 6; attempt++)
+                error(
+                    'stream disconnected before completion: The ChatGPT user has reached their Subscription Sharing usage limit.',
+                    attempt < 5,
+                );
+            return;
+        }
+        if (text === 'final error') return error('Fixture gave up.', false);
+        if (text === 'retry error') error('Reconnecting... 1/5', true);
         send({
             method: 'turn/completed',
             params: {
