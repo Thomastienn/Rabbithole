@@ -59,13 +59,13 @@ Claude and Codex use your plan's sign-in. Rabbithole has no API-key fallback for
 The download buttons are at the top of this page. Both installers carry Node and the app, so a fresh install chats with nothing else to download. Video tools, offline Python and web search are add-ons you install on request, from the last step of first-run setup or later from **Settings → Add-ons**; they download in the background into a `tools` folder in your data folder. The installers are unsigned.
 
 - **Linux:** download the AppImage, run `chmod +x Rabbithole-linux-x86_64.AppImage`, then open it. It runs in place and installs nothing. First-run setup asks for `sudo apt install bubblewrap` if bubblewrap is missing, since videos and offline Python run inside it.
-- **Windows:** run `Rabbithole-windows-x64-setup.exe`. SmartScreen warns about an unrecognised app: choose **More info → Run anyway**. It installs for your user only, into `%LOCALAPPDATA%\Programs`, with no admin rights. On first run, setup turns on the video sandbox with one admin prompt; if you decline, videos and offline Python stay off until you enable the sandbox in Settings.
+- **Windows:** run `Rabbithole-windows-x64-setup.exe`. SmartScreen warns about an unrecognised app: choose **More info → Run anyway**. It installs for your user only, with no admin rights, into a `Rabbithole` folder at the location you choose (by default `%LOCALAPPDATA%\Programs\Rabbithole`). That folder also holds your data and add-ons in `data`; updates keep it, and uninstalling deletes it unless you untick **Also delete my learning trees, videos and add-ons**. On first run, setup turns on the video sandbox with one admin prompt; if you decline, videos and offline Python stay off until you enable the sandbox in Settings.
 
-Both keep your data in the same folder as `npm start`. To build it yourself, `npm run desktop:build` builds the installer for the OS it runs on with Electron. See [Setup](docs/guide/setup.md#linux-desktop-app).
+The AppImage keeps your data in the same folder as `npm start`. To build it yourself, `npm run desktop:build` builds the installer for the OS it runs on with Electron. See [Setup](docs/guide/setup.md#linux-desktop-app).
 
 ## Data and privacy
 
-Trees, messages and videos are stored in `~/.local/share/rabbithole` (or `$XDG_DATA_HOME/rabbithole`), and in `%APPDATA%\rabbithole` on Windows. Set `RABBITHOLE_DATA_DIR` to use another folder. The files are not encrypted, so back the folder up before you upgrade.
+Trees, messages and videos are stored in `~/.local/share/rabbithole` (or `$XDG_DATA_HOME/rabbithole`), and in `%APPDATA%\rabbithole` on Windows under `npm start` (the installed Windows app uses its install folder's `data`). Set `RABBITHOLE_DATA_DIR` to use another folder. The files are not encrypted, so back the folder up before you upgrade.
 
 The server only listens on `127.0.0.1`, and the app has no telemetry. Your questions and their branch context go to the provider you choose. Video narration goes to Microsoft's Edge TTS service.
 
