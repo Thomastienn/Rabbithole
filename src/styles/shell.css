@@ -28,6 +28,33 @@ html[data-interface-font='system'] [data-astryx-theme] {
     background: var(--rabbithole-selection);
     color: var(--color-text-primary);
 }
+/* Key hints: flat chip type in muted ink on a hairline seam, no keycap bevel or fill.
+   One chip per shortcut (Ctrl K together); Settings lists alternatives, so one per key. */
+.astryx-kbd,
+.settings-keys kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 1px 5px 0;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-inner);
+    background: none;
+    color: var(--color-text-secondary);
+    font: 600 12px/1 var(--font-family-heading);
+    letter-spacing: 0.02em;
+}
+.astryx-kbd > kbd {
+    min-width: 0;
+    height: auto;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+}
 .workspace {
     position: relative;
 }
