@@ -167,22 +167,28 @@ export const media = {
         });
         const result = this.db
             .prepare(
-                "UPDATE artifacts SET id=?,status='pending',previous=json_object('id',id,'attempt',attempt,'source',source,'title',title,'description',description,'duration',duration),source=NULL,error=NULL,duration=NULL,input=?,attempt=? WHERE conversation=? AND id=? AND status='ready'",
+                "UPDATE artifacts SET id=?,status='pending',previous=json_object('id',id,'attempt',attempt,'source',source,'title',title,'description',description,'duration',duration,'input',CASE WHEN kind='video' THEN input END),source=NULL,error=NULL,duration=NULL,input=?,attempt=? WHERE conversation=? AND id=? AND status='ready'",
             )
             .run(next, input, artifact.kind === 'video' ? randomUUID() : null, conversation, id);
         return result.changes ? this.artifact(conversation, next) : null;
     },
-    // Swaps a ready visual's or video's current and previous versions; SQLite reads every right-hand value from the
-    // old row. A video takes back its own id and attempt, so its library entry, cuts and usage follow it.
+    // A video takes back its id and attempt so its cuts and usage follow it. Keep a version to switch back to only if it finished.
     switchVersion(conversation, id) {
-        const previous = this.artifact(conversation, id)?.previous;
-        const next = (previous && JSON.parse(previous).id) || id;
-        const result = this.db
-            .prepare(
-                "UPDATE artifacts SET id=COALESCE(previous->>'id',id),attempt=previous->>'attempt',source=previous->>'source',title=previous->>'title',description=previous->>'description',duration=previous->>'duration',previous=json_object('id',id,'attempt',attempt,'source',source,'title',title,'description',description,'duration',duration) WHERE conversation=? AND id=? AND kind IN ('visual','video') AND status='ready' AND previous IS NOT NULL",
-            )
-            .run(conversation, id);
-        return result.changes ? this.artifact(conversation, next) : null;
+        return (
+            this.db
+                .prepare(
+                    `UPDATE artifacts SET id=COALESCE(previous->>'id',id),attempt=previous->>'attempt',
+                        source=previous->>'source',title=previous->>'title',description=previous->>'description',
+                        duration=previous->>'duration',input=COALESCE(previous->>'input',input),status='ready',error=NULL,
+                        previous=CASE WHEN status='ready' THEN json_object('id',id,'attempt',attempt,
+                            'source',source,'title',title,'description',description,'duration',duration,
+                            'input',CASE WHEN kind='video' THEN input END) END
+                    WHERE conversation=? AND id=? AND previous IS NOT NULL
+                        AND ((kind='visual' AND status='ready') OR (kind='video' AND status IN ('ready','failed','canceled')))
+                    RETURNING *`,
+                )
+                .get(conversation, id) ?? null
+        );
     },
     // `origin` is the title of the conversation still holding this video, or null once it is deleted or regenerated.
     library() {

@@ -323,7 +323,7 @@ async function planVideo({ artifact, signal }, deps, searching, clipping) {
                 (pieces ? PIECES_PLAN_NOTE : '') +
                 (currentPlan ? CURRENT_PLAN_NOTE : '') +
                 (input.instruction
-                    ? `\nChange it as the learner asks: ${input.instruction}`
+                    ? '\nUse the instruction field in the task for the changes the learner asks for.'
                     : input.differentVersion
                       ? '\nCreate a different version: take a different approach than the previous version while explaining the same request.'
                       : '') +

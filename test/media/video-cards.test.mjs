@@ -98,16 +98,15 @@ test('inline recovery states name their action; Retry, Cancel and Open large kee
     );
     assert.equal(player.getAttribute('aria-label'), 'Video: stopped');
     // The versions menu offers a new version with an optional instruction, and the previous one while it exists.
-    const menu = async (label) => {
+    const menu = async (label, count) => {
         await act(async () => button(card('stopped'), 'Video versions: stopped').click());
         await act(async () => dom.frames());
         const items = [...document.querySelectorAll('[role=menuitem]')];
-        const labels = items.map((e) => e.textContent.trim());
-        await act(async () => items.find((e) => e.textContent.trim() === label)?.click());
-        return labels;
+        assert.equal(items.length, count);
+        await act(async () => items.find((e) => e.textContent.trim() === label).click());
     };
-    assert.deepEqual(await menu('Try a new version…'), ['Try a new version…']);
-    const input = card('stopped').parentElement.querySelector('.new-version input');
+    await menu('Try a new version…', 1);
+    const input = card('stopped').querySelector('.new-version input');
     assert.ok(document.activeElement === input, 'the instruction field takes focus');
     await act(async () => inputValue(input, '  Slower pace  '));
     await act(async () =>
@@ -117,8 +116,13 @@ test('inline recovery states name their action; Retry, Cancel and Open large kee
     );
     assert.deepEqual(calls.at(-1), ['regenerate', 'Slower pace']);
     await act(async () => set(video('stopped', 'ready', { exported: true, hasPrevious: true })));
-    assert.deepEqual(await menu('Previous version'), ['Try a new version…', 'Previous version']);
+    await menu('Previous version', 2);
     assert.equal(calls.at(-1), 'previous');
+    for (const status of ['failed', 'canceled']) {
+        await act(async () => set(video('stopped', status, { hasPrevious: true })));
+        await menu('Previous version', 1);
+        assert.equal(calls.pop(), 'previous');
+    }
 });
 
 test('library cards lead with the frame; missing files offer only removal; trash keeps the entry until the server confirms', async (t) => {

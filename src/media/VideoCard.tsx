@@ -140,8 +140,10 @@ export default function VideoCard({
     );
     const versions = useNewVersion(
         artifact.hasPrevious,
-        onAction && ((instruction) => onAction('regenerate', instruction)),
-        onAction && (() => onAction('previous')),
+        onAction && state === 'ready'
+            ? (instruction) => onAction('regenerate', instruction)
+            : undefined,
+        onAction && state !== 'pending' ? () => onAction('previous') : undefined,
     );
     const [now, setNow] = useState(Date.now);
     useEffect(() => {
@@ -297,7 +299,7 @@ export default function VideoCard({
                             <small className="video-step-detail">{detail}</small>
                         )}
                         {exportButton}
-                        {state === 'ready' && onAction && (
+                        {versions.items.length > 0 && (
                             <DropdownMenu
                                 presentation="popover"
                                 alignment="end"
@@ -355,7 +357,7 @@ export default function VideoCard({
                         )}
                     </VStack>
                 </section>
-                {state === 'ready' && versions.box}
+                {versions.box}
                 {drafting && (artifact.cutRows?.length || artifact.drawing) && (
                     <ol className="video-cut-rows" aria-live="polite" aria-label="Cuts">
                         {artifact.drawing && (

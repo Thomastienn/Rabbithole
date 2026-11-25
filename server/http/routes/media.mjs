@@ -362,6 +362,21 @@ export async function mediaRoutes(req, res, url, ctx, body) {
             return json(res, 409, {
                 error: `This ${artifact.kind} has no previous version to switch to.`,
             });
+        if (
+            artifact.kind === 'video' &&
+            artifact.status !== 'ready' &&
+            !store.libraryVideo(artifactId)
+        ) {
+            await jobs.settled(artifactId);
+            await rm(videoWork(dir, artifactId), { recursive: true, force: true }).catch((error) =>
+                ctx.log(
+                    formatLog('warn', 'media', 'could not remove unfinished video work', {
+                        id: artifactId,
+                        cause: errorCause(error),
+                    }),
+                ),
+            );
+        }
         return json(res, 200, live(switched));
     }
     if (tree && ['mermaid', 'visual'].includes(artifact?.kind) && action === 'retry') {
