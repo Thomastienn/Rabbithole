@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, type RefObject } from 'react';
 import {
     CommandPalette,
     CommandPaletteInput,
@@ -24,17 +24,34 @@ function marked(text: string, ranges: [number, number][]) {
     return parts;
 }
 
-// Seen only: the palette already announces the result count, and the active option.
-function Count() {
+function SearchInput({ shown }: { shown: RefObject<Item[] | undefined> }) {
     const palette = useCommandPaletteContext();
-    const results = (palette?.searchResults ?? []) as Item[];
-    if (!palette?.search || !results.length) return null;
-    const trees = new Set(results.map((r) => r.auxiliaryData.root)).size;
+    const results = palette?.searchResults as Item[] | undefined;
+    // Only committed options can be selected. A cancelled search must not overwrite them.
+    useLayoutEffect(() => {
+        shown.current = results;
+    }, [results, shown]);
+    const count = palette?.search ? (results?.length ?? 0) : 0;
+    const trees = new Set(results?.map((r) => r.auxiliaryData.root)).size;
     return (
-        <p className="search-count" aria-hidden>
-            {results.length} {results.length === 1 ? 'result' : 'results'} in {trees}{' '}
-            {trees === 1 ? 'learning tree' : 'learning trees'}
-        </p>
+        <>
+            <CommandPaletteInput placeholder="Search every conversation" />
+            <p className="search-count" role="status" aria-busy={palette?.isBusy}>
+                {count > 0 &&
+                    `${count} ${count === 1 ? 'result' : 'results'} in ${trees} ${trees === 1 ? 'learning tree' : 'learning trees'}`}
+            </p>
+        </>
+    );
+}
+
+function NoMatches() {
+    const palette = useCommandPaletteContext();
+    if (palette?.isBusy) return null;
+    return (
+        <div className="search-none">
+            <strong>Nothing matches “{palette?.search.trim()}”</strong>
+            <p>No conversation uses these words. Try fewer words or part of one.</p>
+        </div>
     );
 }
 
@@ -48,54 +65,28 @@ export default function TreeSearch({
     onOpen: (result: SearchResult) => void;
 }) {
     // The palette hands back only an id; the shown items give the whole result.
-    const shown = useRef(new Map<string, SearchResult>());
-    const [query, setQuery] = useState('');
-    const source = useMemo(() => {
-        const remember = (items: Item[]) => {
-            shown.current = new Map(items.map((i) => [i.id, i.auxiliaryData]));
-            return items;
-        };
-        return {
-            ...searchSource,
-            search: async (q: string) => {
-                const items = remember(await searchSource.search(q));
-                setQuery(q);
-                return items;
-            },
-            bootstrap: () => remember(searchSource.bootstrap() as Item[]),
-        };
-    }, [searchSource]);
+    const shown = useRef<Item[] | undefined>(undefined);
     return (
         <CommandPalette
             {...props}
             className="tree-search-window"
             width="min(760px, calc(100vw - 32px))"
             maxHeight="80vh"
-            searchSource={source}
+            searchSource={searchSource}
             label="Search conversations"
-            input={
-                <>
-                    <CommandPaletteInput placeholder="Search every conversation" />
-                    <Count />
-                </>
-            }
+            input={<SearchInput shown={shown} />}
             emptyBootstrapText="Type words from any conversation."
-            emptySearchText={
-                <div className="search-none">
-                    <strong>Nothing matches “{query.trim()}”</strong>
-                    <p>No conversation uses these words. Try fewer words or part of one.</p>
-                </div>
-            }
+            emptySearchText={<NoMatches />}
             onValueChange={(id) => {
-                const result = shown.current.get(id);
-                if (result) onOpen(result);
+                const item = shown.current?.find((r) => r.id === id);
+                if (item) onOpen(item.auxiliaryData);
             }}
             renderItem={({ auxiliaryData: r }) => (
-                <div className="search-hit">
+                <div className="search-hit" data-recent={r.recent ? '' : undefined}>
                     <span className="address-chip" style={inkStyle(ink(r.conversation))}>
                         {r.address}
                     </span>
-                    <strong>
+                    <strong title={r.title}>
                         {r.field === 'title' && !r.recent ? marked(r.snippet, r.ranges) : r.title}
                     </strong>
                     <span className="search-where">{r.recent ?? FIELDS[r.field]}</span>

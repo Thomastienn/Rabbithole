@@ -1,8 +1,16 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ChatComposerInputHandle } from '@astryxdesign/core/Chat';
 import type { Source } from '../map/TreeOverview';
+import type { SearchResult } from '../shell/treeSearchSource';
 import type { ChatState } from './useChatState';
 import type { Tree } from './types';
+
+const searchContent = {
+    title: '.chat-title h2',
+    passage: '.origin-source',
+    question: '.origin-question, .question-bubble .reply-md',
+    reply: '.passage > section > .reply-md',
+};
 
 // Targets on opening a chat: the composer, a passage to reveal, a figure picked in Contents or a bubble picked on the map.
 // useLearningTrees calls it with the open conversation it owns.
@@ -13,6 +21,7 @@ export function useChatTargets({ overview }: Pick<ChatState, 'overview'>, tree: 
     const [messageTarget, setMessageTarget] = useState<{
         conversation: string;
         message?: string;
+        field?: SearchResult['field'];
         words?: string[];
     }>();
     const composer = useRef<ChatComposerInputHandle>(null);
@@ -60,12 +69,13 @@ export function useChatTargets({ overview }: Pick<ChatState, 'overview'>, tree: 
             message?.scrollIntoView({ block: 'start' });
             if (++frames < 12) frame = requestAnimationFrame(tick);
             else {
-                if (message && messageTarget.words?.length)
-                    markWords(
-                        messageTarget.message ? message : message.closest('.focused-chat')!,
-                        messageTarget.words,
-                        !!messageTarget.message,
-                    );
+                if (message && messageTarget.field && messageTarget.words?.length) {
+                    const container = messageTarget.message
+                        ? message
+                        : message.closest('.focused-chat');
+                    const content = container?.querySelector(searchContent[messageTarget.field]);
+                    if (content) markWords(content, messageTarget.words);
+                }
                 setMessageTarget(undefined);
             }
         };
@@ -81,10 +91,15 @@ export function useChatTargets({ overview }: Pick<ChatState, 'overview'>, tree: 
         focusComposer.current = !source && !artifact && !message;
     }
     // A search result opens on its matched message, or at the title for a title, passage or question match.
-    function find(conversation: string, message: string | undefined, words: string[]) {
+    function find({ conversation, message, field, ranges, snippet }: SearchResult) {
         goTo(conversation);
         focusComposer.current = false;
-        setMessageTarget({ conversation, message, words });
+        setMessageTarget({
+            conversation,
+            message,
+            field,
+            words: ranges.map(([start, end]) => snippet.slice(start, end)),
+        });
     }
     // A turn rail pick scrolls the open conversation to that message and keeps its other targets.
     const jump = (conversation: string, message: string) =>
@@ -98,29 +113,39 @@ export function useChatTargets({ overview }: Pick<ChatState, 'overview'>, tree: 
     return { reveal, composer, focusNext, goTo, find, jump, drop };
 }
 
-// Paints `words` inside `root` with the search-match highlight for two seconds: every match in a
-// message, the first of each word elsewhere (so the title or passage, not the whole chat).
-export function markWords(root: Element, words: string[], all: boolean) {
-    if (typeof Highlight === 'undefined') return;
-    const ranges: Range[] = [],
-        walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT),
-        left = new Set(words.map((w) => w.toLocaleLowerCase()).filter(Boolean));
-    for (let node = walker.nextNode(); node && left.size; node = walker.nextNode()) {
-        const text = node.textContent!.toLocaleLowerCase();
-        for (const word of [...left]) {
-            for (let at = text.indexOf(word); at >= 0; at = text.indexOf(word, at + word.length)) {
-                const range = document.createRange();
-                range.setStart(node, at);
-                range.setEnd(node, at + word.length);
-                ranges.push(range);
-                if (!all) {
-                    left.delete(word);
-                    break;
-                }
-            }
+// Match original text offsets, including words split by inline Markdown.
+export function markWords(root: Element, words: string[]) {
+    if (typeof Highlight === 'undefined' || !CSS.highlights) return;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const nodes: { node: Node; offset: number }[] = [];
+    let text = '';
+    let previousBlock: Element | null | undefined;
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        if (!node.textContent) continue;
+        const block = node.parentElement?.closest('p, li, pre, td, th, h1, h2, h3, h4, h5, h6');
+        if (block !== previousBlock && text) text += ' ';
+        nodes.push({ node, offset: text.length });
+        text += node.textContent;
+        previousBlock = block;
+    }
+    const mine = new Highlight();
+    for (const word of new Set(words.filter(Boolean))) {
+        const literal = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        let start = 0;
+        let end = 0;
+        for (const match of text.matchAll(new RegExp(literal, 'giu'))) {
+            const from = match.index;
+            const to = from + match[0].length;
+            while (start + 1 < nodes.length && nodes[start + 1].offset <= from) start++;
+            end = Math.max(start, end);
+            while (end + 1 < nodes.length && nodes[end + 1].offset < to) end++;
+            const range = document.createRange();
+            range.setStart(nodes[start].node, from - nodes[start].offset);
+            range.setEnd(nodes[end].node, to - nodes[end].offset);
+            mine.add(range);
         }
     }
-    const mine = new Highlight(...ranges);
+    if (!mine.size) return;
     CSS.highlights.set('search-match', mine);
     setTimeout(() => {
         if (CSS.highlights.get('search-match') === mine) CSS.highlights.delete('search-match');

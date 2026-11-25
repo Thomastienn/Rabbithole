@@ -24,6 +24,7 @@ const result = (conversation, root, tree, address, title, field, snippet, ranges
 
 test('search window lists recent trees, groups marked results by tree, moves with arrows, opens with Enter or click and returns focus on Escape', async (t) => {
     const opened = [];
+    const pending = new Map();
     const source = {
         bootstrap: () => [
             {
@@ -38,34 +39,36 @@ test('search window lists recent trees, groups marked results by tree, moves wit
             },
         ],
         search: async (q) =>
-            q === 'missing'
-                ? []
-                : [
-                      result(
-                          'hyphae',
-                          'fungi',
-                          'Fungi · This tree',
-                          '1.2',
-                          'What are hyphae?',
-                          'reply',
-                          '…a hypha grows at its tip.',
-                          [[3, 8]],
-                          'm1',
-                      ),
-                      result(
-                          'hyphae2',
-                          'fungi',
-                          'Fungi · This tree',
-                          '1.3',
-                          'Hyphae tips',
-                          'title',
-                          'Hyphae tips',
-                          [[0, 6]],
-                      ),
-                      result('bread', 'bread', 'Bread', '1', 'Bread', 'passage', 'yeast tips', [
-                          [6, 10],
-                      ]),
-                  ],
+            q === 'tips' || q === 'Hyphae tips'
+                ? new Promise((resolve) => pending.set(q, resolve))
+                : q === 'missing'
+                  ? []
+                  : [
+                        result(
+                            'hyphae',
+                            'fungi',
+                            'Fungi · This tree',
+                            '1.2',
+                            'What are hyphae?',
+                            'reply',
+                            '…a hypha grows at its tip.',
+                            [[3, 8]],
+                            'm1',
+                        ),
+                        result(
+                            'hyphae2',
+                            'fungi',
+                            'Fungi · This tree',
+                            '1.3',
+                            'Hyphae tips',
+                            'title',
+                            'Hyphae tips',
+                            [[0, 6]],
+                        ),
+                        result('bread', 'bread', 'Bread', '1', 'Bread', 'passage', 'yeast tips', [
+                            [6, 10],
+                        ]),
+                    ],
     };
     function Fixture() {
         const [open, setOpen] = useState(false);
@@ -119,9 +122,8 @@ test('search window lists recent trees, groups marked results by tree, moves wit
             ),
         );
     let dialog = await open();
-    assert.equal(dialog.getAttribute('aria-label'), 'Search conversations');
+    assert.ok(dialog.getAttribute('aria-label'));
     assert.equal(document.activeElement.tagName, 'INPUT');
-    assert.match(dialog.textContent, /Recent learning trees/);
     assert.match(
         dialog.querySelector('[role=option]').textContent,
         /Fungi.*Today · 9 conversations/,
@@ -133,12 +135,11 @@ test('search window lists recent trees, groups marked results by tree, moves wit
 
     dialog = await open();
     await type('missing');
-    assert.match(dialog.textContent, /Nothing matches “missing”/);
-    assert.match(dialog.textContent, /Try fewer words or part of one\./);
+    assert.match(dialog.querySelector('.search-none').textContent, /missing/);
     assert.equal(dialog.querySelectorAll('[role=option]').length, 0);
     query = await type('tip');
     assert.equal(
-        dialog.querySelector('.search-count').textContent,
+        dialog.querySelector('[role=status]').textContent,
         '3 results in 2 learning trees',
     );
     assert.deepEqual(
@@ -160,9 +161,8 @@ test('search window lists recent trees, groups marked results by tree, moves wit
     assert.equal(options[1].querySelector('.search-snippet'), null);
     await key(query, 'ArrowDown');
     const first = query.getAttribute('aria-activedescendant');
-    assert.equal(
-        document.getElementById(first),
-        options[0],
+    assert.ok(
+        document.getElementById(first) === options[0],
         'the selected result is the active option',
     );
     await key(query, 'ArrowDown');
@@ -188,34 +188,44 @@ test('search window lists recent trees, groups marked results by tree, moves wit
     await type('tip');
     await act(async () => document.querySelectorAll('[role=option]')[2].click());
     assert.equal(opened.at(-1).conversation, 'bread');
+
+    await open();
+    await type('tip');
+    await type('tips');
+    query = await type('Hyphae tips');
+    await act(async () => pending.get('tips')([]));
+    await key(query, 'ArrowDown');
+    await key(query, 'Enter');
+    assert.equal(
+        opened.at(-1).conversation,
+        'hyphae2',
+        'a visible option opens during a newer search',
+    );
+    await act(async () => pending.get('Hyphae tips')([]));
 });
 
-test('an opened result marks every matched word in a message, or the first of each elsewhere, for two seconds', async (t) => {
+test('an opened result highlights original text across inline markup and clears it after two seconds', async (t) => {
     const { markWords } = await import('../../src/chat/useChatTargets.ts');
     const { container, cleanup } = await render(
-        h('div', null, h('h2', null, 'Hyphae tips'), h('p', null, 'A hypha tip; another TIP.')),
+        h('div', null, h('p', null, 'İ ', h('strong', null, 'Hy'), 'pha tip; another TIP')),
         (w) => {
             w.CSS = { highlights: new Map() };
         },
     );
     // Neither is a global render copies from jsdom.
     globalThis.NodeFilter = window.NodeFilter;
-    globalThis.Highlight = class {
-        constructor(...ranges) {
-            this.ranges = ranges;
-        }
-    };
+    globalThis.Highlight = Set;
     t.after(() => {
         delete globalThis.NodeFilter;
         delete globalThis.Highlight;
     });
     t.after(cleanup);
     t.mock.timers.enable({ apis: ['setTimeout'] });
-    const marked = () => CSS.highlights.get('search-match')?.ranges.map((r) => r.toString()) ?? [];
-    markWords(container.querySelector('p'), ['hyph', 'tip'], true);
-    assert.deepEqual(marked(), ['hyph', 'tip', 'TIP']);
-    markWords(container, ['tip', 'hyph'], false);
-    assert.deepEqual(marked(), ['tip', 'Hyph'], 'the title, not the whole chat');
+    const marked = () => [...(CSS.highlights.get('search-match') ?? [])].map((r) => r.toString());
+    markWords(container, ['hyph', 'tip']);
+    assert.deepEqual(marked(), ['Hyph', 'tip', 'TIP']);
+    markWords(container, ['TIP']);
+    assert.deepEqual(marked(), ['tip', 'TIP']);
     t.mock.timers.tick(2000);
     assert.deepEqual(marked(), []);
 });

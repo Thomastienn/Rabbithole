@@ -16,6 +16,14 @@ export type SearchResult = {
     recent?: string;
 };
 
+function searchDay(created: number, now: Date) {
+    const date = new Date(created);
+    const age = localDay(now) - localDay(date);
+    if (age <= 0) return 'Today';
+    if (age === 1) return 'Yesterday';
+    return date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}
+
 // The empty query's list: the six newest learning trees with their day and conversation count.
 export function recentTrees(trees: readonly Summary[], now = new Date()) {
     return trees
@@ -23,17 +31,8 @@ export function recentTrees(trees: readonly Summary[], now = new Date()) {
         .sort((a, b) => b.created - a.created)
         .slice(0, 6)
         .map((t) => {
-            const age = localDay(now) - localDay(new Date(t.created)),
-                count = subtreeIds(t.id, trees).length,
-                day =
-                    age <= 0
-                        ? 'Today'
-                        : age === 1
-                          ? 'Yesterday'
-                          : new Date(t.created).toLocaleDateString(undefined, {
-                                day: 'numeric',
-                                month: 'short',
-                            });
+            const day = searchDay(t.created, now),
+                count = subtreeIds(t.id, trees).length;
             const result: SearchResult = {
                 conversation: t.id,
                 root: t.id,
@@ -84,16 +83,38 @@ export function treeSearchSource(
                 .then(async (response) => {
                     const data = await response.json();
                     if (!response.ok) throw new Error(data.error ?? 'Search failed. Try again.');
-                    // The snippet joins the label so the palette's instant narrowing keeps text matches.
-                    // shortcut: two trees with the same title share one heading; key groups by root if that confuses learners.
-                    return (data as SearchResult[]).map((r) => ({
-                        id: r.conversation,
-                        label: `${r.title} ${r.snippet}`,
-                        auxiliaryData: {
-                            ...r,
-                            group: r.root === tree ? `${r.tree} · This tree` : r.tree,
-                        },
-                    }));
+                    const created = new Map(
+                        trees()
+                            .filter((t) => !t.parent)
+                            .map((t) => [t.id, t.created]),
+                    );
+                    const groups = new Map<string, string>(),
+                        headings = new Set<string>(),
+                        now = new Date();
+                    return (data as SearchResult[]).map((r) => {
+                        let group = groups.get(r.root);
+                        if (group === undefined) {
+                            const date = created.get(r.root);
+                            const detail =
+                                r.root === tree
+                                    ? 'This tree'
+                                    : date == null
+                                      ? ''
+                                      : searchDay(date, now);
+                            const heading = detail ? `${r.tree} · ${detail}` : r.tree;
+                            group = heading;
+                            // Astryx keys groups by heading, so even same-day names must differ.
+                            for (let i = 2; headings.has(group); i++) group = `${heading} (${i})`;
+                            groups.set(r.root, group);
+                            headings.add(group);
+                        }
+                        return {
+                            id: r.conversation,
+                            // Include the snippet so Astryx's immediate narrowing keeps text matches.
+                            label: `${r.title} ${r.snippet}`,
+                            auxiliaryData: { ...r, group },
+                        };
+                    });
                 })
                 .catch((e: Error) => {
                     if (!signal.aborted) report(e.message);

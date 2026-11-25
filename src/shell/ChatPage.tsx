@@ -281,11 +281,7 @@ export default function ChatPage({
                 onOpen={(r) => {
                     // A recent tree reopens as saved; a match opens its conversation in chat at the matched words.
                     if (r.recent) return openTree(r.root, undefined, undefined, true);
-                    trees.targets.find(
-                        r.conversation,
-                        r.message,
-                        r.ranges.map(([start, end]) => r.snippet.slice(start, end)),
-                    );
+                    trees.targets.find(r);
                     openTree(r.root, undefined, r.conversation);
                 }}
             />

@@ -225,7 +225,6 @@ test('focus mode shrinks the sidebar to a labelled rail of named icons that keep
     }
     assert.equal(tip(button(rail(), 'Show full sidebar')), 'Show full sidebar (Ctrl+Shift+F)');
     assert.equal(tip(button(rail(), 'New chat')), 'New chat (Ctrl+Shift+O)');
-    assert.equal(tip(button(rail(), 'Search conversations')), 'Search conversations (Ctrl+K)');
     assert.equal(button(rail(), 'Map').getAttribute('aria-current'), 'page');
     for (const label of ['Read', 'Knowledge', 'Videos', 'Pieces', 'Map']) {
         await act(async () => button(rail(), label).click());

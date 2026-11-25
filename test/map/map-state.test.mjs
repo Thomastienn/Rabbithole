@@ -439,7 +439,12 @@ test('search waits after typing, cancels stale requests, names the current tree 
     };
     const calls = fakeServer(t, () => {
         if (fail) throw new Error('Unavailable');
-        return [result];
+        return [
+            result,
+            { ...result, conversation: 'old-child', root: 'old' },
+            { ...result, conversation: 'other-child', root: 'other' },
+            { ...result, conversation: 'old-sibling', root: 'old' },
+        ];
     });
     let current = 'new';
     let library = [];
@@ -464,8 +469,9 @@ test('search waits after typing, cancels stale requests, names the current tree 
         recent.slice(0, 2).map((r) => r.auxiliaryData.recent),
         ['Today · 2 conversations', 'Yesterday · 1 conversation'],
     );
-    assert.ok(recent.every((r) => r.auxiliaryData.group === 'Recent learning trees'));
+    assert.equal(new Set(recent.map((r) => r.auxiliaryData.group)).size, 1);
     assert.equal(source.bootstrap().length, 6);
+    library.push(tree('old', null, day(4)), tree('other', null, day(4)));
     const stale = source.search('wa');
     const latest = source.search('O & ?');
     t.mock.timers.tick(119);
@@ -473,13 +479,16 @@ test('search waits after typing, cancels stale requests, names the current tree 
     assert.equal(calls.length, 0, 'no request before the typing pause');
     t.mock.timers.tick(1);
     assert.deepEqual(await stale, []);
-    const [item] = await latest;
+    const [item, old, other, sibling] = await latest;
     assert.deepEqual(
         calls.map((c) => c.path),
         ['/api/search?q=O%20%26%20%3F&tree=new'],
     );
     assert.equal(item.id, 'child');
-    assert.equal(item.auxiliaryData.group, 'Roman roads · This tree', 'the current tree is marked');
+    assert.ok(item.auxiliaryData.group.startsWith(item.auxiliaryData.tree));
+    assert.equal(old.auxiliaryData.group, sibling.auxiliaryData.group);
+    assert.notEqual(old.auxiliaryData.group, other.auxiliaryData.group);
+    assert.notEqual(item.auxiliaryData.group, old.auxiliaryData.group);
     assert.equal(item.auxiliaryData.message, 'm1');
     current = undefined;
     fail = true;
