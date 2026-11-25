@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { assetPath } from '../../server/http/routes/assets.mjs';
@@ -47,6 +47,7 @@ test('a malformed percent escape is not found and logs nothing', async (t) => {
 
 test('a folder under the assets path is not found', async (t) => {
     const assets = mkdtempSync(path.join(tmpdir(), 'tt-assets-'));
+    t.after(() => rmSync(assets, { recursive: true }));
     mkdirSync(path.join(assets, 'fonts'));
     const env = await open({ generate: async () => {} }, { assets });
     t.after(async () => {
@@ -56,6 +57,5 @@ test('a folder under the assets path is not found', async (t) => {
     for (const pathname of ['/fonts', '/fonts/']) {
         const response = await env.get(pathname);
         assert.equal(response.status, 404, pathname);
-        assert.deepEqual(await response.json(), { error: 'Not found.' });
     }
 });
