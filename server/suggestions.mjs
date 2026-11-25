@@ -1,3 +1,4 @@
+import { validUsage } from './store/usage.mjs';
 import { quickCall } from './http/quick.mjs';
 import { MARK_SUGGESTIONS } from './tools/quickTools.mjs';
 import { noteName as name } from './media/markers.mjs';
@@ -222,12 +223,7 @@ export async function suggest(
             signal: AbortSignal.any([signal, AbortSignal.timeout(timeout)]),
             missing: 'Suggestions did not complete.',
             onEvent: (event) => {
-                if (
-                    event.type === 'usage' &&
-                    ['input', 'output', 'cacheRead'].every(
-                        (k) => Number.isSafeInteger(event.usage[k]) && event.usage[k] >= 0,
-                    )
-                )
+                if (event.type === 'usage' && validUsage(event.usage))
                     usage = {
                         input: event.usage.input,
                         output: event.usage.output,

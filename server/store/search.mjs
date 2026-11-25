@@ -1,5 +1,5 @@
 import { plainText } from '../../src/markdown/markdownText.ts';
-import { conversationAddresses } from '../../src/map/treeList.ts';
+import { conversationAddresses, rootOf } from '../../src/map/treeList.ts';
 import { stripMarkers } from '../media/markers.mjs';
 
 const LIMIT = 50,
@@ -175,10 +175,6 @@ export const search = {
             .all();
         const byId = new Map(conversations.map((c) => [c.id, c])),
             addresses = conversationAddresses(conversations);
-        const rootOf = (c) => {
-            while (c.parent && byId.has(c.parent)) c = byId.get(c.parent);
-            return c;
-        };
         // Title matches first, then FTS5 rank, newest first on ties; the best row stands for its conversation.
         found.sort(
             (a, b) =>
@@ -192,7 +188,7 @@ export const search = {
             const c = byId.get(r.conversation);
             if (!c || seen.has(c.id)) continue;
             seen.add(c.id);
-            const root = rootOf(c);
+            const root = rootOf(c, byId);
             if (!groups.has(root.id)) groups.set(root.id, []);
             groups.get(root.id).push({
                 conversation: c.id,

@@ -3,21 +3,13 @@
 import { lookup as dnsLookup } from 'node:dns';
 import { mkdir, writeFile, cp } from 'node:fs/promises';
 import { join } from 'node:path';
-import { request, body, publicAddress } from '../tools/readPage.mjs';
+import { request, body, publicAddress, site } from '../tools/readPage.mjs';
 import { downloadClip } from './clips.mjs';
 import { pieceNames } from './video-plan.mjs';
 import { cutWork } from './video-workspace.mjs';
 
 const MAX_IMAGE = 3 * 1024 * 1024,
     TRIES = 3;
-
-const site = (url) => {
-    try {
-        return new URL(url).hostname.replace(/^www\./, '');
-    } catch {
-        return '';
-    }
-};
 
 // The image type from its first bytes; headers are not trusted and SVG is refused.
 export function imageType(bytes) {

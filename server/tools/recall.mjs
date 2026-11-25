@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { cosine } from '../store/embeddings.mjs';
 import { lookUpConcept } from '../neighbourhood.mjs';
 import { compactionMessages } from '../media/compaction-messages.mjs';
-import { conversationAddresses } from '../../src/map/treeList.ts';
+import { conversationAddresses, rootOf } from '../../src/map/treeList.ts';
 import { plainText } from '../../src/markdown/markdownText.ts';
 
 const CANDIDATES = 5;
@@ -124,10 +124,6 @@ export function recallTools({ store, embed = null, compact }) {
             }
             const byId = new Map(conversations.map((c) => [c.id, c]));
             const addresses = conversationAddresses(conversations);
-            const root = (c) => {
-                while (c.parent && byId.has(c.parent)) c = byId.get(c.parent);
-                return c;
-            };
             return JSON.stringify({
                 conversations: [...best]
                     .filter(([id]) => byId.has(id))
@@ -135,7 +131,7 @@ export function recallTools({ store, embed = null, compact }) {
                     .slice(0, CANDIDATES)
                     .map(([id, { match }]) => ({
                         conversation_id: id,
-                        learning_tree: root(byId.get(id)).title,
+                        learning_tree: rootOf(byId.get(id), byId).title,
                         address: addresses.get(id).address,
                         title: byId.get(id).title,
                         match,
