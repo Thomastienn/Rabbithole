@@ -12,7 +12,12 @@ const { default: SuggestionSettings } = await import('../../src/settings/Suggest
 
 const models = [
     { provider: 'claude', model: 'chat', label: 'Claude chat', isDefault: true, efforts: ['high'] },
-    { provider: 'codex', model: 'chat', label: 'Codex chat', efforts: ['low', 'high'] },
+    {
+        provider: 'codex',
+        model: 'chat',
+        label: 'Codex chat',
+        efforts: ['minimal', 'low', 'medium', 'high', 'xhigh'],
+    },
     { provider: 'openai', model: 'chat', label: 'Custom chat', efforts: ['low', 'high'] },
     { provider: 'openai', model: 'plain', label: 'Custom plain' },
 ];
@@ -154,8 +159,13 @@ test('one role table per profile: smart follows chat until pinned, quick thinkin
         await settle();
         return options(label);
     };
+    // Five options or fewer show as buttons, more as a dropdown.
+    const group = (label) => container.querySelector(`[role=radiogroup][aria-label="${label}"]`);
+    const radios = (label) => [...group(label).querySelectorAll('[role=radio]')];
     const choose = async (label, option) => {
-        const found = (await open(label)).find((e) => e.textContent.trim().startsWith(option));
+        const found = (group(label) ? radios(label) : await open(label)).find((e) =>
+            e.textContent.trim().startsWith(option),
+        );
         assert.ok(found, `${option} in ${label}`);
         await act(async () => found.click());
         await settle();
@@ -180,7 +190,13 @@ test('one role table per profile: smart follows chat until pinned, quick thinkin
     );
     assert.equal(table().getAttribute('aria-label'), 'Roles in Default');
 
+    assert.deepEqual(
+        radios('Chat default effort').map((e) => e.textContent.trim()),
+        ['Provider default', 'High'],
+    );
+    assert.ok(trigger('Model profile') && trigger('Chat default model'), 'lists stay dropdowns');
     await choose('Chat default model', 'Codex chat');
+    assert.equal(group('Chat default effort'), null, 'six effort options show as a dropdown');
     await choose('Chat default effort', 'High');
     assert.match(trigger('Smart model').textContent, /Follow chat default \(Codex chat\)/);
     assert.match(trigger('Smart effort').textContent, /Follow chat default \(High\)/);
@@ -199,10 +215,18 @@ test('one role table per profile: smart follows chat until pinned, quick thinkin
 
     await choose('Quick thinking model', 'Custom plain');
     assert.deepEqual(
-        (await open('Quick thinking effort')).map((e) => e.textContent.trim()),
+        radios('Quick thinking effort').map((e) => e.textContent.trim()),
         ['Provider default', 'Custom…'],
         'an endpoint model without listed efforts offers Provider default and Custom…',
     );
+    await choose('Quick thinking effort', 'Custom…');
+    assert.ok(
+        [...container.querySelectorAll('input')].some(
+            (i) => named(i) === 'Custom quick thinking effort',
+        ),
+        'Custom… opens the typed effort field',
+    );
+    await act(async () => button(container, 'Cancel').click());
     await choose('Quick thinking model', 'Custom chat');
     await choose('Quick thinking effort', 'High');
     assert.deepEqual(fake.active().quick, {
@@ -298,19 +322,15 @@ test('Video mode shows Quality by default and saves Saving', async (t) => {
     t.after(cleanup);
     const settle = () => act(async () => dom.frames());
     await settle();
-    const trigger = [...container.querySelectorAll('[aria-haspopup]')].find((e) =>
-        named(e).startsWith('Video mode'),
+    const checked = () =>
+        container.querySelector('[role=radiogroup][aria-label="Video mode"] [aria-checked=true]')
+            .textContent;
+    assert.match(checked(), /Quality/);
+    const saving = [...container.querySelectorAll('[role=radio]')].find((e) =>
+        e.textContent.trim().startsWith('Saving'),
     );
-    assert.match(trigger.textContent, /Quality/);
-    await act(async () => trigger.click());
-    await settle();
-    const saving = [
-        ...document
-            .getElementById(trigger.getAttribute('aria-controls'))
-            .querySelectorAll('[role=option],[role=menuitemradio]'),
-    ].find((e) => e.textContent.trim().startsWith('Saving'));
     await act(async () => saving.click());
     await settle();
     assert.deepEqual(writes, [{ mode: 'saving' }]);
-    assert.match(trigger.textContent, /Saving/);
+    assert.match(checked(), /Saving/);
 });

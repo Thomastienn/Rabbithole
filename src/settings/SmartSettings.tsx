@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { VStack } from '@astryxdesign/core/Layout';
 import { Text } from '@astryxdesign/core/Text';
-import { Selector } from '@astryxdesign/core/Selector';
+import Choice from './Choice';
 import ModelPicker from './ModelPicker';
 import { Button } from '@astryxdesign/core/Button';
 import {
@@ -164,7 +164,7 @@ export default function SmartSettings({
                     />
                 </div>
                 <div role="cell">
-                    <Selector
+                    <Choice
                         label="Smart effort"
                         isLabelHidden
                         status={incompatible ? { type: 'error' } : undefined}
@@ -273,7 +273,7 @@ export function VideoMode() {
     }
     return (
         <VStack gap={2}>
-            <Selector
+            <Choice
                 label="Video mode"
                 value={mode ?? 'quality'}
                 isDisabled={mode === undefined || pending}
