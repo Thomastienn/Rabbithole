@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Visual controls · Rabbithole-vis.1 and vis.2 mockup</title><link rel="stylesheet" href="line-diagram/ld.css">
+<style>
+/* Mockup only: the app's theme tokens as the frame receives them, mapped onto this mockup's palette.
+   The kit's base CSS below uses only these names, never the mockup's own. */
+:root, [data-theme] {
+  --color-text-primary: var(--ink); --color-text-secondary: var(--mut); --color-text-disabled: color-mix(in srgb, var(--mut) 60%, transparent);
+  --color-border: var(--seam); --color-border-emphasized: var(--seam2);
+  --color-accent: var(--w); --color-on-accent: var(--on-w); --color-background-surface: var(--up); --color-overlay-hover: var(--up2);
+  --color-text-success: var(--l3); --color-text-error: var(--fail); --color-text-warning: var(--l2); --color-text-info: var(--l1);
+  --color-text-blue: var(--l1); --color-text-yellow: var(--l2); --color-text-pink: var(--l4); --color-text-green: var(--l3);
+  --focus-outline-color: var(--w);
+}
+.well { background: var(--deep); border-radius: 8px; padding: 16px; display: grid; gap: 14px; justify-items: start; width: 100%; color: var(--color-text-primary); }
+.light { color-scheme: light; } .dark { color-scheme: dark; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; }
+.pair > div { background: var(--g); padding: 12px; border-radius: 8px; color: var(--ink); }
+pre.tag { font: 12px/1.5 ui-monospace, monospace; color: var(--mut); white-space: pre-wrap; }
+.p360 { width: 360px; max-width: 100%; }
+.reply { max-width: 700px; padding: 24px 40px 0; }
+
+/* ---- Kit base CSS: what the sandbox ships. Fonts: Barlow 400/600 for labels and controls, Atkinson Hyperlegible Next 400 for values and result lines. ---- */
+rh-button, rh-toggle, rh-reset, rh-switch { display: inline-block; }
+rh-button-group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+rh-slider, rh-number, rh-text, rh-choice, rh-readout { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; font: 400 14px/1.4 Barlow, sans-serif; }
+:is(rh-slider, rh-number, rh-text) > label, rh-choice legend { font-weight: 600; }
+rh-choice fieldset { border: 0; padding: 0; display: contents; }
+:is(rh-button, rh-toggle, rh-reset) > button {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 14px; border-radius: 8px;
+  font: 600 14px/1 Barlow, sans-serif; color: var(--color-text-primary); border: 1.5px solid var(--color-border-emphasized); background: transparent; white-space: nowrap;
+}
+:is(rh-button, rh-toggle, rh-reset) > button:hover { background: var(--color-overlay-hover); }
+rh-button[variant=primary] > button, rh-toggle > button[aria-pressed=true] { background: var(--color-accent); color: var(--color-on-accent); border-color: var(--color-accent); }
+rh-button[variant=primary] > button:hover, rh-toggle > button[aria-pressed=true]:hover { background: color-mix(in srgb, var(--color-accent) 85%, var(--color-text-secondary)); }
+:is(rh-button[variant=quiet], rh-reset) > button { border-color: transparent; color: var(--color-text-secondary); }
+:is(rh-button[variant=quiet], rh-reset) > button:hover { color: var(--color-text-primary); }
+rh-toggle > button .i { display: none; } rh-toggle > button[aria-pressed=true] .i { display: inline-block; }
+rh-kit :disabled, [disabled] > button, rh-slider[disabled] { opacity: 0.45; cursor: not-allowed; }
+rh-switch label { display: inline-flex; align-items: center; gap: 10px; min-height: 36px; font: 400 14px/1.4 Barlow, sans-serif; cursor: pointer; }
+rh-switch input { appearance: none; width: 36px; height: 20px; border-radius: 10px; background: var(--color-border-emphasized); position: relative; margin: 0; flex: none; cursor: inherit; }
+rh-switch input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--color-background-surface); transition: left 0.15s; }
+rh-switch input:checked { background: var(--color-accent); }
+rh-switch input:checked::after { left: 19px; background: var(--color-on-accent); }
+rh-slider { width: 100%; max-width: 440px; flex: 1 1 260px; }
+rh-slider input { appearance: none; flex: 1 1 160px; min-width: 120px; height: 20px; background: transparent; margin: 0; }
+rh-slider input::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: linear-gradient(var(--color-accent), var(--color-accent)) 0 / var(--fill, 50%) 100% no-repeat, var(--color-border-emphasized); }
+rh-slider input::-moz-range-track { height: 4px; border-radius: 2px; background: var(--color-border-emphasized); }
+rh-slider input::-moz-range-progress { height: 4px; border-radius: 2px; background: var(--color-accent); }
+rh-slider input::-webkit-slider-thumb { appearance: none; width: 18px; height: 18px; margin-top: -7px; border-radius: 50%; background: var(--color-accent); border: 3px solid var(--deep, transparent); }
+rh-slider input::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--color-accent); border: 3px solid var(--deep, transparent); }
+:is(rh-slider, rh-readout) output { font: 400 15px/1.3 "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", Verdana, sans-serif; min-width: 5ch; text-align: right; }
+.unit { color: var(--color-text-secondary); }
+rh-number .box { display: inline-flex; align-items: center; border: 1.5px solid var(--color-border-emphasized); border-radius: 8px; min-height: 36px; }
+rh-number .box:focus-within { border-color: var(--color-accent); }
+rh-number button { display: grid; place-items: center; width: 32px; height: 32px; color: var(--color-text-secondary); border-radius: 6px; }
+rh-number button:hover { background: var(--color-overlay-hover); color: var(--color-text-primary); }
+rh-number input, rh-text input { font: 400 15px/1 "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", Verdana, sans-serif; color: var(--color-text-primary); background: transparent; border: 0; }
+rh-number input { width: 6ch; text-align: right; appearance: textfield; -moz-appearance: textfield; }
+rh-number input::-webkit-inner-spin-button { appearance: none; }
+rh-number input:focus-visible { outline: 0; }
+rh-number .unit { padding-right: 4px; }
+rh-text input { min-height: 36px; padding: 0 12px; border: 1.5px solid var(--color-border-emphasized); border-radius: 8px; min-width: min(240px, 100%); flex: 1 1 200px; }
+rh-text input::placeholder { color: var(--color-text-secondary); }
+rh-text input:focus-visible { outline: 0; border-color: var(--color-accent); }
+rh-choice .seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 8px; background: var(--color-background-surface); }
+rh-choice .seg label { display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border-radius: 6px; color: var(--color-text-secondary); cursor: pointer; font-weight: 400; }
+rh-choice .seg label:hover { color: var(--color-text-primary); }
+rh-choice .seg label:has(:checked) { background: var(--color-accent); color: var(--color-on-accent); font-weight: 600; }
+rh-choice .seg input { position: absolute; opacity: 0; pointer-events: none; }
+rh-choice .seg label:has(:focus-visible) { outline: 2px solid var(--focus-outline-color); outline-offset: 2px; }
+rh-choice[layout=list] { flex-direction: column; align-items: start; gap: 4px; }
+rh-choice .list { display: grid; gap: 2px; }
+rh-choice .list label { display: flex; align-items: center; gap: 10px; min-height: 32px; cursor: pointer; }
+rh-choice .list input { appearance: none; width: 18px; height: 18px; margin: 0; border-radius: 50%; border: 1.5px solid var(--color-border-emphasized); display: grid; place-items: center; }
+rh-choice .list input:checked { border-color: var(--color-accent); }
+rh-choice .list input:checked::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--color-accent); }
+rh-readout { flex-direction: column; align-items: start; gap: 0; }
+rh-readout .k { font: 600 12px/1.2 Barlow, sans-serif; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-secondary); }
+rh-readout output { font-size: 24px; text-align: left; }
+rh-readout .unit { font-size: 15px; }
+rh-readouts { display: flex; flex-wrap: wrap; gap: 12px 32px; }
+rh-result { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; padding: 12px 14px; border-radius: 8px; border: 1.5px solid var(--tone); background: color-mix(in srgb, var(--tone) 12%, transparent); max-width: 52ch; width: 100%; }
+rh-result .i { color: var(--tone); margin-top: 1px; }
+rh-result b { font: 600 15px/1.35 Barlow, sans-serif; }
+rh-result p { grid-column: 2; font: 400 15px/1.5 "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", Verdana, sans-serif; }
+rh-result[variant=correct] { --tone: var(--color-text-success); }
+rh-result[variant=incorrect] { --tone: var(--color-text-error); }
+rh-result[variant=neutral] { --tone: var(--color-border-emphasized); }
+rh-result[variant=neutral] .i { color: var(--color-text-secondary); }
+rh-status { display: flex; gap: 8px; align-items: start; font: 400 15px/1.5 "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", Verdana, sans-serif; }
+rh-status .i { margin-top: 2px; }
+rh-status[variant=info] .i { color: var(--color-text-info); }
+rh-status[variant=success] .i { color: var(--color-text-success); }
+rh-status[variant=warning] .i { color: var(--color-text-warning); }
+rh-legend ul { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 0; list-style: none; font: 400 13px/1.3 Barlow, sans-serif; }
+rh-legend li { display: flex; align-items: center; gap: 8px; }
+rh-legend i { width: 18px; height: 4px; border-radius: 2px; background: var(--c); }
+rh-legend[shape=box] i { width: 12px; height: 12px; border-radius: 3px; }
+rh-table { display: block; width: 100%; overflow-x: auto; }
+rh-table table { width: 100%; border-collapse: collapse; font: 400 14px/1.4 Barlow, sans-serif; }
+rh-table caption { text-align: left; font-weight: 600; padding-bottom: 6px; }
+rh-table th { text-align: left; font: 600 12px/1.2 Barlow, sans-serif; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-secondary); padding: 8px 12px; border-bottom: 1.5px solid var(--color-border-emphasized); }
+rh-table td { padding: 9px 12px; border-bottom: 1px solid var(--color-border); }
+rh-table .n { text-align: right; font-family: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", Verdana, sans-serif; }
+rh-kit :focus-visible, .well :focus-visible, .well .focus { outline: 2px solid var(--focus-outline-color); outline-offset: 2px; }
+.ctl-row { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; width: 100%; }
+@media (prefers-reduced-motion: reduce) { rh-switch input::after { transition: none; } }
+</style></head><body>
+<nav class="mock" aria-label="Mockup screens"><b>Visuals</b><a href="line-diagram/read.html">Read</a><a href="Rabbithole-vis.1.html" aria-current=page>vis.1 and vis.2 Visual controls</a><label><input type="checkbox" id="lt"> Light</label></nav>
+<header class="intro"><h1>Visual controls</h1><p>Rabbithole-vis.1 (input controls) and Rabbithole-vis.2 (display controls). Today every visual builds and styles its own buttons, sliders and readouts. Now the sandbox ships a kit of ready controls, and the worker names one by tag. Spec: <code>docs/visual-controls-play-and-setting-buttons-spec.md</code>, "Visual controls". Where this mockup and the spec differ, follow the spec.</p></header>
+<ul class="rules">
+<li>Each control is a custom element that renders native elements in the light DOM: a real button, range, checkbox, radio, number or text input. Keyboard, focus and screen readers work as they do for native controls.</li>
+<li>Every control takes a <code>label</code>, which is its accessible name. Variants use <code>variant</code>. Each exposes <code>value</code> and fires <code>input</code> and <code>change</code>.</li>
+<li>The base CSS uses only the theme tokens the frame receives, such as <code>--color-accent</code> and <code>--color-text-secondary</code>. It uses only the fonts the sandbox loads: Barlow 400 and 600 for labels and controls, and Atkinson Hyperlegible Next 400 for values and result lines.</li>
+<li>The kit is quiet. Only the primary button, a pressed toggle, a chosen segment and the slider fill take the accent. Result and status tones colour the icon and the card edge, never the text.</li>
+<li>No control carries <code>data-part</code>, so clicking one never picks a visual part.</li>
+<li>Rows wrap at phone width. A slider's track shrinks to 120 px before its value wraps below the label.</li>
+</ul>
+
+<section class="intro"><h2>In place</h2><p>A pendulum visual built only from kit controls. The controls work: move the slider, pick a gravity, guess and check, then reset.</p></section>
+<div class="reply"><p class="p">A longer string swings more slowly, and weaker gravity slows it too. Try it.</p>
+<figure class="figc"><div class="fh">Fig 3 · Pendulum period<span class="end"><button class="ib" aria-label="Visual source"><i class="i i-code-bracket"></i></button><button class="ib" aria-label="Open large"><i class="i i-arrows-pointing-out"></i></button></span></div><div class="fb">
+<div class="well" id="demo" style="background:none;padding:0">
+<svg viewBox="0 0 600 220" role="img" aria-label="A pendulum hanging from a bar" style="width:100%;height:auto"><line x1="220" y1="14" x2="380" y2="14" stroke="var(--color-border-emphasized)" stroke-width="4" stroke-linecap="round"/><path id="arc" fill="none" stroke="var(--color-text-blue)" stroke-width="2" stroke-dasharray="4 6"/><line id="rod" x1="300" y1="14" stroke="var(--color-text-primary)" stroke-width="2"/><circle id="bob" r="14" fill="var(--color-text-yellow)"/></svg>
+<div class="ctl-row">
+<rh-slider label="Length" min="0.2" max="2" step="0.1" unit="m" value="1"><label for="len">Length</label><input id="len" type="range" min="0.2" max="2" step="0.1" value="1"><output for="len"><span id="lenv">1.0</span> <span class="unit">m</span></output></rh-slider>
+<rh-switch label="Show swing arc"><label><input type="checkbox" role="switch" id="arcsw" checked>Show swing arc</label></rh-switch>
+</div>
+<rh-choice label="Gravity" options="Earth,Moon,Mars"><fieldset><legend>Gravity</legend><span class="seg"><label><input type="radio" name="g" value="9.81" checked>Earth</label><label><input type="radio" name="g" value="1.62">Moon</label><label><input type="radio" name="g" value="3.71">Mars</label></span></fieldset></rh-choice>
+<rh-readouts><rh-readout label="Period" unit="s"><span class="k" id="pk">Period</span><output aria-labelledby="pk"><span id="per">2.01</span> <span class="unit">s</span></output></rh-readout><rh-readout label="Swings per minute"><span class="k" id="sk">Swings per minute</span><output aria-labelledby="sk" id="spm">29.9</output></rh-readout></rh-readouts>
+<div class="ctl-row"><rh-number label="Your guess on the Moon" min="0" step="0.1" unit="s" value="3"><label for="guess">Your guess on the Moon</label><span class="box"><button aria-label="Decrease Your guess on the Moon" data-d="-0.1"><i class="i i--sm i-minus"></i></button><input id="guess" type="number" min="0" step="0.1" value="3.0"><span class="unit">s</span><button aria-label="Increase Your guess on the Moon" data-d="0.1"><i class="i i--sm i-plus"></i></button></span></rh-number>
+<rh-button-group><rh-button label="Check" variant="primary"><button id="check">Check</button></rh-button><rh-reset label="Reset"><button id="reset"><i class="i i--sm i-arrow-path"></i>Reset</button></rh-reset></rh-button-group></div>
+<rh-result id="res" variant="neutral" role="status"><i class="i i-question-mark-circle"></i><b>Make a guess, then check it</b><p>The Moon's gravity is about a sixth of Earth's.</p></rh-result>
+</div></div></figure>
+</div>
+
+<main class="specs">
+<section class="spec"><h2>Button</h2><p>Primary for the one main action, secondary for the rest, quiet for minor ones. A button group lays them out with an 8 px gap and wraps.</p><div class="stage"><div class="well"><rh-button-group><rh-button variant="primary" label="Run"><button>Run</button></rh-button><rh-button variant="secondary" label="Add weight"><button>Add weight</button></rh-button><rh-button variant="quiet" label="Show forces"><button>Show forces</button></rh-button></rh-button-group><rh-button-group><rh-button variant="primary" label="Run"><button class="hover">Hover</button></rh-button><rh-button label="Focus"><button class="focus">Focus</button></rh-button><rh-button label="Disabled" disabled><button disabled>Disabled</button></rh-button></rh-button-group></div><pre class="tag">&lt;rh-button-group&gt;&lt;rh-button label="Run" variant="primary"&gt;&lt;/rh-button&gt;…&lt;/rh-button-group&gt;</pre></div></section>
+
+<section class="spec"><h2>Toggle and switch</h2><p>A toggle is a pressed or unpressed button with <code>aria-pressed</code>; pressed shows a check and the accent. A switch is a checkbox with <code>role="switch"</code>, for a setting that is on or off.</p><div class="stage"><div class="well"><rh-button-group><rh-toggle label="Friction"><button aria-pressed="true" data-tog><i class="i i--sm i-check"></i>Friction</button></rh-toggle><rh-toggle label="Air resistance"><button aria-pressed="false" data-tog><i class="i i--sm i-check"></i>Air resistance</button></rh-toggle></rh-button-group><rh-switch label="Show vectors"><label><input type="checkbox" role="switch" checked>Show vectors</label></rh-switch><rh-switch label="Slow motion"><label><input type="checkbox" role="switch">Slow motion</label></rh-switch></div><pre class="tag">&lt;rh-toggle label="Friction" pressed&gt;&lt;/rh-toggle&gt;  &lt;rh-switch label="Show vectors" checked&gt;&lt;/rh-switch&gt;</pre></div></section>
+
+<section class="spec"><h2>Slider</h2><p>The label, the track and the live value with its unit, on one line. The fill shows how far along the range the value sits. Arrow keys move one step, Page Up and Page Down ten.</p><div class="stage"><div class="well" style="justify-items:stretch"><rh-slider label="Angle" min="0" max="90" step="1" unit="°"><label for="s2">Angle</label><input id="s2" type="range" min="0" max="90" value="30" data-unit="°"><output for="s2"><span>30</span> <span class="unit">°</span></output></rh-slider><rh-slider label="Temperature" disabled><label for="s3">Temperature</label><input id="s3" type="range" min="0" max="100" value="70" disabled><output for="s3"><span>70</span> <span class="unit">°C</span></output></rh-slider></div><pre class="tag">&lt;rh-slider label="Angle" min="0" max="90" step="1" unit="°" value="30"&gt;&lt;/rh-slider&gt;</pre></div></section>
+
+<section class="spec"><h2>Number with stepper</h2><p>For a precise value. Minus and plus step by <code>step</code> and are named after the label. Typing works too; an out-of-range value clamps on change.</p><div class="stage"><div class="well"><rh-number label="Mass" min="0" step="0.5" unit="kg"><label for="n2">Mass</label><span class="box"><button aria-label="Decrease Mass" data-d="-0.5"><i class="i i--sm i-minus"></i></button><input id="n2" type="number" min="0" step="0.5" value="2.5"><span class="unit">kg</span><button aria-label="Increase Mass" data-d="0.5"><i class="i i--sm i-plus"></i></button></span></rh-number></div><pre class="tag">&lt;rh-number label="Mass" min="0" step="0.5" unit="kg" value="2.5"&gt;&lt;/rh-number&gt;</pre></div></section>
+
+<section class="spec"><h2>Choice list</h2><p>Two to five options show as segments. Six or more show as a radio list. Both are native radios in a fieldset, so arrow keys move the choice.</p><div class="stage"><div class="well"><rh-choice label="Scale" options="Linear,Log"><fieldset><legend>Scale</legend><span class="seg"><label><input type="radio" name="sc" checked>Linear</label><label><input type="radio" name="sc">Log</label></span></fieldset></rh-choice><rh-choice label="Planet" layout="list"><fieldset><legend>Planet</legend><span class="list"><label><input type="radio" name="pl">Mercury</label><label><input type="radio" name="pl">Venus</label><label><input type="radio" name="pl" checked>Earth</label><label><input type="radio" name="pl">Mars</label><label><input type="radio" name="pl">Jupiter</label><label><input type="radio" name="pl">Saturn</label></span></fieldset></rh-choice></div><pre class="tag">&lt;rh-choice label="Planet" options="Mercury,Venus,Earth,Mars,Jupiter,Saturn" value="Earth"&gt;&lt;/rh-choice&gt;</pre></div></section>
+
+<section class="spec"><h2>Text field</h2><p>When the visual asks the learner to type, such as a word to encode. The label sits before the field, and an optional placeholder gives an example.</p><div class="stage"><div class="well" style="justify-items:stretch"><rh-text label="Word to encode" placeholder="e.g. hello"><label for="t1">Word to encode</label><input id="t1" type="text" placeholder="e.g. hello"></rh-text><rh-text label="Message"><label for="t2">Message</label><input id="t2" type="text" value="cab" class="focus" style="border-color:var(--color-accent)"></rh-text></div><pre class="tag">&lt;rh-text label="Word to encode" placeholder="e.g. hello"&gt;&lt;/rh-text&gt;</pre></div></section>
+
+<section class="spec"><h2>Readout</h2><p>A computed value with its unit. The label is small muted caps, and the value is large. It is an <code>output</code>, so a changed value is announced politely. Readouts sit side by side and wrap.</p><div class="stage"><div class="well"><rh-readouts><rh-readout label="Speed" unit="m/s"><span class="k">Speed</span><output><span>12.4</span> <span class="unit">m/s</span></output></rh-readout><rh-readout label="Kinetic energy" unit="J"><span class="k">Kinetic energy</span><output><span>384</span> <span class="unit">J</span></output></rh-readout><rh-readout label="Result"><span class="k">Result</span><output>—</output></rh-readout></rh-readouts></div><pre class="tag">&lt;rh-readout label="Speed" unit="m/s" value="12.4"&gt;&lt;/rh-readout&gt;</pre></div></section>
+
+<section class="spec"><h2>Result card</h2><p>For a check-yourself answer. Its tone shows on the icon, the edge and a faint tint, and the title says the outcome in words. It is a status region, so the screen reader reads the new outcome.</p><div class="stage" style="justify-items:stretch"><div class="well"><rh-result variant="correct"><i class="i i-check-circle"></i><b>Correct</b><p>On the Moon the period is about 4.9 s, two and a half times Earth's.</p></rh-result><rh-result variant="incorrect"><i class="i i-xmark"></i><b>Not quite</b><p>Weaker gravity makes the swing slower, so the period grows.</p></rh-result><rh-result variant="neutral"><i class="i i-question-mark-circle"></i><b>Make a guess, then check it</b><p>The Moon's gravity is about a sixth of Earth's.</p></rh-result></div><pre class="tag">&lt;rh-result variant="correct" title="Correct"&gt;On the Moon…&lt;/rh-result&gt;</pre></div></section>
+
+<section class="spec"><h2>Status</h2><p>A one-line hint or warning, in body text at reading size. The icon carries the tone, and the text stays ink.</p><div class="stage"><div class="well"><rh-status variant="info" role="status"><i class="i i-information-circle"></i>Drag the bob to set the start angle.</rh-status><rh-status variant="success" role="status"><i class="i i-check-circle"></i>Balanced: both sides weigh 12 kg.</rh-status><rh-status variant="warning" role="status"><i class="i i-exclamation-triangle"></i>Length must be more than 0. Showing 0.2 m.</rh-status></div><pre class="tag">&lt;rh-status variant="warning"&gt;Length must be more than 0.&lt;/rh-status&gt;</pre></div></section>
+
+<section class="spec"><h2>Legend</h2><p>One swatch and label per series, in the series inks: blue, yellow, pink, green. Lines by default; <code>shape="box"</code> for bars and areas. Labels name the series, so colour is never the only cue.</p><div class="stage"><div class="well"><rh-legend label="Series"><ul aria-label="Series"><li><i style="--c:var(--color-text-blue)"></i>Earth</li><li><i style="--c:var(--color-text-yellow)"></i>Moon</li><li><i style="--c:var(--color-text-pink)"></i>Mars</li><li><i style="--c:var(--color-text-green)"></i>Jupiter</li></ul></rh-legend><rh-legend label="Series" shape="box"><ul aria-label="Series"><li><i style="--c:var(--color-text-blue)"></i>Carbon</li><li><i style="--c:var(--color-text-yellow)"></i>Nitrogen</li><li><i style="--c:var(--color-text-pink)"></i>Water</li></ul></rh-legend></div><pre class="tag">&lt;rh-legend items="Earth,Moon,Mars,Jupiter" shape="line"&gt;&lt;/rh-legend&gt;</pre></div></section>
+
+<section class="spec"><h2>Table</h2><p>Styled like reply tables: muted caps headers, hairline rows, numbers right-aligned. A wide table scrolls sideways inside the visual instead of overflowing.</p><div class="stage" style="justify-items:stretch"><div class="well"><rh-table label="Period by planet"><table><caption>Period by planet</caption><thead><tr><th>Planet</th><th class="n">g (m/s²)</th><th class="n">Period (s)</th></tr></thead><tbody><tr><td>Earth</td><td class="n">9.81</td><td class="n">2.01</td></tr><tr><td>Moon</td><td class="n">1.62</td><td class="n">4.94</td></tr><tr><td>Mars</td><td class="n">3.71</td><td class="n">3.26</td></tr></tbody></table></rh-table></div><pre class="tag">&lt;rh-table label="Period by planet"&gt;&lt;table&gt;…&lt;/table&gt;&lt;/rh-table&gt;</pre></div></section>
+
+<section class="spec"><h2>Reset</h2><p>A quiet button with the circular arrow. It returns every control in the visual to its initial value and fires <code>reset</code> on the root, so the visual redraws.</p><div class="stage"><div class="well"><rh-reset label="Reset"><button><i class="i i--sm i-arrow-path"></i>Reset</button></rh-reset></div><pre class="tag">&lt;rh-reset&gt;&lt;/rh-reset&gt;   root.addEventListener("reset", draw)</pre></div></section>
+
+<section class="spec"><h2>Phone width</h2><p>At 360 px the rows wrap. The slider keeps its label and value on one line. Readouts stack two per row, and the button group wraps.</p><div class="stage"><div class="well p360"><rh-slider label="Length"><label for="s4">Length</label><input id="s4" type="range" min="0.2" max="2" step="0.1" value="1.4"><output for="s4"><span>1.4</span> <span class="unit">m</span></output></rh-slider><rh-choice label="Gravity"><fieldset><legend>Gravity</legend><span class="seg"><label><input type="radio" name="g4" checked>Earth</label><label><input type="radio" name="g4">Moon</label><label><input type="radio" name="g4">Mars</label></span></fieldset></rh-choice><rh-readouts><rh-readout><span class="k">Period</span><output><span>2.37</span> <span class="unit">s</span></output></rh-readout><rh-readout><span class="k">Swings per minute</span><output>25.3</output></rh-readout></rh-readouts><rh-button-group><rh-button variant="primary"><button>Check</button></rh-button><rh-button><button>Show forces</button></rh-button><rh-reset><button><i class="i i--sm i-arrow-path"></i>Reset</button></rh-reset></rh-button-group></div></div></section>
+</main>
+
+<section class="intro"><h2>Light and dark</h2><p>The same controls in both appearances of the picked theme. Change the theme in the bar to check the others.</p></section>
+<div class="specs wide"><div class="pair" id="pair"></div></div>
+
+<script src="line-diagram/ld.js"></script>
+<script>
+// Mockup only: copies a sample into the light and dark panes, then wires the demo the way the kit would.
+const sample = document.querySelector(".spec:nth-of-type(1) .well").outerHTML + document.querySelector(".spec:nth-of-type(2) .well").outerHTML
+  + `<div class="well">${document.querySelector("#demo .ctl-row").outerHTML}${document.querySelector("#demo rh-readouts").outerHTML}</div>`
+  + document.querySelectorAll(".spec")[7].querySelector(".well").outerHTML + document.querySelectorAll(".spec")[8].querySelector(".well").outerHTML;
+for (const s of ["light", "dark"]) document.getElementById("pair").insertAdjacentHTML("beforeend", `<div class="${s}"><p class="cap" style="margin-bottom:8px">${s}</p><div style="display:grid;gap:12px">${sample.replaceAll('id="', `id="${s}-`).replaceAll('for="', `for="${s}-`)}</div></div>`);
+const fill = (r) => r.style.setProperty("--fill", ((r.value - r.min) / (r.max - r.min)) * 100 + "%");
+for (const r of document.querySelectorAll("rh-slider input")) {
+  fill(r);
+  r.addEventListener("input", () => { fill(r); r.closest("rh-slider").querySelector("output span").textContent = r.step < 1 ? (+r.value).toFixed(1) : r.value; });
+}
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("[data-tog]"); if (t) t.setAttribute("aria-pressed", t.getAttribute("aria-pressed") !== "true");
+  const d = e.target.closest("[data-d]"); if (d) { const i = d.parentElement.querySelector("input"); i.value = Math.max(0, +i.value + +d.dataset.d).toFixed(1); i.dispatchEvent(new Event("input", { bubbles: true })); }
+});
+const $ = (id) => document.getElementById(id), len = $("len"), res = $("res");
+function draw() {
+  const L = +len.value, g = +document.querySelector("#demo [name=g]:checked").value, T = 2 * Math.PI * Math.sqrt(L / g);
+  $("per").textContent = T.toFixed(2); $("spm").textContent = (60 / T).toFixed(1);
+  const r = 40 + L * 90, a = 0.45, x = 300 + r * Math.sin(a), y = 14 + r * Math.cos(a);
+  $("rod").setAttribute("x2", x); $("rod").setAttribute("y2", y); $("bob").setAttribute("cx", x); $("bob").setAttribute("cy", y);
+  $("arc").setAttribute("d", `M${300 - r * Math.sin(a)} ${y}A${r} ${r} 0 0 0 ${x} ${y}`); $("arc").style.display = $("arcsw").checked ? "" : "none";
+}
+$("demo").addEventListener("input", draw); $("demo").addEventListener("change", draw);
+function verdict(kind, title, text, icon) { res.setAttribute("variant", kind); res.innerHTML = `<i class="i ${icon}"></i><b>${title}</b><p>${text}</p>`; }
+$("check").onclick = () => {
+  const moon = 2 * Math.PI * Math.sqrt(+len.value / 1.62), off = Math.abs(+$("guess").value - moon) / moon;
+  off < 0.1 ? verdict("correct", "Correct", `On the Moon the period is about ${moon.toFixed(1)} s.`, "i-check-circle")
+            : verdict("incorrect", "Not quite", `It is about ${moon.toFixed(1)} s. Weaker gravity makes the swing slower.`, "i-xmark");
+};
+$("reset").onclick = () => {
+  len.value = 1; fill(len); $("lenv").textContent = "1.0"; $("arcsw").checked = true; $("guess").value = "3.0";
+  document.querySelector("#demo [name=g]").checked = true; verdict("neutral", "Make a guess, then check it", "The Moon's gravity is about a sixth of Earth's.", "i-question-mark-circle"); draw();
+};
+draw();
+</script>
+</body></html>

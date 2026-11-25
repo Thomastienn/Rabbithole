@@ -53,11 +53,11 @@ The exact contiguous text of a tutor reply, or of a line in a discussion, that a
 _Avoid_: Selection, highlight, anchor
 
 **Suggestion**:
-A term or short phrase in a tutor reply marked as worth breaking down into a branch: a technical, academic or uncommon term the learner may not know or may want to explore, even when the reply explains it. The tutor marks most of them while answering, including terms it would otherwise only bold as important, and their underlines appear as the terms arrive, so the learner can branch while still reading. A passage the learner selected and asked a brief explanation of becomes a suggestion too, so they never have to select it again. It carries no proposed question.
+A term or short phrase in a tutor reply marked as worth breaking down into a branch: a technical, academic or uncommon term the learner may not know or may want to explore, even when the reply explains it. The tutor marks most of them while answering, including terms it would otherwise only bold as important, and their underlines appear as the terms arrive, so the learner can branch while still reading. A passage the learner selected and asked a brief explanation of becomes a suggestion too, so they never have to select it again. Each suggestion names one concept, which can differ from its words: "fact" in a reply about Prolog names the concept Prolog fact. It carries no proposed question.
 _Avoid_: Candidate, Explore further item
 
 **Brief explanation**:
-About two or three short sentences about a term or passage of a tutor reply, read at a glance and free to bold or italicise a key word, shown above the branch question box so the learner can understand it without branching. It appears on its own when the learner opens an unexplored suggestion, and only on request for a passage they selected themselves. It explains whatever the term needs in context, such as what it is or why it holds. It is kept and shows again when the learner points at that suggestion. Once a branch from it has a reply, pointing at it shows the branch question and the start of the child's first reply instead, as for any branched passage. It is not part of the conversation and the tutor never sees it. Opening one for a suggestion counts as weak evidence that the learner has seen the concept: it lifts an unknown concept a little and dips a well-known one a little.
+Two or three short sentences about a term or passage of a tutor reply, in plain everyday words a newcomer understands on one read, free to bold or italicise a key word, shown above the branch question box so the learner can understand it without branching. It appears on its own when the learner opens an unexplored suggestion, and only on request for a passage they selected themselves. It explains whatever the term needs in context, such as what it is or why it holds, pitched at the learner's familiarity with it, and leans on no other jargon it does not explain. It stays short and simple every time; detail is what a branch is for. It is kept and shows again when the learner points at that suggestion. Once a branch from it has a reply, pointing at it shows the branch question and the start of the child's first reply instead, as for any branched passage. It is not part of the conversation and the tutor never sees it. Opening one for a suggestion counts as weak evidence that the learner has seen the concept: it lifts an unknown concept a little and dips a well-known one a little.
 _Avoid_: Peek, tooltip, definition, summary
 
 **Brief batch**:
@@ -86,7 +86,7 @@ The model that answers learner messages in a conversation. Its Settings default 
 The learner-chosen model for planning videos and auditing their cuts; the chat model writes visuals and cut code. Its model and effort initially follow the Settings chat defaults and can each be overridden independently.
 
 **First-run setup**:
-The short screen a fresh install shows before anything else, where the learner signs in to Claude or Codex, chooses a chat model so they can start asking, and last picks any add-ons to install, or skips them. It appears only on first run and is quick to finish; later changes happen in Settings.
+The short screen a fresh install shows before anything else, where the learner installs Claude or Codex if missing and signs in to one, chooses a chat model so they can start asking, and last picks any add-ons to install, or skips them. It appears only on first run and is quick to finish; later changes happen in Settings.
 _Avoid_: Onboarding, wizard, setup screen
 
 **Add-on**:
@@ -137,7 +137,7 @@ A connection between two concepts: either "related", or "builds on" when one con
 _Avoid_: Edge, dependency
 
 **Explored concept**:
-The one concept a conversation was created to explore: the concept of the suggestion or groundwork it was branched from, or otherwise the concept named for it together with its title. A conversation may have none.
+The one concept a conversation was created to explore: the concept of the suggestion or groundwork it was branched from, or otherwise the concept named for it together with its title, from its first question and anything attached to it. It is always a subject of study, never the activity of studying, such as "lecture learning" or "explaining a file". A conversation may have none.
 _Avoid_: Topic, subject, tag
 
 **Ghost tree**:
@@ -175,7 +175,7 @@ Turning a playable video into an MP4 file on the learner's computer, done only w
 _Avoid_: Render, download, save
 
 **Everyday analogy**:
-A familiar real-life situation used to open an explanation of a concept that is new or abstract to the learner, such as traffic police letting a set number of cars through for a semaphore. The formal idea is then mapped onto it, and where the analogy breaks down is said plainly. Replies, visuals and videos use one when it helps, not always; a video carries one analogy through its cuts.
+A familiar real-life situation used to open an explanation of a concept that is new or abstract to the learner, such as traffic police letting a set number of cars through for a semaphore. The formal idea is then mapped onto it, and where the analogy breaks down is said plainly. Replies, visuals and videos use one now and then, when it helps, never by habit; a video carries one analogy through its cuts.
 _Avoid_: Metaphor (alone), real-life example, story
 
 **Tutor tool**:
@@ -206,8 +206,12 @@ _Avoid_: Regenerate, retry, variant
 A drawn object in a visual that the learner can point at and ask about, such as the reactor of a power plant. Visual parts nest: a larger part holds the smaller parts drawn within it, such as the reactor's control rods, so the learner can ask about a whole component or one of its details. Every meaningful object in a visual is a visual part; the visual's own controls, such as its buttons and sliders, are not.
 _Avoid_: Part (alone), component, element
 
+**Visual control**:
+A ready-made control the app gives every visual, such as a button, slider, switch, readout or legend, so the controls of every visual look and work the same. A visual picks a control and its variant instead of building and styling its own. Visual controls are not visual parts.
+_Avoid_: Widget, component, input
+
 **Step**:
-One stage of a visual that the learner moves through with Previous and Next. Each step either continues the previous step's scene, changing what is already drawn in place, or changes to a new scene; one visual may mix both. A visual that shows every stage at once has no steps.
+One stage of a visual that the learner moves through with Previous and Next, or watches in order with Play, which moves slowly enough to follow and pauses briefly on each step. Each step either continues the previous step's scene, changing what is already drawn in place, or changes to a new scene; one visual may mix both. A step animates what it changes, so the learner sees what moved and how, rather than a jump to the new picture. A visual that shows every stage at once has no steps.
 _Avoid_: Slide, frame, page
 
 **Cut**:
@@ -260,6 +264,14 @@ _Avoid_: Cut (for the join itself)
 **Cut audit**:
 A single review of one written cut by the smart model, from its code and still frames, against the video plan, its set pieces and the previous cut's last frame. It reports problems with layout, consistency, house style, emphasis placement, labels crowding the focal object and missing or unnecessary detail without rewriting the cut; the chat model fixes a flagged cut before it becomes playable.
 _Avoid_: Final pass, whole-video audit
+
+**Visual frequency**:
+The learner's one app-wide choice of how readily the tutor draws visuals: Sparing, Often, the default, or Only when asked. Often encourages a visual for each distinct concept a picture helps, never forcing one; Only when asked draws one only at the learner's request. It does not affect videos.
+_Avoid_: Visual mode, diagram setting
+
+**Install folder**:
+The one folder on Windows the learner chooses when installing, always named Rabbithole, holding the app, its add-ons and the learner's data. Updates keep the data; uninstalling deletes it unless the learner unticks that choice.
+_Avoid_: Program folder, data folder (alone)
 
 **Video mode**:
 The learner's one app-wide choice of how much model work a video gets: Quality, the default, or Saving. Saving skips cut audits, piece improvements and reference photos, keeping only what a playable video needs. A video uses the mode set when it starts, including a Retry, and keeps how it was made.
