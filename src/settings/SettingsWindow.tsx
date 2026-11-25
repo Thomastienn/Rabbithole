@@ -26,7 +26,7 @@ import AddonsSettings from './AddonsSettings';
 import UsageDashboard from '../usage/UsageDashboard';
 import CliInstall from '../shell/CliInstall';
 import type { Model } from './models';
-import type { ModelSelection } from '../chat/types';
+import type { ModelSelection, Providers } from '../chat/types';
 import type { Appearance, ThemeChoice } from '../shell/appearance';
 import InterfaceSettings, { Done, Section } from './InterfaceSettings';
 import { useDesktopUpdate } from '../shell/UpdateBanner';
@@ -121,7 +121,7 @@ export default function SettingsWindow({
     request?: SettingsRequest;
     close: () => void;
     models?: Model[];
-    providers?: Record<string, { label: string; connected: boolean }>;
+    providers?: Providers;
     modelError: string;
     loadModels: () => Promise<void>;
     profileActivated: (chat: ModelSelection) => void;
