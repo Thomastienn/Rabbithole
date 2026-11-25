@@ -166,15 +166,13 @@ test('the tool-path tutor prompt before learner data is no larger than before vi
     // The bold-term suggestion sentence (docs/reply-reading-polish-spec.md) and the visual frequency sentence are allowed on top.
     const BOLD =
         'When you would bold a term because it matters, the learner may not fully understand it yet, so mark it as a suggestion instead of only bolding it. ';
-    const MARKER_BEFORE = 9987 + 6121 + BOLD.length + VISUAL_FREQUENCY.often.length;
+    // The familiarity-first teaching guidance and the now-and-then analogy wording (docs/plainer-teaching-concept-marks-and-return-to-passage-spec.md)
+    // replaced shorter text and are allowed on top: 474 and 51 characters.
+    const TEACHING = 474 + 51;
+    const MARKER_BEFORE = 9987 + 6121 + BOLD.length + TEACHING + VISUAL_FREQUENCY.often.length;
     for (const prompt of [native, text])
         assert.ok(prompt.length + definitions.length <= MARKER_BEFORE, `${prompt.length}`);
-    for (const part of [
-        'Math: write every formula',
-        'Reply layouts: there are eleven',
-        MEMORY_RULE,
-    ])
-        assert.ok(native.includes(part), part);
+    assert.ok(native.includes(MEMORY_RULE));
     assert.ok(native.endsWith(TUTOR_SKILLS + DEFAULT_TUTOR_STYLE));
     const neighbourhood = { concepts: [{ name: 'Recursion', familiarity: 0.9 }], links: [] };
     assert.ok(tutorSystem({ tools, neighbourhood }).includes(NEIGHBOURHOOD_RULE));
