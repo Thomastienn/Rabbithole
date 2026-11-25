@@ -2,9 +2,19 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { AnnotationMode, getDocument, ImageKind, OPS, Util } from 'pdfjs-dist/legacy/build/pdf.mjs';
 
+// Anthropic's API accepts at most 100 images per request; Codex accepts more.
+const MAX_IMAGES = 100;
 const assets = dirname(fileURLToPath(import.meta.resolve('pdfjs-dist/package.json')));
 const identity = [1, 0, 0, 1, 0, 0];
 const compact = (s) => s.replace(/\s/g, '');
+
+export class PdfLimitError extends Error {
+    constructor(name, reason = 'its text is over 1 MB') {
+        super(
+            `${name}: this PDF is too large to send because ${reason}. Attach only the pages you need.`,
+        );
+    }
+}
 
 // TextContent restores spacing; operator glyphs supply visibility and order, including hidden OCR.
 function textRuns(events, content) {
@@ -121,7 +131,7 @@ function png(image, factory, crop, maskColor) {
     }
 }
 
-async function pageParts(page, factory, name, number) {
+async function pageParts(page, factory, name, number, imageBudget) {
     const [ops, content] = await Promise.all([
         page.getOperatorList({ annotationMode: AnnotationMode.DISABLE }),
         page.getTextContent({ disableNormalization: true }),
@@ -132,8 +142,12 @@ async function pageParts(page, factory, name, number) {
         newline = false;
     const pageArea = (page.view[2] - page.view[0]) * (page.view[3] - page.view[1]);
     const image = (source, matrix = state.matrix, crop, maskColor) => {
-        if (imageArea(matrix, page.view) >= pageArea * 0.1)
+        if (imageArea(matrix, page.view) >= pageArea * 0.1) {
+            if (imageBudget.remaining === 0)
+                throw new PdfLimitError(name, `it has over ${MAX_IMAGES} images`);
+            imageBudget.remaining--;
             events.push({ source, crop, maskColor });
+        }
     };
     for (let i = 0; i < ops.fnArray.length; i++) {
         const op = ops.fnArray[i],
@@ -243,7 +257,7 @@ async function pageParts(page, factory, name, number) {
     return parts;
 }
 
-export async function pdfParts({ name, bytes }) {
+export async function pdfParts({ name, bytes }, maxTextBytes) {
     const task = getDocument({
         data: Uint8Array.from(bytes),
         cMapUrl: join(assets, 'cmaps/'),
@@ -260,13 +274,19 @@ export async function pdfParts({ name, bytes }) {
     try {
         const document = await task.promise,
             parts = [];
+        const imageBudget = { remaining: MAX_IMAGES };
+        let textBytes = 0;
         for (let number = 1; number <= document.numPages; number++) {
             const page = await document.getPage(number);
-            parts.push(...(await pageParts(page, document.canvasFactory, name, number)));
+            const added = await pageParts(page, document.canvasFactory, name, number, imageBudget);
             page.cleanup();
+            for (const part of added) if (!part.image) textBytes += Buffer.byteLength(part.text);
+            if (textBytes > maxTextBytes) throw new PdfLimitError(name);
+            parts.push(...added);
         }
         return parts;
     } catch (error) {
+        if (error instanceof PdfLimitError) throw error;
         throw new Error(
             error.name === 'PasswordException'
                 ? `${name}: this PDF needs a password. Attach an unlocked copy.`

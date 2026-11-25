@@ -5,6 +5,9 @@ import { IMAGE_TYPES } from '../src/chat/attachmentTypes.ts';
 // Images the chat models read natively; their stored text is the placeholder history and compaction see.
 export { IMAGE_TYPES };
 
+// Attached text goes whole into the prompt; beyond this it fills the model's context.
+const MAX_TEXT_BYTES = 1024 * 1024;
+
 const utf8 = new TextDecoder('utf-8', { fatal: true });
 
 // { name, type, bytes } -> { delivery, parts: [{ text }] }; throws with the learner-facing reason when unsupported.
@@ -13,19 +16,24 @@ export async function prepareAttachment(
     { readsImages = true, recognize } = {},
 ) {
     if (type === 'application/pdf') {
-        const { pdfParts } = await import('./pdf.mjs');
-        const extracted = await pdfParts({ name, bytes });
+        const { PdfLimitError, pdfParts } = await import('./pdf.mjs');
+        const extracted = await pdfParts({ name, bytes }, MAX_TEXT_BYTES);
         const parts = [],
             deliveries = new Set();
+        let textBytes = 0;
         for (const part of extracted) {
-            if (!part.image) {
-                parts.push(part);
-                deliveries.add('text');
-            } else {
-                const prepared = await prepareAttachment(part, { readsImages, recognize });
-                deliveries.add(prepared.delivery);
-                parts.push(...(readsImages ? [part] : prepared.parts));
+            const prepared =
+                part.image && !readsImages
+                    ? await prepareAttachment(part, { readsImages, recognize })
+                    : { delivery: part.image ? 'image' : 'text', parts: [part] };
+            for (const delivered of prepared.parts) {
+                if (!readsImages) {
+                    textBytes += Buffer.byteLength(delivered.text);
+                    if (textBytes > MAX_TEXT_BYTES) throw new PdfLimitError(name);
+                }
+                parts.push(delivered);
             }
+            deliveries.add(prepared.delivery);
         }
         return { delivery: [...deliveries].join(','), parts };
     }
@@ -54,8 +62,7 @@ export async function prepareAttachment(
         throw new Error(
             `${name}: this file type can't be attached. Attach a PDF, plain-text file or a PNG, JPEG or WebP image.`,
         );
-    // The whole file goes into the prompt; beyond this it fills the model's context.
-    if (bytes.length > 1024 * 1024)
+    if (bytes.length > MAX_TEXT_BYTES)
         throw new Error(`${name}: this text file is over 1 MB. Attach a shorter excerpt.`);
     return { delivery: 'text', parts: [{ text: `[Attached file: ${name}]\n${text}` }] };
 }

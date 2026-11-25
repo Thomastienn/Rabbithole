@@ -161,3 +161,21 @@ test('PDF OCR failure refuses preparation; malformed PDFs have an actionable rea
         },
     );
 });
+
+test('PDF image limit takes precedence over a read error on the first image past the cap', async () => {
+    await assert.rejects(prepare('pictures', native), {
+        message: /\b100\b.*\bimages\b/i,
+    });
+});
+
+test('PDF OCR parts count toward the combined text limit', async () => {
+    await assert.rejects(
+        prepare('ordered', {
+            readsImages: false,
+            recognize: async () => 'x'.repeat(600_000),
+        }),
+        {
+            message: /\b1\s*MB\b/i,
+        },
+    );
+});
