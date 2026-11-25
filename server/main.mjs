@@ -63,13 +63,14 @@ try {
     });
     const auth = new Auth(dir),
         claude = new Claude(dir, spawn, execFile, cliPath('claude')),
+        codex = new Codex(auth, dir, spawn, null, cliPath('codex')),
         endpoint = new OpenAI(dir),
         embed = localEmbedder(dir);
     app = createApp({
         store,
         auth,
         endpoint,
-        providers: { claude, codex: new Codex(auth, dir, spawn, null, cliPath('codex')) },
+        providers: { claude, codex },
         // Existing installs keep assuming Claude for an unset chat role; a fresh install assumes nothing.
         defaultProvider: store.assumesProvider ? 'claude' : null,
         dir,
@@ -100,27 +101,20 @@ try {
     // Installed add-ons are checked for updates once first-run setup has ended; POST /api/setup starts it otherwise.
     if (store.setupFinished()) void downloads.start();
     // Local diagnostics only. Start listening first so a missing or slow CLI cannot prevent reading saved trees.
-    const installed = (command) =>
-        new Promise((resolve) =>
-            execFile(
-                command,
-                ['--version'],
-                { timeout: 5000, killSignal: 'SIGKILL', maxBuffer: 65536 },
-                (error) => resolve(!error),
-            ),
-        );
-    const [hasClaude, hasCodex] = await Promise.all([installed('claude'), installed('codex')]);
+    // The same lookup chat uses, so a short desktop PATH does not hide a CLI chat can run.
+    const hasClaude = claude.installed(),
+        hasCodex = codex.installed();
     const signedIn = hasClaude && (await claude.status()).connected;
     console.log(
         !hasClaude
-            ? `Claude Code: not installed or could not run. Next: choose Install for Claude in first-run setup or Map menu > Settings > Connections, or run ${installCommand('claude')}; then press Sign in to Claude there.`
+            ? `Claude Code: not installed. Next: choose Install for Claude in first-run setup or Map menu > Settings > Connections, or run ${installCommand('claude')}; then press Sign in to Claude there.`
             : signedIn
               ? 'Claude Code: installed and signed in. Next: choose New chat to ask a question.'
               : 'Claude Code: installed; signed out or sign-in could not be checked. Next: press Sign in to Claude in first-run setup or Settings, Connections.',
     );
     console.log(
         !hasCodex
-            ? `Codex: not installed or could not run; ChatGPT ${auth.status().connected ? 'connection saved' : 'not connected'}. Next: Install in Map menu > Settings > Connections, or run ${installCommand('codex')}; then Map menu > Settings > ${auth.status().connected ? 'Reconnect ChatGPT if needed' : 'Continue with ChatGPT'}.`
+            ? `Codex: not installed; ChatGPT ${auth.status().connected ? 'connection saved' : 'not connected'}. Next: Install in Map menu > Settings > Connections, or run ${installCommand('codex')}; then Map menu > Settings > ${auth.status().connected ? 'Reconnect ChatGPT if needed' : 'Continue with ChatGPT'}.`
             : auth.status().connected
               ? 'Codex: installed; ChatGPT connection saved. Next: send a question to verify access, or Map menu > Settings > Reconnect ChatGPT if it fails.'
               : 'Codex: installed; ChatGPT not connected. Next: Map menu > Settings > Continue with ChatGPT and approve plan usage.',

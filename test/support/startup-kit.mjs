@@ -12,9 +12,11 @@ export function launch(
         cwd,
         env: {
             ...process.env,
-            // CLI detection also searches home install folders, so HOME hides them too.
+            // CLI detection also searches home install folders and npm's global bin, so these hide them too.
             PATH: dir,
             HOME: dir,
+            NPM_CONFIG_PREFIX: dir,
+            npm_config_prefix: dir,
             RABBITHOLE_DATA_DIR: dir,
             RABBITHOLE_PORT: String(port),
             ...env,

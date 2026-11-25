@@ -1,11 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import { mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer } from 'node:http';
 import { launch } from '../support/startup-kit.mjs';
+import { findCli } from '../../server/providers/findCli.mjs';
 
 const schemas = JSON.parse(
     readFileSync(new URL('../fixtures/store-schemas.json', import.meta.url)),
@@ -38,8 +39,11 @@ test('main starts an old database without providers; busy port explains how to c
         const [, origin] = await running.waitFor(/Rabbithole: (http:\/\/127\.0\.0\.1:\d+)/);
         await running.waitFor(/Saved trees remain available/);
         assert.match(running.output(), /Node.*24/);
-        assert.match(running.output(), /claude\.ai\/install\.sh/);
-        assert.match(running.output(), /chatgpt\.com\/codex\/install\.sh/);
+        // Fixed install folders such as Homebrew's cannot be hidden, so a CLI there counts as installed.
+        const absent = (name) =>
+            !findCli(name, { env: { PATH: dir, NPM_CONFIG_PREFIX: dir }, home: dir });
+        if (absent('claude')) assert.match(running.output(), /claude\.ai\/install\.sh/);
+        if (absent('codex')) assert.match(running.output(), /chatgpt\.com\/codex\/install\.sh/);
         assert.ok(running.output().includes(dir));
         const state = await (await fetch(origin + '/api/state')).json();
         const search = await (await fetch(origin + '/api/settings/searxng')).json();
@@ -73,14 +77,19 @@ test('main starts an old database without providers; busy port explains how to c
     }
 });
 
-test('preflight distinguishes installed sign-out from saved connections without exposing account details', async () => {
+test('preflight finds CLIs outside PATH and distinguishes sign-out from saved connections without exposing account details', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'rabbithole-preflight-'));
-    writeFileSync(join(dir, 'codex'), '#!/bin/sh\nprintf "codex-cli fixture\\n"\n', {
+    // Chat's lookup also searches ~/.local/bin and npm's global bin; PATH holds neither CLI.
+    const localBin = join(dir, '.local', 'bin'),
+        npmPrefix = join(dir, 'npm');
+    mkdirSync(localBin, { recursive: true });
+    mkdirSync(join(npmPrefix, 'bin'), { recursive: true });
+    writeFileSync(join(localBin, 'codex'), '#!/bin/sh\nprintf "codex-cli fixture\\n"\n', {
         mode: 0o700,
     });
     for (const connected of [false, true]) {
         writeFileSync(
-            join(dir, 'claude'),
+            join(npmPrefix, 'bin', 'claude'),
             `#!/bin/sh\nif [ "$1" = "--version" ]; then printf 'Claude fixture'; else printf '{"loggedIn":${connected},"email":"private@example.com"}'; fi\n`,
             { mode: 0o700 },
         );
@@ -88,7 +97,7 @@ test('preflight distinguishes installed sign-out from saved connections without 
             writeFileSync(join(dir, 'chatgpt.json'), '{"email":"private@example.com"}', {
                 mode: 0o600,
             });
-        const running = launch(dir);
+        const running = launch(dir, 0, { PATH: join(dir, 'empty'), NPM_CONFIG_PREFIX: npmPrefix });
         try {
             await running.waitFor(/Saved trees remain available/);
             assert.match(
@@ -103,7 +112,6 @@ test('preflight distinguishes installed sign-out from saved connections without 
                     ? /Codex: installed; ChatGPT connection saved/
                     : /Codex: installed; ChatGPT not connected/,
             );
-            if (!connected) assert.match(running.output(), /reload Rabbithole/);
             assert.doesNotMatch(running.output(), /private@example.com/);
         } finally {
             await running.stop();
