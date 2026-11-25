@@ -6,7 +6,9 @@ the invoked skill's steps as written, including publishing tickets with
 `ready-for-agent`, and leave the code untouched. Before publishing a ticket for
 a new screen, panel or component, or a visual redesign, remind the owner to
 make a mockup at `docs/mockups/<issue-id>.html` or `.png`; label the ticket
-`new-ui` and link the mockup with a `Mockup:` line in its description. Tweaks
+`new-ui` and link the mockup with a `Mockup:` line in its description. After
+creating or changing a mockup, open it for the owner with
+`xdg-open docs/mockups/<file>` without being asked. Tweaks
 that keep the existing look need neither. Implementation happens in
 Ralph runs the owner starts; the authorization below applies only there.
 
