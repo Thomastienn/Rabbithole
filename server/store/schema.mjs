@@ -191,6 +191,10 @@ export function open(path) {
         this.db.exec(
             "CREATE TABLE IF NOT EXISTS video_mode (id INTEGER PRIMARY KEY CHECK(id=1), mode TEXT NOT NULL CHECK(mode IN ('quality','saving')))",
         );
+        // Visual frequency: no row means Often.
+        this.db.exec(
+            "CREATE TABLE IF NOT EXISTS visual_frequency (id INTEGER PRIMARY KEY CHECK(id=1), frequency TEXT NOT NULL CHECK(frequency IN ('sparing','often','only-asked')))",
+        );
         // Learner-typed efforts for custom endpoint models, listed after the endpoint's advertised efforts.
         this.db.exec(
             'CREATE TABLE IF NOT EXISTS endpoint_efforts (endpoint TEXT NOT NULL, model TEXT NOT NULL, effort TEXT NOT NULL, PRIMARY KEY(endpoint, model, effort))',
