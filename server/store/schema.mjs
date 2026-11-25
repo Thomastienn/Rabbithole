@@ -1,6 +1,6 @@
-import { DatabaseSync } from 'node:sqlite';
+import { DatabaseSync, backup as copyDatabase } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
-import { mkdirSync, chmodSync, writeFileSync, renameSync } from 'node:fs';
+import { mkdirSync, chmodSync, writeFileSync, renameSync, rmSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 const ARTIFACTS = `CREATE TABLE IF NOT EXISTS artifacts (id TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), message TEXT NOT NULL,
@@ -10,10 +10,15 @@ const ARTIFACTS = `CREATE TABLE IF NOT EXISTS artifacts (id TEXT PRIMARY KEY, co
       CREATE INDEX IF NOT EXISTS artifacts_conversation ON artifacts(conversation, created);`;
 const BRANCHES = `CREATE TABLE IF NOT EXISTS branches (child TEXT PRIMARY KEY REFERENCES trees(id), parent TEXT NOT NULL REFERENCES trees(id), messageId TEXT NOT NULL REFERENCES messages(id), start INTEGER, end INTEGER, text TEXT NOT NULL, question TEXT NOT NULL, snapshot TEXT NOT NULL, artifactId TEXT, label TEXT, explanation TEXT, line INTEGER, speaker TEXT, discussion TEXT);`;
 
-// SQLite copies a consistent snapshot, including committed WAL pages, before any upgrade writes; returns its path.
-function backup(db, path) {
-    const backupPath = `${path}.backup-${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID().slice(0, 8)}.sqlite`;
+function reserveBackup(path, label = '') {
+    const backupPath = `${path}.backup-${label}${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID().slice(0, 8)}.sqlite`;
     writeFileSync(backupPath + '.tmp', '', { mode: 0o600, flag: 'wx' });
+    return backupPath;
+}
+
+// SQLite copies a consistent snapshot, including committed WAL pages, before any upgrade writes.
+function backup(db, path) {
+    const backupPath = reserveBackup(path);
     db.prepare('VACUUM INTO ?').run(backupPath + '.tmp');
     renameSync(backupPath + '.tmp', backupPath);
     return backupPath;
@@ -23,6 +28,7 @@ function backup(db, path) {
 export function open(path) {
     mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
     this.db = new DatabaseSync(path);
+    this.path = path;
     const hasColumn = (table, name) =>
         this.db.prepare('SELECT 1 FROM pragma_table_info(?) WHERE name=?').get(table, name);
     try {
@@ -312,20 +318,15 @@ export function open(path) {
             'CREATE TABLE IF NOT EXISTS piece_versions (piece TEXT NOT NULL REFERENCES pieces(id) ON DELETE CASCADE, name TEXT NOT NULL, look TEXT NOT NULL, props TEXT NOT NULL, source TEXT NOT NULL, source3d TEXT, roles TEXT NOT NULL, true_colors TEXT, parts TEXT, improved INTEGER NOT NULL)',
         );
         // One-time cleanup: pieces sharing a name fold into one; backed up first when it changes anything.
-        if (
-            !this.db.prepare("SELECT 1 FROM sqlite_master WHERE name='cleanups'").get() ||
-            !this.db.prepare('SELECT 1 FROM cleanups WHERE name=?').get('fold-duplicate-pieces')
-        ) {
+        this.db.exec(
+            'CREATE TABLE IF NOT EXISTS cleanups (name TEXT PRIMARY KEY, at INTEGER NOT NULL)',
+        );
+        if (!this.cleanupRan('fold-duplicate-pieces')) {
             if (this.db.prepare('SELECT 1 FROM pieces GROUP BY name HAVING COUNT(*)>1').get())
                 this.backupPath ??= backup(this.db, path);
             this.transaction(() => {
                 this.foldDuplicatePieces();
-                this.db.exec(
-                    'CREATE TABLE IF NOT EXISTS cleanups (name TEXT PRIMARY KEY, at INTEGER NOT NULL)',
-                );
-                this.db
-                    .prepare('INSERT INTO cleanups VALUES (?,?)')
-                    .run('fold-duplicate-pieces', Date.now());
+                this.finishCleanup('fold-duplicate-pieces');
             });
         }
         // Discussion kind and reply positions migrate in place; existing rows keep their content and positions.
@@ -372,6 +373,23 @@ export function open(path) {
 }
 
 export const schema = {
+    async backupMergeCleanup() {
+        const backupPath = reserveBackup(this.path, 'merge-');
+        const partial = backupPath + '.tmp';
+        try {
+            await copyDatabase(this.db, partial);
+            renameSync(partial, backupPath);
+        } catch (error) {
+            rmSync(partial, { force: true });
+            throw error;
+        }
+    },
+    cleanupRan(name) {
+        return !!this.db.prepare('SELECT 1 FROM cleanups WHERE name=?').get(name);
+    },
+    finishCleanup(name) {
+        this.db.prepare('INSERT INTO cleanups VALUES (?,?)').run(name, Date.now());
+    },
     migrate(fresh) {
         this.db
             .exec(`CREATE TABLE IF NOT EXISTS trees (id TEXT PRIMARY KEY, title TEXT NOT NULL, thread TEXT, created INTEGER NOT NULL);

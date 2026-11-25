@@ -1,11 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { setImmediate } from 'node:timers/promises';
 import { Store } from '../../server/store.mjs';
 import { suggestionJobs } from '../../server/http/jobs/suggestions.mjs';
 import { backgroundJobs } from '../../server/http/jobs/background.mjs';
+import { candidates } from '../../server/merges.mjs';
 
 const tempStore = (t) => {
     const store = new Store(join(mkdtempSync(join(tmpdir(), 'tt-auto-merge-')), 'trees.sqlite'));
@@ -144,4 +146,126 @@ test('a duplicate merge keeps the name with more evidence even when it is newer'
         merged: 'JavaScript',
     });
     assert.deepEqual(store.graph().topics, ['Async']);
+});
+
+const cleanupJob = (store, videoEmbed, generate, onMeter = () => {}) => {
+    const jobs = backgroundJobs();
+    const { cleanupMerges } = suggestionJobs({
+        store,
+        jobs,
+        videoEmbed,
+        pick: () => ({ generate }),
+        metered: (provider, task) => {
+            onMeter(task);
+            return provider;
+        },
+        log: () => {},
+        toolCapable: async () => false,
+        chatDefault: () => ({ provider: 'claude', model: null, effort: null }),
+        quickModel: async () => ({ provider: 'claude', model: 'haiku', effort: null }),
+    });
+    cleanupMerges();
+    return jobs.get('merge-cleanup', 'all');
+};
+
+test('the candidate scan yields during a full graph check and ignores incompatible embeddings', async () => {
+    const rows = Array.from({ length: 40 }, (_, i) => ({
+        name: `Concept ${i}`,
+        embedding: [1, 0],
+    }));
+    rows.push({ name: 'Incompatible vector', embedding: [1] });
+    const scan = candidates(rows, null, 0.85, new AbortController().signal);
+    assert.equal(await Promise.race([scan, setImmediate('yielded')]), 'yielded');
+    assert.deepEqual(
+        await scan,
+        rows.slice(0, -1).flatMap((a, i) => rows.slice(i + 1, -1).map((b) => [a.name, b.name])),
+    );
+});
+
+test('the one-time cleanup backs up the database, confirms existing duplicates in batches and never runs again', async (t) => {
+    const dir = mkdtempSync(join(tmpdir(), 'tt-merge-cleanup-'));
+    const path = join(dir, 'trees.sqlite');
+    const store = new Store(path);
+    t.after(() => store.close());
+    // 21 duplicate concept pairs and one topic pair: two confirmation calls of at most 20 pairs.
+    const groups = Array.from({ length: 21 }, (_, i) => [`Idea ${i}`, `Ideas ${i}`]);
+    groups.push(['Networking', 'Computer networking']);
+    const group = new Map(groups.flatMap((g, i) => g.map((n) => [n, i])));
+    const embedOwn = async (texts) =>
+        texts.map((text) => {
+            if (!group.has(text)) group.set(text, group.size);
+            return Array.from({ length: 256 }, (_, i) => (i === group.get(text) ? 1 : 0));
+        });
+    for (const [i, [a, b]] of groups.slice(0, 21).entries())
+        store.addGraph(
+            {
+                concepts: [
+                    { name: a, topics: [i ? 'Networking' : 'Computer networking'] },
+                    { name: b, topics: ['Networking'] },
+                ],
+                links: [],
+            },
+            `m${i}`,
+        );
+    const calls = [],
+        meters = [];
+    const backupNames = () =>
+        readdirSync(dir).filter((name) => /^trees\.sqlite\.backup-merge-.*\.sqlite$/.test(name));
+    const generate = async ({ role }, text, emit) => {
+        const pairs = JSON.parse(text.slice(text.lastIndexOf('\n') + 1)).pairs;
+        calls.push({ role, pairs, backups: backupNames() });
+        // Idea 0 stays apart from Ideas 0.
+        const same = pairs.filter((p) => !p.names.includes('Idea 0')).map((p) => p.pair);
+        emit({ type: 'item', item: 'a', text: JSON.stringify({ same }) });
+        emit({ type: 'status', status: 'completed' });
+    };
+    await cleanupJob(store, embedOwn, generate, (task) => meters.push(task)).done;
+
+    assert.deepEqual(
+        calls.map((c) => [c.role, c.pairs.length]),
+        [
+            ['merge', 20],
+            ['merge', 2],
+        ],
+    );
+    assert.deepEqual(meters, ['merge', 'merge']);
+    assert.equal(store.concept('Ideas 5').name, 'Idea 5', 'merged with the other kept as an alias');
+    assert.equal(store.concept('Ideas 0').name, 'Ideas 0', 'an unconfirmed pair stays apart');
+    assert.deepEqual(store.graph().topics, ['Networking']);
+    // The backup holds the graph as it was before any merge.
+    const backups = backupNames();
+    assert.equal(backups.length, 1);
+    assert.deepEqual(calls[0].backups, backups);
+    const before = new Store(join(dir, backups[0]));
+    t.after(() => before.close());
+    assert.equal(before.concept('Ideas 5').name, 'Ideas 5');
+    assert.deepEqual(before.graph().topics, ['Computer networking', 'Networking']);
+    store.close();
+    const reopened = new Store(path);
+    t.after(() => reopened.close());
+    assert.equal(cleanupJob(reopened, embedOwn, generate), undefined);
+    assert.equal(calls.length, 2);
+});
+
+test('a malformed batch leaves the duplicates apart and the next startup retries', async (t) => {
+    const store = tempStore(t);
+    store.addGraph({
+        concepts: [
+            { name: 'Threads', topics: [] },
+            { name: 'thread', topics: [] },
+        ],
+        links: [],
+    });
+    const answer = (same) => async (_selection, _text, emit) => {
+        emit({ type: 'item', item: 'a', text: JSON.stringify({ same }) });
+        emit({ type: 'status', status: 'completed' });
+    };
+    await cleanupJob(store, embed, answer([2])).done;
+    assert.equal(store.concept('thread').name, 'thread');
+    const path = store.path;
+    store.close();
+    const reopened = new Store(path);
+    t.after(() => reopened.close());
+    await cleanupJob(reopened, embed, answer([1])).done;
+    assert.equal(reopened.concept('thread').name, 'Threads');
 });

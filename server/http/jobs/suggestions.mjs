@@ -1,46 +1,107 @@
+import { randomUUID } from 'node:crypto';
 import { knownConcepts, suggest } from '../../suggestions.mjs';
 import { applyMemoryEdit } from '../../tools/memoryNote.mjs';
 import { errorCause, formatLog } from '../../log.mjs';
 import { confirmMerges, mergeCandidates } from '../../merges.mjs';
 
+// Candidate pairs per confirmation call in the one-time cleanup, so one call stays small.
+const MERGE_BATCH = 20;
+const MERGE_CLEANUP = 'merge-duplicate-concepts-and-topics';
+
 // One quick thinking call after a completed reply (ADR 0016): the hidden notes for the tutor's marks, or every note for a reply that never ended. Detached from the reply stream so chat stays usable; stop() leaves the row pending and the next start marks it failed.
 export function suggestionJobs(ctx) {
     const { store, pick } = ctx;
+    // Confirms candidate pairs in one bounded quick thinking call and merges the confirmed ones, logging each.
+    const confirmAndMerge = async (
+        pairs,
+        { id, fields, selection, quick, capable, signal, detail },
+    ) => {
+        signal.throwIfAborted();
+        const confirmed = await confirmMerges(
+            ctx.metered(pick(selection), 'merge', id, selection, detail),
+            quick,
+            pairs,
+            // Bounded like the suggestions call, so a hung provider cannot hold the job open.
+            AbortSignal.any([signal, AbortSignal.timeout(ctx.suggestionTimeout ?? 120000)]),
+            { capable, mcp: ctx.mcp },
+        );
+        for (const { kind, names } of confirmed) {
+            const merged = store.mergeDuplicate(kind, ...names);
+            if (merged)
+                ctx.log(
+                    formatLog('info', 'suggestions', `${kind} merged`, {
+                        ...fields,
+                        names: names.join(', '),
+                        kept: merged.kept,
+                    }),
+                );
+        }
+    };
+    const skipped = (message, fields, error, signal) => {
+        if (!ctx.stopping && !signal.aborted)
+            ctx.log(
+                formatLog('warn', 'suggestions', message, {
+                    ...fields,
+                    cause: errorCause(error, []),
+                }),
+            );
+    };
     // Automatic merge (ADR 0022) after the row settles, so suggestions never wait on it; any failure merges nothing.
     const merge = async (added, { message, conversation, selection, quick, capable, signal }) => {
         if (!ctx.videoEmbed) return;
         const fields = { id: message, conversation, task: 'merge' };
         try {
             const pairs = await mergeCandidates(store, ctx.videoEmbed, added, signal);
-            if (!pairs.length) return;
-            const confirmed = await confirmMerges(
-                ctx.metered(pick(selection), 'merge', message, selection, { message }),
-                quick,
-                pairs,
-                // Bounded like the suggestions call, so a hung provider cannot hold the job open.
-                AbortSignal.any([signal, AbortSignal.timeout(ctx.suggestionTimeout ?? 120000)]),
-                { capable, mcp: ctx.mcp },
-            );
-            for (const { kind, names } of confirmed) {
-                const merged = store.mergeDuplicate(kind, ...names);
-                if (merged)
-                    ctx.log(
-                        formatLog('info', 'suggestions', `${kind} merged`, {
-                            ...fields,
-                            names: names.join(', '),
-                            kept: merged.kept,
-                        }),
-                    );
-            }
+            if (pairs.length)
+                await confirmAndMerge(pairs, {
+                    id: message,
+                    fields,
+                    selection,
+                    quick,
+                    capable,
+                    signal,
+                    detail: { message },
+                });
         } catch (error) {
-            if (!ctx.stopping && !signal.aborted)
-                ctx.log(
-                    formatLog('warn', 'suggestions', 'merge skipped', {
-                        ...fields,
-                        cause: errorCause(error, []),
-                    }),
-                );
+            skipped('merge skipped', fields, error, signal);
         }
+    };
+    // One-time cleanup (ADR 0022): every existing concept and topic goes through the same check in batches of pairs,
+    // after a database backup. Recorded only once it finished, so a failed run retries at the next startup.
+    const cleanupMerges = () => {
+        const settings = store.suggestionSettings();
+        if (!ctx.videoEmbed || !settings.enabled || store.cleanupRan(MERGE_CLEANUP)) return;
+        ctx.jobs.start('merge-cleanup', 'all', null, async ({ controller: { signal } }) => {
+            const fields = { task: 'merge' };
+            try {
+                const pairs = await mergeCandidates(store, ctx.videoEmbed, null, signal);
+                if (pairs.length) {
+                    const chat = ctx.chatDefault();
+                    // As for suggestions: without a quick thinking model the cheap default needs a subscription provider.
+                    if (!settings.model && !['claude', 'codex'].includes(chat.provider))
+                        throw new Error(
+                            'Merge cleanup requires a signed-in subscription provider.',
+                        );
+                    const quick = await ctx.quickModel(chat, true),
+                        capable = await ctx.toolCapable(quick).catch(() => false);
+                    signal.throwIfAborted();
+                    await store.backupMergeCleanup();
+                    for (let i = 0; i < pairs.length; i += MERGE_BATCH)
+                        await confirmAndMerge(pairs.slice(i, i + MERGE_BATCH), {
+                            id: randomUUID(),
+                            fields,
+                            selection: quick,
+                            quick,
+                            capable,
+                            signal,
+                        });
+                }
+                signal.throwIfAborted();
+                store.finishCleanup(MERGE_CLEANUP);
+            } catch (error) {
+                skipped('merge cleanup skipped', fields, error, signal);
+            }
+        });
     };
     // marked: the tutor's saved passages and groundwork, so the call only names concepts and writes the graph.
     const startSuggestions = (conversation, message, question, answer, marked = null) => {
@@ -165,5 +226,5 @@ export function suggestionJobs(ctx) {
         } else if (status === 'completed')
             startSuggestions(conversation, message, question, answer);
     };
-    return { noteSuggestions };
+    return { noteSuggestions, cleanupMerges };
 }
