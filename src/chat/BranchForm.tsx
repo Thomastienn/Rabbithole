@@ -6,6 +6,8 @@ import { IconButton } from '@astryxdesign/core/IconButton';
 import { Button } from '@astryxdesign/core/Button';
 import ArrowUpIcon from '@heroicons/react/24/outline/ArrowUpIcon';
 import ChevronRightIcon from '@heroicons/react/24/outline/ChevronRightIcon';
+import PlusIcon from '@heroicons/react/24/outline/PlusIcon';
+import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
 import type { Anchor, BranchState } from './branch';
 import type { PartNode } from '../media/artifacts';
 import { renderInline } from '../markdown/inlineMarkdown';
@@ -125,25 +127,40 @@ export default function BranchForm({
             }}
         >
             <VStack padding={2} gap={2}>
-                {/* A picked visual part: its trail, the same crumbs as the conversation path; an earlier part widens the question. */}
-                {part && (
-                    <nav className="crumbs branch-trail" aria-label="Part of the visual">
-                        {part.trail!.slice(0, -1).map((name, i) => (
-                            <Fragment key={i}>
-                                <Button
-                                    className="crumb"
-                                    label={name}
-                                    variant="ghost"
-                                    size="sm"
-                                    isDisabled={branching || !widen}
-                                    onClick={() => widen?.(i + 1)}
-                                />
-                                <ChevronRightIcon className="crumb-sep" aria-hidden />
-                            </Fragment>
-                        ))}
-                        <strong aria-current="location">{part.label}</strong>
-                    </nav>
-                )}
+                {/* Passage box (mockup States): the quoted passage, or a picked part's trail, beside Close. */}
+                <HStack gap={2} vAlign="start">
+                    {/* A picked visual part: its trail, the same crumbs as the conversation path; an earlier part widens the question. */}
+                    {part ? (
+                        <nav className="crumbs branch-trail" aria-label="Part of the visual">
+                            {part.trail!.slice(0, -1).map((name, i) => (
+                                <Fragment key={i}>
+                                    <Button
+                                        className="crumb"
+                                        label={name}
+                                        variant="ghost"
+                                        size="sm"
+                                        isDisabled={branching || !widen}
+                                        onClick={() => widen?.(i + 1)}
+                                    />
+                                    <ChevronRightIcon className="crumb-sep" aria-hidden />
+                                </Fragment>
+                            ))}
+                            <strong aria-current="location">{part.label}</strong>
+                        </nav>
+                    ) : (
+                        <Text id="branch-passage" className="branch-passage">
+                            {branch.anchor.text}
+                        </Text>
+                    )}
+                    <IconButton
+                        className="branch-close"
+                        label="Close"
+                        icon={<XMarkIcon />}
+                        variant="ghost"
+                        isDisabled={branching}
+                        clickAction={() => close(true)}
+                    />
+                </HStack>
                 {/* The focused part is the source; the frame outlines it, and its name and trail are announced. */}
                 {picker && level.length > 0 && (
                     <div
@@ -203,39 +220,21 @@ export default function BranchForm({
                             onClick={() => setBrief((b) => ({ attempt: b.attempt + 1 }))}
                         />
                     </HStack>
-                ) : want ? (
-                    <Text className="branch-brief" role="status">
-                        Writing a brief explanation…
-                    </Text>
                 ) : (
-                    briefKey && (
-                        <HStack>
-                            <Button
-                                label="Explain briefly"
-                                size="sm"
-                                variant="ghost"
-                                onClick={(e) => {
-                                    // The button gives way to the loading state, so focus moves on to the question box.
-                                    e.currentTarget.form?.querySelector('input')?.focus();
-                                    setAsked(briefKey);
-                                }}
-                            />
-                        </HStack>
+                    want && (
+                        <Text className="branch-brief" role="status">
+                            Writing a brief explanation…
+                        </Text>
                     )
                 )}
                 <HStack gap={1} vAlign="center">
-                    {/* The reply paints the passage; this quote only describes the question for screen readers. */}
-                    <Text id="branch-passage" className="branch-passage sr-only">
-                        {branch.anchor.text}
-                    </Text>
                     <TextInput
                         label={
                             part ? 'Question about this visual part' : 'Question about this passage'
                         }
                         isLabelHidden
                         placeholder={part ? `Ask about ${part.label}` : 'Ask about this passage'}
-                        aria-describedby="branch-passage"
-                        size="sm"
+                        aria-describedby={part ? undefined : 'branch-passage'}
                         value={branch.question}
                         onChange={(question) => setQuestion(question)}
                         isDisabled={branching || pending}
@@ -244,6 +243,28 @@ export default function BranchForm({
                     />
                     <IconButton
                         className="branch-send"
+                        label="Send"
+                        type="submit"
+                        icon={<ArrowUpIcon />}
+                        variant="primary"
+                        isDisabled={branching || pending || !branch.question.trim() || active}
+                    />
+                </HStack>
+                <HStack gap={2} vAlign="center">
+                    {/* Explain briefly gives way to the brief once asked; a saved brief needs no button. */}
+                    {briefKey && !text && !want && (
+                        <Button
+                            label="Explain briefly"
+                            size="sm"
+                            variant="secondary"
+                            onClick={(e) => {
+                                // The button gives way to the loading state, so focus moves on to the question box.
+                                e.currentTarget.form?.querySelector('input')?.focus();
+                                setAsked(briefKey);
+                            }}
+                        />
+                    )}
+                    <Button
                         label={
                             branching
                                 ? 'Preparing context…'
@@ -252,9 +273,9 @@ export default function BranchForm({
                                   : 'Create focused chat'
                         }
                         type="submit"
-                        icon={<ArrowUpIcon />}
-                        variant="primary"
+                        icon={<PlusIcon />}
                         size="sm"
+                        variant="secondary"
                         isLoading={branching || pending}
                         isDisabled={branching || pending || !branch.question.trim() || active}
                     />

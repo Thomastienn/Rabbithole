@@ -138,7 +138,7 @@ test('existing ready videos migrate into a global library that survives source d
         assert.deepEqual(after.map((v) => v.id).sort(), [ids.kept, ids.missing, ids.other].sort());
         // Each row names the conversation still holding it; a deleted source leaves null.
         assert.equal(after.find((v) => v.id === ids.kept).origin, null);
-        assert.equal(after.find((v) => v.id === ids.other).origin, 'Other chat');
+        assert.equal(after.find((v) => v.id === ids.other).origin, '1 · Other chat');
         assert.doesNotMatch(
             JSON.stringify(after) +
                 JSON.stringify(env.store.db.prepare('SELECT * FROM videos').all()),
@@ -189,9 +189,28 @@ test('a newly finished video joins the library in the same transaction as its re
                 description: 'Final',
                 duration: 3,
                 created: video.created,
-                origin: 'Chat',
+                origin: '1 · Chat',
             },
         ]);
+        // A branch's video names its address, its title and its learning tree.
+        const child = store.branch(
+            store.tree(tree.id),
+            { messageId: message, start: 0, end: 5, text: 'Reply', question: 'Why?' },
+            '',
+        );
+        const inChild = store.pendingArtifact(
+            child.id,
+            store.message(child.id, 'assistant', 'Because.', 'completed'),
+            'Child video',
+            'Draft',
+            'video',
+            '{}',
+        );
+        store.finishVideo(child.id, inChild.id, inChild.attempt, {
+            description: 'Final',
+            duration: 1,
+        });
+        assert.equal(store.library()[0].origin, '1.1 · Why? · Chat');
     } finally {
         store.close();
     }

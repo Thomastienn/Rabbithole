@@ -36,8 +36,6 @@ type Piece = PieceRow & {
 
 // Pieces colour only through roles; the preview lends each role a house hue in order.
 const HUES = ['amber', 'leaf', 'rust', 'lichen'];
-const date = (t: number) =>
-    new Date(t).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
 const PAGE = 24;
 
@@ -83,7 +81,7 @@ export default function PieceLibrary() {
         requestAnimationFrame(() => document.getElementById('piece-search')?.focus());
     };
     return (
-        <VStack gap={5} className="knowledge-content">
+        <VStack gap={6} className="knowledge-content piece-page">
             <HStack className="library-head">
                 <VStack gap={2}>
                     <Heading level={1}>Pieces</Heading>
@@ -126,7 +124,7 @@ export default function PieceLibrary() {
                     )}
                 </VStack>
             ) : (
-                <VStack gap={3}>
+                <VStack gap={5}>
                     {error && <Text role="alert">{error}</Text>}
                     {!list && !error && <Text role="status">Loading pieces…</Text>}
                     {list && !total && !searched && (
@@ -143,7 +141,6 @@ export default function PieceLibrary() {
                             isLabelHidden
                             placeholder="Search pieces"
                             startIcon={MagnifyingGlassIcon}
-                            size="sm"
                             hasClear
                             value={query}
                             onChange={(v) => {
@@ -168,19 +165,13 @@ export default function PieceLibrary() {
                                     label={`Open ${p.name}`}
                                     onClick={() => void show(p.id)}
                                 >
-                                    <VStack gap={1}>
-                                        <PieceStills piece={p} />
-                                        <Heading level={3}>{p.name}</Heading>
-                                        <Text color="secondary">{p.look}</Text>
-                                        <Text type="supporting" color="secondary">
-                                            {p.videos.length
-                                                ? `Used in ${p.videos.map((v) => v.title).join(', ')}`
-                                                : 'Not in a saved video'}
-                                        </Text>
-                                        <Text type="supporting" color="secondary">
-                                            Last improved {date(p.improved)}
-                                        </Text>
-                                    </VStack>
+                                    <PieceStill piece={p} />
+                                    <Heading level={3}>{p.name}</Heading>
+                                    <Text type="supporting" color="secondary">
+                                        {p.videos.length
+                                            ? `Used in ${p.videos.length} ${p.videos.length === 1 ? 'video' : 'videos'}`
+                                            : 'Not in a saved video'}
+                                    </Text>
                                 </ClickableCard>
                             ))}
                         </section>
@@ -214,31 +205,20 @@ export default function PieceLibrary() {
     );
 }
 
-// Stills rendered on the server, never a live player per card; the improvement time keeps the URL fresh.
-function PieceStills({ piece }: { piece: PieceRow }) {
-    const still = (form: string, shown: boolean, label: string) =>
-        shown ? (
-            <img
-                src={`/api/pieces/${piece.id}/${form}?v=${piece.improved}`}
-                alt={label}
-                loading="lazy"
-            />
-        ) : (
-            <Text type="supporting" color="secondary" className="piece-still-pending">
-                {label}: still pending
-            </Text>
-        );
-    return (
-        <div className="piece-stills">
-            {still('still', piece.still, '2D form')}
-            {piece.solid ? (
-                still('still3d', piece.still3d, '3D form')
-            ) : (
-                <Text type="supporting" color="secondary" className="piece-still-pending">
-                    2D only
-                </Text>
-            )}
-        </div>
+// One server-rendered 2D still per tile (mockup Pieces), never a live player; the 3D form shows in the piece's
+// preview. The improvement time keeps the URL fresh.
+function PieceStill({ piece }: { piece: PieceRow }) {
+    return piece.still ? (
+        <img
+            className="piece-still"
+            src={`/api/pieces/${piece.id}/still?v=${piece.improved}`}
+            alt="2D form"
+            loading="lazy"
+        />
+    ) : (
+        <Text type="supporting" color="secondary" className="piece-still piece-still-pending">
+            Still pending
+        </Text>
     );
 }
 

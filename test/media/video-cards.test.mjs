@@ -184,8 +184,10 @@ test('library cards lead with the frame; missing files offer only removal; trash
     );
     assert.deepEqual(
         [...kept.querySelectorAll('.video-volume-actions button')].map((b) => b.textContent.trim()),
-        ['Open large', 'Show in folder', 'Move to trash'],
+        ['Open large', 'Show in folder', 'Remove'],
     );
+    // Library frames carry no export button; an exported video exports from Open large.
+    assert.equal(container.querySelector('.video-library .video-stage .export-button'), null);
     assert.equal(kept.querySelector('video').getAttribute('src'), '/api/videos/kept/media');
     assert.equal(kept.querySelector('.video-origin').textContent, 'Fungi');
     assert.equal(kept.querySelector('.video-duration').textContent, '0:03');
@@ -204,10 +206,10 @@ test('library cards lead with the frame; missing files offer only removal; trash
     // Its source conversation is gone: the card says so and still plays.
     assert.equal(fresh.querySelector('.video-origin').textContent, 'No longer in a conversation');
     assert.deepEqual(
-        [...fresh.querySelectorAll('.video-volume-actions button')].map((b) =>
-            b.textContent.trim(),
+        [...fresh.querySelectorAll('.video-volume-actions button')].map(
+            (b) => b.textContent.trim() || b.getAttribute('aria-label'),
         ),
-        ['Open large', 'Move to trash'],
+        ['Open large', 'Export MP4: Fresh', 'Remove'],
     );
     assert.deepEqual(view(card('gone')), {
         state: 'unavailable',

@@ -91,7 +91,7 @@ test('an unexplored suggestion shows its brief explanation above the question bo
         });
     const { container, act, cleanup } = await render(form(), (w) => ui(w));
     t.after(cleanup);
-    const status = () => container.querySelector('[role="status"]')?.textContent;
+    const status = () => container.querySelector('.branch-brief[role="status"]')?.textContent;
     assert.equal(status(), 'Writing a brief explanation…', 'loads without pressing anything');
     assert.equal(asked.length, 1);
     assert.equal(asked[0].text, 'mutex');
@@ -136,7 +136,7 @@ test('a selected passage asks for a brief explanation only on Explain briefly, a
     assert.equal(asked.length, 1);
     assert.equal(document.activeElement, container.querySelector('input'));
     assert.equal(
-        container.querySelector('[role="status"]').textContent,
+        container.querySelector('.branch-brief[role="status"]').textContent,
         'Writing a brief explanation…',
     );
     await act(async () => resolve('Taken one at a time.'));

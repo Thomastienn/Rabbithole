@@ -223,6 +223,7 @@ dialog.tree-search-window::backdrop {
 .branch-form {
     margin-top: var(--spacing-2);
 }
+/* Passage box (mockup States): the quoted passage in the reading face beside Close, then the 36px field and Send. */
 .branch-passage {
     flex: 1;
     min-width: 0;
@@ -231,7 +232,28 @@ dialog.tree-search-window::backdrop {
     -webkit-line-clamp: 2;
     overflow: hidden;
     overflow-wrap: anywhere;
-    font-family: var(--rabbithole-font-reading);
+    padding: 4px 6px;
+    font: 15px/1.5 var(--rabbithole-font-reading);
+    color: var(--color-text-primary);
+}
+/* Quote marks drawn, not in the text, so the field's description reads the passage alone. */
+.branch-passage::before {
+    content: '“';
+}
+.branch-passage::after {
+    content: '”';
+}
+.branch-form:not(.free-branch-form) > .astryx-stack {
+    gap: 6px;
+}
+.branch-form:not(.free-branch-form) .branch-question .astryx-text-input {
+    min-height: 36px;
+    padding-inline: 12px;
+}
+.branch-form:not(.free-branch-form) :is(.branch-send, .branch-close) {
+    width: 36px;
+    height: 36px;
+    flex: none;
 }
 .branch-brief {
     max-width: 60ch;
@@ -263,8 +285,8 @@ dialog.tree-search-window::backdrop {
     flex: 1;
     min-width: 0;
 }
-/* One frame: the paper sheet is the edge; its field keeps only its focus ring. */
-.branch-form .astryx-text-input:not(:focus-within) {
+/* One frame on the map: the paper sheet is the edge; its field keeps only its focus ring. */
+.free-branch-form .astryx-text-input:not(:focus-within) {
     border-color: transparent;
     box-shadow: none;
 }
@@ -276,6 +298,29 @@ dialog.tree-search-window::backdrop {
 }
 .delete-dialog[data-failed='true'] [id$='description'] {
     color: var(--color-text-error);
+}
+/* Confirm a delete (mockup States): 22px inset and title; Cancel outlined at the start, the delete a solid scarlet
+   fill at the end, both 36px. */
+.delete-dialog {
+    padding: 6px;
+}
+.delete-dialog h2 {
+    font-size: 22px;
+}
+.delete-dialog :has(> .astryx-button[data-variant='destructive']) {
+    justify-content: space-between;
+}
+.delete-dialog .astryx-button {
+    height: 36px;
+    padding-inline: 14px;
+    font-weight: var(--font-weight-semibold);
+}
+.delete-dialog .astryx-button[data-variant='ghost'] {
+    box-shadow: inset 0 0 0 1.5px var(--color-border-emphasized);
+}
+.delete-dialog .astryx-button[data-variant='destructive'] {
+    background: var(--color-error);
+    color: var(--color-on-error);
 }
 .astryx-dropdown-menu {
     background: var(--color-background-popover);

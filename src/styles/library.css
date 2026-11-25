@@ -261,14 +261,23 @@
         calc(8 * var(--rabbithole-module));
     overflow-wrap: anywhere;
 }
+/* Videos and Pieces (mockup): the page head sits 24px over the grid; an empty notice leaves the flow. */
+.video-page .library-head,
+.piece-page .library-head {
+    margin-bottom: 0;
+}
+.library-notice:empty {
+    position: absolute;
+}
 .piece-library {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 208px), 1fr));
     gap: 16px;
     overflow-wrap: anywhere;
 }
-/* Piece tiles (mockup Pieces) sit flat on the page: stills on the deep field, then name and notes. */
+/* Piece tiles (mockup Pieces) sit flat on the page: one 4:3 still on the deep field, the name 8px under it, then its use. */
 .piece-library > .astryx-card {
+    display: block;
     padding: 0;
     border-color: transparent;
     background: transparent;
@@ -276,22 +285,23 @@
 .piece-library > .astryx-card:hover h3 {
     text-decoration: underline;
 }
-/* A card's 2D and 3D stills side by side, each 16:9; a missing one keeps its place with a note. */
-.piece-stills {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
+.piece-library h3 {
+    margin-top: 8px;
+    font-size: 16px;
 }
-.piece-stills img,
-.piece-still-pending {
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    border-radius: var(--radius-element);
+.piece-library .astryx-text {
+    font-size: 12px;
 }
-.piece-still-pending {
+.piece-page .astryx-text-input:has(#piece-search) {
+    height: 36px;
+}
+.piece-still {
     display: grid;
     place-items: center;
-    text-align: center;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: contain;
+    border-radius: var(--radius-element);
     background: var(--color-background-muted);
 }
 .piece-detail .video-frame {
@@ -301,9 +311,6 @@
 .piece-detail .video-frame.piece-forms {
     aspect-ratio: 32 / 9;
     max-width: 1280px;
-}
-.piece-pages {
-    margin-top: calc(2 * var(--rabbithole-module));
 }
 .piece-detail > .astryx-button {
     align-self: start;

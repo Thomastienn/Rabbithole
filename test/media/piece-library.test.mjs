@@ -126,9 +126,8 @@ test('the Pieces view lists pieces and opens a read-only source with a preview i
         cards.map((c) => c.querySelector('h3').textContent),
         ['Winner', 'Loser'],
     );
-    assert.match(cards[0].textContent, /A gold trophy 200 px tall/);
-    assert.match(cards[0].textContent, /Used in Elections/);
-    assert.match(cards[0].textContent, /Last improved .*2026/);
+    // Tiles (mockup Pieces): one still, the name and how many videos use the piece.
+    assert.equal(cards[0].textContent, 'Still pendingWinnerUsed in 1 video');
     assert.match(cards[1].textContent, /Not in a saved video/);
     assert.equal(container.textContent.match(/Delete|Edit|trash/i), null);
 
@@ -216,7 +215,7 @@ test('opening a piece with a 3D form sends both forms to the isolated player fra
     assert.equal(container.querySelector('textarea, [contenteditable=true]'), null);
 });
 
-test('cards show the 2D and 3D stills as images, a 2D only note, or a pending still, without a live player', async (t) => {
+test('cards show one 2D still as an image, or a pending still, without a live player', async (t) => {
     const row = (id, flags) => ({
         id,
         name: id,
@@ -249,14 +248,10 @@ test('cards show the 2D and 3D stills as images, a 2D only note, or a pending st
             .closest('.piece-library > *');
     const images = (name) =>
         [...card(name).querySelectorAll('img')].map((i) => [i.getAttribute('src'), i.alt]);
-    assert.deepEqual(images('Both'), [
-        ['/api/pieces/Both/still?v=7', '2D form'],
-        ['/api/pieces/Both/still3d?v=7', '3D form'],
-    ]);
+    // The 3D form shows in the piece's preview, not on its tile.
+    assert.deepEqual(images('Both'), [['/api/pieces/Both/still?v=7', '2D form']]);
     assert.deepEqual(images('Flat'), [['/api/pieces/Flat/still?v=7', '2D form']]);
-    assert.match(card('Flat').textContent, /2D only/);
-    assert.doesNotMatch(card('Both').textContent, /2D only/);
     assert.deepEqual(images('Fresh'), []);
-    assert.match(card('Fresh').textContent, /2D form: still pending.*3D form: still pending/);
+    assert.match(card('Fresh').textContent, /Still pending/);
     assert.equal(container.querySelector('iframe'), null, 'no live player per card');
 });

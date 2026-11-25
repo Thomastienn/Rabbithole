@@ -84,7 +84,7 @@ test('an exported video downloads at once; a failed export shows its error with 
     assert.equal(alert(), 'Export failed: Could not reach Rabbithole. Retry the export.');
 });
 
-test('the same Export MP4 button sits on the inline card and the library card of a ready video', async (t) => {
+test('the same Export MP4 button sits on the inline card player and the library card action row of a ready video', async (t) => {
     const artifact = {
         id: 'v3',
         title: 'Live',
@@ -104,10 +104,12 @@ test('the same Export MP4 button sits on the inline card and the library card of
             h(VideoCard, { artifact: { ...artifact, id: 'v5', status: 'pending' }, inline: true }),
         ),
     );
-    for (const id of ['v3', 'v4'])
-        assert.ok(
-            container.querySelector(`[data-artifact=${id}] .video-stage .export-button`),
-            `${id} has Export MP4 on its player`,
-        );
+    assert.ok(
+        container.querySelector('[data-artifact=v3] .video-stage .export-button'),
+        'the inline card has Export MP4 on its player',
+    );
+    // A library card (mockup Videos) keeps its frame clear: an unexported video exports from its action row.
+    assert.equal(container.querySelector('[data-artifact=v4] .video-stage .export-button'), null);
+    assert.ok(container.querySelector('[data-artifact=v4] .video-volume-actions .export-button'));
     assert.equal(container.querySelector('[data-artifact=v5] .export-button'), null);
 });

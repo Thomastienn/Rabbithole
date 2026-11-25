@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { writeSaved } from '../media/video-workspace.mjs';
+import { conversationAddresses, rootOf } from '../../src/map/treeList.ts';
 
 export const media = {
     artifact(conversation, id) {
@@ -199,14 +200,33 @@ export const media = {
                 .get(conversation, id) ?? null
         );
     },
-    // `origin` is the title of the conversation still holding this video, or null once it is deleted or regenerated.
+    // `origin` names the conversation still holding this video, or is null once it is deleted or regenerated.
     library() {
+        const origin = this.videoOrigins();
         return this.db
             .prepare(
-                "SELECT v.id,v.title,v.description,v.duration,v.created,t.title AS origin FROM videos v LEFT JOIN artifacts a ON a.id=v.id AND a.kind='video' LEFT JOIN trees t ON t.id=a.conversation ORDER BY v.created DESC,v.rowid DESC",
+                "SELECT v.id,v.title,v.description,v.duration,v.created,a.conversation FROM videos v LEFT JOIN artifacts a ON a.id=v.id AND a.kind='video' ORDER BY v.created DESC,v.rowid DESC",
             )
             .all()
-            .map((v) => ({ ...v }));
+            .map(({ conversation, ...v }) => ({ ...v, origin: origin(conversation) }));
+    },
+    // Address · conversation · learning tree (mockup Videos), or address · tree on a trunk; null when the conversation is gone.
+    videoOrigins() {
+        const conversations = this.db
+                .prepare(
+                    'SELECT t.id,t.title,t.created,b.parent FROM trees t LEFT JOIN branches b ON b.child=t.id',
+                )
+                .all(),
+            byId = new Map(conversations.map((c) => [c.id, c])),
+            addresses = conversationAddresses(conversations);
+        return (id) => {
+            const c = byId.get(id);
+            if (!c) return null;
+            const root = rootOf(c, byId);
+            return [addresses.get(id).address, c.title, ...(root === c ? [] : [root.title])].join(
+                ' · ',
+            );
+        };
     },
     // Removes only the library entry; artifacts and usage records stay as history.
     removeLibraryVideo(id) {

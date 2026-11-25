@@ -40,7 +40,8 @@ export async function mediaRoutes(req, res, url, ctx, body) {
     if (req.method === 'GET') {
         // The library owns ready videos, independent of any conversation; playback never calls a provider.
         // A playable video joins the library live until its MP4 is saved; `live` names its conversation for the cut routes.
-        if (url.pathname === '/api/videos')
+        if (url.pathname === '/api/videos') {
+            const origin = store.videoOrigins();
             return json(res, 200, [
                 ...jobs
                     .list('video')
@@ -53,7 +54,7 @@ export async function mediaRoutes(req, res, url, ctx, body) {
                         description,
                         duration: null,
                         created,
-                        origin: store.tree(conversation)?.title ?? null,
+                        origin: origin(conversation),
                         live: conversation,
                     })),
                 // A video is exported once its MP4 exists; an unexported one plays live from its own saved cuts.
@@ -68,6 +69,7 @@ export async function mediaRoutes(req, res, url, ctx, body) {
                               : { ...v, exported: false, available: false },
                     ),
             ]);
+        }
         // The read-only piece library; the source compiles for the player frame like live cut code.
         // Paged and searchable; the query is embedded with any pieces saved while no embedder was usable.
         if (url.pathname === '/api/pieces') {

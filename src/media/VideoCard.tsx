@@ -5,12 +5,7 @@ import { Skeleton } from '@astryxdesign/core/Skeleton';
 import { Button } from '@astryxdesign/core/Button';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { DropdownMenu } from '@astryxdesign/core/DropdownMenu';
-import {
-    ArrowPathIcon,
-    ArrowsPointingOutIcon,
-    FilmIcon,
-    ExclamationTriangleIcon,
-} from '@heroicons/react/24/outline';
+import { ArrowPathIcon, FilmIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { PlayIcon } from '@heroicons/react/24/solid';
 import { Lightbox } from '@astryxdesign/core/Lightbox';
 import type { Artifact } from './artifacts';
@@ -184,12 +179,11 @@ export default function VideoCard({
             label="Open large"
             variant="ghost"
             size="sm"
-            icon={<ArrowsPointingOutIcon />}
             aria-label={`Open large: ${artifact.title}`}
             clickAction={enlarge}
         />
     );
-    // Library cards (mockup Videos): frame first, then title, description and an action row that leads with Open large.
+    // Library cards (mockup Videos): frame first, then title, origin, description and one action row that leads with Open large.
     return (
         <section
             className={`video-card ${inline ? 'video-inline' : 'video-volume'}`}
@@ -300,7 +294,7 @@ export default function VideoCard({
                         {drafting && !live && detail && (
                             <small className="video-step-detail">{detail}</small>
                         )}
-                        {exportButton}
+                        {inline && exportButton}
                         {versions.items.length > 0 && (
                             <DropdownMenu
                                 presentation="popover"
@@ -385,23 +379,23 @@ export default function VideoCard({
                 )}
                 {caption}
                 {!inline && (
-                    <Heading level={3} id={`${id}-title`}>
-                        {artifact.title}
-                    </Heading>
+                    <VStack className="video-volume-caption">
+                        <Heading level={3} id={`${id}-title`}>
+                            {artifact.title}
+                        </Heading>
+                        <Text color="secondary" className="video-origin">
+                            {origin ?? 'No longer in a conversation'}
+                        </Text>
+                        <Text id={`${id}-description`} color="secondary">
+                            {artifact.description}
+                        </Text>
+                    </VStack>
                 )}
                 {!inline && (
-                    <Text type="supporting" color="secondary" className="video-origin">
-                        {origin ?? 'No longer in a conversation'}
-                    </Text>
-                )}
-                {!inline && (
-                    <Text id={`${id}-description`} color="secondary">
-                        {artifact.description}
-                    </Text>
-                )}
-                {!inline && (
-                    <HStack gap={1} wrap="wrap" className="video-volume-actions">
+                    <HStack className="video-volume-actions">
                         {open}
+                        {/* No export over a library frame: an exported video exports from Open large, an unexported one here. */}
+                        {!exported && exportButton}
                         {actions}
                     </HStack>
                 )}
