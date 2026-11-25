@@ -216,7 +216,7 @@ test('Play pauses when the visual leaves the view or the page is hidden', (t) =>
     staysOnCurrentStep();
 });
 
-test('a scene step fades root out, runs its show function, fades back in; controls and focus unchanged', async (t) => {
+test('a scene step crossfades from a still copy of the old scene; controls and focus unchanged', async (t) => {
     const { window } = new JSDOM('<div id="visual"><div id="root"></div></div>');
     window.matchMedia = () => ({ matches: false });
     t.mock.timers.enable({ apis: ['setTimeout'] });
@@ -228,37 +228,110 @@ test('a scene step fades root out, runs its show function, fades back in; contro
             scene: true,
             show: (state) => {
                 calls.push({ n, ...state });
-                root.textContent = `Scene ${n}`;
+                root.innerHTML = `<b data-part="Scene">Scene ${n}</b>`;
             },
         });
     stepThrough(root, [scene(0), (state) => calls.push({ n: 1, ...state }), scene(2)]);
     calls.splice(0, 3); // the measuring pass
     const [previous, next] = window.document.querySelectorAll('.tt-steps button');
     const indicator = window.document.querySelector('.tt-steps [aria-live="polite"]');
+    const still = () => window.document.querySelector('.tt-steps > [inert]');
     assert.deepEqual(calls, [{ n: 0, index: 0, duration: 0 }], 'first render switches instantly');
-    assert.equal(root.style.opacity, '');
+    assert.equal(still(), null);
     next.click();
     next.focus();
     next.click();
-    assert.equal(root.style.opacity, '0', 'fading out');
-    assert.equal(root.style.transition, 'opacity 300ms');
-    assert.equal(calls.length, 2, 'show waits for the fade out');
+    assert.deepEqual(calls.at(-1), { n: 2, index: 2, duration: 600 }, 'show redraws at once');
+    assert.equal(root.textContent, 'Scene 2');
+    assert.equal(still().textContent, 'Scene 0', 'the old scene stays on screen');
+    assert.equal(still().getAttribute('aria-hidden'), 'true');
+    assert.equal(still().querySelector('[data-part]'), null, 'the copy is never picked');
+    assert.equal(still().style.opacity, '0', 'the old scene fades out');
+    assert.equal(still().style.transition, 'opacity 600ms');
+    assert.equal(root.style.opacity, '', 'as the new one fades in');
+    assert.equal(root.style.transition, 'opacity 600ms');
     assert.equal(indicator.textContent, 'Step 3 of 3');
     assert.ok(next.disabled && !previous.disabled);
     assert.equal(window.document.activeElement, previous, 'focus leaves the disabled Next');
-    t.mock.timers.tick(300);
-    assert.deepEqual(calls.at(-1), { n: 2, index: 2, duration: 600 });
-    assert.equal(root.textContent, 'Scene 2');
-    assert.equal(root.style.opacity, '', 'fades back in');
+    t.mock.timers.tick(600);
+    assert.equal(still(), null, 'the copy goes once the fade ends');
     previous.click();
     previous.click();
-    assert.equal(root.style.opacity, '0', 'fading toward scene 0');
+    assert.equal(still().textContent, 'Scene 2', 'fading toward scene 0');
     next.click(); // a step during the fade finishes the pending scene first
+    assert.equal(still(), null);
     assert.deepEqual(
         calls.map((c) => c.n),
         [0, 1, 2, 1, 0, 1],
     );
     assert.equal(root.style.opacity, '');
+});
+
+const pulsing = (reduce, t) => {
+    const { window } = new JSDOM(
+        '<div id="visual"><div id="root"><div data-part="Ball"><span>0</span></div><div data-part="Wall"></div><p>Caption</p></div></div>',
+    );
+    window.matchMedia = (query) => ({ matches: reduce && query.includes('reduce') });
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    window.setTimeout = setTimeout;
+    window.clearTimeout = clearTimeout;
+    window.Element.prototype.getBoundingClientRect = function () {
+        const left = this.dataset?.part === 'Ball' ? 10 : 0;
+        return { left, top: 20, width: 30, height: 40, right: left + 30, bottom: 60 };
+    };
+    const root = window.document.getElementById('root'),
+        span = root.querySelector('span'),
+        caption = root.querySelector('p');
+    stepThrough(
+        root,
+        [0, 1, 2].map((n) => () => (span.textContent = String(n))),
+    );
+    const [, next] = window.document.querySelectorAll('.tt-steps button');
+    return {
+        window,
+        root,
+        next,
+        caption,
+        rings: () => window.document.querySelectorAll('.tt-pulse'),
+    };
+};
+
+test('after a continuing step settles, the visual part holding each change is outlined briefly', (t) => {
+    const { next, caption, rings } = pulsing(false, t);
+    assert.equal(rings().length, 0, 'first render pulses nothing');
+    next.click();
+    assert.equal(rings().length, 0, 'waits for the motion');
+    t.mock.timers.tick(600);
+    assert.equal(rings().length, 1, 'only the changed part, not the untouched one');
+    assert.equal(rings()[0].style.left, '10px', 'over the Ball part');
+    assert.equal(rings()[0].getAttribute('aria-hidden'), 'true');
+    t.mock.timers.tick(900);
+    assert.equal(rings().length, 0, 'the outline goes');
+    next.click();
+    caption.textContent = 'Caption 2'; // a change without a part outlines the element itself
+    t.mock.timers.tick(600);
+    assert.equal(rings().length, 2);
+    next.click(); // bounded: no step, no pulse
+    t.mock.timers.tick(5000);
+    assert.equal(rings().length, 0);
+});
+
+test('a step interrupted before it settles pulses nothing', (t) => {
+    const { next, rings } = pulsing(false, t);
+    next.click();
+    t.mock.timers.tick(300);
+    next.click();
+    t.mock.timers.tick(599);
+    assert.equal(rings().length, 0);
+    t.mock.timers.tick(1);
+    assert.equal(rings().length, 1, 'only the last step pulses');
+});
+
+test('under reduced motion nothing pulses', (t) => {
+    const { next, rings } = pulsing(true, t);
+    next.click();
+    t.mock.timers.tick(5000);
+    assert.equal(rings().length, 0);
 });
 
 test('a scene step under reduced motion switches instantly', () => {
@@ -272,6 +345,7 @@ test('a scene step under reduced motion switches instantly', () => {
     control.show(1);
     assert.deepEqual(durations, [0, 0]);
     assert.equal(root.style.opacity, '');
+    assert.equal(window.document.querySelector('[inert]'), null, 'no still copy fades');
 });
 
 test('root keeps its tallest step height so the controls and frame never move, and measures again on a width change', () => {
