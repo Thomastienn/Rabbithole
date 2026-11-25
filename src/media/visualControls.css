@@ -1,0 +1,308 @@
+/* Visual controls (mockup docs/mockups/Rabbithole-vis.1.html): theme tokens and the frame's fonts only.
+   Zero-specificity :where() so a visual's own styles still win. */
+:where(rh-button, rh-toggle, rh-reset, rh-switch) {
+    display: inline-block;
+}
+:where(rh-button-group) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+:where(rh-slider, rh-number, rh-text, rh-choice) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    align-items: center;
+    font: 400 14px/1.4 var(--font-family-body);
+}
+:where(rh-slider, rh-number, rh-text) > :where(label),
+:where(rh-choice legend) {
+    font-weight: 600;
+}
+:where(rh-choice fieldset) {
+    border: 0;
+    padding: 0;
+    margin: 0;
+    display: contents;
+}
+:where(rh-choice legend) {
+    padding: 0;
+}
+:where(rh-button, rh-toggle, rh-reset) > :where(button) {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 36px;
+    padding: 0 14px;
+    border-radius: var(--radius-element);
+    font: 600 14px/1 var(--font-family-body);
+    color: var(--color-text-primary);
+    border: 1.5px solid var(--color-border-emphasized);
+    background: transparent;
+    white-space: nowrap;
+    cursor: pointer;
+}
+:where(rh-button, rh-toggle, rh-reset) > :where(button:hover:not(:disabled)) {
+    background: var(--color-overlay-hover);
+}
+:where(rh-button[variant='primary'] > button, rh-toggle > button[aria-pressed='true']) {
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+    border-color: var(--color-accent);
+}
+:where(
+    rh-button[variant='primary'] > button:hover:not(:disabled),
+    rh-toggle > button[aria-pressed='true']:hover:not(:disabled)
+) {
+    background: color-mix(in srgb, var(--color-accent) 85%, var(--color-text-secondary));
+}
+:where(rh-button[variant='quiet'], rh-reset) > :where(button) {
+    border-color: transparent;
+    color: var(--color-text-secondary);
+}
+:where(rh-button[variant='quiet'], rh-reset) > :where(button:hover:not(:disabled)) {
+    color: var(--color-text-primary);
+}
+:where(rh-toggle) > :where(button[aria-pressed='false']) svg {
+    display: none;
+}
+:where(rh-button, rh-toggle, rh-reset, rh-switch, rh-slider, rh-number, rh-choice, rh-text)
+    :where(:disabled) {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+:where(rh-switch label) {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 36px;
+    font: 400 14px/1.4 var(--font-family-body);
+    cursor: pointer;
+}
+:where(rh-switch input) {
+    appearance: none;
+    width: 36px;
+    height: 20px;
+    border-radius: var(--radius-full);
+    background: var(--color-border-emphasized);
+    position: relative;
+    margin: 0;
+    flex: none;
+    cursor: inherit;
+}
+:where(rh-switch input)::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--color-background-surface);
+    transition: left 0.15s;
+}
+:where(rh-switch input:checked) {
+    background: var(--color-accent);
+}
+:where(rh-switch input:checked)::after {
+    left: 19px;
+    background: var(--color-on-accent);
+}
+:where(rh-slider) {
+    width: 100%;
+    max-width: 440px;
+    flex: 1 1 260px;
+}
+/* The track shrinks to 120px before the value wraps below the label. */
+:where(rh-slider input) {
+    appearance: none;
+    flex: 1 1 160px;
+    min-width: 120px;
+    height: 20px;
+    background: transparent;
+    margin: 0;
+}
+:where(rh-slider input)::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: var(--radius-full);
+    background:
+        linear-gradient(var(--color-accent), var(--color-accent)) 0 / var(--fill, 50%) 100%
+            no-repeat,
+        var(--color-border-emphasized);
+}
+:where(rh-slider input)::-moz-range-track {
+    height: 4px;
+    border-radius: var(--radius-full);
+    background: var(--color-border-emphasized);
+}
+:where(rh-slider input)::-moz-range-progress {
+    height: 4px;
+    border-radius: var(--radius-full);
+    background: var(--color-accent);
+}
+:where(rh-slider input)::-webkit-slider-thumb {
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    margin-top: -7px;
+    border-radius: 50%;
+    background: var(--color-accent);
+    border: 0;
+}
+:where(rh-slider input)::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--color-accent);
+    border: 0;
+}
+:where(rh-slider output) {
+    font: 400 15px/1.3 var(--rabbithole-font-reading, var(--font-family-body));
+    min-width: 5ch;
+    text-align: right;
+}
+:where(rh-slider, rh-number) :where(.unit) {
+    color: var(--color-text-secondary);
+}
+:where(rh-number .box) {
+    display: inline-flex;
+    align-items: center;
+    border: 1.5px solid var(--color-border-emphasized);
+    border-radius: var(--radius-element);
+    min-height: 36px;
+}
+:where(rh-number .box:focus-within) {
+    border-color: var(--color-accent);
+}
+:where(rh-number button) {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--color-text-secondary);
+    border-radius: var(--radius-inner);
+    cursor: pointer;
+}
+:where(rh-number button:hover:not(:disabled)) {
+    background: var(--color-overlay-hover);
+    color: var(--color-text-primary);
+}
+:where(rh-number input, rh-text input) {
+    font: 400 15px/1 var(--rabbithole-font-reading, var(--font-family-body));
+    color: var(--color-text-primary);
+    background: transparent;
+    border: 0;
+}
+:where(rh-number input) {
+    width: 6ch;
+    text-align: right;
+    appearance: textfield;
+    -moz-appearance: textfield;
+}
+:where(rh-number input)::-webkit-inner-spin-button,
+:where(rh-number input)::-webkit-outer-spin-button {
+    appearance: none;
+    margin: 0;
+}
+:where(rh-number .unit) {
+    padding-right: 4px;
+}
+:where(rh-text input) {
+    min-height: 36px;
+    padding: 0 12px;
+    border: 1.5px solid var(--color-border-emphasized);
+    border-radius: var(--radius-element);
+    min-width: min(240px, 100%);
+    flex: 1 1 200px;
+}
+:where(rh-text input)::placeholder {
+    color: var(--color-text-secondary);
+}
+:where(rh-text input:focus-visible) {
+    border-color: var(--color-accent);
+}
+:where(rh-choice .seg) {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    padding: 3px;
+    border-radius: var(--radius-element);
+    background: var(--color-background-surface);
+}
+:where(rh-choice .seg label) {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    height: 30px;
+    padding: 0 12px;
+    border-radius: var(--radius-inner);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+}
+:where(rh-choice .seg label:hover) {
+    color: var(--color-text-primary);
+}
+:where(rh-choice .seg label:has(:checked)) {
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+    font-weight: 600;
+}
+:where(rh-choice .seg input) {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+:where(rh-choice .seg label:has(:focus-visible)) {
+    outline: var(--focus-outline-width, 2px) solid var(--focus-outline-color);
+    outline-offset: 2px;
+}
+:where(rh-choice[layout='list']) {
+    flex-direction: column;
+    align-items: start;
+    gap: 4px;
+}
+:where(rh-choice .list) {
+    display: grid;
+    gap: 2px;
+}
+:where(rh-choice .list label) {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 32px;
+    cursor: pointer;
+}
+:where(rh-choice .list input) {
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    border-radius: 50%;
+    border: 1.5px solid var(--color-border-emphasized);
+    display: grid;
+    place-items: center;
+}
+:where(rh-choice .list input:checked) {
+    border-color: var(--color-accent);
+}
+:where(rh-choice .list input:checked)::after {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-accent);
+}
+:where(rh-button, rh-toggle, rh-reset, rh-switch, rh-slider, rh-number, rh-choice, rh-text)
+    :focus-visible {
+    outline: var(--focus-outline-width, 2px) solid var(--focus-outline-color);
+    outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+    :where(rh-switch input)::after {
+        transition: none;
+    }
+}
