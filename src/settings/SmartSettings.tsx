@@ -326,8 +326,8 @@ export function VisualFrequency() {
                 value={frequency ?? 'often'}
                 isDisabled={frequency === undefined || pending}
                 options={[
-                    { value: 'sparing', label: 'Sparing' },
                     { value: 'often', label: 'Often' },
+                    { value: 'sparing', label: 'Sparing' },
                     { value: 'only-asked', label: 'Only when asked' },
                 ]}
                 onChange={(value) => void save(value as VisualFrequencyValue)}

@@ -360,7 +360,7 @@ test('Visual frequency shows three buttons with Often pressed by default and sav
     const choices = () => [...container.querySelectorAll('[role=radio]')];
     assert.deepEqual(
         choices().map((e) => e.textContent.trim()),
-        ['Sparing', 'Often', 'Only when asked'],
+        ['Often', 'Sparing', 'Only when asked'],
     );
     const pressed = () =>
         choices()
