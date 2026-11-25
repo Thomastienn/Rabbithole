@@ -358,7 +358,13 @@ function fakeRunner() {
 
 test('Claude Code and Codex install with their official installers, listed like a download; a second request joins the running one', async () => {
     const { calls, run } = fakeRunner();
-    const install = (cli, platform) => cliInstaller(cli, { platform, run, log: () => {}, env: {} });
+    const install = (cli, platform) =>
+        cliInstaller(cli, {
+            platform,
+            run,
+            log: () => {},
+            env: { PSModulePath: 'C:\\pwsh7\\Modules' },
+        });
     const manager = downloadManager([]);
     const first = manager.now(install('codex', 'linux'));
     const again = manager.now(install('codex', 'linux'));
@@ -374,6 +380,12 @@ test('Claude Code and Codex install with their official installers, listed like 
 
     void manager.now(install('claude', 'win32'));
     assert.equal(calls[1].command, 'powershell.exe');
+    assert.equal(
+        calls[1].env.PSModulePath,
+        undefined,
+        'Windows PowerShell uses its own module path',
+    );
+    assert.equal(calls[0].env.PSModulePath, 'C:\\pwsh7\\Modules');
     assert.match(calls[1].args.at(-1), /irm https:\/\/claude\.ai\/install\.ps1 \| iex$/);
     assert.equal(installCommand('claude', 'win32'), 'irm https://claude.ai/install.ps1 | iex');
     assert.equal(

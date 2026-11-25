@@ -64,8 +64,18 @@ export function cliInstaller(
         run: ({ signal }) =>
             new Promise((resolve, reject) => {
                 let last = '';
+                // Windows PowerShell started from PowerShell 7 inherits its module path and then cannot load
+                // Get-FileHash, which Claude's installer needs; without it, powershell.exe uses its own default.
                 const child = run(command, args, {
-                    env: { ...env, CODEX_NON_INTERACTIVE: '1' },
+                    env: {
+                        ...Object.fromEntries(
+                            Object.entries(env).filter(
+                                ([key]) =>
+                                    platform !== 'win32' || key.toLowerCase() !== 'psmodulepath',
+                            ),
+                        ),
+                        CODEX_NON_INTERACTIVE: '1',
+                    },
                     stdio: ['ignore', 'pipe', 'pipe'],
                     windowsHide: true,
                     signal,
