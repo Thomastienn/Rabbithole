@@ -5,6 +5,9 @@ import { IMAGE_TYPES } from '../src/chat/attachmentTypes.ts';
 // Images the chat models read natively; their stored text is the placeholder history and compaction see.
 export { IMAGE_TYPES };
 
+// Attached text goes whole into the prompt; beyond this it fills the model's context.
+export const MAX_TEXT_BYTES = 1024 * 1024;
+
 const utf8 = new TextDecoder('utf-8', { fatal: true });
 
 // { name, type, bytes } -> { delivery, parts: [{ text }] }; throws with the learner-facing reason when unsupported.
@@ -54,8 +57,7 @@ export async function prepareAttachment(
         throw new Error(
             `${name}: this file type can't be attached. Attach a PDF, plain-text file or a PNG, JPEG or WebP image.`,
         );
-    // The whole file goes into the prompt; beyond this it fills the model's context.
-    if (bytes.length > 1024 * 1024)
+    if (bytes.length > MAX_TEXT_BYTES)
         throw new Error(`${name}: this text file is over 1 MB. Attach a shorter excerpt.`);
     return { delivery: 'text', parts: [{ text: `[Attached file: ${name}]\n${text}` }] };
 }

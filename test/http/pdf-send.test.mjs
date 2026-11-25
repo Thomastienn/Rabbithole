@@ -153,6 +153,19 @@ test('multipart PDF reaches a fake provider in page order; storage, history and 
     assert.ok(!existsSync(folder));
 });
 
+test('an oversized PDF refuses the whole send and saves nothing', async (t) => {
+    const { dir, store, calls, id, upload } = await start(t);
+    const refused = await upload('pictures');
+    assert.equal(refused.status, 400);
+    assert.match(
+        (await refused.json()).error,
+        /^pictures\.pdf: .*Attach only the pages you need\.$/,
+    );
+    assert.equal(store.tree(id).messages.length, 0);
+    assert.ok(!existsSync(join(dir, 'attachments', id)));
+    assert.equal(calls.length, 0);
+});
+
 test('PDF OCR refuses atomically, retries after failure, and follows model capability on a failed reply', async (t) => {
     const { dir, store, provider, calls, id, post, upload, unavailable } = await start(t);
     provider.readsImages = false;

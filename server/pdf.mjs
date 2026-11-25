@@ -1,7 +1,10 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { AnnotationMode, getDocument, ImageKind, OPS, Util } from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { MAX_TEXT_BYTES } from './attachments.mjs';
 
+// Anthropic's API accepts at most 100 images per request; Codex accepts more.
+const MAX_IMAGES = 100;
 const assets = dirname(fileURLToPath(import.meta.resolve('pdfjs-dist/package.json')));
 const identity = [1, 0, 0, 1, 0, 0];
 const compact = (s) => s.replace(/\s/g, '');
@@ -260,13 +263,32 @@ export async function pdfParts({ name, bytes }) {
     try {
         const document = await task.promise,
             parts = [];
+        let textBytes = 0,
+            images = 0;
         for (let number = 1; number <= document.numPages; number++) {
             const page = await document.getPage(number);
-            parts.push(...(await pageParts(page, document.canvasFactory, name, number)));
+            const added = await pageParts(page, document.canvasFactory, name, number);
             page.cleanup();
+            for (const part of added)
+                if (part.image) images++;
+                else textBytes += Buffer.byteLength(part.text);
+            // Refuse as soon as a limit is crossed, before rendering the remaining pages.
+            const over =
+                textBytes > MAX_TEXT_BYTES
+                    ? 'its text is over 1 MB'
+                    : images > MAX_IMAGES && `it has over ${MAX_IMAGES} images`;
+            if (over)
+                throw Object.assign(
+                    new Error(
+                        `${name}: this PDF is too large to send because ${over}. Attach only the pages you need.`,
+                    ),
+                    { refused: true },
+                );
+            parts.push(...added);
         }
         return parts;
     } catch (error) {
+        if (error.refused) throw error;
         throw new Error(
             error.name === 'PasswordException'
                 ? `${name}: this PDF needs a password. Attach an unlocked copy.`

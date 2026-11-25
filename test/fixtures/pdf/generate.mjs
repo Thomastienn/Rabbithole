@@ -15,8 +15,10 @@ function pdf(pages) {
     '/Type /XObject /Subtype /Image /Width 8 /Height 2 /ImageMask true /BitsPerComponent 1');
   const form = stream('q 100 0 0 100 0 0 cm /Figure Do Q',
     `/Type /XObject /Subtype /Form /BBox [0 0 100 100] /Matrix [1 0 0 1 10 10] /Resources << /XObject << /Figure ${rgb} 0 R >> >>`);
+  const streams = new Map(); // identical pages share one content stream, keeping long fixtures tiny
   const kids = pages.map((content) => {
-    const contents = stream(content);
+    if (!streams.has(content)) streams.set(content, stream(content));
+    const contents = streams.get(content);
     return add(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << /Font << /F1 ${font} 0 R >> /XObject << /Figure ${rgb} 0 R /Gray ${gray} 0 R /Stencil ${stencil} 0 R /Form ${form} 0 R >> >> /Contents ${contents} 0 R >>`);
   });
   objects[2] = `<< /Type /Pages /Kids [${kids.map((id) => `${id} 0 R`).join(' ')}] /Count ${kids.length} >>`;
@@ -55,6 +57,8 @@ const cases = {
   inline: ['q 100 0 0 100 0 0 cm BI /W 2 /H 1 /CS /RGB /BPC 8 ID \xff\x00\x00\x00\xff\x00 EI Q\n'],
   gray: ['q 200 0 0 200 0 0 cm /Gray Do Q\n'],
   stencil: ['q 0.2 0.5 0.1 rg 200 0 0 200 0 0 cm /Stencil Do Q\n'],
+  long: Array(60).fill(text('x'.repeat(20000))),
+  pictures: Array(150).fill('q 200 0 0 200 0 0 cm /Figure Do Q\n'),
   repeated: [Array.from({length: 5}, (_, i) => `q 80 0 0 80 ${i * 20} 0 cm /Figure Do Q\n`).join('')],
 };
 for (const [name, pages] of Object.entries(cases))

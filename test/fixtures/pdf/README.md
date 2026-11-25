@@ -13,6 +13,7 @@ node test/fixtures/pdf/generate.mjs
 - `threshold.pdf`: exact 10%, 9.75%, transformed Form XObject and off-page images.
 - `inline.pdf`, `gray.pdf`, `stencil.pdf`, `repeated.pdf`: inline RGB, packed monochrome,
   coloured bitmap stencil, and repeated image placements.
+- `long.pdf`, `pictures.pdf`: over the 1 MB text and 100-image limits, sharing one content stream.
 
 Images contain tiny known pixel arrays so tests can distinguish embedded pixels from a rendered
 page. These are synthetic fixtures; they do not constitute live Claude/Codex or real OCR evidence.
