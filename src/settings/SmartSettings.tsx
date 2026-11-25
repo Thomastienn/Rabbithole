@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { VStack } from '@astryxdesign/core/Layout';
 import { Text } from '@astryxdesign/core/Text';
-import { Selector } from '@astryxdesign/core/Selector';
+import Choice from './Choice';
 import ModelPicker from './ModelPicker';
 import { Button } from '@astryxdesign/core/Button';
 import {
@@ -164,7 +164,7 @@ export default function SmartSettings({
                     />
                 </div>
                 <div role="cell">
-                    <Selector
+                    <Choice
                         label="Smart effort"
                         isLabelHidden
                         status={incompatible ? { type: 'error' } : undefined}
@@ -273,7 +273,7 @@ export function VideoMode() {
     }
     return (
         <VStack gap={2}>
-            <Selector
+            <Choice
                 label="Video mode"
                 value={mode ?? 'quality'}
                 isDisabled={mode === undefined || pending}
@@ -283,6 +283,55 @@ export function VideoMode() {
                 ]}
                 onChange={(value) => void save(value as VideoModeValue)}
                 description="Saving skips cut audits, piece improvements and reference photos to spend fewer tokens. Applies to every profile, from the next video or Retry."
+            />
+            {error && (
+                <Text type="supporting" role="alert">
+                    {error}
+                </Text>
+            )}
+        </VStack>
+    );
+}
+
+type VisualFrequencyValue = 'sparing' | 'often' | 'only-asked';
+
+// How often the tutor draws visuals; app-wide, read when the next reply starts.
+export function VisualFrequency() {
+    const [frequency, setFrequency] = useState<VisualFrequencyValue>(),
+        [pending, setPending] = useState(false),
+        [error, setError] = useState('');
+    useEffect(() => {
+        api('/api/settings/visual-frequency').then(
+            (s) => setFrequency(s.frequency),
+            (e) => setError((e as Error).message),
+        );
+    }, []);
+    async function save(next: VisualFrequencyValue) {
+        setPending(true);
+        setError('');
+        try {
+            setFrequency(
+                (await api('/api/settings/visual-frequency', { frequency: next })).frequency,
+            );
+        } catch (e) {
+            setError((e as Error).message);
+        } finally {
+            setPending(false);
+        }
+    }
+    return (
+        <VStack gap={2}>
+            <Choice
+                label="Visual frequency"
+                value={frequency ?? 'often'}
+                isDisabled={frequency === undefined || pending}
+                options={[
+                    { value: 'sparing', label: 'Sparing' },
+                    { value: 'often', label: 'Often' },
+                    { value: 'only-asked', label: 'Only when asked' },
+                ]}
+                onChange={(value) => void save(value as VisualFrequencyValue)}
+                description="How often the tutor draws visuals in a reply. A visual you ask for is always drawn, and videos are unaffected. Applies from the next reply."
             />
             {error && (
                 <Text type="supporting" role="alert">

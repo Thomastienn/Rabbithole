@@ -48,7 +48,7 @@ async function mount(t, { lists, sandbox = { windows: false, ready: true }, acce
         );
     const click = (root, label) => page.act(async () => button(root, label).click());
     const stream = () => page.act(async () => source.onmessage({ data: '[]' }));
-    return { ...page, posts, row, click, stream, source: () => source };
+    return { ...page, posts, row, click, stream };
 }
 
 test('Add-ons lists each add-on with its state, size and dependency, and Install follows the download', async (t) => {
@@ -57,7 +57,7 @@ test('Add-ons lists each add-on with its state, size and dependency, and Install
     const python = (state, percent = null) =>
         addon('offline-python', 'Offline Python', state, { size: 50e6, percent });
     const search = addon('web-search', 'Web search', 'installed');
-    const { container, row, click, posts, stream, source } = await mount(t, {
+    const { container, row, click, posts, stream } = await mount(t, {
         lists: [
             [video('not-installed'), python('not-installed'), search],
             [video('downloading', 0), python('downloading', 20), search],
@@ -71,7 +71,6 @@ test('Add-ons lists each add-on with its state, size and dependency, and Install
     assert.match(row('Video tools').textContent, /Not installed.*100 MB.*offline Python/);
     assert.match(row('Web search').textContent, /Installed/);
     assert.equal(row('Web search').querySelector('button'), null, 'no Remove action');
-    assert.equal(source().url, '/api/downloads');
 
     await click(row('Video tools'), 'Install Video tools');
     assert.deepEqual(posts, ['/api/downloads/addons/video-tools']);

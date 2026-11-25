@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@astryxdesign/core/Button';
 import { Popover } from '@astryxdesign/core/Popover';
 import { ProgressBar } from '@astryxdesign/core/ProgressBar';
 import { Text } from '@astryxdesign/core/Text';
 import { ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { request } from '../serverAccess';
-import { downloadStatus, formatSize, overallPercent, type Download } from './downloadProgress';
+import { downloadStatus, formatSize, overallPercent } from './downloadProgress';
+import { useDownloadRows } from './useDownloadRows';
 
 const post = (path: string): Promise<void> =>
     request(path, {}).then(
@@ -15,14 +16,8 @@ const post = (path: string): Promise<void> =>
 
 // Shown only while a download is queued, running, failed or newly ready; closing the opened list marks ready ones seen.
 export default function Downloads({ rail = false }: { rail?: boolean }) {
-    const [list, setList] = useState<Download[]>([]);
+    const list = useDownloadRows().filter((download) => !download.seen);
     const [open, setOpen] = useState(false);
-    useEffect(() => {
-        if (typeof EventSource === 'undefined') return;
-        const source = new EventSource('/api/downloads');
-        source.onmessage = (e) => setList(JSON.parse(e.data));
-        return () => source.close();
-    }, []);
     if (!list.length) return null;
     const percent = overallPercent(list);
     const failed = list.some((d) => d.state === 'failed');

@@ -48,7 +48,7 @@
             "icon": "icons/icon.ico"
         },
         "nsis": {
-            "oneClick": true,
+            "oneClick": false,
             "perMachine": false,
             "artifactName": "Rabbithole-windows-x64-setup.${ext}"
         }

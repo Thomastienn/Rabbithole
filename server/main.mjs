@@ -7,6 +7,7 @@ import { Auth } from './providers/auth.mjs';
 import { Codex } from './providers/codex.mjs';
 import { Claude } from './providers/claude.mjs';
 import { cliPath } from './providers/findCli.mjs';
+import { installCommand } from './providers/install.mjs';
 import { dataDir } from './desktop.mjs';
 import { OpenAI } from './providers/openai.mjs';
 import { createApp } from './app.mjs';
@@ -112,14 +113,14 @@ try {
     const signedIn = hasClaude && (await claude.status()).connected;
     console.log(
         !hasClaude
-            ? 'Claude Code: not installed or could not run. Next: curl -fsSL https://claude.ai/install.sh | bash; then press Sign in to Claude in Rabbithole.'
+            ? `Claude Code: not installed or could not run. Next: choose Install for Claude in first-run setup or Map menu > Settings > Connections, or run ${installCommand('claude')}; then press Sign in to Claude there.`
             : signedIn
               ? 'Claude Code: installed and signed in. Next: choose New chat to ask a question.'
               : 'Claude Code: installed; signed out or sign-in could not be checked. Next: press Sign in to Claude in first-run setup or Settings, Connections.',
     );
     console.log(
         !hasCodex
-            ? `Codex: not installed or could not run; ChatGPT ${auth.status().connected ? 'connection saved' : 'not connected'}. Next: npm install -g @openai/codex; then Map menu > Settings > ${auth.status().connected ? 'Reconnect ChatGPT if needed' : 'Continue with ChatGPT'}.`
+            ? `Codex: not installed or could not run; ChatGPT ${auth.status().connected ? 'connection saved' : 'not connected'}. Next: Install in Map menu > Settings > Connections, or run ${installCommand('codex')}; then Map menu > Settings > ${auth.status().connected ? 'Reconnect ChatGPT if needed' : 'Continue with ChatGPT'}.`
             : auth.status().connected
               ? 'Codex: installed; ChatGPT connection saved. Next: send a question to verify access, or Map menu > Settings > Reconnect ChatGPT if it fails.'
               : 'Codex: installed; ChatGPT not connected. Next: Map menu > Settings > Continue with ChatGPT and approve plan usage.',

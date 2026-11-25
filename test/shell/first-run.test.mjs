@@ -62,7 +62,19 @@ async function mount(
                           ? {
                                 models: [],
                                 providers: {
-                                    claude: { label: 'Claude', connected: false, installed: false },
+                                    claude: {
+                                        label: 'Claude',
+                                        connected: false,
+                                        installed: false,
+                                        command: 'curl -fsSL https://claude.ai/install.sh | bash',
+                                    },
+                                    codex: {
+                                        label: 'Codex',
+                                        connected: false,
+                                        installed: false,
+                                        command:
+                                            'curl -fsSL https://chatgpt.com/codex/install.sh | sh',
+                                    },
                                 },
                             }
                           : signedIn || login.done
@@ -199,20 +211,45 @@ test('an ended or upgraded install opens on the first question, not setup', asyn
     assert.ok(container.querySelector('.first-question'));
 });
 
-test('a missing CLI shows its official install page and command; "Check again" finds it once installed', async (t) => {
+test('a missing CLI installs from setup: a failure shows its last line and Retry, and a finished install moves setup on', async (t) => {
+    const sources = [];
+    globalThis.EventSource = class {
+        constructor(url) {
+            this.url = url;
+            sources.push(this);
+        }
+        close() {}
+    };
+    t.after(() => delete globalThis.EventSource);
     const cli = { missing: true };
-    const { container, click } = await mount(t, { cli });
+    const { container, click, act, posts } = await mount(t, { cli });
     const setup = container.querySelector('.first-run');
-    assert.match(setup.textContent, /Claude Code is not installed/);
-    assert.equal(setup.querySelector('.connection-status').textContent, 'Not set up');
     assert.match(setup.textContent, /curl -fsSL https:\/\/claude\.ai\/install\.sh \| bash/);
     assert.ok(setup.querySelector('a[href="https://code.claude.com/docs/en/setup"]'));
+    assert.ok(button(setup, 'Install Codex'));
+    assert.equal(sources.length, 1, 'both installers and the sidebar share a connection');
+    assert.equal(button(setup, 'Continue').disabled, true);
+    // The server's install row, as the download stream sends it.
+    const row = (state, error) =>
+        act(async () =>
+            sources[0].onmessage({
+                data: JSON.stringify([{ id: 'claude', name: 'Claude Code', state, error }]),
+            }),
+        );
+    await click('Install Claude Code');
+    assert.deepEqual(posts.at(-1), ['/api/downloads/install/claude', {}]);
+    assert.ok(setup.querySelector('[role="progressbar"]'), 'the install shows progress');
+    await row('failed', 'curl: (6) Could not resolve host: claude.ai');
+    assert.match(setup.querySelector('[role="alert"]').textContent, /Could not resolve host/);
+    await click('Retry installing Claude Code');
+    assert.equal(posts.filter(([p]) => p === '/api/downloads/install/claude').length, 2);
     cli.missing = false;
-    await click('Check again');
-    assert.doesNotMatch(container.textContent, /not installed/);
-    assert.match(
-        container.querySelector('.first-run').textContent,
-        /Signed in through Claude Code/,
+    await row('ready');
+    assert.equal(button(setup, 'Install Claude Code'), undefined);
+    assert.equal(
+        button(setup, 'Continue').disabled,
+        false,
+        'setup can continue without Check again',
     );
 });
 

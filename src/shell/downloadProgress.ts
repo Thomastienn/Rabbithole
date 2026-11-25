@@ -6,6 +6,7 @@ export type Download = {
     total: number | null;
     percent: number | null;
     error?: string;
+    seen?: boolean;
     // An installed add-on fetching the newer version an app update needs.
     update?: boolean;
 };

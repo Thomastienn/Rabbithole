@@ -87,6 +87,16 @@ test('Windows detection checks PATH, %LOCALAPPDATA%, %APPDATA%\\npm and %USERPRO
         win('codex', ['C:\\Users\\L\\AppData\\Local\\codex.exe']),
         'C:\\Users\\L\\AppData\\Local\\codex.exe',
     );
+    const installer = 'C:\\Users\\L\\AppData\\Local\\Programs\\OpenAI\\Codex\\bin\\codex.exe';
+    const files = [];
+    const codex = cliPath(
+        'codex',
+        (name) => win(name, files),
+        (path) => files.includes(path),
+    );
+    assert.equal(codex(), null);
+    files.push(installer);
+    assert.equal(codex(), installer, "Codex's Windows installer folder is found on the next check");
     assert.equal(win('codex', []), null, 'a shim whose target is gone is not found');
     // A script runs under this server's own Node; an executable runs directly.
     assert.deepEqual(launchArgs(script, ['app-server']), [

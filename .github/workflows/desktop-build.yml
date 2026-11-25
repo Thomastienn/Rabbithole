@@ -160,10 +160,26 @@ jobs:
         shell: pwsh
         run: |
           Start-Process -FilePath (Get-Item desktop/dist/*-setup.exe).FullName -ArgumentList '/S' -Wait
+          # The install folder a silent install picks by default (desktop/build/installer.nsh, ADR 0025).
+          $folder = "$env:LOCALAPPDATA\Programs\Rabbithole"
           # Without a path the smoke test would check desktop/stage instead of the installed app.
-          $resources = (Get-Item "$env:LOCALAPPDATA/Programs/*/resources/node.exe").DirectoryName
-          if (-not $resources) { throw 'The installer did not install the app.' }
+          $resources = (Get-Item "$folder/resources/node.exe" -ErrorAction SilentlyContinue).DirectoryName
+          if (-not $resources) { throw "The installer did not install the app into $folder." }
           node scripts/desktop-smoke.mjs $resources
+      # An update keeps the install folder's data; a silent uninstall then removes the whole folder.
+      - name: Smoke-test an update and the uninstall
+        shell: pwsh
+        run: |
+          $folder = "$env:LOCALAPPDATA\Programs\Rabbithole"
+          New-Item "$folder\data\kept.txt" -Value 'kept' -Force | Out-Null
+          # electron-updater runs the new installer with --updated, which also runs the old uninstaller with it.
+          Start-Process -FilePath (Get-Item desktop/dist/*-setup.exe).FullName -ArgumentList '/S', '--updated' -Wait
+          if (-not (Test-Path "$folder\resources\node.exe")) { throw 'The update did not reinstall the app.' }
+          if ((Get-Content "$folder\data\kept.txt" -ErrorAction SilentlyContinue) -ne 'kept') { throw 'The update deleted the data folder.' }
+          Start-Process -FilePath "$folder\Uninstall Rabbithole.exe" -ArgumentList '/S' -Wait
+          # The uninstaller reruns itself from %TEMP%, so give its copy a moment to finish.
+          for ($i = 0; $i -lt 30 -and (Test-Path $folder); $i++) { Start-Sleep 1 }
+          if (Test-Path $folder) { Get-ChildItem $folder -Recurse | Select-Object -First 20 FullName; throw 'The uninstall left the install folder behind.' }
       # The launcher and its setup helper log here (desktop/sandbox/src/main.rs, sandbox_home).
       - name: Show the sandbox logs
         if: failure()

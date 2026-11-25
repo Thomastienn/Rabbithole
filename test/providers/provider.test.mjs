@@ -285,6 +285,10 @@ test('switching providers keeps history, starts a fresh session, children inheri
             false,
             'a missing CLI is reported for setup',
         );
+        assert.match(
+            models.providers.codex.command,
+            process.platform === 'win32' ? /install\.ps1/ : /install\.sh \| sh$/,
+        );
         assert.equal('installed' in models.providers.claude, false);
         assert.equal(
             (await post(`/api/trees/${root.id}/model`, { provider: 'codex', model: 'claude-m' }))

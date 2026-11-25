@@ -84,7 +84,6 @@ test('a brief explanation is written once, shared, saved with usage, counted onc
         text: passage.text,
     };
     const brief = (body = anchor) => post(`/${id}/brief`, { ...body, suggestion: true });
-    assert.match(PREFIX, /about two or three short sentences/);
     const mutex = () => store.graph().concepts.find((c) => c.name === 'Mutex');
     const briefEvents = () => store.usageEvents().events.filter((e) => e.task === 'brief');
     assert.equal(mutex().familiarity, 0.3);
@@ -218,6 +217,22 @@ test('a brief explanation is written once, shared, saved with usage, counted onc
         assert.equal((await (await brief(nextAnchor)).json()).explanation, 'Saved ahead.');
     assert.equal(prompts.length, asksBefore);
     assert.equal(total(), before + 1);
+
+    // Once the concept is observed, an on-demand brief is pitched to its familiarity.
+    await (await post(`/${id}/messages`, { text: 'And with three?' })).text();
+    await app.settled();
+    const third = store.tree(id).messages.at(-1);
+    const [pitched] = store.tree(id).suggestions.find((s) => s.message === third.id).passages;
+    const familiarity = mutex().familiarity;
+    const pitchedBrief = await brief({
+        messageId: third.id,
+        start: pitched.start,
+        end: pitched.end,
+        text: pitched.text,
+    });
+    assert.equal(pitchedBrief.status, 200);
+    assert.equal(prompts.length, asksBefore + 1);
+    assert.equal(taskOf(prompts.at(-1)).familiarity, familiarity);
 });
 
 test('a brief batch saves each brief as its marker text streams, retries missed terms once, and leaves the rest on demand', async (t) => {
@@ -256,9 +271,10 @@ test('a brief batch saves each brief as its marker text streams, retries missed 
     const quick = {
         models: async () => [{ model: 'quick-model', efforts: ['low'] }],
         generate: async (tree, text, emit) => {
-            if (tree.role === 'brief' && taskOf(text).terms) {
-                batches.push(taskOf(text).terms);
-                assert.equal(taskOf(text).reply, 'A mutex guards the shared counter with a lock.');
+            const task = taskOf(text);
+            if (tree.role === 'brief' && task.terms) {
+                batches.push(task);
+                assert.equal(task.reply, 'A mutex guards the shared counter with a lock.');
                 assert.equal(tree.tools, undefined, 'the batch is a plain text call');
                 return scripts.shift()(emit);
             }
@@ -291,7 +307,10 @@ test('a brief batch saves each brief as its marker text streams, retries missed 
             emit({
                 type: 'item',
                 item: 'answer',
-                text: 'A **[[mutex]]** guards the **[[shared counter]]** with a [[lock]].\n[[end]]',
+                text:
+                    text === 'And with two counters?'
+                        ? 'A mutex guards the shared counter with a lock.'
+                        : 'A **[[mutex]]** guards the **[[shared counter]]** with a [[lock]].\n[[end]]',
             });
             completed(emit);
         },
@@ -348,7 +367,11 @@ test('a brief batch saves each brief as its marker text streams, retries missed 
     await app.settled();
     assert.equal(saved(counter), 'On demand shared counter.');
     // The cut-off call kept what it closed; the retry asked for only the missing term.
-    assert.deepEqual(batches, [['mutex', 'shared counter', 'lock'], ['lock']]);
+    assert.deepEqual(
+        batches.map((batch) => batch.terms),
+        [['mutex', 'shared counter', 'lock'], ['lock']],
+    );
+    assert.ok(batches.every((batch) => batch.familiarityByTerm === undefined));
     assert.equal(saved(lock), 'Ahead lock.');
     assert.equal(observations(), 1, 'the batch records no familiarity evidence');
     assert.ok(!logs.some((l) => /left briefs unsaved/.test(l)));
@@ -358,17 +381,28 @@ test('a brief batch saves each brief as its marker text streams, retries missed 
     assert.equal(prompts.length, 1);
     assert.equal(observations(), 2);
 
-    // A completed call that skips terms retries once; a term still missing is logged and written on demand.
+    // Without tutor marks, quick thinking names the suggestions before the batch starts.
+    const concepts = store.graph().concepts;
+    const mutexScore = concepts.find((c) => c.name === 'Mutex').familiarity;
+    const counterScore = concepts.find((c) => c.name === 'Shared state').familiarity;
     await (await post(`/${id}/messages`, { text: 'And with two counters?' })).text();
     await app.settled();
     const second = store.tree(id).messages.at(-1).id;
     const [mutex2, counter2, lock2] = store
         .tree(id)
         .suggestions.find((s) => s.message === second).passages;
-    assert.deepEqual(batches.slice(2), [
-        ['mutex', 'shared counter', 'lock'],
-        ['shared counter', 'lock'],
-    ]);
+    assert.deepEqual(
+        batches.slice(2).map((batch) => batch.terms),
+        [
+            ['mutex', 'shared counter', 'lock'],
+            ['shared counter', 'lock'],
+        ],
+    );
+    assert.deepEqual(batches[2].familiarityByTerm, {
+        mutex: mutexScore,
+        'shared counter': counterScore,
+    });
+    assert.deepEqual(batches[3].familiarityByTerm, { 'shared counter': counterScore });
     assert.equal(saved(mutex2, second), 'Second mutex.');
     assert.equal(saved(counter2, second), 'Retry counter.');
     assert.equal(saved(lock2, second), undefined);

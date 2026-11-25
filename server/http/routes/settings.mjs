@@ -1,10 +1,10 @@
 import { TUTOR_TOOLS } from '../../tools/runner.mjs';
 import { EndpointError } from '../../providers/openai.mjs';
-import { DEFAULT_TUTOR_STYLE } from '../../media/tutor-instructions.mjs';
+import { DEFAULT_TUTOR_STYLE, VISUAL_FREQUENCY } from '../../media/tutor-instructions.mjs';
 import { systemPackages } from '../../media/manim.mjs';
 import { MEMORY_NOTE_LIMIT, tooLong } from '../../tools/memoryNote.mjs';
 
-// Model profiles, chat, smart and suggestion settings, video mode, and custom endpoints.
+// Model profiles, chat, smart and suggestion settings, video mode, visual frequency, and custom endpoints.
 export async function settingsRoutes(req, res, url, ctx, body) {
     const { store, json, endpoint, selectionError, chatDefault, smart, profiles } = ctx;
     const tutorTools = async () => {
@@ -40,6 +40,8 @@ export async function settingsRoutes(req, res, url, ctx, body) {
             return json(res, 200, { note: store.memoryNote() });
         if (url.pathname === '/api/settings/video-mode')
             return json(res, 200, { mode: store.videoMode() });
+        if (url.pathname === '/api/settings/visual-frequency')
+            return json(res, 200, { frequency: store.visualFrequency() });
         return false;
     }
     if (req.method !== 'POST') return false;
@@ -128,6 +130,13 @@ export async function settingsRoutes(req, res, url, ctx, body) {
         if (!['quality', 'saving'].includes(body?.mode))
             return json(res, 400, { error: 'Choose Quality or Saving as the video mode.' });
         return json(res, 200, { mode: store.saveVideoMode(body.mode) });
+    }
+    if (url.pathname === '/api/settings/visual-frequency') {
+        if (!Object.hasOwn(VISUAL_FREQUENCY, body?.frequency))
+            return json(res, 400, {
+                error: 'Choose Sparing, Often or Only when asked as the visual frequency.',
+            });
+        return json(res, 200, { frequency: store.saveVisualFrequency(body.frequency) });
     }
     if (url.pathname === '/api/settings/memory-note') {
         if (typeof body?.note !== 'string')

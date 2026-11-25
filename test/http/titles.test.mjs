@@ -143,6 +143,10 @@ test('the title job sets the explored concept once, from the nearest concepts or
     const none = await ask('Hello there', '{"title":"Greeting","concept":null}');
     assert.equal(concept(none), null);
     assert.equal(store.list().find((c) => c.id === none).learnerMessages, 1);
+    const named = await ask('Hi again', '{"title":"Greeting","concept":" None "}');
+    assert.equal(store.tree(named).title, 'Greeting');
+    assert.equal(concept(named), null);
+    assert.ok(!store.graph().concepts.some((c) => /^none$/i.test(c.name)));
 });
 
 test('first question saves the placeholder, then quick thinking replaces it unless renamed, failed or unset', async (t) => {
