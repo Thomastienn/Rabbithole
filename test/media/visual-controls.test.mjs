@@ -226,3 +226,71 @@ test('reset restores the value a script set before connecting a control', () => 
     $('rh-reset button').click();
     assert.equal(slider.value, 30);
 });
+
+test('display controls show their values in named status regions and a readout follows its value', () => {
+    const { root, $ } = visual();
+    renderVisual(
+        root,
+        `<div id="art"><rh-readouts><rh-readout label="Speed" unit="m/s" value="12.4"></rh-readout></rh-readouts>
+         <rh-result variant="neutral" label="Make a guess">Gravity is weaker there.</rh-result>
+         <rh-status variant="warning">Length must be more than 0.</rh-status>
+         <rh-legend label="Series" items="Earth, Moon,Mars" shape="box"></rh-legend>
+         <rh-table label="Period by planet"><table><tr><th>Planet</th></tr><tr><td>Earth</td></tr></table></rh-table>
+         <rh-reset></rh-reset></div>`,
+        true,
+    );
+    const readout = $('rh-readout output');
+    assert.equal(readout.getAttribute('aria-labelledby'), $('rh-readout .key').id);
+    assert.equal($('rh-readout .key').textContent, 'Speed');
+    assert.equal(readout.textContent, '12.4 m/s');
+    $('rh-readout').value = 13.1;
+    assert.equal($('rh-readout').value, 13.1);
+    assert.equal(readout.textContent, '13.1 m/s', 'the readout updates');
+
+    const result = $('rh-result');
+    assert.equal(result.getAttribute('role'), 'status');
+    assert.equal(result.getAttribute('aria-atomic'), 'true');
+    assert.equal(result.textContent, 'Make a guessGravity is weaker there.');
+    const neutral = result.querySelector('svg').innerHTML;
+    result.setAttribute('variant', 'correct');
+    result.setAttribute('label', 'Correct');
+    result.value = 'About 4.9 s.';
+    assert.equal(result.textContent, 'CorrectAbout 4.9 s.');
+    assert.notEqual(result.querySelector('svg').innerHTML, neutral, 'the icon follows the tone');
+    assert.equal(result.querySelector('svg').getAttribute('aria-hidden'), 'true');
+
+    const status = $('rh-status');
+    assert.equal(status.getAttribute('role'), 'status');
+    assert.equal(status.value, 'Length must be more than 0.');
+    status.value = 'Balanced.';
+    assert.equal(status.textContent, 'Balanced.');
+
+    stepThrough($('#art'), [() => {}, () => {}]); // reconnects every control
+    const list = $('rh-legend ul');
+    assert.equal(list.getAttribute('aria-label'), 'Series');
+    assert.deepEqual(
+        [...list.children].map((li) => [
+            li.textContent,
+            li.firstChild.style.getPropertyValue('--ink'),
+        ]),
+        [
+            ['Earth', 'var(--color-text-blue)'],
+            ['Moon', 'var(--color-text-yellow)'],
+            ['Mars', 'var(--color-text-pink)'],
+        ],
+    );
+    assert.ok(
+        [...list.querySelectorAll('i')].every((i) => i.getAttribute('aria-hidden') === 'true'),
+    );
+    assert.equal(root.querySelectorAll('rh-legend li').length, 3, 'not rendered twice');
+    assert.deepEqual(
+        [...root.querySelectorAll('rh-table caption')].map((c) => c.textContent),
+        ['Period by planet'],
+    );
+
+    $('rh-reset button').click();
+    assert.equal(readout.textContent, '12.4 m/s');
+    assert.equal(result.getAttribute('variant'), 'neutral');
+    assert.equal(result.textContent, 'Make a guessGravity is weaker there.');
+    assert.equal(status.value, 'Length must be more than 0.');
+});

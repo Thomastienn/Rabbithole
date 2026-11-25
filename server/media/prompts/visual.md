@@ -61,9 +61,8 @@ Render with THREE.WebGLRenderer. Plain canvas drawings have no parts.
 Text budget: at most a few short sentences in the whole fragment, and short
 labels. Do not put explanatory paragraphs inside the fragment (a predict-then-reveal
 answer below is the one exception); the reply text carries the explanation.
-Keep labels inside the graphic. A result or status line that changes
-with interaction uses var(--color-text-primary) at reading size (the inherited
-body font size), never small or dim secondary text.
+Keep labels inside the graphic. Show values, results and messages that change
+with interaction in the display controls below.
 
 Only when the request has a check_answer field (the prediction question,
 correct outcome and reason) or its intent asks for a predict-then-reveal check, show the
@@ -91,14 +90,12 @@ Give SVG and canvas a text alternative; distinguish values with labels as well a
 color. For 3D, use responsive geometry, lighting and a camera; display initialization
 errors in words. Keep a single animation loop and dispose of resources on pagehide.
 
-Visual controls: the frame defines these elements before the fragment runs, so
-use them instead of building and styling controls. Configure each by attributes
-on its opening tag and give it a closing tag. The required label is its visible
-and accessible name. Each renders native, keyboard-operable elements styled for
-the theme, light and dark, with focus rings, disabled states and wrapping. For
-a toggle, switch, slider, number, choice or text field, read el.value in script.
-Listen for 'input' while the value changes and 'change' when it settles. Both
-events bubble. The disabled attribute disables a control. They are never parts.
+Visual controls: the frame defines these elements, already styled for every
+theme, before the fragment runs; use them instead of building controls. Configure
+each by attributes and give it a closing tag. label is its visible and accessible
+name. Read or set el.value in script. Inputs fire 'input' while the value changes
+and 'change' when it settles; both bubble. The disabled attribute disables an
+input. They are never parts.
 - <rh-button label variant>: an action; listen for click. variant is primary
   for the one main action, secondary (default) or quiet for minor ones.
   <rh-button-group> lays several buttons out together.
@@ -111,6 +108,18 @@ events bubble. The disabled attribute disables a control. They are never parts.
 - <rh-choice label options="A,B,C" value>: pick one option, shown as segments
   for up to five and a radio list beyond; value is the chosen option.
 - <rh-text label placeholder value>: a text field; value is a string.
+- <rh-readout label unit value>: a computed value with its unit, announced when
+  it changes. <rh-readouts> lays several out side by side.
+- <rh-result variant label>text</rh-result>: a check-yourself outcome card.
+  variant is correct, incorrect or neutral (default); label is its title, value
+  its text. Change all three when the outcome changes.
+- <rh-status variant>text</rh-status>: a hint or message line; variant is info
+  (default), success or warning; value is its text.
+- <rh-legend label items="A,B,C" shape>: a swatch and name per series. The nth
+  item takes the nth series ink: blue, yellow, pink, green, so colour the
+  series in that order. shape="box" for bars and areas, lines by default.
+- <rh-table label><table>…</table></rh-table>: a native table with th headers,
+  styled like reply tables; label is its caption.
 - <rh-reset label>: returns every control to its initial value, then fires
   reset, which bubbles to window: addEventListener('reset', draw).
 For example, write <rh-switch label="Show arc" checked></rh-switch>.
@@ -131,8 +140,8 @@ Rabbithole's fragment contract:
   var(--color-text-secondary), borders var(--color-border), action
   var(--color-accent), focus var(--focus-outline-color). Series may use var(--color-text-yellow),
   var(--color-text-blue), var(--color-text-pink), var(--color-text-green).
-  Use Barlow for labels and controls, Atkinson Hyperlegible Next for result lines,
-  and monospace for code. Do not hardcode palette values. Both light and dark
+  Use Barlow for labels, Atkinson Hyperlegible Next for values and prose, and
+  monospace for code. Do not hardcode palette values. Both light and dark
   must work; CSS variables update when the theme or appearance changes. The
   current theme palette below is a generation-time reference; keep CSS variable
   references in the fragment so it can recolour later. For canvas and 3D colours,
@@ -142,7 +151,7 @@ Rabbithole's fragment contract:
 - Fit a reading column about 400–700 px wide, also shrinking to phone width.
   Use fluid widths and a content-sized root, never a fixed-height root. Give SVG
   a viewBox and responsive width. Keep labels readable at the actual narrow
-  width rather than shrinking a wide diagram and all its text. Controls must wrap.
+  width rather than shrinking a wide diagram and all its text.
 - No network APIs, remote resources, links, images, navigation, storage, parent
   access or messaging. Use inline SVG/HTML or the globals already loaded:
   mermaid, THREE, katex, d3, gsap (core only, no plugins), stepThrough and the

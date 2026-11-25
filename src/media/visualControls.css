@@ -301,6 +301,126 @@
     outline: var(--focus-outline-width, 2px) solid var(--focus-outline-color);
     outline-offset: 2px;
 }
+:where(rh-readouts) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 32px;
+}
+:where(rh-readout) {
+    display: inline-flex;
+    flex-direction: column;
+}
+:where(rh-readout .key) {
+    font: 600 12px/1.2 var(--font-family-body);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-secondary);
+}
+:where(rh-readout output) {
+    font: 400 24px/1.3 var(--rabbithole-font-reading, var(--font-family-body));
+}
+:where(rh-readout .unit) {
+    font-size: 15px;
+    color: var(--color-text-secondary);
+}
+/* Tones colour the icon and the card edge, never the text. */
+:where(rh-result, rh-status) :where(.icon) {
+    color: var(--tone);
+    display: inline-flex;
+    margin-top: 2px;
+}
+:where(rh-result) {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 2px 10px;
+    padding: 12px 14px;
+    border-radius: var(--radius-element);
+    border: 1.5px solid var(--tone);
+    background: color-mix(in srgb, var(--tone) 12%, transparent);
+    max-width: 52ch;
+    --tone: var(--color-border-emphasized);
+}
+:where(rh-result b) {
+    font: 600 15px/1.35 var(--font-family-body);
+}
+:where(rh-result p) {
+    grid-column: 2;
+    margin: 0;
+    font: 400 15px/1.5 var(--rabbithole-font-reading, var(--font-family-body));
+}
+:where(rh-result:not([variant='correct'], [variant='incorrect'])) :where(.icon) {
+    color: var(--color-text-secondary);
+}
+:where(rh-result[variant='correct'], rh-status[variant='success']) {
+    --tone: var(--color-text-success);
+}
+:where(rh-result[variant='incorrect']) {
+    --tone: var(--color-text-error);
+}
+:where(rh-status) {
+    display: flex;
+    gap: 8px;
+    align-items: start;
+    font: 400 15px/1.5 var(--rabbithole-font-reading, var(--font-family-body));
+    --tone: var(--color-text-info);
+}
+:where(rh-status[variant='warning']) {
+    --tone: var(--color-text-warning);
+}
+:where(rh-legend ul) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font: 400 13px/1.3 var(--font-family-body);
+}
+:where(rh-legend li) {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+:where(rh-legend i) {
+    width: 18px;
+    height: 4px;
+    border-radius: var(--radius-full);
+    background: var(--ink);
+}
+:where(rh-legend[shape='box'] i) {
+    width: 12px;
+    height: 12px;
+    border-radius: var(--radius-inner);
+}
+/* Like reply tables; a wide table scrolls sideways inside the visual. */
+:where(rh-table) {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+}
+:where(rh-table table) {
+    width: 100%;
+    border-collapse: collapse;
+    font: 400 14px/1.45 var(--font-family-body);
+}
+:where(rh-table caption) {
+    text-align: start;
+    font-weight: 600;
+    padding-bottom: 6px;
+}
+:where(rh-table) :where(th, td) {
+    padding: 9px 12px;
+    border-bottom: thin solid var(--color-border);
+    text-align: start;
+}
+:where(rh-table th) {
+    padding-block: 8px;
+    border-bottom: 1.5px solid var(--color-border-emphasized);
+    color: var(--color-text-secondary);
+    font: 600 12px/1.2 var(--font-family-body);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+}
 @media (prefers-reduced-motion: reduce) {
     :where(rh-switch input)::after {
         transition: none;
