@@ -203,7 +203,7 @@ test('Claude CLI: signed-out run saves no session or notice; lost resumed sessio
             (...a) => saved.push(a),
             new AbortController().signal,
         ),
-        /signed out\. Run claude in a terminal/,
+        /signed out/,
     );
     assert.deepEqual(
         events,

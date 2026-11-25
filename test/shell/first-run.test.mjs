@@ -16,6 +16,7 @@ async function mount(
         cli = { missing: false },
         system = { body: {} },
         sandbox = { windows: false, ready: true },
+        login = { body: {} },
     } = {},
 ) {
     const posts = [];
@@ -64,7 +65,7 @@ async function mount(
                                     claude: { label: 'Claude', connected: false, installed: false },
                                 },
                             }
-                          : signedIn
+                          : signedIn || login.done
                             ? {
                                   models: [
                                       {
@@ -99,7 +100,9 @@ async function mount(
                               ? system.body
                               : path === '/api/setup/sandbox'
                                 ? sandbox
-                                : {};
+                                : path === '/api/claude/login'
+                                  ? login.body
+                                  : {};
         return { ok: true, json: async () => body };
     });
     const { default: ChatPage } = await import('../../src/shell/ChatPage.tsx');
@@ -127,7 +130,7 @@ async function mount(
         await click('Continue');
         await click('Skip');
     };
-    return { ...page, posts, click, skipAddOns };
+    return { ...page, posts, click, settle, skipAddOns };
 }
 
 const setupPosts = (posts) => posts.filter(([path]) => !path.startsWith('/api/downloads'));
@@ -183,7 +186,7 @@ test('"Set up later" ends setup without a model and falls back to the Send gate'
     assert.match(container.textContent, /Sign in to either one to pick a chat model/);
     assert.doesNotMatch(container.textContent, /Optional\./, 'neither provider is connected');
     assert.ok(button(container, 'Continue with ChatGPT'));
-    assert.ok(button(container, 'Check again'));
+    assert.ok(button(container, 'Sign in to Claude'));
     await click('Set up later');
     assert.deepEqual(posts, [['/api/setup', {}]]);
     assert.equal(container.querySelector('.first-run'), null);
@@ -207,6 +210,38 @@ test('a missing CLI shows its official install page and command; "Check again" f
     cli.missing = false;
     await click('Check again');
     assert.doesNotMatch(container.textContent, /not installed/);
+    assert.match(
+        container.querySelector('.first-run').textContent,
+        /Signed in through Claude Code/,
+    );
+});
+
+test('Sign in to Claude starts Claude Code sign-in and setup moves on by itself once signed in', async (t) => {
+    const login = { body: { url: 'https://claude.ai/oauth/authorize?abc' } };
+    const { container, posts, click, act, settle } = await mount(t, { signedIn: false, login });
+    t.mock.timers.enable({ apis: ['setInterval'] });
+    await click('Sign in to Claude');
+    assert.deepEqual(setupPosts(posts), [['/api/claude/login', {}]]);
+    assert.ok(
+        container.querySelector('.first-run a[href="https://claude.ai/oauth/authorize?abc"]'),
+    );
+    login.done = true;
+    await act(async () => t.mock.timers.tick(3000));
+    await settle();
+    assert.match(
+        container.querySelector('.first-run').textContent,
+        /Signed in through Claude Code/,
+    );
+    assert.equal(button(container, 'Continue').disabled, false);
+});
+
+test('a Claude sign-in that needs a terminal shows the command to run and "Check again"', async (t) => {
+    const login = { body: { command: 'claude auth login' } };
+    const { container, click } = await mount(t, { signedIn: false, login });
+    await click('Sign in to Claude');
+    assert.match(container.querySelector('.first-run').textContent, /claude auth login/);
+    login.done = true;
+    await click('Check again');
     assert.match(
         container.querySelector('.first-run').textContent,
         /Signed in through Claude Code/,

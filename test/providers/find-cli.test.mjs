@@ -178,6 +178,34 @@ test('Claude reuses a signed-in check for 30 seconds; a sign-in check or a signe
     assert.equal(runs, 5);
 });
 
+test('Claude sign-in returns the address the CLI prints and joins a running sign-in; one that exits first needs a terminal', async () => {
+    const launches = [];
+    const claude = new Claude(
+        mkdtempSync(join(tmpdir(), 'tt-claude-login-')),
+        (cmd, args) => {
+            const c = child(() => {});
+            launches.push([cmd, args, c]);
+            return c;
+        },
+        null,
+        () => '/bin/claude',
+    );
+    const started = claude.login();
+    assert.ok(claude.login() === started, 'a second press joins the running sign-in');
+    const [[cmd, args, c]] = launches;
+    assert.deepEqual([cmd, args], ['/bin/claude', ['auth', 'login']]);
+    c.stdout.write('Opening browser to sign in…\nIf the browser did not open, visit:\n');
+    c.stdout.write('\x1b]8;;https://claude.ai/oauth/authorize?abc\x07https://claude.ai/oauth/');
+    assert.deepEqual(await started, { url: 'https://claude.ai/oauth/authorize?abc' });
+    c.emit('close', 0);
+
+    const again = claude.login();
+    assert.equal(launches.length, 2, 'a finished sign-in can start again');
+    launches[1][2].stderr.write('Error: Raw mode is not supported\n');
+    launches[1][2].emit('close', 1);
+    assert.equal(await again, null);
+});
+
 test('Codex launches the found path; a missing CLI fails its model list', async () => {
     const commands = [];
     let bin = null;

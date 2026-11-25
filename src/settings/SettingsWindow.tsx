@@ -23,6 +23,7 @@ import MemoryNoteSettings from './MemoryNoteSettings';
 import SearchSettings from './SearchSettings';
 import TutorToolsSettings from './TutorToolsSettings';
 import AddonsSettings from './AddonsSettings';
+import ClaudeSignIn from './ClaudeSignIn';
 import UsageDashboard from '../usage/UsageDashboard';
 import type { Model } from './models';
 import type { ModelSelection } from '../chat/types';
@@ -283,7 +284,7 @@ export default function SettingsWindow({
                                 <Text type="supporting">
                                     Claude:{' '}
                                     {providers && !modelError
-                                        ? 'run claude in a terminal and sign in'
+                                        ? 'not signed in'
                                         : 'sign-in status unavailable'}
                                 </Text>
                             )}
@@ -293,14 +294,7 @@ export default function SettingsWindow({
                                 </Text>
                             )}
                             {!providers?.claude?.connected && (
-                                <HStack>
-                                    <Button
-                                        label="Check Claude sign-in"
-                                        variant="secondary"
-                                        size="sm"
-                                        onClick={() => void loadModels()}
-                                    />
-                                </HStack>
+                                <ClaudeSignIn loadModels={loadModels} variant="secondary" />
                             )}
                         </Section>
                         <Divider />
