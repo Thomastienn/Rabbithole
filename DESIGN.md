@@ -111,9 +111,9 @@ typography:
     fontFeature: "\"tnum\""
   supporting:
     fontFamily: "Barlow, \"Segoe UI\", Helvetica, Arial, sans-serif"
-    fontSize: "12px"
+    fontSize: "13px"
     fontWeight: 400
-    lineHeight: 1.6667
+    lineHeight: 1.45
   micro:
     fontFamily: "Barlow, \"Segoe UI\", Helvetica, Arial, sans-serif"
     fontSize: "11px"
@@ -146,6 +146,12 @@ components:
     typography: "{typography.body}"
     rounded: "{rounded.element}"
     height: "32px"
+  button-default:
+    backgroundColor: "transparent"
+    textColor: "{colors.ink}"
+    typography: "{typography.body}"
+    rounded: "{rounded.element}"
+    height: "36px"
   button-ghost:
     backgroundColor: "transparent"
     textColor: "{colors.ink}"
@@ -330,7 +336,7 @@ All three faces are self-hosted (`@fontsource`). Settings offers System for the 
 - **Body small** (Barlow 400/500/600, 13px, 1.35): sidebar rows, settings keys, connection status. Code inside replies is 13px/1.6.
 - **Label** (Semi Condensed 600, 12px, 1.2, 0.07em, uppercase, muted): section labels (CONTENTS, FIGURES, RESOURCES), date groups, table headers.
 - **Chip** (Semi Condensed 700, 12px, 1, 0.02em, tabular figures): address chips in text, on map cards and in breadcrumbs.
-- **Supporting** (Barlow 400, 12px, 1.6667): reply status, dates, map card previews, counts.
+- **Supporting** (Barlow 400, 13px, 1.45): hints, option descriptions, reply status, dates, map card previews, counts.
 - **Micro** (Barlow, 11px): chart axes and scale in Usage, attachment type badges (700). Nothing is set smaller.
 
 ### Named Rules
@@ -345,7 +351,7 @@ The grid is an 8px module (`--rabbithole-module`); gaps, bands and columns are m
 - **Desktop shell (no top bar).** A 272px sidebar on the deep field holds, top to bottom: wordmark, New chat (porcelain) with search beside it, the six views, the tree title, Contents as a vertical route strip, Figures, Resources, the context meter, then Settings (and Downloads only while the list is non-empty) pinned at the foot. The whole sidebar scrolls as one.
 - **Reading column.** The focused chat owns the centre at a 640px measure with 44px gutters (32px top, 24px bottom). The chat header row sits above on a seam; the composer floats at the foot on the ground colour, same width.
 - **Docked map.** To the right of the reading column behind a resizable seam, on the deep field, 440px by default. Below 1024px the docked map hides and Map stays one click away in the sidebar. Expand chat hides the map.
-- **Pages.** Library, Knowledge, Videos and Pieces sit on one 70rem column with Return to learning tree above the head. Settings is 1120px max with a 216px sticky section nav beside a 640px content column, 48px apart.
+- **Pages.** Library, Knowledge, Videos and Pieces sit on one 70rem column with Return to learning tree above the head. Settings is 70rem max with a 200px sticky section nav beside a 640px content column, 48px apart.
 - **Library shelf.** An auto-fill grid of cards at least 208px wide, 16px gaps.
 - **Narrow (48rem and below).** A 52px header on the deep field with menu, wordmark, search and New chat; the drawer holds the whole sidebar. One pane at a time; the reading gutters shrink to 16px; nothing scrolls sideways.
 
@@ -378,14 +384,19 @@ The system is flat. Depth is three tonal layers (deep field below, ground, raise
 
 ### Buttons
 Plain and quiet, with one porcelain action.
-- **Shape:** gently rounded (8px), 32px tall.
+- **Shape:** gently rounded (8px), 32px tall; the default button is 36px (30px small, at 13px).
 - **Primary:** porcelain fill with on-porcelain text: New chat, Send, the primary of a dialog.
+- **Default:** transparent with a 1px inset outline in ink at 40% and semibold ink text; hover lays the theme's gray tint. Settings actions, dialog secondaries.
 - **Ghost:** transparent with ink text and muted icon; hover lays a 6 to 8% porcelain tint, pressed 12 to 14%.
 - **Focus:** the one focus ring (see Inputs for the exception).
 - **Disabled:** muted ink at 65%.
+- **Segmented choice:** a 36px raised-enamel track with 3px padding; the chosen 30px segment is porcelain with on-porcelain 600 text.
+- **Select button:** 36px, like the default button.
+- **Progress bar:** porcelain fill on a hairline-seam track.
 
 ### Chips
 - **Address chip:** filled with its conversation's line colour (porcelain for the trunk), on-porcelain text, Semi Condensed 700 12px with tabular figures, 4px corners, padding 3px 6px 2px. It leads every conversation title (title chip: 16px, padding 5px 8px 4px), map card headers and the current breadcrumb, and follows a branched passage in a reply (aria-hidden there).
+- **Key chip:** one keyboard shortcut (Ctrl K is one chip; the Settings key list shows one per key): 18px tall, 1px seam outline, 4px corners, no fill, muted Semi Condensed 600 12px. The search window's footer chips are the exception: 20px, filled neutral, Barlow 600 12px.
 - **Attachment and media chips on map cards:** deep field fill, ink text, 8px corners, 24px tall.
 
 ### Cards / Containers
@@ -397,7 +408,7 @@ Plain and quiet, with one porcelain action.
 
 ### Inputs / Fields
 - **Style:** Astryx fields on raised enamel with a seam frame and 8px corners. The composer is raised enamel, 8px, a 1.5px strong seam, padding 12px 10px 10px 16px.
-- **Focus:** fields show focus on their own frame (the composer frame turns porcelain); the control inside draws no second ring. The title search palette has no frame; its seam underline turns porcelain instead.
+- **Focus:** fields show focus on their own frame (the composer frame turns porcelain); the control inside draws no second ring. The search window is framed by a 1.5px strong seam; its 56px input sits on a strong-seam underline, with an Esc key chip at its end.
 - **Error:** scarlet text with words beneath the field.
 
 ### Navigation
