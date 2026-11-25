@@ -154,7 +154,10 @@ test('the tool-path tutor prompt before learner data is no larger than before vi
     // The bold-term suggestion sentence (docs/reply-reading-polish-spec.md) is allowed on top.
     const BOLD =
         'When you would bold a term because it matters, the learner may not fully understand it yet, so mark it as a suggestion instead of only bolding it. ';
-    const MARKER_BEFORE = 9987 + 6121 + BOLD.length;
+    // So is the concept mark form (ADR 0023).
+    const CONCEPT_MARK =
+        ' as plain [[words]]; only when the shown words stand for a longer or more specific concept, name it first with a bar, as in "a [[safe state|safe]] one", and the learner sees only the words after the bar. In a table row write the bar as \\|.';
+    const MARKER_BEFORE = 9987 + 6121 + BOLD.length + CONCEPT_MARK.length;
     for (const prompt of [native, text])
         assert.ok(prompt.length + definitions.length <= MARKER_BEFORE, `${prompt.length}`);
     for (const part of [
