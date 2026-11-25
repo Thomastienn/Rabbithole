@@ -396,3 +396,40 @@ test('live, a clip with sound starts at its cut narration pause, and its own sou
     ]);
     await after.cleanup();
 });
+
+test('a saved unexported video fetches its cuts once instead of polling', async (t) => {
+    const requests = [];
+    const delivered = Promise.withResolvers();
+    fakeServer(t, (url) => {
+        requests.push(url);
+        return {
+            ok: true,
+            json: async () => ({
+                paletteRoles: {},
+                cuts: [{ engine: 'remotion', playable: true, code: 'x', timing: timing(75) }],
+            }),
+            blob: async () => new Blob(['audio'], { type: 'audio/mpeg' }),
+        };
+    });
+    const artifact = {
+        id: 'v1',
+        title: 'Saved',
+        description: 'A saved video.',
+        conversation: 'root',
+        status: 'ready',
+        exported: false,
+    };
+    const { container, act, cleanup } = await render(h(VideoCard, { artifact }), ui);
+    t.after(cleanup);
+    const frame = container.querySelector('iframe');
+    frame.contentWindow.postMessage = () => delivered.resolve();
+    await act(async () => frame.dispatchEvent(new window.Event('load')));
+    await act(async () => {
+        await delivered.promise;
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+    });
+    assert.deepEqual(requests, [
+        '/api/trees/root/artifacts/v1/cuts',
+        '/api/trees/root/artifacts/v1/cuts/0/narration',
+    ]);
+});

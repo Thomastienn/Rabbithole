@@ -202,7 +202,7 @@ export default function VideoCard({
                 >
                     {state === 'pending' && !inline && !live && <Skeleton />}
                     {(live || (state === 'ready' && !exported)) && (
-                        <LivePlayer cuts={cuts} title={artifact.title} />
+                        <LivePlayer cuts={cuts} title={artifact.title} pending={live} />
                     )}
                     {live && drafting && (
                         <span className="video-draft-bar" aria-hidden>

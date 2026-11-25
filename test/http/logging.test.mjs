@@ -79,6 +79,8 @@ test('static assets, media files and polling are silent; API query strings and a
         `/api/trees/${tree.id}`,
         `/api/trees/${tree.id}/artifacts/missing`,
         `/api/videos/missing/media`,
+        `/api/videos/missing/cuts`,
+        `/api/videos/missing/cuts/0/narration`,
         '/missing-static.js',
     ])
         await (await env.get(path)).text();

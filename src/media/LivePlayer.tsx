@@ -17,7 +17,16 @@ type LiveCuts = {
 
 // Plays a pending video's ready cuts inside the opaque-origin player frame. The app fetches cut code, narration
 // and clips from its own API and hands them over as data; the frame itself has no network.
-export default function LivePlayer({ cuts, title }: { cuts: string; title: string }) {
+// A saved video's cuts never change, so it fetches them once; a pending one polls for new cuts.
+export default function LivePlayer({
+    cuts,
+    title,
+    pending,
+}: {
+    cuts: string;
+    title: string;
+    pending: boolean;
+}) {
     const frame = useRef<HTMLIFrameElement>(null);
     const [loaded, setLoaded] = useState(false);
     useEffect(() => {
@@ -73,6 +82,7 @@ export default function LivePlayer({ cuts, title }: { cuts: string; title: strin
                                 '*',
                             );
                         }
+                        if (!pending) return;
                     }
                 } catch {}
                 await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -81,7 +91,7 @@ export default function LivePlayer({ cuts, title }: { cuts: string; title: strin
         return () => {
             stopped = true;
         };
-    }, [loaded, cuts]);
+    }, [loaded, cuts, pending]);
     return (
         <iframe
             ref={frame}
