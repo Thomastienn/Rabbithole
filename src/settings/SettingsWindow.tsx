@@ -24,6 +24,7 @@ import SearchSettings from './SearchSettings';
 import TutorToolsSettings from './TutorToolsSettings';
 import AddonsSettings from './AddonsSettings';
 import UsageDashboard from '../usage/UsageDashboard';
+import CliInstall from '../shell/CliInstall';
 import type { Model } from './models';
 import type { ModelSelection } from '../chat/types';
 import type { Appearance, ThemeChoice } from '../shell/appearance';
@@ -277,7 +278,13 @@ export default function SettingsWindow({
                             title="Claude"
                             description="Uses your own Claude plan through Claude Code on this computer."
                         >
-                            {providers && !modelError && providers.claude?.connected ? (
+                            {providers?.claude?.installed === false ? (
+                                <CliInstall
+                                    cli="claude"
+                                    command={providers.claude.command}
+                                    check={() => void loadModels()}
+                                />
+                            ) : providers && !modelError && providers.claude?.connected ? (
                                 <Done>Claude: signed in through Claude Code</Done>
                             ) : (
                                 <Text type="supporting">
@@ -292,19 +299,27 @@ export default function SettingsWindow({
                                     {modelError}
                                 </Text>
                             )}
-                            {!providers?.claude?.connected && (
-                                <HStack>
-                                    <Button
-                                        label="Check Claude sign-in"
-                                        variant="secondary"
-                                        size="sm"
-                                        onClick={() => void loadModels()}
-                                    />
-                                </HStack>
-                            )}
+                            {!providers?.claude?.connected &&
+                                providers?.claude?.installed !== false && (
+                                    <HStack>
+                                        <Button
+                                            label="Check Claude sign-in"
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() => void loadModels()}
+                                        />
+                                    </HStack>
+                                )}
                         </Section>
                         <Divider />
                         <Section title="Codex" description="Uses your own ChatGPT plan.">
+                            {providers?.codex?.installed === false && (
+                                <CliInstall
+                                    cli="codex"
+                                    command={providers.codex.command}
+                                    check={() => void loadModels()}
+                                />
+                            )}
                             {auth?.connected ? (
                                 <Done>Codex: connected {auth.email ?? 'to ChatGPT'}</Done>
                             ) : (

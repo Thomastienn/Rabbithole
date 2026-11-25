@@ -102,3 +102,33 @@ test('desktop Settings shows the update state and can apply an update without th
     await page.act(async () => button(foot, 'Restart to update').click());
     assert.equal(asked.at(-1), 'restart');
 });
+
+test('Connections offers Install and the shown command for a missing CLI, beside the ChatGPT sign-in', async (t) => {
+    const calls = fakeServer(t, (path) => (path === '/api/settings/endpoints' ? [] : {}));
+    globalThis.EventSource = class {
+        close() {}
+    };
+    t.after(() => delete globalThis.EventSource);
+    const command =
+        'powershell -ExecutionPolicy ByPass -c "irm https://chatgpt.com/codex/install.ps1 | iex"';
+    const page = await render(
+        h(SettingsWindow, {
+            ...settings().props,
+            providers: {
+                claude: { label: 'Claude', connected: true, installed: true },
+                codex: { label: 'Codex', connected: false, installed: false, command },
+            },
+        }),
+        ui,
+    );
+    t.after(page.cleanup);
+    await page.act(async () => document.getElementById('settings-connections').click());
+    const section = page.container.querySelector(
+        '[aria-labelledby="settings-section-connections"]',
+    );
+    assert.ok(section.textContent.includes(command));
+    assert.equal(button(section, 'Install Claude Code'), undefined, 'an installed CLI offers none');
+    assert.ok(button(section, 'Continue with ChatGPT'));
+    await page.act(async () => button(section, 'Install Codex').click());
+    assert.ok(calls.some((c) => c.path === '/api/downloads/install/codex'));
+});

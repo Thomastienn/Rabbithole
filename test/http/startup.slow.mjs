@@ -41,7 +41,7 @@ test('main starts an old database without providers; busy port explains how to c
         assert.match(running.output(), /Claude Code: not installed/);
         assert.match(running.output(), /claude.ai\/install.sh/);
         assert.match(running.output(), /Codex: not installed/);
-        assert.match(running.output(), /npm install -g @openai\/codex/);
+        assert.match(running.output(), /chatgpt.com\/codex\/install.sh/);
         assert.match(running.output(), /Continue with ChatGPT/);
         assert.ok(running.output().includes(dir));
         const state = await (await fetch(origin + '/api/state')).json();

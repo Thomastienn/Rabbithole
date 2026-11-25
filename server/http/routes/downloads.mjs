@@ -1,3 +1,5 @@
+import { cliInstaller, installable } from '../../providers/install.mjs';
+
 // The download list streams as server-sent events; the actions are Retry and "seen". Add-ons list, install and retry by id.
 export async function downloadRoutes(req, res, url, ctx) {
     const { downloads, json } = ctx;
@@ -20,6 +22,13 @@ export async function downloadRoutes(req, res, url, ctx) {
     if (req.method !== 'POST') return false;
     if (url.pathname === '/api/downloads/seen') {
         downloads.seen();
+        return json(res, 200, downloads.list());
+    }
+    // Claude Code or Codex: their installer runs at once, listed like a download.
+    const cli = url.pathname.match(/^\/api\/downloads\/install\/(\w+)$/);
+    if (cli) {
+        if (!installable(cli[1])) return json(res, 404, { error: 'No such tool.' });
+        void downloads.now(cliInstaller(cli[1]));
         return json(res, 200, downloads.list());
     }
     // Retry is an install that queues again only what failed.

@@ -160,6 +160,14 @@ export function downloadManager(tools, { file = null } = {}) {
             ...(failed && { error: failed.error }),
         };
     };
+    // Runs a tool at once, beside the add-on queue, as a listed download; asking while it runs joins it.
+    const now = (tool) => {
+        const item = items.get(tool.id) ?? { id: tool.id, name: tool.name, tool, now: true };
+        if (item.state === 'running') return item.done;
+        item.seen = false;
+        items.set(item.id, item);
+        return (item.done = run(item));
+    };
     return {
         list,
         addons: () => ADDONS.map(addonView),
@@ -191,10 +199,12 @@ export function downloadManager(tools, { file = null } = {}) {
             await queue(addon);
             return true;
         },
+        now,
         retry(id) {
             const item = items.get(id);
             if (item?.state !== 'failed') return false;
-            enqueue(item);
+            if (item.now) void now(item.tool);
+            else enqueue(item);
             return true;
         },
         seen() {
