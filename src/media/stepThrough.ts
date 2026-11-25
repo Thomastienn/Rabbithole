@@ -85,7 +85,10 @@ export function stepThrough(root: HTMLElement, steps: Step[], duration = 300) {
         show(index + step);
     });
     // Space activates a button on keyup; the keydown above already stepped.
-    controls.addEventListener('keyup', (event) => event.key === ' ' && event.preventDefault());
+    controls.addEventListener('keyup', (event) => {
+        if (event.key === ' ' && (event.target === previous || event.target === next))
+            event.preventDefault();
+    });
     // The host opens a branched visual part at the step it was picked on.
     controls.addEventListener('tt-show', (event) => show((event as CustomEvent).detail, false));
     // Root keeps its tallest step's height, so stepping never moves the controls or rescales the frame.

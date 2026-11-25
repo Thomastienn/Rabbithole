@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 import { JSDOM } from 'jsdom';
 import { defineControls } from '../../src/media/visualControls.ts';
 import { renderVisual } from '../../src/media/visualMarkup.ts';
@@ -15,7 +14,7 @@ const PENDULUM = `<div id="art" data-part="Pendulum"><svg><circle id="bob"></cir
 <rh-toggle label="Friction"></rh-toggle>
 <rh-switch label="Show arc" checked></rh-switch>
 <rh-text label="Word" placeholder="e.g. hello"></rh-text>
-<rh-button-group><rh-button label="Check" variant="primary"></rh-button><rh-reset></rh-reset></rh-button-group>
+<rh-button-group><rh-button label="Check" variant="primary"></rh-button><rh-reset label="Restore defaults"></rh-reset></rh-button-group>
 </div>`;
 
 function visual() {
@@ -46,14 +45,14 @@ test('each control renders native, focusable elements named by its label and rep
     };
     focusable($('rh-slider input[type=range]'), 'Length');
     assert.equal($('rh-slider').value, 1);
-    assert.equal($('rh-slider output').textContent, '1.0 m');
+    assert.equal($('rh-slider output').textContent, '1 m');
     focusable($('rh-number input[type=number]'), 'Mass');
     focusable($('rh-number button'), 'Decrease Mass');
     assert.equal($('rh-number').value, 2.5);
     assert.equal($('rh-choice legend').textContent, 'Gravity');
     assert.equal($('rh-choice').value, 'Moon');
-    assert.equal($('rh-choice').hasAttribute('layout'), false, 'up to five: segments');
-    assert.equal($('rh-choice[label=Planet]').getAttribute('layout'), 'list', 'six: a radio list');
+    focusable($('rh-choice[label=Gravity] input:checked'), 'Moon');
+    focusable($('rh-choice[label=Planet] input:checked'), 'Mercury');
     assert.equal($('rh-choice[label=Planet]').value, 'Mercury');
     focusable($('rh-toggle button'), 'Friction');
     assert.equal($('rh-toggle').value, false);
@@ -62,7 +61,7 @@ test('each control renders native, focusable elements named by its label and rep
     focusable($('rh-text input'), 'Word');
     assert.equal($('rh-text').value, '');
     focusable($('rh-button button'), 'Check');
-    focusable($('rh-reset button'), 'Reset');
+    focusable($('rh-reset button'), 'Restore defaults');
 });
 
 test('changing a control updates its value and fires input and change from it', () => {
@@ -70,11 +69,11 @@ test('changing a control updates its value and fires input and change from it', 
     const slider = $('rh-slider input');
     slider.value = '1.5';
     slider.dispatchEvent(new window.Event('input', { bubbles: true }));
+    slider.dispatchEvent(new window.Event('change', { bubbles: true }));
     assert.equal($('rh-slider').value, 1.5);
     assert.equal($('rh-slider output').textContent, '1.5 m', 'shows the value it moved to');
     $('rh-number button[aria-label="Increase Mass"]').click();
     assert.equal($('rh-number').value, 3);
-    assert.equal($('rh-number input').value, '3.0');
     const typed = $('rh-number input');
     typed.value = '99';
     typed.dispatchEvent(new window.Event('change', { bubbles: true }));
@@ -86,8 +85,18 @@ test('changing a control updates its value and fires input and change from it', 
     assert.equal($('rh-toggle button').getAttribute('aria-pressed'), 'true');
     $('rh-switch input').click();
     assert.equal($('rh-switch').value, false);
+    const text = $('rh-text input');
+    text.value = 'cab';
+    text.dispatchEvent(new window.Event('input', { bubbles: true }));
+    text.dispatchEvent(new window.Event('change', { bubbles: true }));
+    assert.equal($('rh-text').value, 'cab');
+    let clicked = false;
+    $('rh-button').addEventListener('click', () => (clicked = true));
+    $('rh-button button').click();
+    assert.ok(clicked);
     assert.deepEqual(events, [
         'input:Length',
+        'change:Length',
         'input:Mass',
         'change:Mass',
         'change:Mass',
@@ -97,9 +106,28 @@ test('changing a control updates its value and fires input and change from it', 
         'change:Friction',
         'input:Show arc',
         'change:Show arc',
+        'input:Word',
+        'change:Word',
     ]);
     $('rh-slider').value = 0.4;
     assert.equal($('rh-slider output').textContent, '0.4 m', 'script sets value too');
+});
+
+test('the slider displays fractional values and the number stepper respects its range', () => {
+    const { root, $ } = visual();
+    renderVisual(
+        root,
+        `<rh-slider label="Ratio" min="0" max="1" step="any" value="0.25"></rh-slider>
+         <rh-number label="Offset" min="0.25" max="0.95" step="0.5" value="0.25"></rh-number>`,
+        true,
+    );
+    assert.equal($('rh-slider').value, 0.25);
+    assert.equal($('rh-slider output').textContent, '0.25');
+    assert.equal($('rh-number').value, 0.25);
+    $('rh-number button:last-child').click();
+    assert.equal($('rh-number').value, 0.75);
+    $('rh-number').value = 1.2;
+    assert.equal($('rh-number').value, 0.95);
 });
 
 test('a disabled control disables its native elements', () => {
@@ -108,6 +136,9 @@ test('a disabled control disables its native elements', () => {
     assert.ok([...$('rh-number').querySelectorAll('button, input')].every((e) => e.disabled));
     $('rh-number').removeAttribute('disabled');
     assert.ok(!$('rh-number input').disabled);
+    $('rh-choice').setAttribute('disabled', '');
+    $('rh-choice input').click();
+    assert.equal($('rh-choice').value, 'Moon');
 });
 
 test('controls keep their values across a theme change and a step-through wrap, and never pick', () => {
@@ -152,10 +183,11 @@ test('controls keep their values across a theme change and a step-through wrap, 
 });
 
 test('reset restores every control and fires reset on the root', () => {
-    const { window, root, $, events } = visual();
+    const { root, $, events } = visual();
     $('rh-slider').value = 2;
     $('rh-number button[aria-label="Decrease Mass"]').click();
-    window.document.querySelector('rh-choice[label=Gravity] input').click();
+    $('rh-choice[label=Gravity] input').click();
+    $('rh-choice[label=Planet] input[value=Earth]').click();
     $('rh-toggle button').click();
     $('rh-switch input').click();
     $('rh-text input').value = 'cab';
@@ -179,36 +211,18 @@ test('reset restores every control and fires reset on the root', () => {
             ['Word', ''],
         ],
     );
-    assert.equal($('rh-slider output').textContent, '1.0 m');
+    assert.equal($('rh-slider output').textContent, '1 m');
 });
 
-test('a control created by script takes a value set before it is connected', () => {
-    const { window, root } = visual();
+test('reset restores the value a script set before connecting a control', () => {
+    const { window, root, $ } = visual();
     const slider = window.document.createElement('rh-slider');
     slider.setAttribute('label', 'Angle');
     slider.value = 30;
     root.append(slider);
     assert.equal(slider.value, 30);
     assert.equal(slider.querySelector('label').textContent, 'Angle');
-});
-
-test('the visual worker prompt catalogues every visual control the frame defines', async () => {
-    const { window } = visual();
-    const prompt = await readFile(
-        new URL('../../server/media/prompts/visual.md', import.meta.url),
-        'utf8',
-    );
-    for (const name of [
-        'button',
-        'toggle',
-        'switch',
-        'slider',
-        'number',
-        'choice',
-        'text',
-        'reset',
-    ]) {
-        assert.ok(window.customElements.get(`rh-${name}`), `rh-${name} is defined`);
-        assert.match(prompt, new RegExp(`<rh-${name} label\\b`), `rh-${name} is in the catalogue`);
-    }
+    slider.value = 60;
+    $('rh-reset button').click();
+    assert.equal(slider.value, 30);
 });

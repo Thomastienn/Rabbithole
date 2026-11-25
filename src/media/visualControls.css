@@ -67,11 +67,6 @@
 :where(rh-toggle) > :where(button[aria-pressed='false']) svg {
     display: none;
 }
-:where(rh-button, rh-toggle, rh-reset, rh-switch, rh-slider, rh-number, rh-choice, rh-text)
-    :where(:disabled) {
-    opacity: 0.45;
-    cursor: not-allowed;
-}
 :where(rh-switch label) {
     display: inline-flex;
     align-items: center;
@@ -243,7 +238,7 @@
     color: var(--color-text-secondary);
     cursor: pointer;
 }
-:where(rh-choice .seg label:hover) {
+:where(rh-choice .seg label:hover:has(> input:enabled)) {
     color: var(--color-text-primary);
 }
 :where(rh-choice .seg label:has(:checked)) {
@@ -295,6 +290,11 @@
     height: 8px;
     border-radius: 50%;
     background: var(--color-accent);
+}
+:where(rh-button, rh-toggle, rh-reset, rh-slider, rh-number, rh-text) :where(:disabled),
+:where(rh-choice label:has(> input:disabled), rh-switch label:has(> input:disabled)) {
+    opacity: 0.45;
+    cursor: not-allowed;
 }
 :where(rh-button, rh-toggle, rh-reset, rh-switch, rh-slider, rh-number, rh-choice, rh-text)
     :focus-visible {

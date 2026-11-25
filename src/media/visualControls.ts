@@ -10,7 +10,6 @@ const PATHS = {
 };
 const icon = (name: keyof typeof PATHS) =>
     `<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="${PATHS[name]}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-const decimals = (step: string) => step.split('.')[1]?.length ?? 0;
 
 export function defineControls(view: Window & typeof globalThis) {
     if (view.customElements.get('rh-button')) return;
@@ -49,8 +48,8 @@ export function defineControls(view: Window & typeof globalThis) {
             this.replaceChildren();
             this.render(label);
             this.built = true;
-            this.initial = this.read();
             if (this.pending) this.write(this.pending.value);
+            this.initial = this.read();
             this.attributeChangedCallback();
         }
         attributeChangedCallback() {
@@ -132,8 +131,8 @@ export function defineControls(view: Window & typeof globalThis) {
             this.paint();
         }
         private paint() {
-            const { min, max, step, value } = this.input;
-            this.shown.textContent = (+value).toFixed(decimals(step));
+            const { min, max, value } = this.input;
+            this.shown.textContent = value;
             this.input.style.setProperty(
                 '--fill',
                 `${((+value - +min) / (+max - +min || 1)) * 100}%`,
@@ -158,11 +157,13 @@ export function defineControls(view: Window & typeof globalThis) {
             for (const name of ['min', 'max'])
                 if (this.hasAttribute(name)) this.input.setAttribute(name, this.attr(name));
             this.write(this.attr('value', '0'));
+            this.input.defaultValue = this.input.value;
             const stepper = (sign: number, name: 'minus' | 'plus', verb: string) => {
                 const button = make('button', { type: 'button', innerHTML: icon(name) });
                 button.setAttribute('aria-label', `${verb} ${label}`);
                 button.addEventListener('click', () => {
-                    this.write(this.read() + sign * +step);
+                    if (step === 'any') this.write(this.read() + sign);
+                    else this.input.stepUp(sign);
                     fire(this.input, 'input', 'change');
                 });
                 return button;
@@ -171,7 +172,7 @@ export function defineControls(view: Window & typeof globalThis) {
             if (this.hasAttribute('unit'))
                 box.append(make('span', { className: 'unit' }, this.attr('unit')));
             box.append(stepper(1, 'plus', 'Increase'));
-            // A typed value outside the range or off the number line clamps once it settles.
+            // Clamp typed values once the learner finishes editing.
             this.input.addEventListener('change', () => this.write(this.read()));
             this.append(make('label', { htmlFor: id }, label), box);
         }
@@ -179,12 +180,11 @@ export function defineControls(view: Window & typeof globalThis) {
             return +this.input.value || 0;
         }
         protected write(value: unknown) {
-            const { min, max, step } = this.input,
-                clamped = Math.min(
-                    +(max || Infinity),
-                    Math.max(+(min || -Infinity), Number(value) || 0),
-                );
-            this.input.value = clamped.toFixed(decimals(step));
+            const input = this.input;
+            const number = Number(value);
+            input.value = Number.isFinite(number) ? String(number) : '0';
+            if (input.validity.rangeUnderflow) input.value = input.min;
+            if (input.validity.rangeOverflow) input.value = input.max;
         }
     }
 

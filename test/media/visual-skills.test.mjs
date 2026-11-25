@@ -49,6 +49,40 @@ async function loadSkill(tree, name, signal) {
 const run = (provider, tools) =>
     generateVisual(provider, {}, input, new AbortController().signal, 10000, () => {}, tools);
 
+test('the visual writer receives the input kit catalogue', async () => {
+    const visual = '<rh-button label="Check" variant="primary"></rh-button>';
+    const provider = writer([async () => visual]);
+    assert.equal(await run(provider), visual);
+    const { instructions } = provider.calls[0].tree;
+    for (const [tag, attributes] of Object.entries({
+        button: ['label', 'variant'],
+        'button-group': [],
+        toggle: ['label', 'pressed'],
+        switch: ['label', 'checked'],
+        slider: ['label', 'min', 'max', 'step', 'unit', 'value'],
+        number: ['label', 'min', 'max', 'step', 'unit', 'value'],
+        choice: ['label', 'options', 'value'],
+        text: ['label', 'placeholder', 'value'],
+        reset: ['label'],
+    })) {
+        const entry = new RegExp(`<rh-${tag}(?: ([^>]*))?>`).exec(instructions);
+        assert.ok(entry, `rh-${tag} is available to the writer`);
+        for (const attribute of attributes)
+            assert.match(entry[1], new RegExp(`\\b${attribute}\\b`));
+    }
+    for (const term of [
+        'primary',
+        'secondary',
+        'quiet',
+        'disabled',
+        'input',
+        'change',
+        'click',
+        'reset',
+    ])
+        assert.match(instructions, new RegExp(`\\b${term}\\b`));
+});
+
 test('a writer that loads threejs gets its text and its 3D visual is accepted', async () => {
     const mcp = toolMcp();
     let loaded;
