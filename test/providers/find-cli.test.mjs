@@ -206,6 +206,25 @@ test('Claude sign-in returns the address the CLI prints and joins a running sign
     assert.equal(await again, null);
 });
 
+test('Claude sign-in that prints no address for 20 seconds is stopped and needs a terminal', async (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    let killed = false;
+    const claude = new Claude(
+        mkdtempSync(join(tmpdir(), 'tt-claude-login-')),
+        () => {
+            const c = child(() => {});
+            c.kill = () => ((killed = true), c.emit('close', null));
+            return c;
+        },
+        null,
+        () => '/bin/claude',
+    );
+    const started = claude.login();
+    t.mock.timers.tick(20_000);
+    assert.equal(await started, null);
+    assert.ok(killed);
+});
+
 test('Codex launches the found path; a missing CLI fails its model list', async () => {
     const commands = [];
     let bin = null;
