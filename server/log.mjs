@@ -1,3 +1,4 @@
+import { validUsage } from './store/usage.mjs';
 import { collectText } from './providers/chatStream.mjs';
 import { withoutPaths } from './media/video-sandbox.mjs';
 
@@ -140,11 +141,7 @@ export function loggedProvider(log, provider, task, id, selection, detail = {}) 
                 (signal?.aborted && !timedOut && streamed.status !== 'completed') ||
                 streamed.status === 'interrupted';
             const failed = failure || timedOut || streamed.status === 'failed';
-            const valid =
-                usage &&
-                ['input', 'output', 'cacheRead'].every(
-                    (k) => Number.isSafeInteger(usage[k]) && usage[k] >= 0,
-                );
+            const valid = usage && validUsage(usage);
             log(
                 formatLog(
                     failed && !stopped ? 'error' : 'info',

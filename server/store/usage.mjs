@@ -1,3 +1,7 @@
+// A usage report counts only when input, output and cache-read are non-negative safe integers.
+export const validUsage = (usage) =>
+    ['input', 'output', 'cacheRead'].every((k) => Number.isSafeInteger(usage[k]) && usage[k] >= 0);
+
 export const usage = {
     // Only reported usage is saved; NULL means the provider did not report it.
     usage(id, usage) {
@@ -7,13 +11,7 @@ export const usage = {
     },
     // One row per call: streamed measurements replace its counts; an unreported finish cannot erase them.
     record(id, task, selection, usage, at = Date.now(), message = null, stage = null, cut = null) {
-        if (
-            usage &&
-            !['input', 'output', 'cacheRead'].every(
-                (k) => Number.isSafeInteger(usage[k]) && usage[k] >= 0,
-            )
-        )
-            usage = null;
+        if (usage && !validUsage(usage)) usage = null;
         const reasoning =
             Number.isSafeInteger(usage?.reasoning) && usage.reasoning >= 0 ? usage.reasoning : null;
         this.db

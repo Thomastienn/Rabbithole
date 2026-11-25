@@ -1,5 +1,5 @@
 import { isEndpoint } from '../http/roles.mjs';
-import { readPage } from './readPage.mjs';
+import { readPage, site } from './readPage.mjs';
 import { pythonWorkspace } from './python.mjs';
 import { applyMemoryEdit, MEMORY_EDIT } from './memoryNote.mjs';
 
@@ -174,13 +174,6 @@ const TOOLS = {
     },
 };
 
-const site = (url) => {
-    try {
-        return new URL(url).hostname.replace(/^www\./, '');
-    } catch {
-        return '';
-    }
-};
 const cite = (n) => `Resource ${n}; cite it as [${n}](resource:${n}).`;
 
 // Pages, saved files and found images become resources of the learning tree; the model learns their numbers.

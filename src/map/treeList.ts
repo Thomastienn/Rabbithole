@@ -70,6 +70,11 @@ export function conversationAddresses(trees: readonly LearningTree[]) {
     }
     return out;
 }
+// The trunk above a conversation; a parent missing from the list ends the walk, as in conversationAddresses.
+export function rootOf<T extends { parent: string | null }>(c: T, byId: ReadonlyMap<string, T>) {
+    while (c.parent && byId.has(c.parent)) c = byId.get(c.parent)!;
+    return c;
+}
 // A conversation and every descendant: what deleting it removes.
 // Breadth-first, siblings in list order; grouping by parent keeps it linear in the library size.
 export function subtreeIds(id: string, trees: readonly { id: string; parent: string | null }[]) {

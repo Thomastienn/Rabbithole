@@ -89,6 +89,15 @@ function request(url, signal, lookup, isPublic) {
     });
 }
 
+// A URL's host without www., or '' when it does not parse.
+export const site = (url) => {
+    try {
+        return new URL(url).hostname.replace(/^www\./, '');
+    } catch {
+        return '';
+    }
+};
+
 export async function follow(url, signal, lookup, isPublic, protocolError) {
     let target = url;
     for (let redirects = 0; ; redirects++) {

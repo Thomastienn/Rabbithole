@@ -1,3 +1,4 @@
+import { validUsage } from '../store/usage.mjs';
 import { replyArtifacts } from './reply-artifacts.mjs';
 import { appCalls, isAppTool } from './app-calls.mjs';
 import { markerNotes } from '../media/markers.mjs';
@@ -117,13 +118,7 @@ export function replyTurn(
                 : null,
         );
         // Provider-reported counts only; failed, partial and canceled replies keep no usage.
-        if (
-            usage &&
-            !['input', 'output', 'cacheRead'].every(
-                (k) => Number.isSafeInteger(usage[k]) && usage[k] >= 0,
-            )
-        )
-            usage = null;
+        if (usage && !validUsage(usage)) usage = null;
         if (status === 'completed' && usage)
             store.usage(reply, {
                 ...usage,
