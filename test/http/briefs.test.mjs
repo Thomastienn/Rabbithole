@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
-import { briefPrompt } from '../../server/http/jobs/briefs.mjs';
+import { briefPrompt, briefsPrompt } from '../../server/http/jobs/briefs.mjs';
 import { taskOf } from '../support/model-task.mjs';
 
 const PREFIX = briefPrompt('', '').split('{')[0];
@@ -84,7 +84,11 @@ test('a brief explanation is written once, shared, saved with usage, counted onc
         text: passage.text,
     };
     const brief = (body = anchor) => post(`/${id}/brief`, { ...body, suggestion: true });
-    assert.match(PREFIX, /about two or three short sentences/);
+    // Single briefs and batches share one style rule.
+    for (const prompt of [PREFIX, briefsPrompt('', [])]) {
+        assert.match(prompt, /two or three short sentences, every time, in plain everyday words/);
+        assert.doesNotMatch(prompt, /hard limit/);
+    }
     const mutex = () => store.graph().concepts.find((c) => c.name === 'Mutex');
     const briefEvents = () => store.usageEvents().events.filter((e) => e.task === 'brief');
     assert.equal(mutex().familiarity, 0.3);
@@ -218,6 +222,20 @@ test('a brief explanation is written once, shared, saved with usage, counted onc
         assert.equal((await (await brief(nextAnchor)).json()).explanation, 'Saved ahead.');
     assert.equal(prompts.length, asksBefore);
     assert.equal(total(), before + 1);
+
+    // Once the concept is observed, an on-demand brief is pitched to its familiarity.
+    await (await post(`/${id}/messages`, { text: 'And with three?' })).text();
+    await app.settled();
+    const third = store.tree(id).messages.at(-1);
+    const [pitched] = store.tree(id).suggestions.find((s) => s.message === third.id).passages;
+    await brief({
+        messageId: third.id,
+        start: pitched.start,
+        end: pitched.end,
+        text: pitched.text,
+    });
+    assert.equal(prompts.length, asksBefore + 1);
+    assert.equal(taskOf(prompts.at(-1)).familiarity, mutex().familiarity);
 });
 
 test('a brief batch saves each brief as its marker text streams, retries missed terms once, and leaves the rest on demand', async (t) => {

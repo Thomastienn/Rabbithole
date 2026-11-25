@@ -91,6 +91,9 @@ test('the teaching skill carries everyday-analogy guidance to replies, visuals a
     assert.ok(prompt.indexOf(ANALOGY_SKILL) < prompt.indexOf('Never use analogies.'));
     assert.ok(prompt.endsWith('Never use analogies.'));
     assert.ok(PLAN_INSTRUCTIONS.includes(TEACHING_SKILL));
+    // Every provider sends tutorSystem, so the familiarity-first guidance reaches each one.
+    assert.match(prompt, /Pitch each explanation to how well this learner knows the idea/);
+    assert.doesNotMatch(prompt, /Aim for what the idea is/);
     for (const rule of [DISCUSSION_RULE, DISCUSSION_TURN_RULE])
         assert.ok(!rule.includes(ANALOGY_SKILL));
 });
@@ -154,7 +157,10 @@ test('the tool-path tutor prompt before learner data is no larger than before vi
     // The bold-term suggestion sentence (docs/reply-reading-polish-spec.md) is allowed on top.
     const BOLD =
         'When you would bold a term because it matters, the learner may not fully understand it yet, so mark it as a suggestion instead of only bolding it. ';
-    const MARKER_BEFORE = 9987 + 6121 + BOLD.length;
+    // The familiarity-first teaching guidance and the now-and-then analogy wording (docs/plainer-teaching-concept-marks-and-return-to-passage-spec.md)
+    // replaced shorter text and are allowed on top: 474 and 51 characters.
+    const TEACHING = 474 + 51;
+    const MARKER_BEFORE = 9987 + 6121 + BOLD.length + TEACHING;
     for (const prompt of [native, text])
         assert.ok(prompt.length + definitions.length <= MARKER_BEFORE, `${prompt.length}`);
     for (const part of [
