@@ -27,8 +27,9 @@ selected, error) with realistic data.
    tokens whose role matches the mockup's. When a
    house component (Astryx) cannot reach the mockup's look, restyle or replace
    it: the mockup wins over reuse.
-2. **Render both.** Build the client to a temporary folder
-   (`npx vite build --outDir <tmp>`), serve it over a seeded fixture the way
+2. **Render both.** Build the client once in watch mode
+   (`npx vite build --watch --minify false --outDir <tmp>`, run in the
+   background: later edits rebuild in seconds, then reload the page), serve it over a seeded fixture the way
    `scripts/capture-finish.mjs` does (`createApp({ assets: '<tmp>' })`), with
    data shaped like the mockup's: the same number of items, every drawn state
    filled. Capture the mockup (`file://`) and the app with `agent-browser` at
@@ -36,7 +37,9 @@ selected, error) with realistic data.
    the mockup has a narrow view.
 3. **Compare** region by region and fix every structural difference and
    every colour used in the wrong role. A colour that differs only because the
-   theme differs is a match. Each image costs context, so keep the loop lean:
+   theme differs is a match. Try a CSS change live first by injecting the rule
+   with `agent-browser eval`, then write it to the file. Each image costs
+   context, so keep the loop lean:
    check sizes, spacing and fonts as text first (computed styles via
    `agent-browser eval`), screenshot only the region you are fixing
    (`agent-browser screenshot <selector>`), and iterate in one scheme. Take
