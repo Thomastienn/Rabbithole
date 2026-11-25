@@ -2,40 +2,76 @@
 // A fragment calls stepThrough(root, steps); each step moves the visual to that state.
 // A plain function continues the scene; { scene: true, show } fades root out, shows, fades in.
 // Previous and Next sit beside root, not below it, so a step that resizes root does not push them away.
+// Play walks the steps slowly with a hold on each; it starts only on the learner's click.
 type Show = (state: { index: number; duration: number }) => void;
 type Step = Show | { scene: true; show: Show };
 
-export function stepThrough(root: HTMLElement, steps: Step[], duration = 300) {
+const HOLD = 1000;
+const PLAY = '<path d="M5 3v10l8-5z" fill="currentColor"/>',
+    PAUSE =
+        '<path d="M5 3v10M11 3v10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>';
+const icon = (shape: string) =>
+    `<svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true">${shape}</svg>`;
+
+export function stepThrough(root: HTMLElement, steps: Step[], duration = 600) {
     const document = root.ownerDocument,
         view = document.defaultView!,
         controls = document.createElement('div'),
         previous = document.createElement('button'),
         next = document.createElement('button'),
+        play = document.createElement('button'),
         indicator = document.createElement('span');
     let index = 0,
-        pending: { timer: number; run: () => void } | undefined;
+        pending: { timer: number; run: () => void } | undefined,
+        playing: number | undefined,
+        // Play motion per step, 1.5 to 2.5 s by how many nodes the step changes; set by measure.
+        motion: number[] = [];
     controls.className = 'tt-steps';
     controls.setAttribute('role', 'group');
     controls.setAttribute('aria-label', 'Steps');
-    for (const [button, label, path] of [
-        [previous, 'Previous', 'M10 3 5 8l5 5'],
-        [next, 'Next', 'm6 3 5 5-5 5'],
-    ] as const) {
+    const label = (button: HTMLButtonElement, text: string, shape: string) => {
         button.type = 'button';
-        button.setAttribute('aria-label', label);
-        button.title = label;
-        button.innerHTML = `<svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true"><path d="${path}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-    }
+        button.setAttribute('aria-label', text);
+        button.title = text;
+        button.innerHTML = icon(shape);
+    };
+    const chevron = (path: string) =>
+        `<path d="${path}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+    label(previous, 'Previous', chevron('M10 3 5 8l5 5'));
+    label(next, 'Next', chevron('m6 3 5 5-5 5'));
+    label(play, 'Play', PLAY);
+    play.className = 'tt-play';
     indicator.setAttribute('aria-live', 'polite');
     root.replaceWith(controls);
-    controls.append(previous, root, next, indicator);
+    controls.append(previous, root, next, play, indicator);
 
-    const show = (target: number, animate = true) => {
+    const pause = () => {
+        if (playing === undefined) return;
+        view.clearTimeout(playing);
+        playing = undefined;
+        label(play, 'Play', PLAY);
+    };
+    // Under reduced motion steps switch instantly, but Play still waits the full step time.
+    const advance = (target: number) => {
+        const ms = motion[target] ?? 1500;
+        show(target, ms);
+        if (index === steps.length - 1) pause();
+        else playing = view.setTimeout(() => advance(index + 1), ms + HOLD);
+    };
+    const toggle = () => {
+        if (playing !== undefined) return pause();
+        label(play, 'Pause', PAUSE);
+        playing = 0; // marks Play on before the first step runs
+        advance(index === steps.length - 1 ? 0 : index + 1);
+    };
+    const stepTo = (target: number, ms = duration) => {
+        pause();
+        show(target, ms);
+    };
+
+    const show = (target: number, animate = duration) => {
         index = Math.max(0, Math.min(steps.length - 1, target));
-        const ms =
-            animate && !view.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-                ? duration
-                : 0;
+        const ms = view.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 0 : animate;
         root.style.setProperty('--step-duration', `${ms}ms`);
         // A step during a fade first finishes the pending scene so later steps start from it.
         if (pending) {
@@ -68,8 +104,14 @@ export function stepThrough(root: HTMLElement, steps: Step[], duration = 300) {
         )
             (previous.disabled ? next : previous).focus();
     };
-    previous.addEventListener('click', () => show(index - 1));
-    next.addEventListener('click', () => show(index + 1));
+    previous.addEventListener('click', () => stepTo(index - 1));
+    next.addEventListener('click', () => stepTo(index + 1));
+    play.addEventListener('click', toggle);
+    const buttons = new Map<EventTarget | null, number>([
+        [previous, -1],
+        [next, 1],
+        [play, 0],
+    ]);
     controls.addEventListener('keydown', (event) => {
         const arrows: Record<string, number> = {
             ArrowLeft: -1,
@@ -77,17 +119,19 @@ export function stepThrough(root: HTMLElement, steps: Step[], duration = 300) {
             ArrowRight: 1,
             ArrowDown: 1,
         };
-        const button = event.target === previous ? -1 : event.target === next ? 1 : 0;
-        if (!button) return; // keys inside the visual itself, such as a slider, are its own
-        const step = arrows[event.key] ?? (event.key === 'Enter' || event.key === ' ' ? button : 0);
-        if (!step) return;
-        event.preventDefault(); // stops the native click so Enter and Space step once
-        show(index + step);
+        const button = buttons.get(event.target);
+        if (button === undefined) return; // keys inside the visual itself, such as a slider, are its own
+        const activate = event.key === 'Enter' || event.key === ' ',
+            move = arrows[event.key] ?? (activate ? button : 0);
+        if (!move && !activate) return;
+        event.preventDefault(); // stops the native click so Enter and Space act once
+        if (move) stepTo(index + move);
+        else toggle();
     });
     // Space activates a button on keyup; the keydown above already stepped.
     controls.addEventListener('keyup', (event) => event.key === ' ' && event.preventDefault());
     // The host opens a branched visual part at the step it was picked on.
-    controls.addEventListener('tt-show', (event) => show((event as CustomEvent).detail, false));
+    controls.addEventListener('tt-show', (event) => stepTo((event as CustomEvent).detail, 0));
     // Root keeps its tallest step's height, so stepping never moves the controls or rescales the frame.
     // Steps are states by contract, so running each once at duration 0 is safe; measure again when width or fonts change.
     const measure = () => {
@@ -98,13 +142,29 @@ export function stepThrough(root: HTMLElement, steps: Step[], duration = 300) {
                 0,
             );
         let tallest = 0;
-        steps.forEach((step, i) => {
+        const changes = new view.MutationObserver(() => {});
+        changes.observe(root, {
+            subtree: true,
+            childList: true,
+            attributes: true,
+            characterData: true,
+        });
+        motion = steps.map((step, i) => {
             (typeof step === 'function' ? step : step.show)({ index: i, duration: 0 });
             tallest = Math.max(tallest, root.offsetHeight);
+            const changed = new Set(changes.takeRecords().map((record) => record.target)).size;
+            return Math.min(2500, 1500 + 100 * changed);
         });
+        changes.disconnect();
         if (tallest) root.style.minHeight = `${tallest - frame}px`;
-        show(index, false);
+        show(index, 0);
     };
+    // Play pauses when the visual scrolls out of view or the page is hidden.
+    if (view.IntersectionObserver)
+        new view.IntersectionObserver(([entry]) => entry.isIntersecting || pause()).observe(
+            controls,
+        );
+    document.addEventListener('visibilitychange', () => document.hidden && pause());
     measure();
     let width = root.offsetWidth;
     view.addEventListener('resize', () => {
