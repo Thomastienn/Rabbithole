@@ -58,7 +58,7 @@ const refused = (host) =>
     new Error(`read_page refuses ${host}: only public internet addresses can be read.`);
 
 // Validate the socket's DNS answers, without borrowing unchecked sockets from the global pool.
-export function request(url, signal, lookup, isPublic) {
+function request(url, signal, lookup, isPublic) {
     const host = url.hostname.replace(/^\[|\]$/g, '');
     if (isIP(host) && !isPublic(host)) return Promise.reject(refused(host));
     const checkedLookup = (name, options, callback) =>
@@ -87,6 +87,23 @@ export function request(url, signal, lookup, isPublic) {
         );
         req.on('error', reject);
     });
+}
+
+export async function follow(url, signal, lookup, isPublic, protocolError) {
+    let target = url;
+    for (let redirects = 0; ; redirects++) {
+        if (!['http:', 'https:'].includes(target.protocol))
+            throw new Error(
+                protocolError ?? `read_page only reads http and https URLs, not ${target.protocol}`,
+            );
+        const response = await request(target, signal, lookup, isPublic);
+        const location = response.headers.location;
+        if (response.statusCode < 300 || response.statusCode >= 400 || !location)
+            return { response, url: target };
+        response.destroy();
+        if (redirects >= MAX_REDIRECTS) throw new Error('read_page stopped: too many redirects.');
+        target = new URL(location, target);
+    }
 }
 
 export async function body(response, limit) {
@@ -143,66 +160,55 @@ export async function readPage(
     if (save_as !== undefined && !workspace)
         throw new Error('read_page cannot save files: offline Python is unavailable.');
     const timed = AbortSignal.any([AbortSignal.timeout(TIMEOUT), ...(signal ? [signal] : [])]);
-    for (let redirects = 0; ; redirects++) {
-        if (!['http:', 'https:'].includes(target.protocol))
-            throw new Error(`read_page only reads http and https URLs, not ${target.protocol}`);
-        const response = await request(target, timed, lookup, isPublic);
-        const location = response.headers.location;
-        if (response.statusCode >= 300 && response.statusCode < 400 && location) {
-            response.destroy();
-            if (redirects >= MAX_REDIRECTS)
-                throw new Error('read_page stopped: too many redirects.');
-            target = new URL(location, target);
-            continue;
-        }
-        if (response.statusCode >= 400) {
-            response.destroy();
-            throw new Error(`read_page got HTTP ${response.statusCode} from ${target.href}.`);
-        }
-        const type = String(response.headers['content-type'] ?? '').toLowerCase();
-        const html = /html|xml/.test(type);
-        const textual = html || /^text\/|json/.test(type);
-        if (!textual && save_as === undefined) {
-            response.destroy();
-            throw new Error(`read_page cannot read ${type || 'unknown'} content as text.`);
-        }
-        const bytes = await body(response, save_as === undefined ? MAX_BYTES : SAVE_BYTES);
-        let saved = [];
-        if (save_as !== undefined) {
-            await mkdir(workspace, { recursive: true, mode: 0o700 });
-            // Sandboxed Python may leave a link under this name: write a fresh file, then rename it over the entry.
-            const part = join(workspace, `.${randomUUID()}.part`);
-            try {
-                await writeFile(part, bytes, { flag: 'wx' });
-                await rename(part, join(workspace, save_as));
-            } catch (error) {
-                await rm(part, { force: true });
-                throw error;
-            }
-            saved = [`Saved ${bytes.length} bytes as ${save_as} in the Python workspace.`];
-            // Binary or very large saves skip text extraction; Python reads the file instead.
-            if (!textual || bytes.length > MAX_BYTES)
-                return [`URL: ${target.href}`, `Content type: ${type || 'unknown'}`, ...saved].join(
-                    '\n',
-                );
-        }
-        const raw = bytes.toString('utf8');
-        const page = html ? readable(raw, target.href) : { title: '', text: raw };
-        const text = page.text
-            .replace(/[ \t\r]+\n/g, '\n')
-            .replace(/\n{3,}/g, '\n\n')
-            .trim();
-        const end = Math.min(offset + PAGE_SIZE, text.length);
-        return [
-            `URL: ${target.href}`,
-            ...(page.title ? [`Title: ${page.title.trim()}`] : []),
-            ...saved,
-            offset >= text.length
-                ? `Offset ${offset} is past the end; the page has ${text.length} characters.`
-                : `Characters ${offset}–${end} of ${text.length}.` +
-                  (end < text.length ? ` Call read_page again with offset ${end} for more.` : ''),
-            '',
-            text.slice(offset, end),
-        ].join('\n');
+    const { response, url: final } = await follow(target, timed, lookup, isPublic);
+    target = final;
+    if (response.statusCode >= 400) {
+        response.destroy();
+        throw new Error(`read_page got HTTP ${response.statusCode} from ${target.href}.`);
     }
+    const type = String(response.headers['content-type'] ?? '').toLowerCase();
+    const html = /html|xml/.test(type);
+    const textual = html || /^text\/|json/.test(type);
+    if (!textual && save_as === undefined) {
+        response.destroy();
+        throw new Error(`read_page cannot read ${type || 'unknown'} content as text.`);
+    }
+    const bytes = await body(response, save_as === undefined ? MAX_BYTES : SAVE_BYTES);
+    let saved = [];
+    if (save_as !== undefined) {
+        await mkdir(workspace, { recursive: true, mode: 0o700 });
+        // Sandboxed Python may leave a link under this name: write a fresh file, then rename it over the entry.
+        const part = join(workspace, `.${randomUUID()}.part`);
+        try {
+            await writeFile(part, bytes, { flag: 'wx' });
+            await rename(part, join(workspace, save_as));
+        } catch (error) {
+            await rm(part, { force: true });
+            throw error;
+        }
+        saved = [`Saved ${bytes.length} bytes as ${save_as} in the Python workspace.`];
+        // Binary or very large saves skip text extraction; Python reads the file instead.
+        if (!textual || bytes.length > MAX_BYTES)
+            return [`URL: ${target.href}`, `Content type: ${type || 'unknown'}`, ...saved].join(
+                '\n',
+            );
+    }
+    const raw = bytes.toString('utf8');
+    const page = html ? readable(raw, target.href) : { title: '', text: raw };
+    const text = page.text
+        .replace(/[ \t\r]+\n/g, '\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+    const end = Math.min(offset + PAGE_SIZE, text.length);
+    return [
+        `URL: ${target.href}`,
+        ...(page.title ? [`Title: ${page.title.trim()}`] : []),
+        ...saved,
+        offset >= text.length
+            ? `Offset ${offset} is past the end; the page has ${text.length} characters.`
+            : `Characters ${offset}–${end} of ${text.length}.` +
+              (end < text.length ? ` Call read_page again with offset ${end} for more.` : ''),
+        '',
+        text.slice(offset, end),
+    ].join('\n');
 }
