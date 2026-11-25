@@ -76,6 +76,52 @@ export const pieces = {
                 );
         });
     },
+    // One-time cleanup: pieces sharing a name become one, the newest current and the others its older versions;
+    // video links and parts move to it. Saved videos keep the modules they were made with. Callers hold the transaction.
+    foldDuplicatePieces() {
+        const keeper = new Map(),
+            moved = new Map();
+        for (const { id, name } of this.db
+            .prepare('SELECT id, name FROM pieces ORDER BY improved DESC, rowid DESC')
+            .all()) {
+            const keep = keeper.get(name);
+            if (!keep) {
+                keeper.set(name, id);
+                continue;
+            }
+            this.db
+                .prepare(
+                    'INSERT INTO piece_versions(piece,name,look,props,source,source3d,roles,true_colors,parts,improved) SELECT ?,name,look,props,source,source3d,roles,true_colors,parts,improved FROM pieces WHERE id=?',
+                )
+                .run(keep, id);
+            this.db.prepare('UPDATE piece_versions SET piece=? WHERE piece=?').run(keep, id);
+            this.db
+                .prepare(
+                    'INSERT OR IGNORE INTO piece_videos(piece,video) SELECT ?,video FROM piece_videos WHERE piece=? ORDER BY rowid',
+                )
+                .run(keep, id);
+            this.db.prepare('DELETE FROM pieces WHERE id=?').run(id);
+            moved.set(id, keep);
+        }
+        if (!moved.size) return;
+        for (const [table, owner] of [
+            ['pieces', 'id'],
+            ['piece_versions', 'piece'],
+        ])
+            for (const r of this.db
+                .prepare(
+                    `SELECT rowid, ${owner} AS owner, parts FROM ${table} WHERE parts IS NOT NULL`,
+                )
+                .all()) {
+                // Drop direct self-references created when a part folds into its owner.
+                const parts = JSON.parse(r.parts)
+                    .map((p) => ({ ...p, id: moved.get(p.id) ?? p.id }))
+                    .filter((p) => p.id !== r.owner);
+                this.db
+                    .prepare(`UPDATE ${table} SET parts=? WHERE rowid=?`)
+                    .run(JSON.stringify(parts), r.rowid);
+            }
+    },
     // Pieces whose stills are missing, saved earlier or just saved or improved, oldest first.
     unstilledPieces() {
         return this.db
@@ -121,11 +167,13 @@ export const pieces = {
         };
     },
     // A piece with each part's current saved version (and its parts) attached, so an improved part reaches
-    // every later assembly; a part whose entry is gone is dropped.
-    pieceTree(id) {
+    // every later assembly. Skip missing parts and edges that would revisit an ancestor after folding.
+    pieceTree(id, ancestors = new Set()) {
+        if (ancestors.has(id)) return null;
         const piece = this.piece(id);
         if (!piece) return null;
-        const parts = piece.parts.map((p) => ({ ...p, piece: this.pieceTree(p.id) }));
+        const path = new Set(ancestors).add(id);
+        const parts = piece.parts.map((p) => ({ ...p, piece: this.pieceTree(p.id, path) }));
         return { ...piece, parts: parts.filter((p) => p.piece) };
     },
     // The Pieces view, one page at a time. Without a query: newest improvement first. With a query

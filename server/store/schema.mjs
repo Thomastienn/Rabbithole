@@ -10,6 +10,15 @@ const ARTIFACTS = `CREATE TABLE IF NOT EXISTS artifacts (id TEXT PRIMARY KEY, co
       CREATE INDEX IF NOT EXISTS artifacts_conversation ON artifacts(conversation, created);`;
 const BRANCHES = `CREATE TABLE IF NOT EXISTS branches (child TEXT PRIMARY KEY REFERENCES trees(id), parent TEXT NOT NULL REFERENCES trees(id), messageId TEXT NOT NULL REFERENCES messages(id), start INTEGER, end INTEGER, text TEXT NOT NULL, question TEXT NOT NULL, snapshot TEXT NOT NULL, artifactId TEXT, label TEXT, explanation TEXT, line INTEGER, speaker TEXT, discussion TEXT);`;
 
+// SQLite copies a consistent snapshot, including committed WAL pages, before any upgrade writes; returns its path.
+function backup(db, path) {
+    const backupPath = `${path}.backup-${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID().slice(0, 8)}.sqlite`;
+    writeFileSync(backupPath + '.tmp', '', { mode: 0o600, flag: 'wx' });
+    db.prepare('VACUUM INTO ?').run(backupPath + '.tmp');
+    renameSync(backupPath + '.tmp', backupPath);
+    return backupPath;
+}
+
 // The Store constructor body: opens, backs up and migrates the database; called with the Store as this.
 export function open(path) {
     mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
@@ -26,12 +35,7 @@ export function open(path) {
         // A fresh database starts with no model profile and no assumed provider; existing installs keep theirs.
         const fresh = !this.db.prepare("SELECT 1 FROM sqlite_master WHERE type='table'").get();
         if (version < 1 && !fresh) {
-            const backupPath = `${path}.backup-${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID().slice(0, 8)}.sqlite`;
-            // SQLite copies a consistent snapshot, including committed WAL pages, before any upgrade writes.
-            writeFileSync(backupPath + '.tmp', '', { mode: 0o600, flag: 'wx' });
-            this.db.prepare('VACUUM INTO ?').run(backupPath + '.tmp');
-            renameSync(backupPath + '.tmp', backupPath);
-            this.backupPath = backupPath;
+            this.backupPath = backup(this.db, path);
         }
         this.db.exec('PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;');
         if (version < 1) {
@@ -307,6 +311,23 @@ export function open(path) {
         this.db.exec(
             'CREATE TABLE IF NOT EXISTS piece_versions (piece TEXT NOT NULL REFERENCES pieces(id) ON DELETE CASCADE, name TEXT NOT NULL, look TEXT NOT NULL, props TEXT NOT NULL, source TEXT NOT NULL, source3d TEXT, roles TEXT NOT NULL, true_colors TEXT, parts TEXT, improved INTEGER NOT NULL)',
         );
+        // One-time cleanup: pieces sharing a name fold into one; backed up first when it changes anything.
+        if (
+            !this.db.prepare("SELECT 1 FROM sqlite_master WHERE name='cleanups'").get() ||
+            !this.db.prepare('SELECT 1 FROM cleanups WHERE name=?').get('fold-duplicate-pieces')
+        ) {
+            if (this.db.prepare('SELECT 1 FROM pieces GROUP BY name HAVING COUNT(*)>1').get())
+                this.backupPath ??= backup(this.db, path);
+            this.transaction(() => {
+                this.foldDuplicatePieces();
+                this.db.exec(
+                    'CREATE TABLE IF NOT EXISTS cleanups (name TEXT PRIMARY KEY, at INTEGER NOT NULL)',
+                );
+                this.db
+                    .prepare('INSERT INTO cleanups VALUES (?,?)')
+                    .run('fold-duplicate-pieces', Date.now());
+            });
+        }
         // Discussion kind and reply positions migrate in place; existing rows keep their content and positions.
         this.transaction(() => this.rebuildArtifacts("'discussion'"));
         // Visual passages keep their source artifact and part instead of inventing reply offsets.
