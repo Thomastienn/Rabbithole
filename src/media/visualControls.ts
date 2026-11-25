@@ -1,12 +1,21 @@
 // Visual controls: custom elements the visual frame defines before any fragment runs, globals like stepThrough.
 // Each renders native elements in its light DOM from its attributes (label, variant, range or options), so keyboard,
-// focus and screen readers work as for native controls. Each exposes value and fires input and change; visual
-// part picking skips every rh- element.
+// focus and screen readers work as for native controls. Inputs expose value and fire input and change; display
+// controls (readout, result, status) expose the value they show. Visual part picking skips every rh- element.
+// Series inks in legend order; a chart colours its nth series with the nth ink.
+const INKS = ['blue', 'yellow', 'pink', 'green'];
+const CIRCLE = 'M8 1.5a6.5 6.5 0 1 0 0 13a6.5 6.5 0 1 0 0-13';
 const PATHS = {
     check: 'm3 8.5 3 3 7-7',
     minus: 'M3 8h10',
     plus: 'M8 3v10M3 8h10',
     reset: 'M13 8a5 5 0 1 1-1.5-3.5M13 2v3h-3',
+    correct: `${CIRCLE}M5.5 8.2l1.8 1.8 3.2-3.6`,
+    incorrect: 'M4 4l8 8M12 4l-8 8',
+    neutral: `${CIRCLE}M6.3 6.3a1.8 1.8 0 1 1 2.5 1.6c-.5.2-.8.6-.8 1.1v.4M8 11.2v.1`,
+    info: `${CIRCLE}M8 7.3v3.7M8 5v.1`,
+    success: `${CIRCLE}M5.5 8.2l1.8 1.8 3.2-3.6`,
+    warning: 'M8 2l6.5 11.5h-13zM8 6.5v3M8 11.5v.1',
 };
 const icon = (name: keyof typeof PATHS) =>
     `<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="${PATHS[name]}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
@@ -44,9 +53,10 @@ export function defineControls(view: Window & typeof globalThis) {
         connectedCallback() {
             // A move, such as stepThrough wrapping the visual's root, reconnects it: keep what the learner set.
             if (this.built) return;
-            const label = this.getAttribute('label') ?? this.textContent?.trim() ?? '';
+            const text = this.textContent?.trim() ?? '',
+                label = this.getAttribute('label') ?? text;
             this.replaceChildren();
-            this.render(label);
+            this.render(label, text);
             this.built = true;
             if (this.pending) this.write(this.pending.value);
             this.initial = this.read();
@@ -59,7 +69,7 @@ export function defineControls(view: Window & typeof globalThis) {
         reset() {
             if (this.built) this.write(this.initial);
         }
-        protected render(_label: string) {}
+        protected render(_label: string, _text: string) {}
         protected read(): unknown {
             return undefined;
         }
@@ -256,6 +266,103 @@ export function defineControls(view: Window & typeof globalThis) {
         }
     }
 
+    class RhReadout extends Control {
+        private shown!: HTMLSpanElement;
+        private current: unknown;
+        protected render(label: string) {
+            const id = `rh-${++ids}`;
+            this.shown = make('span');
+            // An output is a polite live region, so a changed value is announced.
+            const output = make('output', {}, this.shown);
+            output.setAttribute('aria-labelledby', id);
+            if (this.hasAttribute('unit'))
+                output.append(' ', make('span', { className: 'unit' }, this.attr('unit')));
+            this.append(make('span', { id, className: 'key' }, label), output);
+            this.write(this.attr('value'));
+        }
+        protected read() {
+            return this.current;
+        }
+        protected write(value: unknown) {
+            this.current = value;
+            this.shown.textContent = String(value ?? '');
+        }
+    }
+
+    // Result card and status line: a toned icon and text in a status region; variant and label may change later.
+    class RhMessage extends Control {
+        static observedAttributes = ['variant', 'label'];
+        protected tones = ['info', 'success', 'warning'];
+        private sign?: HTMLSpanElement;
+        private heading?: HTMLElement;
+        private body!: HTMLElement;
+        private start: (string | null)[] = [];
+        protected render(_label: string, text: string) {
+            this.start = [this.getAttribute('variant'), this.getAttribute('label')];
+            this.setAttribute('role', 'status');
+            this.setAttribute('aria-atomic', 'true');
+            this.sign = make('span', { className: 'icon' });
+            this.body = make(this.localName === 'rh-result' ? 'p' : 'span', {}, text);
+            if (this.localName === 'rh-result') this.heading = make('b');
+            this.append(this.sign, ...(this.heading ? [this.heading] : []), this.body);
+        }
+        attributeChangedCallback() {
+            if (!this.sign) return;
+            const variant = this.attr('variant');
+            this.sign.innerHTML = icon(
+                (this.tones.includes(variant) ? variant : this.tones[0]) as keyof typeof PATHS,
+            );
+            if (this.heading) this.heading.textContent = this.attr('label');
+        }
+        reset() {
+            this.start.forEach((value, i) => {
+                const name = ['variant', 'label'][i];
+                if (value === null) this.removeAttribute(name);
+                else this.setAttribute(name, value);
+            });
+            super.reset();
+        }
+        protected read() {
+            return this.body.textContent ?? '';
+        }
+        protected write(value: unknown) {
+            this.body.textContent = String(value ?? '');
+        }
+    }
+
+    class RhResult extends RhMessage {
+        protected tones = ['neutral', 'correct', 'incorrect'];
+    }
+
+    class RhLegend extends view.HTMLElement {
+        connectedCallback() {
+            if (this.firstElementChild) return;
+            const list = make('ul');
+            if (this.hasAttribute('label'))
+                list.setAttribute('aria-label', this.getAttribute('label')!);
+            for (const [i, item] of (this.getAttribute('items') ?? '')
+                .split(',')
+                .map((o) => o.trim())
+                .filter(Boolean)
+                .entries()) {
+                const swatch = make('i');
+                swatch.setAttribute('aria-hidden', 'true');
+                swatch.style.setProperty('--ink', `var(--color-text-${INKS[i % INKS.length]})`);
+                list.append(make('li', {}, swatch, item));
+            }
+            this.replaceChildren(list);
+        }
+    }
+
+    // The visual writes its own table; the label becomes its caption.
+    class RhTable extends view.HTMLElement {
+        connectedCallback() {
+            const table = this.querySelector('table');
+            if (table && !table.caption && this.hasAttribute('label'))
+                table.createCaption().textContent = this.getAttribute('label');
+        }
+    }
+
     for (const [name, element] of [
         ['rh-button', RhButton],
         ['rh-toggle', RhToggle],
@@ -265,6 +372,11 @@ export function defineControls(view: Window & typeof globalThis) {
         ['rh-choice', RhChoice],
         ['rh-text', RhText],
         ['rh-reset', RhReset],
+        ['rh-readout', RhReadout],
+        ['rh-result', RhResult],
+        ['rh-status', RhMessage],
+        ['rh-legend', RhLegend],
+        ['rh-table', RhTable],
     ] as const)
         view.customElements.define(name, element);
 }
