@@ -15,11 +15,14 @@ function pdf(pages) {
     '/Type /XObject /Subtype /Image /Width 8 /Height 2 /ImageMask true /BitsPerComponent 1');
   const form = stream('q 100 0 0 100 0 0 cm /Figure Do Q',
     `/Type /XObject /Subtype /Form /BBox [0 0 100 100] /Matrix [1 0 0 1 10 10] /Resources << /XObject << /Figure ${rgb} 0 R >> >>`);
+  const damaged = pages.some((content) => content.includes('/Damaged Do'))
+    ? ` /Damaged ${stream('not a JPEG', '/Type /XObject /Subtype /Image /Width 2 /Height 2 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode')} 0 R`
+    : '';
   const streams = new Map(); // identical pages share one content stream, keeping long fixtures tiny
   const kids = pages.map((content) => {
     if (!streams.has(content)) streams.set(content, stream(content));
     const contents = streams.get(content);
-    return add(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << /Font << /F1 ${font} 0 R >> /XObject << /Figure ${rgb} 0 R /Gray ${gray} 0 R /Stencil ${stencil} 0 R /Form ${form} 0 R >> >> /Contents ${contents} 0 R >>`);
+    return add(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << /Font << /F1 ${font} 0 R >> /XObject << /Figure ${rgb} 0 R /Gray ${gray} 0 R /Stencil ${stencil} 0 R /Form ${form} 0 R${damaged} >> >> /Contents ${contents} 0 R >>`);
   });
   objects[2] = `<< /Type /Pages /Kids [${kids.map((id) => `${id} 0 R`).join(' ')}] /Count ${kids.length} >>`;
   let out = '%PDF-1.7\n', offsets = [0];
@@ -40,7 +43,8 @@ const figure = text('A large figure') +
   'q 160 0 0 120 20 30 cm /Figure Do Q\n' +
   text('Figure caption', 0, 15) +
   'q 10 0 0 10 180 180 cm /Figure Do Q\n';
-const scan = 'q 200 0 0 200 0 0 cm /Figure Do Q\n' + text('WRONG hidden OCR', 3);
+const picture = 'q 200 0 0 200 0 0 cm /Figure Do Q\n';
+const scan = picture + text('WRONG hidden OCR', 3);
 const vector = '10 10 m 180 180 l S\n20 30 100 80 re S\n' + text('Vector label');
 const cases = {
   typed: [typed],
@@ -58,7 +62,7 @@ const cases = {
   gray: ['q 200 0 0 200 0 0 cm /Gray Do Q\n'],
   stencil: ['q 0.2 0.5 0.1 rg 200 0 0 200 0 0 cm /Stencil Do Q\n'],
   long: Array(60).fill(text('x'.repeat(20000))),
-  pictures: Array(150).fill('q 200 0 0 200 0 0 cm /Figure Do Q\n'),
+  pictures: [...Array(99).fill(picture), picture + 'q 200 0 0 200 0 0 cm /Damaged Do Q\n', picture],
   repeated: [Array.from({length: 5}, (_, i) => `q 80 0 0 80 ${i * 20} 0 cm /Figure Do Q\n`).join('')],
 };
 for (const [name, pages] of Object.entries(cases))

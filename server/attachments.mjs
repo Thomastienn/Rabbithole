@@ -6,7 +6,7 @@ import { IMAGE_TYPES } from '../src/chat/attachmentTypes.ts';
 export { IMAGE_TYPES };
 
 // Attached text goes whole into the prompt; beyond this it fills the model's context.
-export const MAX_TEXT_BYTES = 1024 * 1024;
+const MAX_TEXT_BYTES = 1024 * 1024;
 
 const utf8 = new TextDecoder('utf-8', { fatal: true });
 
@@ -16,19 +16,24 @@ export async function prepareAttachment(
     { readsImages = true, recognize } = {},
 ) {
     if (type === 'application/pdf') {
-        const { pdfParts } = await import('./pdf.mjs');
-        const extracted = await pdfParts({ name, bytes });
+        const { PdfLimitError, pdfParts } = await import('./pdf.mjs');
+        const extracted = await pdfParts({ name, bytes }, MAX_TEXT_BYTES);
         const parts = [],
             deliveries = new Set();
+        let textBytes = 0;
         for (const part of extracted) {
-            if (!part.image) {
-                parts.push(part);
-                deliveries.add('text');
-            } else {
-                const prepared = await prepareAttachment(part, { readsImages, recognize });
-                deliveries.add(prepared.delivery);
-                parts.push(...(readsImages ? [part] : prepared.parts));
+            const prepared =
+                part.image && !readsImages
+                    ? await prepareAttachment(part, { readsImages, recognize })
+                    : { delivery: part.image ? 'image' : 'text', parts: [part] };
+            for (const delivered of prepared.parts) {
+                if (!readsImages) {
+                    textBytes += Buffer.byteLength(delivered.text);
+                    if (textBytes > MAX_TEXT_BYTES) throw new PdfLimitError(name);
+                }
+                parts.push(delivered);
             }
+            deliveries.add(prepared.delivery);
         }
         return { delivery: [...deliveries].join(','), parts };
     }

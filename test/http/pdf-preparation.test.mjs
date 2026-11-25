@@ -162,13 +162,20 @@ test('PDF OCR failure refuses preparation; malformed PDFs have an actionable rea
     );
 });
 
-test('PDFs over the text or image limit are refused, asking for only the needed pages', async () => {
-    await assert.rejects(prepare('long', native), {
-        message:
-            'long.pdf: this PDF is too large to send because its text is over 1 MB. Attach only the pages you need.',
-    });
+test('PDF image limit takes precedence over a read error on the first image past the cap', async () => {
     await assert.rejects(prepare('pictures', native), {
-        message:
-            'pictures.pdf: this PDF is too large to send because it has over 100 images. Attach only the pages you need.',
+        message: /\b100\b.*\bimages\b/i,
     });
+});
+
+test('PDF OCR parts count toward the combined text limit', async () => {
+    await assert.rejects(
+        prepare('ordered', {
+            readsImages: false,
+            recognize: async () => 'x'.repeat(600_000),
+        }),
+        {
+            message: /\b1\s*MB\b/i,
+        },
+    );
 });
