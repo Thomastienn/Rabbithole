@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { cpSync, existsSync, readdirSync, renameSync, rmdirSync, rmSync, statSync } from 'node:fs';
 import { join, resolve, win32 } from 'node:path';
 
 // The shell's decisions, free of Electron so node --test checks them without opening a window.
@@ -49,6 +49,49 @@ export const firstLaunch = (cwd, env, dataDir) =>
 // install folder (ADR 0025), beside Rabbithole.exe; Linux and unpackaged runs keep the server's default.
 export const installedDataDir = (platform, packaged, execPath) =>
     platform === 'win32' && packaged ? win32.join(win32.dirname(execPath), 'data') : null;
+
+// Same entries with the same sizes, so a copy is known complete before its source is deleted.
+const sameFiles = (a, b) =>
+    readdirSync(a, { recursive: true }).every((entry) => {
+        const [x, y] = [statSync(join(a, entry)), statSync(join(b, entry), { throwIfNoEntry: false })];
+        return y && x.isDirectory() === y.isDirectory() && (x.isDirectory() || x.size === y.size);
+    });
+
+// An upgrade from a version that kept data (and Electron's profile) in `from` moves it into `to` before the server
+// starts: a rename on one drive, otherwise a checked copy, then the old folder goes. Returns the folder to use: `from`
+// when the move failed, which stays untouched. The copy lands in a staging folder first, so a half-finished one never
+// leaves a database in `to` that would stop the next launch from trying again.
+export function moveOldData(from, to, log = console.error, rename = renameSync) {
+    if (existsSync(join(to, 'trees.sqlite')) || !existsSync(from)) return to;
+    const staging = `${to}.moving`;
+    try {
+        // Only an empty data folder gives way; one with files but no database is left alone.
+        if (existsSync(to)) rmdirSync(to);
+        try {
+            rename(from, to);
+            return to;
+        } catch (error) {
+            if (error.code !== 'EXDEV') throw error;
+        }
+        rmSync(staging, { recursive: true, force: true });
+        cpSync(from, staging, { recursive: true });
+        if (!sameFiles(from, staging)) throw new Error(`the copy in ${staging} does not match`);
+        renameSync(staging, to);
+    } catch (error) {
+        log(`Rabbithole could not move its data from ${from} to ${to}, so it uses ${from}: ${error.message}`);
+        // Best effort, so startup goes on: the next launch clears the staging folder before it copies again.
+        try {
+            rmSync(staging, { recursive: true, force: true });
+        } catch {}
+        return from;
+    }
+    try {
+        rmSync(from, { recursive: true });
+    } catch (error) {
+        log(`Rabbithole moved its data to ${to} but could not delete ${from}: ${error.message}`);
+    }
+    return to;
+}
 
 // The update banner's state: null (nothing to show), then available, downloading, ready or failed, and restarting;
 // current when the check found nothing newer, which only Settings shows.

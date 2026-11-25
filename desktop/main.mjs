@@ -8,6 +8,7 @@ import electronUpdater from 'electron-updater';
 import {
     firstLaunch,
     installedDataDir,
+    moveOldData,
     navigation,
     saveLayout,
     serverUrl,
@@ -22,10 +23,14 @@ const resources = app.isPackaged ? process.resourcesPath : join(here, 'stage');
 const windows = process.platform === 'win32';
 const SETPRIV = '/usr/bin/setpriv';
 // Before Electron starts, so its profile is created inside the install folder's data folder, which the server also uses.
+// An upgrade first brings the old %APPDATA% folder (data and profile) across; a failed move keeps using it.
 const installData = installedDataDir(process.platform, app.isPackaged, process.execPath);
 if (installData) {
-    process.env.RABBITHOLE_DATA_DIR ??= installData;
-    app.setPath('userData', installData);
+    const data = process.env.RABBITHOLE_DATA_DIR
+        ? installData
+        : moveOldData(join(app.getPath('appData'), 'rabbithole'), installData);
+    process.env.RABBITHOLE_DATA_DIR ??= data;
+    app.setPath('userData', data);
 }
 // The server's own data-folder rule, from the staged app, so the shell and the server agree on it.
 const { dataDir } = await import(
