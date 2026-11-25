@@ -122,14 +122,28 @@ test('a visual request carries what it shows; older requests without it still pa
 
 test('the tool-path tutor prompt stays within the budget before learner data', async () => {
     const { APP_TOOLS } = await import('../../server/http/app-calls.mjs');
+    const { NEIGHBOURHOOD_RULE } = await import('../../server/neighbourhood.mjs');
     const tools = [...APP_TOOLS, { name: 'update_memory_note' }, { name: 'find_images' }];
     const native = tutorSystem({ tools });
     const definitions = JSON.stringify(
         APP_TOOLS.map(({ name, description, parameters }) => ({ name, description, parameters })),
     );
     const text = tutorSystem({ textTools: APP_TOOLS }).replace(definitions, '');
-    // Prompt and tools at 3b6b9d0, plus the bold-term, ADR 0023 and visual frequency allowances.
-    const budget = 16_494 + VISUAL_FREQUENCY.often.length;
+    // The visual and discussion marker rules replaced show_visual and start_discussion (ADR 0018), so they count against the
+    // tool-path total at 3b6b9d0: that prompt plus its app tool definitions.
+    // The bold-term suggestion sentence (docs/reply-reading-polish-spec.md) and the visual frequency sentence are allowed on top.
+    const BOLD =
+        'When you would bold a term because it matters, the learner may not fully understand it yet, so mark it as a suggestion instead of only bolding it. ';
+    // The familiarity-first teaching guidance and the now-and-then analogy wording (docs/plainer-teaching-concept-marks-and-return-to-passage-spec.md)
+    // replaced shorter text and are allowed on top: 474 and 51 characters.
+    const TEACHING = 474 + 51;
+    // The concept mark sentences (ADR 0023) are allowed on top: 239 characters.
+    const MARKER_BEFORE =
+        9987 + 6121 + BOLD.length + TEACHING + 239 + VISUAL_FREQUENCY.often.length;
     for (const prompt of [native, text])
-        assert.ok(prompt.length + definitions.length <= budget, `${prompt.length}`);
+        assert.ok(prompt.length + definitions.length <= MARKER_BEFORE, `${prompt.length}`);
+    assert.ok(native.includes(MEMORY_RULE));
+    assert.ok(native.endsWith(TUTOR_SKILLS + DEFAULT_TUTOR_STYLE));
+    const neighbourhood = { concepts: [{ name: 'Recursion', familiarity: 0.9 }], links: [] };
+    assert.ok(tutorSystem({ tools, neighbourhood }).includes(NEIGHBOURHOOD_RULE));
 });

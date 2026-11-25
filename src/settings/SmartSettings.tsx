@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { VStack } from '@astryxdesign/core/Layout';
 import { Text } from '@astryxdesign/core/Text';
-import { Selector } from '@astryxdesign/core/Selector';
-import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
+import Choice from './Choice';
 import ModelPicker from './ModelPicker';
 import { Button } from '@astryxdesign/core/Button';
 import {
@@ -165,7 +164,7 @@ export default function SmartSettings({
                     />
                 </div>
                 <div role="cell">
-                    <Selector
+                    <Choice
                         label="Smart effort"
                         isLabelHidden
                         status={incompatible ? { type: 'error' } : undefined}
@@ -274,7 +273,7 @@ export function VideoMode() {
     }
     return (
         <VStack gap={2}>
-            <Selector
+            <Choice
                 label="Video mode"
                 value={mode ?? 'quality'}
                 isDisabled={mode === undefined || pending}
@@ -322,21 +321,18 @@ export function VisualFrequency() {
     }
     return (
         <VStack gap={2}>
-            <Text weight="semibold">Visual frequency</Text>
-            <SegmentedControl
+            <Choice
                 label="Visual frequency"
                 value={frequency ?? 'often'}
                 isDisabled={frequency === undefined || pending}
+                options={[
+                    { value: 'sparing', label: 'Sparing' },
+                    { value: 'often', label: 'Often' },
+                    { value: 'only-asked', label: 'Only when asked' },
+                ]}
                 onChange={(value) => void save(value as VisualFrequencyValue)}
-            >
-                <SegmentedControlItem value="sparing" label="Sparing" />
-                <SegmentedControlItem value="often" label="Often" />
-                <SegmentedControlItem value="only-asked" label="Only when asked" />
-            </SegmentedControl>
-            <Text type="supporting">
-                How often the tutor draws visuals in a reply. A visual you ask for is always drawn,
-                and videos are unaffected. Applies from the next reply.
-            </Text>
+                description="How often the tutor draws visuals in a reply. A visual you ask for is always drawn, and videos are unaffected. Applies from the next reply."
+            />
             {error && (
                 <Text type="supporting" role="alert">
                     {error}
