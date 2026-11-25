@@ -71,9 +71,11 @@ with interaction in the display controls below.
 
 Only when the request has a check_answer field (the prediction question,
 correct outcome and reason) or its intent asks for a predict-then-reveal check, show the
-starting visual state and one short prediction question. Keep the correct answer,
-resulting visual state and a concise explanation inside a native details element
-with no open attribute and a summary labelled "Reveal answer". Do not reveal on
+starting visual state and one short prediction question. Keep the correct answer
+and a concise explanation inside a native details element with no open attribute
+and a summary labelled "Reveal answer". The details element fires a toggle event
+when it opens or closes, so a script can show the resulting state on the starting
+visual itself, animated like a step, instead of drawing it again. Do not reveal on
 a timer, hover, focus or answer selection. Keep the outcome out of the initial
 labels and text alternatives too. Native Enter/Space must open and close it with visible focus,
 and the expanded result must fit the frame's automatic height. Let the learner
