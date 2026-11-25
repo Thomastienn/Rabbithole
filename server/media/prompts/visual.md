@@ -128,6 +128,9 @@ input. They are never parts.
 - <rh-reset label>: returns every control to its initial value, then fires
   reset, which bubbles to window: addEventListener('reset', draw).
 For example, write <rh-switch label="Show arc" checked></rh-switch>.
+The controls carry no outer spacing, so stack them and the drawing in a
+container with display:grid and gap:12px (or a flex column with a gap), never
+directly one after another.
 Build a custom control only for what the kit lacks, styled with the same theme
 variables.
 
