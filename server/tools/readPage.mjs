@@ -58,7 +58,7 @@ const refused = (host) =>
     new Error(`read_page refuses ${host}: only public internet addresses can be read.`);
 
 // Validate the socket's DNS answers, without borrowing unchecked sockets from the global pool.
-export function request(url, signal, lookup, isPublic) {
+function request(url, signal, lookup, isPublic) {
     const host = url.hostname.replace(/^\[|\]$/g, '');
     if (isIP(host) && !isPublic(host)) return Promise.reject(refused(host));
     const checkedLookup = (name, options, callback) =>
@@ -89,12 +89,13 @@ export function request(url, signal, lookup, isPublic) {
     });
 }
 
-// Follows up to MAX_REDIRECTS redirects, re-checking each hop's protocol and address through request.
-export async function follow(url, signal, lookup, isPublic) {
+export async function follow(url, signal, lookup, isPublic, protocolError) {
     let target = url;
     for (let redirects = 0; ; redirects++) {
         if (!['http:', 'https:'].includes(target.protocol))
-            throw new Error(`read_page only reads http and https URLs, not ${target.protocol}`);
+            throw new Error(
+                protocolError ?? `read_page only reads http and https URLs, not ${target.protocol}`,
+            );
         const response = await request(target, signal, lookup, isPublic);
         const location = response.headers.location;
         if (response.statusCode < 300 || response.statusCode >= 400 || !location)

@@ -32,7 +32,13 @@ export function imageType(bytes) {
 
 async function download(url, { signal, lookup, isPublic }) {
     const timed = AbortSignal.any([AbortSignal.timeout(60000), ...(signal ? [signal] : [])]);
-    const { response } = await follow(new URL(url), timed, lookup, isPublic);
+    const { response } = await follow(
+        new URL(url),
+        timed,
+        lookup,
+        isPublic,
+        'not an http(s) image',
+    );
     if (response.statusCode >= 300) {
         response.destroy();
         throw new Error(`image returned HTTP ${response.statusCode}`);
