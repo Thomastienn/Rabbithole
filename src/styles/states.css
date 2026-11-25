@@ -23,6 +23,17 @@
     padding-top: var(--spacing-2);
     border-top: 1px solid var(--color-border);
 }
+/* Mockup search-inside-hints: the empty query names every field searched. */
+.search-what {
+    padding: 12px 18px 4px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--color-text-secondary);
+}
+.search-what b {
+    color: var(--color-text-primary);
+    font-weight: 600;
+}
 .search-count:not(:empty) {
     padding: 10px 18px 2px;
     font-size: 12px;

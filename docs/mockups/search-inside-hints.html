@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Search inside conversations, found from every view · mockup</title><link rel="stylesheet" href="line-diagram/ld.css">
+<style>
+/* Mockup only. Reuses the nav.2 window and the Line Diagram map; adds one map control and tooltips. */
+.stagebox { position: relative; margin-top: 20px; border-top: 1px solid var(--seam); }
+.scrim { position: absolute; inset: 0; background: light-dark(#ffffff66, #000000b8); }
+.app.short { height: 560px; min-height: 0; }
+.app.railed { grid-template-columns: 56px minmax(0, 1fr); }
+/* The new first control: icon, words and the shortcut, then a seam before zoom. */
+.ctl .find { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px 0 8px; border-radius: 8px; color: var(--ink); font-size: 13px; }
+.ctl .find .i { color: var(--mut); }
+.ctl .find.hover { background: var(--up2); }
+.ctl .find kbd { font-size: 11px; padding: 1px 5px; color: var(--mut); }
+.ctl .sep { width: 1px; align-self: stretch; margin: 6px 4px; background: var(--seam); }
+/* Tooltip: the overlay frame (raised enamel, 8px, 1.5px strong seam). */
+.tip { position: absolute; z-index: 3; background: var(--up); border: 1.5px solid var(--seam2); border-radius: 8px; padding: 6px 10px; font-size: 13px; color: var(--ink); white-space: nowrap; }
+.tip kbd { margin-left: 6px; }
+.ib.hover { background: var(--up2); color: var(--ink); }
+/* Search window, as in Rabbithole-nav.2. */
+.swin { position: absolute; left: 50%; top: 9%; translate: -50% 0; width: min(760px, calc(100% - 32px)); max-height: 80%; display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; background: var(--up); border: 1.5px solid var(--seam2); border-radius: 8px; overflow: hidden; }
+.sf { display: flex; gap: 10px; align-items: center; height: 56px; padding: 0 12px 0 18px; border-bottom: 1.5px solid var(--w); font-size: 17px; color: var(--ink); }
+.sf .ph { flex: 1; color: var(--mut); }
+.sf > .i { color: var(--mut); }
+.what { padding: 12px 18px 4px; font-size: 13px; line-height: 1.5; color: var(--mut); }
+.what b { color: var(--ink); font-weight: 600; }
+.sres { overflow: auto; padding: 4px 8px 8px; }
+.grp > h2 { font: 600 12px/1.2 var(--cond); letter-spacing: 0.07em; text-transform: uppercase; color: var(--mut); padding: 8px 10px 6px; }
+.hit { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 2px 10px; padding: 9px 10px; border-radius: 6px; align-items: baseline; }
+.hit.on { background: var(--up2); }
+.hit b { font-weight: 600; color: var(--w); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hit .where { font-size: 12px; color: var(--mut); white-space: nowrap; }
+.keys { display: flex; gap: 18px; align-items: center; padding: 10px 18px; border-top: 1px solid var(--seam); font-size: 12px; color: var(--mut); }
+.keys span { display: inline-flex; gap: 6px; align-items: center; }
+.keys kbd .i { width: 12px; height: 12px; }
+/* Narrow, focus mode: the header is gone; the restore tab waits at the top centre. */
+.restore { position: absolute; z-index: 2; top: 0; left: 50%; translate: -50% 0; background: var(--deep); border: 1px solid var(--seam); border-top: 0; border-radius: 0 0 8px 8px; }
+.copy { width: 100%; border-collapse: collapse; font-size: 14px; }
+.copy th { text-align: left; font: 600 12px/1.2 var(--cond); letter-spacing: 0.07em; text-transform: uppercase; color: var(--mut); padding: 8px 12px; border-bottom: 1.5px solid var(--seam2); }
+.copy td { padding: 10px 12px; border-bottom: 1px solid var(--seam); vertical-align: top; }
+.copy td:first-child { color: var(--mut); white-space: nowrap; }
+.copy del { color: var(--mut); }
+.copy ins { text-decoration: none; color: var(--w); }
+</style></head><body>
+<nav class="mock" aria-label="Mockup screens"><b>Knowledge and search</b><a href="line-diagram/index.html">Line Diagram index</a><a href="Rabbithole-nav.2.html">nav.2 Search window</a><a href="search-inside-hints.html" aria-current=page>Search inside, found from every view</a><label><input type="checkbox" id="lt"> Light</label></nav>
+<header class="intro"><h1>Search inside conversations, found from every view</h1><p>Draft before a ticket; rename to <code>docs/mockups/&lt;issue-id&gt;.html</code> when it is filed. The Ctrl+K window from Rabbithole-nav.2 already searches inside every conversation and branch, but its only button is an unlabelled magnifier beside New chat called "Search conversations", which reads as finding a conversation by its title. This change says what the search covers, and puts a labelled way in on the map, the one view that stays open when the sidebar is a rail or the narrow header is hidden. The window and its results do not change.</p></header>
+<ul class="rules">
+<li>The map's controls gain a first item: the magnifier, the words "Search tree" and a quiet <kbd>Ctrl K</kbd>, then a seam before Zoom out. It opens the same window, where this tree's results already come first.</li>
+<li>The words stay visible, not only in a tooltip, because the map is where the learner sees many branches and wants to find one.</li>
+<li>Below 48rem the control drops the shortcut and keeps the icon and "Search", so the controls still fit a 390px screen.</li>
+<li>The sidebar, rail and narrow header buttons keep their place and icon. Their name and tooltip become "Search inside conversations (Ctrl+K)".</li>
+<li>The window's field says what it searches, and the empty query adds one line naming every field it reads, above the recent learning trees.</li>
+<li>The focused chat gets no new button: the sidebar or rail is always beside it on desktop, and Ctrl+K works from the composer.</li>
+</ul>
+
+<section class="intro"><h2>Map, full sidebar</h2><p>Pointer over the new control. Every other control is as before.</p></section>
+<div class="stagebox"><div class="app short"><nav class="side" aria-label="Sidebar"><div class="top"><button class="ib" aria-label="Shrink sidebar to rail"><i class="i i-rail"></i></button><a class="mark" href="line-diagram/library.html"><svg viewBox="0 0 26 26" aria-hidden="true"><path class="ln" style="stroke-width:3.5" d="M5 13H12L18 7H22M12 13L18 19H22"/><circle class="stn" cx="5" cy="13" r="3.4"/></svg>Rabbithole</a></div><div class="new"><a class="btn pri" href="line-diagram/read.html"><i class="i i--sm i-plus"></i>New chat</a><button class="ib" aria-label="Search inside conversations (Ctrl+K)"><i class="i i-magnifying-glass"></i></button></div><div class="views"><a class="view" href="line-diagram/read.html"><i class="i i-book-open"></i>Read</a><a class="view" href="line-diagram/map.html" aria-current=page><i class="i i-map"></i>Map</a><a class="view" href="line-diagram/knowledge.html"><i class="i i-share"></i>Knowledge</a><a class="view" href="line-diagram/videos.html"><i class="i i-film"></i>Videos</a><a class="view" href="line-diagram/pieces.html"><i class="i i-cube"></i>Pieces</a><a class="view" href="line-diagram/library.html"><i class="i i-rectangle-stack"></i>Library</a></div><div class="tree"><h2>How do fungi trade?</h2><small>8 conversations · 3 figures · 1 resource</small></div></nav>
+<main class="map full" aria-label="Learning tree map">
+<div class="node" style="left:40px;top:150px"><div class="nh"><span class="chip c0">1</span>How do fungi trade?</div><div class="nq">How do fungi trade?</div><div class="nr">Mycorrhizal fungi trade phosphorus for sugar. The fungus threads its hyphae between root cells and extends the reach of the plant.</div></div>
+<div class="node" style="left:360px;top:30px"><div class="nh"><span class="chip c1">1.1</span>Why trade at all?</div><div class="nq">Why trade at all?</div><div class="nr">Neither partner can make what the other offers.</div></div>
+<div class="node on" style="left:360px;top:200px"><div class="nh"><span class="chip c2">1.2</span>What are hyphae?</div><div class="nq">What are hyphae?</div><div class="nr">Hyphae are the thread-like cells a fungus is built from. Each one grows only at its tip.</div></div>
+<div class="node" style="left:680px;top:120px"><div class="nh"><span class="chip c2">1.2.1</span>How thin is thin?</div><div class="nq">How thin is thin?</div><div class="nr">Two to five micrometres, a fifth of a root hair.</div></div>
+<div class="node" style="left:680px;top:300px"><div class="nh"><span class="chip c2">1.2.2</span>What is an arbuscule?</div><div class="nq">What is an arbuscule?</div><div class="nr">A finely branched fold of hypha inside a root cell.</div></div>
+<svg width="1000" height="520" aria-hidden="true">
+<path class="ln m c1" d="M260 230H276L292 214V77L308 61H360"/><path class="ln m c2" d="M260 250H360"/>
+<path class="ln m c2" d="M580 270H592L608 254V163L624 147H680"/><path class="ln m c2" d="M580 290H600L637 327H680"/>
+<g class="stn m"><circle cx="260" cy="230" r="4.5"/><circle cx="260" cy="250" r="4.5"/><circle cx="580" cy="270" r="4.5"/><circle cx="580" cy="290" r="4.5"/><circle cx="360" cy="61" r="6"/><circle cx="360" cy="250" r="6"/><circle cx="680" cy="147" r="6"/><circle cx="680" cy="327" r="6"/></g></svg>
+<div class="tip" style="left:12px;bottom:62px">Search inside every conversation in this tree<kbd>Ctrl K</kbd></div>
+<div class="ctl" role="group" aria-label="Tree view controls"><button class="find hover" aria-label="Search tree" aria-keyshortcuts="Control+K" aria-haspopup="dialog"><i class="i i--sm i-magnifying-glass"></i>Search tree<kbd>Ctrl K</kbd></button><span class="sep"></span><button class="ib" aria-label="Zoom out"><i class="i i-minus"></i></button>100%<button class="ib" aria-label="Zoom in"><i class="i i-plus"></i></button><button class="ib" aria-label="Fit tree"><i class="i i-arrows-pointing-out"></i></button><button class="ib" aria-label="Map menu"><i class="i i-ellipsis-horizontal"></i></button><span class="sw on"></span>Ghost trees</div>
+</main></div></div>
+
+<section class="intro"><h2>Map, sidebar as a rail</h2><p>Focus mode on desktop. The rail keeps its magnifier, now named for what it does; the map control is the labelled way in.</p></section>
+<div class="stagebox"><div class="app short railed"><nav class="rail-side" aria-label="Sidebar" style="position:relative"><button class="ib" aria-label="Show full sidebar"><i class="i i-bars-3"></i></button><button class="ib" aria-label="New chat"><i class="i i-plus"></i></button><button class="ib hover" aria-label="Search inside conversations (Ctrl+K)"><i class="i i-magnifying-glass"></i></button><button class="ib" aria-label="Read"><i class="i i-book-open"></i></button><button class="ib" aria-label="Map" style="background:var(--up);color:var(--w)"><i class="i i-map"></i></button><button class="ib" aria-label="Knowledge"><i class="i i-share"></i></button><button class="ib" aria-label="Videos"><i class="i i-film"></i></button><button class="ib" aria-label="Pieces"><i class="i i-cube"></i></button><button class="ib" aria-label="Library"><i class="i i-rectangle-stack"></i></button><div class="tip" style="left:52px;top:84px">Search inside conversations<kbd>Ctrl K</kbd></div></nav>
+<main class="map full" aria-label="Learning tree map">
+<div class="node" style="left:60px;top:150px"><div class="nh"><span class="chip c0">1</span>How do fungi trade?</div><div class="nq">How do fungi trade?</div><div class="nr">Mycorrhizal fungi trade phosphorus for sugar.</div></div>
+<div class="node on" style="left:380px;top:150px"><div class="nh"><span class="chip c2">1.2</span>What are hyphae?</div><div class="nq">What are hyphae?</div><div class="nr">Hyphae are the thread-like cells a fungus is built from.</div></div>
+<svg width="700" height="400" aria-hidden="true"><path class="ln m c2" d="M280 220H380"/><g class="stn m"><circle cx="280" cy="220" r="4.5"/><circle cx="380" cy="220" r="6"/></g></svg>
+<div class="ctl" role="group" aria-label="Tree view controls"><button class="find" aria-label="Search tree" aria-keyshortcuts="Control+K" aria-haspopup="dialog"><i class="i i--sm i-magnifying-glass"></i>Search tree<kbd>Ctrl K</kbd></button><span class="sep"></span><button class="ib" aria-label="Zoom out"><i class="i i-minus"></i></button>100%<button class="ib" aria-label="Zoom in"><i class="i i-plus"></i></button><button class="ib" aria-label="Fit tree"><i class="i i-arrows-pointing-out"></i></button><button class="ib" aria-label="Map menu"><i class="i i-ellipsis-horizontal"></i></button><span class="sw on"></span>Ghost trees</div>
+</main></div></div>
+
+<section class="intro"><h2>The window, opened from the map</h2><p>Empty query. The field and one new line say what is searched; the recent learning trees follow as before.</p></section>
+<div class="stagebox"><div class="app short railed"><nav class="rail-side" aria-label="Sidebar"></nav><main class="map full" aria-label="Learning tree map"></main></div>
+<div class="scrim"></div>
+<div class="swin" role="dialog" aria-modal="true" aria-label="Search inside conversations">
+<div class="sf"><i class="i i-magnifying-glass"></i><span class="ph">Search inside every conversation<span class="cursor"></span></span><kbd>Esc</kbd></div>
+<p class="what">Finds words in every branch: <b>titles</b>, <b>passages</b>, <b>your questions</b> and <b>the tutor's replies</b>. Matches in this tree come first.</p>
+<div class="sres" role="listbox" aria-label="Recent learning trees"><div class="grp"><h2>Recent learning trees</h2>
+<div class="hit on" role="option" aria-selected="true"><span class="chip c0">1</span><b>How do fungi trade?</b><span class="where">Today · 8 conversations</span></div>
+<div class="hit" role="option"><span class="chip c0">1</span><b>What makes bread rise?</b><span class="where">Yesterday · 4 conversations</span></div>
+<div class="hit" role="option"><span class="chip c0">1</span><b>How do rockets change orbit?</b><span class="where">19 Nov · 6 conversations</span></div>
+</div></div>
+<div class="keys" aria-hidden="true"><span><kbd><i class="i i-chevron-up"></i></kbd><kbd><i class="i i-chevron-down"></i></kbd>Move</span><span><kbd>Enter</kbd>Open</span><span><kbd>Esc</kbd>Close</span></div>
+</div></div>
+
+<div class="phones">
+<section class="phone"><h2>Narrow, header hidden</h2><p>Focus mode below 48rem hides the header, so its search button goes too. The map control still shows, as icon and "Search".</p><div class="scr"><button class="ib restore" aria-label="Show top bar"><i class="i i-chevron-down"></i></button><div class="map" style="flex:1;border:0">
+<div class="node" style="left:16px;top:120px"><div class="nh"><span class="chip c0">1</span>How do fungi trade?</div><div class="nq">How do fungi trade?</div><div class="nr">Mycorrhizal fungi trade phosphorus for sugar.</div></div>
+<div class="node on" style="left:210px;top:330px"><div class="nh"><span class="chip c2">1.2</span>What are hyphae?</div><div class="nq">What are hyphae?</div><div class="nr">Thread-like cells that grow at the tip.</div></div>
+<svg width="390" height="700" aria-hidden="true"><path class="ln m c2" d="M176 210H184L200 226V362L210 372"/><g class="stn m"><circle cx="176" cy="210" r="4.5"/><circle cx="210" cy="372" r="6"/></g></svg>
+<div class="ctl" role="group" aria-label="Tree view controls"><button class="find" aria-label="Search tree" aria-haspopup="dialog"><i class="i i--sm i-magnifying-glass"></i>Search</button><span class="sep"></span><button class="ib" aria-label="Zoom out"><i class="i i-minus"></i></button>100%<button class="ib" aria-label="Zoom in"><i class="i i-plus"></i></button><button class="ib" aria-label="Fit tree"><i class="i i-arrows-pointing-out"></i></button><button class="ib" aria-label="Map menu"><i class="i i-ellipsis-horizontal"></i></button></div>
+</div></div></section>
+</div>
+
+<main style="padding:0 40px 64px;max-width:960px">
+<section class="intro" style="padding:0;max-width:none"><h2>Copy changes</h2><p>Only words change outside the map control. Struck text is today's.</p><div style="margin-top:16px"><table class="copy"><thead><tr><th>Where</th><th>Text</th></tr></thead><tbody>
+<tr><td>Sidebar, rail and narrow header button name</td><td><del>Search conversations</del> <ins>Search inside conversations</ins></td></tr>
+<tr><td>Their tooltip</td><td><del>Search conversations (Ctrl+K)</del> <ins>Search inside conversations (Ctrl+K)</ins></td></tr>
+<tr><td>Map control</td><td><ins>Search tree</ins>, tooltip <ins>Search inside every conversation in this tree (Ctrl+K)</ins></td></tr>
+<tr><td>Window name</td><td><del>Search conversations</del> <ins>Search inside conversations</ins></td></tr>
+<tr><td>Field placeholder</td><td><del>Search every conversation</del> <ins>Search inside every conversation</ins></td></tr>
+<tr><td>Empty query, new line above recent trees</td><td><ins>Finds words in every branch: titles, passages, your questions and the tutor's replies. Matches in this tree come first.</ins> The last sentence shows only on a learning tree.</td></tr>
+<tr><td>Hint when nothing is typed and no trees exist</td><td><del>Type words from any conversation.</del> <ins>Type words from any question or reply.</ins></td></tr>
+</tbody></table></div></section>
+</main>
+<script src="line-diagram/ld.js"></script>
+</body></html>

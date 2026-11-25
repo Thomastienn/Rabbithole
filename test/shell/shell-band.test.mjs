@@ -51,7 +51,7 @@ test('desktop sidebar and narrow band keep control order, current views, drawer 
         'Shrink sidebar to rail',
         'Rabbithole',
         'New chat',
-        'Search conversations',
+        'Search inside conversations',
         'Read',
         'Map',
         'Knowledge',
@@ -74,7 +74,7 @@ test('desktop sidebar and narrow band keep control order, current views, drawer 
         assert.equal(band().querySelector('[aria-current=page]').textContent, label);
     }
     for (const [label, expected] of [
-        ['Search conversations', 'search'],
+        ['Search inside conversations', 'search'],
         ['New chat', 'new'],
         ['Settings', 'settings'],
         ['Rabbithole', 'library'],
@@ -97,11 +97,11 @@ test('desktop sidebar and narrow band keep control order, current views, drawer 
         'Contents',
         'Rabbithole',
         'Hide top bar',
-        'Search conversations',
+        'Search inside conversations',
         'New chat',
     ]);
     for (const [label, expected] of [
-        ['Search conversations', 'search'],
+        ['Search inside conversations', 'search'],
         ['New chat', 'new'],
         ['Rabbithole', 'library'],
     ]) {
@@ -113,7 +113,7 @@ test('desktop sidebar and narrow band keep control order, current views, drawer 
     for (const [label, expected] of [
         ['Close contents', undefined],
         ['New chat', 'new'],
-        ['Search conversations', 'search'],
+        ['Search inside conversations', 'search'],
         ['Knowledge', 'Knowledge'],
         ['Library', 'library'],
         ['1 Fungi', undefined],
@@ -200,7 +200,7 @@ test('focus mode shrinks the sidebar to a labelled rail of named icons that keep
     assert.deepEqual(buttons().map(name), [
         'Show full sidebar',
         'New chat',
-        'Search conversations',
+        'Search inside conversations',
         'Read',
         'Map',
         'Knowledge',
@@ -232,7 +232,7 @@ test('focus mode shrinks the sidebar to a labelled rail of named icons that keep
     }
     for (const [label, expected] of [
         ['New chat', 'new'],
-        ['Search conversations', 'search'],
+        ['Search inside conversations', 'search'],
         ['Library', 'library'],
         ['Settings', 'settings'],
     ]) {

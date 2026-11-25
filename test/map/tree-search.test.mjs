@@ -82,6 +82,7 @@ test('search window lists recent trees, groups marked results by tree, moves wit
                 searchSource: source,
                 ink: (id) => (id === 'hyphae' ? 2 : 0),
                 onOpen: (r) => opened.push(r),
+                inTree: true,
             }),
         );
     }
@@ -123,6 +124,11 @@ test('search window lists recent trees, groups marked results by tree, moves wit
         );
     let dialog = await open();
     assert.ok(dialog.getAttribute('aria-label'));
+    assert.match(
+        dialog.querySelector('.search-what').textContent,
+        /questions.*replies\. Matches in this tree come first\./,
+        'the empty query names every field searched',
+    );
     assert.equal(document.activeElement.tagName, 'INPUT');
     assert.match(
         dialog.querySelector('[role=option]').textContent,

@@ -24,7 +24,7 @@ function marked(text: string, ranges: [number, number][]) {
     return parts;
 }
 
-function SearchInput({ shown }: { shown: RefObject<Item[] | undefined> }) {
+function SearchInput({ shown, inTree }: { shown: RefObject<Item[] | undefined>; inTree: boolean }) {
     const palette = useCommandPaletteContext();
     const results = palette?.searchResults as Item[] | undefined;
     // Only committed options can be selected. A cancelled search must not overwrite them.
@@ -35,11 +35,19 @@ function SearchInput({ shown }: { shown: RefObject<Item[] | undefined> }) {
     const trees = new Set(results?.map((r) => r.auxiliaryData.root)).size;
     return (
         <>
-            <CommandPaletteInput placeholder="Search every conversation" />
+            <CommandPaletteInput placeholder="Search inside every conversation" />
             <p className="search-count" role="status" aria-busy={palette?.isBusy}>
                 {count > 0 &&
                     `${count} ${count === 1 ? 'result' : 'results'} in ${trees} ${trees === 1 ? 'learning tree' : 'learning trees'}`}
             </p>
+            {/* The empty query names every field searched, so title-only search is not assumed. */}
+            {!palette?.search && (
+                <p className="search-what">
+                    Finds words in every branch: <b>titles</b>, <b>passages</b>,{' '}
+                    <b>your questions</b> and <b>the tutor's replies</b>.
+                    {inTree && ' Matches in this tree come first.'}
+                </p>
+            )}
         </>
     );
 }
@@ -59,10 +67,12 @@ export default function TreeSearch({
     searchSource,
     ink,
     onOpen,
+    inTree,
     ...props
 }: Pick<CommandPaletteProps<Item>, 'isOpen' | 'onOpenChange' | 'searchSource'> & {
     ink: (conversation: string) => number;
     onOpen: (result: SearchResult) => void;
+    inTree: boolean;
 }) {
     // The palette hands back only an id; the shown items give the whole result.
     const shown = useRef<Item[] | undefined>(undefined);
@@ -73,9 +83,9 @@ export default function TreeSearch({
             width="min(760px, calc(100vw - 32px))"
             maxHeight="80vh"
             searchSource={searchSource}
-            label="Search conversations"
-            input={<SearchInput shown={shown} />}
-            emptyBootstrapText="Type words from any conversation."
+            label="Search inside conversations"
+            input={<SearchInput shown={shown} inTree={inTree} />}
+            emptyBootstrapText="Type words from any question or reply."
             emptySearchText={<NoMatches />}
             onValueChange={(id) => {
                 const item = shown.current?.find((r) => r.id === id);

@@ -6,12 +6,14 @@ import { MinusIcon, PlusIcon, ArrowsPointingOutIcon } from '@heroicons/react/24/
 import { zoomLabel } from './canvas';
 
 export function MapToolbar({
+    lead,
     zoom,
     zoomOut,
     zoomIn,
     fitTree,
     children,
 }: {
+    lead?: ReactNode;
     zoom: number;
     zoomOut: () => void;
     zoomIn: () => void;
@@ -27,6 +29,12 @@ export function MapToolbar({
             role="group"
             aria-label="Tree view controls"
         >
+            {lead && (
+                <>
+                    {lead}
+                    <span className="map-toolbar-seam" aria-hidden="true" />
+                </>
+            )}
             <IconButton
                 label="Zoom out"
                 tooltip="Zoom out"

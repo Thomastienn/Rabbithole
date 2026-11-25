@@ -278,6 +278,7 @@ export default function ChatPage({
                 }}
                 searchSource={titleSearch}
                 ink={(id) => addresses.get(id)?.ink ?? 0}
+                inTree={!!root}
                 onOpen={(r) => {
                     // A recent tree reopens as saved; a match opens its conversation in chat at the matched words.
                     if (r.recent) return openTree(r.root, undefined, undefined, true);
@@ -450,6 +451,10 @@ export default function ChatPage({
                                     branching={branchForm.branching}
                                     vim={vim}
                                     menu={menu}
+                                    search={() => {
+                                        searchFromDrawer.current = false;
+                                        setSearching(true);
+                                    }}
                                 />
                             </section>
                         </section>

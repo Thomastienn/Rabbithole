@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { Button } from '@astryxdesign/core/Button';
 import { IconButton } from '@astryxdesign/core/IconButton';
+import { Kbd } from '@astryxdesign/core/Kbd';
 import { Switch } from '@astryxdesign/core/Switch';
-import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
+import { ChatBubbleLeftRightIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import TreeOverview, { type MapActions } from './TreeOverview';
 import MapDivider from './MapDivider';
 import type { ChatState } from '../chat/useChatState';
@@ -43,8 +45,10 @@ export default function MapView({
     branching,
     vim,
     menu,
+    search,
 }: {
     vim: boolean;
+    search: () => void;
     menu: (actions?: MapActions) => React.ReactNode;
 } & Pick<
     ChatState,
@@ -87,6 +91,21 @@ export default function MapView({
                 >
                     <TreeOverview
                         vim={vim}
+                        lead={
+                            // Labelled because the rail and the hidden narrow header leave no named way in.
+                            <Button
+                                className="map-search"
+                                label={mobile ? 'Search' : 'Search tree'}
+                                tooltip="Search inside every conversation in this tree (Ctrl+K)"
+                                icon={<MagnifyingGlassIcon />}
+                                endContent={mobile ? undefined : <Kbd keys="mod+k" />}
+                                variant="ghost"
+                                size="sm"
+                                aria-haspopup="dialog"
+                                aria-keyshortcuts="Control+K"
+                                onClick={search}
+                            />
+                        }
                         toolbar={
                             <>
                                 <Switch

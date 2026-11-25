@@ -288,6 +288,21 @@ button.contents-row > span:first-child > span {
     background: var(--color-background-surface);
     color: var(--color-text-secondary);
 }
+/* Mockup search-inside-hints: Search keeps its words; narrow screens wrap the rest of the controls instead. */
+.map-toolbar {
+    flex-wrap: wrap;
+    max-width: calc(100% - 2 * var(--spacing-3));
+}
+.map-search {
+    flex-shrink: 0;
+}
+/* A seam between Search tree and the zoom controls. */
+.map-toolbar-seam {
+    width: 1px;
+    align-self: stretch;
+    margin-block: 6px;
+    background: var(--color-border);
+}
 .overview :focus-visible {
     outline: var(--focus-outline-width) solid var(--rabbithole-paper);
     outline-offset: var(--focus-outline-offset);

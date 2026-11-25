@@ -293,8 +293,8 @@ export default function ShellBand({
                     />
                     <IconButton
                         className="tree-search"
-                        label="Search conversations"
-                        tooltip="Search conversations (Ctrl+K)"
+                        label="Search inside conversations"
+                        tooltip="Search inside conversations (Ctrl+K)"
                         variant="ghost"
                         size="md"
                         icon={<MagnifyingGlassIcon />}
@@ -336,8 +336,8 @@ export default function ShellBand({
                     {focusButton}
                     <IconButton
                         className="tree-search"
-                        label="Search conversations"
-                        tooltip="Search conversations (Ctrl+K)"
+                        label="Search inside conversations"
+                        tooltip="Search inside conversations (Ctrl+K)"
                         icon={<MagnifyingGlassIcon />}
                         variant="ghost"
                         size="md"

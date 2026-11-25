@@ -80,6 +80,15 @@
         ],
         "createdAt": "2026-11-24T07:05:50.814Z",
         "reason": "agent triage: .sf is a 56px row with centred content (16px clear of its underline); .stagebox border-top is the mockup frame seam, same as Rabbithole-upd.2.html"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "docs/mockups/search-inside-hints.html"
+        ],
+        "createdAt": "2026-11-25T22:56:40.964Z",
+        "reason": "agent triage: all hits are the .stagebox top divider sitting on a full-bleed app frame, the same framing as Rabbithole-nav.2.html; no text touches it"
       }
     ]
   }

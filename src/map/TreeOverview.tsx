@@ -105,6 +105,7 @@ export default function TreeOverview({
     save,
     saveViewport,
     menu,
+    lead,
     toolbar,
     selected,
     current,
@@ -120,6 +121,7 @@ export default function TreeOverview({
     marked?: string[];
     from?: string;
     ghosts: GhostOptions;
+    lead?: ReactNode;
     toolbar?: ReactNode;
     saveViewport: (viewport: Viewport) => void;
     folded: Set<string>;
@@ -388,7 +390,7 @@ export default function TreeOverview({
     const mapEdges = useMemo(() => [...edges, ...ghost.edges], [edges, ghost.edges]);
     return (
         <>
-            <MapToolbar zoom={zoom} zoomOut={zoomOut} zoomIn={zoomIn} fitTree={fitTree}>
+            <MapToolbar lead={lead} zoom={zoom} zoomOut={zoomOut} zoomIn={zoomIn} fitTree={fitTree}>
                 {menu({
                     expand: () => setFolded(new Set()),
                     collapse: () => setFolded(new Set([root])),
