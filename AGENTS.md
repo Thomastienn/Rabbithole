@@ -6,7 +6,8 @@ the invoked skill's steps as written, including publishing tickets with
 `ready-for-agent`, and leave the code untouched. Before publishing a ticket for
 a new screen, panel or component, or a visual redesign, remind the owner to
 make a mockup at `docs/mockups/<issue-id>.html` or `.png`; label the ticket
-`new-ui` and link the mockup with a `Mockup:` line in its description. After
+`new-ui`, link the mockup with a `Mockup:` line in its description and add the
+mockup acceptance criterion from `docs/agents/mockups.md`. After
 creating or changing a mockup, open it for the owner with
 `xdg-open docs/mockups/<file>` without being asked. Tweaks
 that keep the existing look need neither. Implementation happens in
@@ -71,6 +72,10 @@ Issues live in Beads (`bd` CLI, `.beads/`), local only. See `docs/agents/issue-t
 ### Domain docs
 
 Single-context: root `GLOSSARY.md` plus `docs/adr/`. See `docs/agents/domain.md`.
+
+### Mockups
+
+A task with a `Mockup:` line must match its structure exactly, in the app's theme colours, checked by paired screenshots. See `docs/agents/mockups.md`.
 
 ### Testing
 

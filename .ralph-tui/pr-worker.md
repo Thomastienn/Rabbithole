@@ -9,7 +9,8 @@ pushes to your branch and Beads updates are authorized (AGENTS.md).
 
 1. **Read.** `bd show <task> --json` gives the description, acceptance
    criteria and notes. Read `AGENTS.md` and the docs it links for the areas you
-   touch. A `Mockup:` line in the description names the design to replicate.
+   touch. A `Mockup:` line in the description names the design whose structure to match exactly;
+   follow `docs/agents/mockups.md`.
    When `gh pr view <branch>` finds a PR, you are resuming: read the PR, its
    checks and the task notes, and continue from there.
 2. **Implement** every acceptance criterion. For routine decisions choose the
@@ -29,7 +30,8 @@ pushes to your branch and Beads updates are authorized (AGENTS.md).
    `npm run test:affected` and `tsc` to CI, which runs the full fast suite,
    type check, format check and secret scan on every push. Do not build the
    app, start the server, stage installs or write throwaway end-to-end scripts
-   to prove a criterion. When the acceptance
+   to prove a criterion, except the mockup comparison a `Mockup:` line
+   requires. When the acceptance
    names the slow suite, run it on GitHub with
    `gh workflow run slow-tests.yml --ref <branch>` and cite that run. Run
    `npm run verify` or a `scripts/verify/` script only when the acceptance
@@ -57,7 +59,8 @@ You are done when the PR is open, every check is green and the task carries
 
 `needs-human` parks the task until the owner answers, so use it only when no
 reasonable default exists: missing access or credentials, acceptance criteria
-that contradict each other, or a product decision only the owner can make.
+that contradict each other, a product decision only the owner can make, or a
+difference from the task's mockup you cannot remove.
 Run `bd update <task> --add-label needs-human` and
 `bd note <task> "<the question, what you tried, the options>"`, then end.
 CI still red after 3 fix rounds escalates the same way, naming the failure.

@@ -68,8 +68,9 @@ them here.
   changes and check it asserts the criterion's observable outcome, not a mock
   of the code under test or its internals. Rewrite a test that would stay
   green without the change.
-- **Mockup**: a `new-ui` task matches the design its `Mockup:` line links
-  under `docs/mockups/`.
+- **Mockup**: a task with a `Mockup:` line matches its structure exactly, in theme colours, proved by the
+  paired screenshots `docs/agents/mockups.md` requires; check them as its
+  Reviewing section says.
 - **Personal data**: the diff carries no personal data.
 - **Beads export**: `.beads/issues.jsonl` is unchanged by the PR; revert it
   when it is not.
