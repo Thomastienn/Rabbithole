@@ -172,6 +172,46 @@ export const knowledge = {
                     .run(this.conceptId(name), conversation);
         });
     },
+    // Root conversations exploring one of the names (any case).
+    rootsExploring(names) {
+        return this.db
+            .prepare(
+                'SELECT t.id FROM trees t JOIN concepts c ON c.id=t.concept WHERE c.name IN (SELECT value FROM json_each(?)) AND NOT EXISTS (SELECT 1 FROM branches b WHERE b.child=t.id) ORDER BY t.created',
+            )
+            .all(JSON.stringify(names))
+            .map((t) => t.id);
+    },
+    // Replaces an explored concept; null leaves the conversation with none.
+    reexplore(conversation, name) {
+        this.transaction(() =>
+            this.db
+                .prepare('UPDATE trees SET concept=? WHERE id=?')
+                .run(name ? this.conceptId(name) : null, conversation),
+        );
+    },
+    // Deletes a concept and its graph rows once no conversation, evidence or observation uses it.
+    dropUnusedConcept(name) {
+        const id = this.db.prepare('SELECT id FROM concepts WHERE name=?').get(name)?.id;
+        if (
+            !id ||
+            this.db
+                .prepare(
+                    'SELECT 1 FROM trees WHERE concept=?1 UNION ALL SELECT 1 FROM evidence WHERE concept=?1 UNION ALL SELECT 1 FROM observations WHERE concept=?1',
+                )
+                .get(id)
+        )
+            return false;
+        this.transaction(() => {
+            for (const sql of [
+                'DELETE FROM concept_aliases WHERE concept=?1',
+                'DELETE FROM concept_topics WHERE concept=?1',
+                'DELETE FROM concept_links WHERE concept=?1 OR target=?1',
+                'DELETE FROM concepts WHERE id=?1',
+            ])
+                this.db.prepare(sql).run(id);
+        });
+        return true;
+    },
     evidence(concept, kind, source) {
         this.db
             .prepare('INSERT OR IGNORE INTO evidence(concept,kind,source,at) VALUES (?,?,?,?)')
