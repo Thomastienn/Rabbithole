@@ -228,6 +228,8 @@ test('a scene step crossfades from a still copy of the old scene; controls and f
             scene: true,
             show: (state) => {
                 calls.push({ n, ...state });
+                // Frame-wide selection, as visuals may use: the still copy must stay out of reach.
+                window.document.querySelectorAll('b').forEach((b) => b.remove());
                 root.innerHTML = `<b data-part="Scene">Scene ${n}</b>`;
             },
         });

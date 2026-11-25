@@ -114,10 +114,10 @@ export function stepThrough(root: HTMLElement, steps: Step[], duration = 600) {
             still.setAttribute('inert', '');
             still.setAttribute('aria-hidden', 'true');
             place(still, root.getBoundingClientRect());
-            root.after(still);
             root.style.transition = 'none';
             root.style.opacity = '0';
             step.show(state);
+            root.after(still); // after show, so its frame-wide selections never reach the copy
             void view.getComputedStyle(root).opacity; // commits opacity 0 so the fade in runs
             for (const e of [root, still]) e.style.transition = `opacity ${ms}ms`;
             root.style.opacity = '';
