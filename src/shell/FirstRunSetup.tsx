@@ -7,6 +7,7 @@ import { Divider } from '@astryxdesign/core/Divider';
 import { Code } from '@astryxdesign/core/Code';
 import { CheckIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import SandboxSettings from '../settings/SandboxSettings';
+import ClaudeSignIn from '../settings/ClaudeSignIn';
 import FirstRunAddOns from './FirstRunAddOns';
 import CliInstall from './CliInstall';
 import type { Model } from '../settings/models';
@@ -172,17 +173,13 @@ export default function FirstRunSetup({
                         <Text type="supporting">
                             {claude
                                 ? 'Signed in through Claude Code.'
-                                : `${codex ? 'Optional. ' : ''}Run claude in a terminal and sign in, then check again.`}
+                                : `${codex ? 'Optional. ' : ''}Sign in with your Claude account.`}
                         </Text>
                         {!claude && (
-                            <HStack>
-                                <Button
-                                    label="Check again"
-                                    variant={codex ? 'ghost' : 'secondary'}
-                                    size="sm"
-                                    onClick={() => loadModels()}
-                                />
-                            </HStack>
+                            <ClaudeSignIn
+                                loadModels={loadModels}
+                                variant={codex ? 'ghost' : 'secondary'}
+                            />
                         )}
                     </>
                 )}

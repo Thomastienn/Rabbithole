@@ -113,10 +113,10 @@ try {
     const signedIn = hasClaude && (await claude.status()).connected;
     console.log(
         !hasClaude
-            ? `Claude Code: not installed or could not run. Next: choose Install for Claude in first-run setup or Map menu > Settings > Connections, or run ${installCommand('claude')}; then sign in with your Claude plan.`
+            ? `Claude Code: not installed or could not run. Next: choose Install for Claude in first-run setup or Map menu > Settings > Connections, or run ${installCommand('claude')}; then press Sign in to Claude there.`
             : signedIn
               ? 'Claude Code: installed and signed in. Next: choose New chat to ask a question.'
-              : 'Claude Code: installed; signed out or sign-in could not be checked. Next: run claude in a terminal and sign in with your Claude plan; then reload Rabbithole to check sign-in again.',
+              : 'Claude Code: installed; signed out or sign-in could not be checked. Next: press Sign in to Claude in first-run setup or Settings, Connections.',
     );
     console.log(
         !hasCodex
