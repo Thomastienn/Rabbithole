@@ -5,7 +5,7 @@ import type { SearchResult } from '../shell/treeSearchSource';
 import type { ChatState } from './useChatState';
 import type { Tree } from './types';
 
-export const REVEAL_MS = 2500;
+export const REVEAL_MS = 1500;
 
 const searchContent = {
     title: '.chat-title h2',

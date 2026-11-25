@@ -169,11 +169,8 @@ export function renderMarkdown(
             ...(atomic && { 'data-x': '' }),
             className,
         };
-        if (hit(s, e) && (atomic || (reveal!.start <= s && reveal!.end >= e))) {
-            revealed++;
-            return h('mark', { ...attrs, tabIndex: -1, 'aria-label': 'Source passage' }, value);
-        }
-        if (hit(s, e))
+        const marked = hit(s, e) && (atomic || (reveal!.start <= s && reveal!.end >= e));
+        if (hit(s, e) && !marked)
             return split(
                 attrs,
                 s,
@@ -189,29 +186,37 @@ export function renderMarkdown(
                 .filter((a) => a > s && a < e)
                 .sort((a, b) => a - b);
         if (cuts.length && !atomic) return split(attrs, s, e, cuts, className);
+        // A revealed piece keeps its underlines and chips; the mark sits inside them.
+        if (marked) revealed++;
+        const mark = (props: object) =>
+            h('mark', { ...props, tabIndex: -1, 'aria-label': 'Source passage' }, value);
         if (covering.length) {
             const lanes = covering.length,
-                piece = covering.reduceRight<ReactNode>((inner, u, lane) => {
-                    const { className: under, style, ...props } = underline(u);
-                    return h(
-                        'u',
-                        {
-                            ...(lane === lanes - 1 ? attrs : { key: s }),
-                            ...props,
-                            className: [under, lane === lanes - 1 && className]
-                                .filter(Boolean)
-                                .join(' '),
-                            style,
-                        },
-                        inner,
-                    );
-                }, value),
+                piece = covering.reduceRight<ReactNode>(
+                    (inner, u, lane) => {
+                        const { className: under, style, ...props } = underline(u);
+                        return h(
+                            'u',
+                            {
+                                ...(lane === lanes - 1 ? attrs : { key: s }),
+                                ...props,
+                                className: [under, lane === lanes - 1 && className]
+                                    .filter(Boolean)
+                                    .join(' '),
+                                style,
+                            },
+                            inner,
+                        );
+                    },
+                    marked ? mark({ key: s }) : value,
+                ),
                 chips = covering
                     .filter((u) => u.child && u.address && e >= u.end)
                     .reverse()
                     .map((u) => chip(u, underline(u).style));
             return chips.length ? h(Fragment, { key: s }, piece, ...chips) : piece;
         }
+        if (marked) return mark(attrs);
         return h(Text, { ...attrs, type: 'inherit', children: value });
     };
     const tree = parse(raw),
@@ -404,10 +409,10 @@ export function renderMarkdown(
             case 'math':
             case 'inlineMath': {
                 // Symbols get offsets only when the LaTeX sits verbatim in the source (not under a quote or list prefix).
-                // A revealed formula is not underlined, like revealed text; a whole-formula underline is on <math>.
+                // A revealed formula keeps its underlines, like revealed text; a whole-formula underline is on <math>.
                 // shortcut: overlapping explored passages in one formula draw only the first; nest them like text if learners branch inside formulas.
                 const at = raw.indexOf(n.value!, s),
-                    marked = hit(s, e) ? [] : underlines.filter((u) => u.start < e && u.end > s),
+                    marked = underlines.filter((u) => u.start < e && u.end > s),
                     whole = marked.find((u) => u.start <= s && u.end >= e),
                     ends = marked.find((u) => u.child && u.address && u.end <= e);
                 const mathml = mathMarkup(

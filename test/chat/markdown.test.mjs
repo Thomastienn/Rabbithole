@@ -197,6 +197,18 @@ test('streaming partial Markdown keeps an unfinished fence as code; previews str
     assert.equal(plainText('## Title\n\n- **bold** item\n- `code`'), 'Title bold item code');
 });
 
+test('a revealed explored passage keeps its underline and address chip', () => {
+    const raw = 'The Banker algorithm on slides',
+        passage = { start: 4, end: 20 };
+    const doc = dom(
+        renderToStaticMarkup(
+            renderMarkdown(raw, passage, [{ ...passage, child: 'c1', address: '1.2', ink: 2 }]),
+        ),
+    );
+    assert.equal(doc.querySelector('u.explored mark')?.textContent, 'Banker algorithm');
+    assert.equal(doc.querySelector('.passage-address')?.textContent, '1.2');
+});
+
 test('code offsets cannot match the fence label and reveal only the saved characters', () => {
     const raw = '```js\njs\nconst js = 1;\n```';
     const doc = dom(renderToStaticMarkup(renderMarkdown(raw)));

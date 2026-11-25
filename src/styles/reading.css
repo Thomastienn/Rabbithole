@@ -348,11 +348,11 @@ mark {
 }
 /* A returned-to passage holds its mark, then fades; useChatTargets drops it at the end (REVEAL_MS). */
 .reply-md :is(mark, [data-reveal]) {
-    animation: reveal-fade 2.5s ease-in forwards;
+    animation: reveal-fade 1.5s ease-in forwards;
 }
 @keyframes reveal-fade {
     0%,
-    60% {
+    40% {
         background: var(--rabbithole-selection);
     }
     100% {
