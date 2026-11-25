@@ -468,7 +468,10 @@ export class Codex {
                         interrupt();
                         return;
                     }
-                    for (const event of earlyEvents) listener(event);
+                    for (const event of earlyEvents) {
+                        if (!this.listeners.has(listener)) break;
+                        listener(event);
+                    }
                     earlyEvents.length = 0;
                 }, finish);
             });

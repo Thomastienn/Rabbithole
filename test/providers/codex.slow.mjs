@@ -123,37 +123,12 @@ test('stdio stream routes by thread, final item replaces partial, saved thread r
         client.close();
     }
 });
-test('failed terminal turn and process exit reject rather than report success', async () => {
-    for (const prompt of ['fail', 'disconnect']) {
-        const client = fixture();
-        try {
-            await assert.rejects(
-                client.generate(
-                    {},
-                    prompt,
-                    () => {},
-                    () => {},
-                    new AbortController().signal,
-                ),
-                /Partial reply saved|disconnected/,
-            );
-        } finally {
-            client.close();
-        }
-    }
-    const client = fixture();
+test('Codex reports terminal failures and keeps waiting through transient errors', async () => {
+    const interrupts = [];
+    const client = fixture(({ method, params }) => {
+        if (method === 'turn/interrupt') interrupts.push(params.turnId);
+    });
     try {
-        await assert.rejects(
-            client.generate(
-                {},
-                'fail',
-                () => {},
-                () => {},
-                new AbortController().signal,
-            ),
-            { message: 'Codex: Fixture usage limit reached. Partial reply saved; try again.' },
-        );
-        // Error notifications: a usage limit or a final error ends the reply at once, a retry keeps waiting.
         const run = async (prompt) => {
             const events = [];
             const error = await client
@@ -170,21 +145,30 @@ test('failed terminal turn and process exit reject rather than report success', 
                 );
             return { error, events: events.filter((e) => e.type !== 'usage') };
         };
-        assert.deepEqual(await run('usage limit'), {
-            error: 'Codex: stream disconnected before completion: The ChatGPT user has reached their Subscription Sharing usage limit. Partial reply saved; try again.',
-            events: [
-                { type: 'delta', item: 'answer', text: 'Partial' },
-                { type: 'item', item: 'answer', text: 'Authoritative original' },
-                { type: 'status', status: 'failed' },
-            ],
-        });
-        assert.equal(
-            (await run('final error')).error,
-            'Codex: Fixture gave up. Partial reply saved; try again.',
+        const limited = await run('usage limit');
+        assert.match(
+            limited.error,
+            /Subscription Sharing usage limit\. Ask the user to try again after their usage limit resets/,
         );
+        assert.deepEqual(limited.events, [
+            { type: 'delta', item: 'answer', text: 'Partial' },
+            { type: 'item', item: 'answer', text: 'Authoritative original' },
+            { type: 'status', status: 'failed' },
+        ]);
+        assert.deepEqual(interrupts, ['turn-fixture']);
+        for (const [prompt, reason] of [
+            ['fail', /Fixture usage limit reached/],
+            ['structured limit', /Fixture quota exhausted/],
+            ['final error', /Fixture gave up/],
+        ]) {
+            const failed = await run(prompt);
+            assert.match(failed.error, reason);
+            assert.deepEqual(failed.events.at(-1), { type: 'status', status: 'failed' });
+        }
         const retried = await run('retry error');
         assert.equal(retried.error, null);
         assert.deepEqual(retried.events.at(-1), { type: 'status', status: 'completed' });
+        assert.match((await run('disconnect')).error, /Codex disconnected/);
     } finally {
         client.close();
     }

@@ -14,7 +14,8 @@ export async function protocol(
     env = process.env,
 ) {
     const argv = inlineArgs(args);
-    const send = (obj) => stdout.write(JSON.stringify(obj) + '\n');
+    const send = (...messages) =>
+        stdout.write(messages.map((message) => JSON.stringify(message) + '\n').join(''));
     const threadModels = new Map();
     const video = `// Description: A winner moves upward.
 // Narration: "Each round keeps its winner."
@@ -338,7 +339,9 @@ export default () => <AbsoluteFill style={{ top: -useCurrentFrame() }}>Winner</A
             if (method === 'turn/interrupt') send({ id, result: {} });
         });
     async function turn(id, params, text) {
-        send({ id, result: { turn: { id: 'turn-fixture' } } });
+        const batch = [];
+        const sendTurn = text === 'usage limit' ? (message) => batch.push(message) : send;
+        sendTurn({ id, result: { turn: { id: 'turn-fixture' } } });
         if (text === 'hold') return;
         if (text === 'native tools fixture') {
             const item = {
@@ -354,19 +357,19 @@ export default () => <AbsoluteFill style={{ top: -useCurrentFrame() }}>Winner</A
                 query: '',
                 action: { type: 'openPage', url: 'https://www.second.example/fact' },
             };
-            send({
+            sendTurn({
                 method: 'item/started',
                 params: { threadId: params.threadId, turnId: 'turn-fixture', item },
             });
-            send({
+            sendTurn({
                 method: 'item/completed',
                 params: { threadId: params.threadId, turnId: 'turn-fixture', item },
             });
-            send({
+            sendTurn({
                 method: 'item/completed',
                 params: { threadId: params.threadId, turnId: 'turn-fixture', item: open },
             });
-            send({
+            sendTurn({
                 method: 'item/completed',
                 params: {
                     threadId: params.threadId,
@@ -380,16 +383,16 @@ export default () => <AbsoluteFill style={{ top: -useCurrentFrame() }}>Winner</A
         }
         // A worker turn attempts a command; the client must deny server-initiated tool requests.
         if (text.startsWith('{'))
-            send({
+            sendTurn({
                 id: 'worker-command',
                 method: 'item/commandExecution/requestApproval',
                 params: { threadId: params.threadId, command: 'cat ~/.ssh/id_rsa' },
             });
-        send({
+        sendTurn({
             method: 'item/agentMessage/delta',
             params: { threadId: 'foreign-thread', itemId: 'other', delta: 'MUST NOT LEAK' },
         });
-        send({
+        sendTurn({
             method: 'item/agentMessage/delta',
             params: {
                 threadId: params.threadId,
@@ -398,11 +401,11 @@ export default () => <AbsoluteFill style={{ top: -useCurrentFrame() }}>Winner</A
                 delta: 'MUST NOT LEAK',
             },
         });
-        send({
+        sendTurn({
             method: 'item/agentMessage/delta',
             params: { threadId: params.threadId, itemId: 'answer', delta: 'Partial' },
         });
-        send({
+        sendTurn({
             method: 'item/completed',
             params: {
                 threadId: params.threadId,
@@ -416,7 +419,7 @@ export default () => <AbsoluteFill style={{ top: -useCurrentFrame() }}>Winner</A
             },
         });
         if (!text.endsWith('no usage'))
-            send({
+            sendTurn({
                 method: 'thread/tokenUsage/updated',
                 params: {
                     threadId: params.threadId,
@@ -447,7 +450,7 @@ export default () => <AbsoluteFill style={{ top: -useCurrentFrame() }}>Winner</A
                 outputTokens,
             });
             for (const total of [usage(570, 230, 101), usage(570, 230, 101), usage(640, 260, 112)])
-                send({
+                sendTurn({
                     method: 'thread/tokenUsage/updated',
                     params: {
                         threadId: params.threadId,
@@ -457,13 +460,13 @@ export default () => <AbsoluteFill style={{ top: -useCurrentFrame() }}>Winner</A
                 });
         }
         // Replays a logged usage limit: Codex retries it as a disconnect and never sends turn/completed.
-        const error = (message, willRetry, ids = {}) =>
-            send({
+        const error = (message, willRetry, { codexErrorInfo = 'other', ...ids } = {}) =>
+            sendTurn({
                 method: 'error',
                 params: {
                     threadId: params.threadId,
                     turnId: 'turn-fixture',
-                    error: { message, codexErrorInfo: 'other' },
+                    error: { message, codexErrorInfo },
                     willRetry,
                     ...ids,
                 },
@@ -471,16 +474,25 @@ export default () => <AbsoluteFill style={{ top: -useCurrentFrame() }}>Winner</A
         if (text === 'usage limit') {
             error('MUST NOT LEAK usage limit', false, { threadId: 'foreign-thread' });
             error('MUST NOT LEAK usage limit', false, { turnId: 'old-turn' });
-            for (let attempt = 0; attempt < 6; attempt++)
-                error(
-                    'stream disconnected before completion: The ChatGPT user has reached their Subscription Sharing usage limit.',
-                    attempt < 5,
-                );
+            const reason =
+                'stream disconnected before completion: The ChatGPT user has reached their Subscription Sharing usage limit.';
+            error(
+                reason +
+                    ' Ask the user to try again after their usage limit resets or use an API key instead.',
+                true,
+            );
+            for (let attempt = 1; attempt < 6; attempt++) error(reason, attempt < 5);
+            // The turn-start response and notifications can arrive in the same stdout read.
+            send(...batch);
             return;
         }
+        if (text === 'structured limit')
+            return error('Fixture quota exhausted.', true, {
+                codexErrorInfo: 'usageLimitExceeded',
+            });
         if (text === 'final error') return error('Fixture gave up.', false);
         if (text === 'retry error') error('Reconnecting... 1/5', true);
-        send({
+        sendTurn({
             method: 'turn/completed',
             params: {
                 threadId: params.threadId,
