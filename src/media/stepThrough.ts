@@ -1,12 +1,14 @@
 // Shared step-through helper the visual frame installs before any fragment runs.
 // A fragment calls stepThrough(root, steps); each step moves the visual to that state.
-// A plain function continues the scene; { scene: true, show } fades root out, shows, fades in.
+// A plain function continues the scene, and its changed parts pulse once the motion settles.
+// { scene: true, show } crossfades: a still copy of the old scene fades out over root as show redraws it.
 // Previous and Next sit beside root, not below it, so a step that resizes root does not push them away.
 // Play walks the steps slowly with a hold on each; it starts only on the learner's click.
 type Show = (state: { index: number; duration: number }) => void;
 type Step = Show | { scene: true; show: Show };
 
-const HOLD = 1000;
+const HOLD = 1000,
+    PULSE = 900;
 const PLAY = '<path d="M5 3v10l8-5z" fill="currentColor"/>',
     PAUSE =
         '<path d="M5 3v10M11 3v10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>';
@@ -22,6 +24,7 @@ export function stepThrough(root: HTMLElement, steps: Step[], duration = 600) {
         play = document.createElement('button'),
         indicator = document.createElement('span');
     let index = 0,
+        // A scene fade or a pulse watch still running from the last step.
         pending: { timer: number; run: () => void } | undefined,
         playing: number | undefined,
         // Play motion per step, 1.5 to 2.5 s by how many nodes the step changes; set by measure.
@@ -79,17 +82,52 @@ export function stepThrough(root: HTMLElement, steps: Step[], duration = 600) {
         }
         const step = steps[index],
             state = { index, duration: ms };
-        if (typeof step === 'function') step(state);
-        else if (!ms) step.show(state);
-        else {
-            root.style.transition = `opacity ${ms / 2}ms`;
-            root.style.opacity = '0';
+        if (!ms) (typeof step === 'function' ? step : step.show)(state);
+        else if (typeof step === 'function') {
+            const changed = new Set<Node>(),
+                changes = new view.MutationObserver((records) =>
+                    records.forEach((record) => changed.add(record.target)),
+                );
+            changes.observe(root, {
+                subtree: true,
+                childList: true,
+                attributes: true,
+                characterData: true,
+            });
+            step(state);
             const run = () => {
                 pending = undefined;
-                step.show(state);
-                root.style.opacity = '';
+                changes.disconnect();
             };
-            pending = { timer: view.setTimeout(run, ms / 2), run };
+            const settle = () => {
+                changes.takeRecords().forEach((record) => changed.add(record.target));
+                run();
+                pulse(changed);
+            };
+            pending = { timer: view.setTimeout(settle, ms), run };
+        } else {
+            // shortcut: a canvas copies blank, so a canvas scene fades in from empty; draw copies if that shows.
+            const still = root.cloneNode(true) as HTMLElement;
+            // The copy is never picked, focused or read; it keeps root's id so the visual's styles still apply.
+            for (const e of [still, ...still.querySelectorAll('[data-part]')])
+                e.removeAttribute('data-part');
+            still.setAttribute('inert', '');
+            still.setAttribute('aria-hidden', 'true');
+            place(still, root.getBoundingClientRect());
+            root.style.transition = 'none';
+            root.style.opacity = '0';
+            step.show(state);
+            root.after(still); // after show, so its frame-wide selections never reach the copy
+            void view.getComputedStyle(root).opacity; // commits opacity 0 so the fade in runs
+            for (const e of [root, still]) e.style.transition = `opacity ${ms}ms`;
+            root.style.opacity = '';
+            still.style.opacity = '0';
+            const run = () => {
+                pending = undefined;
+                still.remove();
+                root.style.transition = '';
+            };
+            pending = { timer: view.setTimeout(run, ms), run };
         }
         indicator.textContent = `Step ${index + 1} of ${steps.length}`;
         // A picked visual part records the step it was picked on.
@@ -102,6 +140,40 @@ export function stepThrough(root: HTMLElement, steps: Step[], duration = 600) {
             document.activeElement.disabled
         )
             (previous.disabled ? next : previous).focus();
+    };
+    // Lays e over a box on screen, inside controls; the frame may scale the body down to fit.
+    const place = (e: HTMLElement, box: DOMRect) => {
+        const base = controls.getBoundingClientRect(),
+            scale = base.width && controls.offsetWidth ? base.width / controls.offsetWidth : 1;
+        Object.assign(e.style, {
+            position: 'absolute',
+            left: `${(box.left - base.left) / scale}px`,
+            top: `${(box.top - base.top) / scale}px`,
+            width: `${box.width / scale}px`,
+            height: `${box.height / scale}px`,
+            margin: '0',
+            boxSizing: 'border-box',
+            pointerEvents: 'none',
+        });
+    };
+    // Outlines the nearest visual part of each changed node, or the changed element when it has none.
+    const pulse = (changed: Set<Node>) => {
+        const shown = new Set<Element>();
+        for (const node of changed) {
+            const e = node instanceof view.Element ? node : node.parentElement,
+                part = e?.closest('[data-part]');
+            const target = part && root.contains(part) ? part : e;
+            if (target && target !== root && root.contains(target)) shown.add(target);
+        }
+        for (const target of shown) {
+            const box = target.getBoundingClientRect();
+            if (!box.width || !box.height) continue;
+            const ring = controls.appendChild(document.createElement('div'));
+            ring.className = 'tt-pulse';
+            ring.setAttribute('aria-hidden', 'true');
+            place(ring, box);
+            view.setTimeout(() => ring.remove(), PULSE);
+        }
     };
     previous.addEventListener('click', () => stepTo(index - 1));
     next.addEventListener('click', () => stepTo(index + 1));
