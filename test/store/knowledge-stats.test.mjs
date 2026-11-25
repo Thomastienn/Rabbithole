@@ -74,13 +74,15 @@ test('stats figures come from the stored concepts, observations and replies', (t
     );
     const until = stats.fading[0].until - (now - 14 * DAY);
     assert.ok(until > 0 && until < DAY, `${until}`);
+    const place = { root: tree, address: '1', ink: 0 };
     assert.deepEqual(stats.misconceptions, [
-        { name: 'Heap', at: now - 2 * DAY, text: 'Is a heap sorted?', cleared: null },
+        { name: 'Heap', at: now - 2 * DAY, text: 'Is a heap sorted?', cleared: null, place },
         {
             name: 'Scheduler',
             at: now - 10 * DAY,
             text: 'Is the scheduler a lock?',
             cleared: now - 9 * DAY,
+            place,
         },
     ]);
     const day = (at) => new Date(at).toLocaleDateString('sv');
@@ -88,4 +90,55 @@ test('stats figures come from the stored concepts, observations and replies', (t
         { day: day(noon), messages: 2 },
         { day: day(noon + DAY), messages: 1 },
     ]);
+});
+
+test("a concept's sources: the learner messages observed for it and the conversations whose replies met it", (t) => {
+    const store = new Store(join(mkdtempSync(join(tmpdir(), 'rabbithole-sources-')), 'db.sqlite'));
+    t.after(() => store.close());
+    const root = store.create('How do fungi trade?');
+    const reply = store.message(root.id, 'assistant', 'Hyphae trade.', 'completed');
+    store.addGraph({ concepts: [{ name: 'Hyphae', topics: ['Mycology'] }], links: [] }, reply);
+    const branch = store.branch(
+        root,
+        { messageId: reply, start: 0, end: 6, text: 'Hyphae', question: 'What are hyphae?' },
+        'snapshot',
+    );
+    const asked = store.message(branch.id, 'user', 'What are hyphae?', 'completed');
+    store.observe(asked, [{ concept: 'Hyphae', level: 2, confidence: 'low' }]);
+    // A brief's observation has no message, so it lists nothing.
+    store.observeBrief({ message: reply, start: 0, end: 6, concept: 'Hyphae' });
+    const other = store.create('What makes bread rise?');
+    const second = store.message(other.id, 'assistant', 'Yeast and hyphae.', 'completed');
+    store.addGraph({ concepts: [{ name: 'Hyphae', topics: [] }], links: [] }, second);
+    assert.deepEqual(store.conceptSources('Hyphae'), {
+        messages: [
+            {
+                message: asked,
+                conversation: branch.id,
+                text: 'What are hyphae?',
+                root: root.id,
+                address: '1.1',
+                ink: 1,
+            },
+        ],
+        replies: [
+            {
+                message: reply,
+                conversation: root.id,
+                text: 'How do fungi trade?',
+                root: root.id,
+                address: '1',
+                ink: 0,
+            },
+            {
+                message: second,
+                conversation: other.id,
+                text: 'What makes bread rise?',
+                root: other.id,
+                address: '1',
+                ink: 0,
+            },
+        ],
+    });
+    assert.equal(store.conceptSources('Missing'), null);
 });

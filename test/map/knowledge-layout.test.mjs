@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { layoutConcepts, POINT_SPACE } from '../../src/knowledge/knowledgeLayout.ts';
+import { layoutConcepts, topicPlaces, POINT_SPACE } from '../../src/knowledge/knowledgeLayout.ts';
 import {
     level,
     fill,
@@ -57,7 +57,17 @@ test('a single concept or an empty graph lays out', () => {
     assert.deepEqual(layoutConcepts({ concepts: [], links: [] }), { points: [], regions: [] });
 });
 
-test('every concept is inside every topic it belongs to, with room around its point', () => {
+test('every concept is inside every topic it belongs to, and each topic name sits above its hull', () => {
+    const inside = (p, hull) =>
+        hull.every((a, i) => {
+            const b = hull[(i + 1) % hull.length];
+            // polygonHull winds the same way for every hull; a point inside is on one side of every edge.
+            return (b[0] - a[0]) * (p.y - a[1]) - (b[1] - a[1]) * (p.x - a[0]) <= 1e-9;
+        }) ||
+        hull.every((a, i) => {
+            const b = hull[(i + 1) % hull.length];
+            return (b[0] - a[0]) * (p.y - a[1]) - (b[1] - a[1]) * (p.x - a[0]) >= -1e-9;
+        });
     for (const concepts of [
         graph.concepts,
         [{ name: 'One topic', topics: ['One topic'] }],
@@ -72,16 +82,26 @@ test('every concept is inside every topic it belongs to, with room around its po
             for (const topic of c.topics) {
                 const p = points.find((p) => p.name === c.name),
                     r = regions.find((r) => r.name === topic);
-                assert.ok(
-                    Math.hypot(p.x - r.x, p.y - r.y) <= r.radius - POINT_SPACE + 1e-9,
-                    `${c.name} outside ${topic}`,
-                );
-                assert.ok(
-                    Math.hypot(p.x - r.x, p.y - r.y) > POINT_SPACE * 3,
-                    `${c.name} covers ${topic}'s centre label`,
-                );
+                assert.ok(inside(p, r.hull), `${c.name} outside ${topic}`);
+                assert.ok(Math.min(...r.hull.map(([, y]) => y)) - r.y >= 30 - 1e-9);
             }
     }
+});
+
+test('a link across topics leaves both hulls compact and apart', () => {
+    const concepts = ['A', 'B'].flatMap((topic) =>
+        Array.from({ length: 4 }, (_, i) => ({ name: `${topic}${i}`, topics: [topic] })),
+    );
+    const anchors = { A: { x: -1, y: 0 }, B: { x: 1, y: 0 } };
+    const apart = layoutConcepts({ concepts, links: [], anchors });
+    const linked = layoutConcepts({
+        concepts,
+        links: [{ from: 'A0', to: 'B0' }],
+        anchors,
+    });
+    assert.deepEqual(linked.points, apart.points);
+    const [a, b] = linked.regions.map((r) => r.hull.map(([x]) => x));
+    assert.ok(Math.max(...a) + 22 < Math.min(...b) - 22, 'hulls overlap');
 });
 
 test('topics attract their concepts and a shared concept sits between its topics', () => {
@@ -89,10 +109,8 @@ test('topics attract their concepts and a shared concept sits between its topics
         Array.from({ length: 4 }, (_, i) => ({ name: `${topic}${i}`, topics: [topic] })),
     );
     concepts.push({ name: 'Bridge', topics: ['A', 'B'] });
-    const {
-        points,
-        regions: [a, b],
-    } = layoutConcepts({ concepts, links: [] });
+    const { points } = layoutConcepts({ concepts, links: [] });
+    const [a, b] = topicPlaces({ concepts });
     for (const c of concepts.filter((c) => c.topics.length === 1)) {
         const p = points.find((p) => p.name === c.name),
             own = c.topics[0] === 'A' ? a : b,
@@ -142,10 +160,9 @@ test('layout pins topics to their anchors, falls back to the even circle and ord
     const topics = ['East', 'North', 'South', 'West'];
     const concepts = topics.map((t) => ({ name: `${t} concept`, topics: [t] }));
     const anchors = { East: { x: 1, y: 0 }, North: { x: 0, y: -1 }, South: { x: 0, y: 1 } };
-    const { regions } = layoutConcepts({ concepts, links: [], anchors });
     const radius = POINT_SPACE * 4;
     assert.deepEqual(
-        regions.map((r) => [r.name, r.x + 0, r.y + 0]),
+        topicPlaces({ concepts, anchors }).map((r) => [r.name, r.x + 0, r.y + 0]),
         [
             ['East', radius, 0],
             ['North', 0, -radius],
@@ -170,12 +187,12 @@ test('layout pins topics to their anchors, falls back to the even circle and ord
 
 test('familiarity labels and ring forms agree at thresholds', () => {
     for (const [score, label, form] of [
-        [0, 'Unfamiliar', 'none'],
-        [0.349, 'Unfamiliar', 'none'],
-        [0.35, 'Some familiarity', 'some'],
-        [0.799, 'Some familiarity', 'some'],
-        [0.8, 'Familiar', 'full'],
-        [1, 'Familiar', 'full'],
+        [0, 'New to you', 'none'],
+        [0.349, 'New to you', 'none'],
+        [0.35, 'Getting there', 'some'],
+        [0.799, 'Getting there', 'some'],
+        [0.8, 'You know this', 'full'],
+        [1, 'You know this', 'full'],
     ]) {
         const c = { familiarity: score };
         assert.equal(level(c), label);
@@ -199,7 +216,7 @@ test('familiarity changes preserve map shape; topic-only changes and new links i
     );
 });
 
-test('concept lines skip dangling endpoints, mark selection and shorten only builds-on arrows', () => {
+test('concept lines skip dangling endpoints, mark selection and point builds-on arrows at the concept that builds on', () => {
     const at = new Map([
         ['A', { x: 0, y: 0 }],
         ['B', { x: 100, y: 0 }],
@@ -217,35 +234,48 @@ test('concept lines skip dangling endpoints, mark selection and shorten only bui
         at,
         'A',
     );
+    // A builds on B: the arrow runs from B to A and stops 11px short of A's centre.
     assert.deepEqual(
-        lines.map((l) => [l.x2, l.selected]),
+        lines.map((l) => [l.x1, l.x2, l.selected]),
         [
-            [100, true],
-            [89, true],
-            [1, false],
-            [0.5, true],
-            [0, true],
+            [0, 100, true],
+            [100, 11, true],
+            [100, 1, false],
+            [1, 0.5, true],
+            [0, 0, true],
         ],
     );
     assert.equal(lines[0].key, 'A-B-related');
     assert.equal(lines[1].kind, 'builds on');
 });
 
-test('Fit includes whole topic regions, centers bounds and clamps zoom for wide/narrow maps', () => {
+test('Fit includes every point, hull and topic name, centres the bounds and clamps zoom', () => {
     const points = [{ name: 'A', x: 100, y: 80 }];
-    const regions = [{ name: 'Topic', x: 100, y: 80, radius: 200 }];
+    const regions = [
+        {
+            name: 'Topic',
+            x: 100,
+            y: 40,
+            hue: 0,
+            hull: [
+                [-100, 72],
+                [300, 108],
+                [100, 300],
+            ],
+        },
+    ];
     for (const [width, height] of [
         [900, 700],
         [390, 300],
     ]) {
         const { x, y, k } = fitKnowledge(points, regions, width, height);
-        assert.equal(x + 100 * k, width / 2);
-        assert.equal(y + 80 * k, height / 2);
-        assert.ok(x + (100 - 208) * k >= 0);
-        assert.ok(x + (100 + 208) * k <= width);
-        assert.ok(y + (80 - 208) * k >= 0);
-        assert.ok(y + (80 + 208) * k <= height);
+        // Bounds: x from -122 to 322, y from 14 (the name, 16px tall above 30) to 322.
+        assert.ok(Math.abs(x + 100 * k - width / 2) < 1e-9);
+        assert.ok(Math.abs(y + 168 * k - height / 2) < 1e-9);
+        assert.ok(x - 122 * k >= -1e-9 && x + 322 * k <= width + 1e-9);
+        assert.ok(y + 14 * k >= -1e-9 && y + 322 * k <= height + 1e-9);
     }
-    assert.equal(fitKnowledge(points, [], 1000, 1000).k, 1.25);
+    // Never past 100%, so a small graph shows at its own size.
+    assert.equal(fitKnowledge(points, [], 1000, 1000).k, 1);
     assert.equal(fitKnowledge(points, regions, 10, 10).k, 0.2);
 });

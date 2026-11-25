@@ -7,7 +7,8 @@ const known = (observations, at) => Math.round(familiarity(observations, at) * 1
 // A misconception clears when a later message explains the idea (level 3, "Explains it") or better.
 const CLEARS = 3;
 
-// concepts: graph concepts; observations: [{ concept, level, confidence, at, text }];
+// concepts: graph concepts; observations: [{ concept, level, confidence, at, text, place? }], place being the
+// message's conversation { root, address, ink };
 // firstEvidence: Map name -> earliest evidence time; activity: [{ day, messages }].
 export function knowledgeStats({ concepts, observations, firstEvidence, activity }, now) {
     const observed = Map.groupBy(
@@ -71,6 +72,7 @@ export function knowledgeStats({ concepts, observations, firstEvidence, activity
             name: o.concept,
             at: o.at,
             text: o.text ?? '',
+            place: o.place ?? null,
             cleared:
                 observed.get(o.concept).find((later) => later.at > o.at && later.level >= CLEARS)
                     ?.at ?? null,

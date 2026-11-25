@@ -483,7 +483,13 @@ export default function ChatPage({
                         overview={overview}
                         back={() => setTab('learning')}
                     >
-                        <KnowledgePage activity={activeKey} />
+                        <KnowledgePage
+                            activity={activeKey}
+                            open={(s) => {
+                                trees.targets.goTo(s.conversation, undefined, undefined, s.message);
+                                openTree(s.root, undefined, s.conversation);
+                            }}
+                        />
                     </ReturnPanel>
                     <ReturnPanel
                         label="Videos"

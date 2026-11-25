@@ -1,9 +1,11 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { CheckIcon } from '@heroicons/react/24/outline';
 import { request as api } from '../serverAccess';
 import type { KnowledgeState } from './useKnowledge';
 import { fill, level } from './knowledge';
+import { topicPlaces } from './knowledgeLayout';
+import { inkStyle } from '../map/treeList';
 import { heatDays, HEAT_WEEKS, type Stats } from './stats';
 
 const date = (at: number | Date) =>
@@ -57,12 +59,17 @@ function Growth({ growth }: { growth: Stats['growth'] }) {
                         </text>
                     </g>
                 ))}
-                <text className="ax" x={X(0)} y="206" textAnchor="start">
-                    {date(first.at)}
-                </text>
-                <text className="ax" x={X(growth.length - 1)} y="206" textAnchor="end">
-                    {date(last.at)}
-                </text>
+                {/* A tick at each point that starts a new month. */}
+                {growth.map(
+                    (p, i) =>
+                        (i === 0 ||
+                            new Date(p.at).getMonth() !==
+                                new Date(growth[i - 1].at).getMonth()) && (
+                            <text key={p.at} className="ax" x={X(i)} y="206" textAnchor="middle">
+                                {new Date(p.at).toLocaleDateString(undefined, { month: 'short' })}
+                            </text>
+                        ),
+                )}
                 <path className="met" d={path('met')} />
                 <path className="known" d={path('known')} />
                 <text className="end met-end" x={464} y={Y(last.met) + 4}>
@@ -188,6 +195,7 @@ export default function KnowledgeStats({ graph, setChosen }: KnowledgeState) {
     if (error) return <Text role="alert">{error}</Text>;
     if (!stats) return null;
     const byName = new Map(graph.concepts.map((c) => [c.name, c]));
+    const hue = new Map(topicPlaces(graph).map((t) => [t.name, t.hue]));
     function choose(name: string) {
         setChosen(name);
         requestAnimationFrame(() => document.getElementById('concept-detail')?.focus());
@@ -232,6 +240,12 @@ export default function KnowledgeStats({ graph, setChosen }: KnowledgeState) {
                         <ol className="stats-rank">
                             {stats.topics.map((t) => (
                                 <li key={t.name}>
+                                    <i
+                                        className="swatch"
+                                        data-hue={hue.get(t.name)}
+                                        style={{ '--h': hue.get(t.name) } as CSSProperties}
+                                        aria-hidden="true"
+                                    />
                                     <span>{t.name}</span>
                                     <span className="track" role="img" aria-label={level(t)}>
                                         <b style={{ width: `${t.familiarity * 100}%` }} />
@@ -292,7 +306,17 @@ export default function KnowledgeStats({ graph, setChosen }: KnowledgeState) {
                                         <small>{date(m.at)}</small>
                                         <span>
                                             <b>{m.name}</b>
-                                            <small>{m.text}</small>
+                                            <small>
+                                                {m.place && (
+                                                    <span
+                                                        className="address-chip"
+                                                        style={inkStyle(m.place.ink)}
+                                                    >
+                                                        {m.place.address}
+                                                    </span>
+                                                )}
+                                                {m.text}
+                                            </small>
                                         </span>
                                         <span className={m.cleared ? 'cleared' : 'open'}>
                                             {m.cleared ? (

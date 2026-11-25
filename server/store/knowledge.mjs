@@ -3,6 +3,7 @@ import { blob, vector } from './embeddings.mjs';
 import { mentions } from '../neighbourhood.mjs';
 import { knowledgeStats } from '../knowledge-stats.mjs';
 import { topicAnchors } from '../topicAnchors.mjs';
+import { conversationAddresses, rootOf } from '../../src/map/treeList.ts';
 
 const summary = (observations, met) => {
     const counts = [0, 0, 0, 0, 0, 0];
@@ -13,6 +14,18 @@ const summary = (observations, met) => {
         observations: counts,
     };
 };
+
+// Where a conversation sits: its trunk, and its address and ink in that tree.
+function places(db) {
+    const conversations = db
+        .prepare(
+            'SELECT t.id,t.title,t.created,b.parent FROM trees t LEFT JOIN branches b ON b.child=t.id',
+        )
+        .all();
+    const byId = new Map(conversations.map((c) => [c.id, c])),
+        addresses = conversationAddresses(conversations);
+    return (id) => ({ root: rootOf(byId.get(id), byId).id, ...addresses.get(id) });
+}
 
 export const knowledge = {
     // INSERT OR IGNORE makes the run once-only per saved reply: reopening or switching providers never reruns it.
@@ -66,14 +79,16 @@ export const knowledge = {
     // Read-only figures for the stats panel; nothing here is stored.
     // shortcut: learner messages per day count recorded tutor calls whose reply still exists (messages have no time); upgrade if messages gain a timestamp.
     graphStats(now = Date.now()) {
+        const place = places(this.db);
         return knowledgeStats(
             {
                 concepts: this.graph().concepts,
                 observations: this.db
                     .prepare(
-                        'SELECT c.name AS concept, o.level, o.confidence, o.at, m.text FROM observations o JOIN concepts c ON c.id=o.concept LEFT JOIN messages m ON m.id=o.message',
+                        'SELECT c.name AS concept, o.level, o.confidence, o.at, m.text, m.tree FROM observations o JOIN concepts c ON c.id=o.concept LEFT JOIN messages m ON m.id=o.message',
                     )
-                    .all(),
+                    .all()
+                    .map(({ tree, ...o }) => ({ ...o, ...(tree && { place: place(tree) }) })),
                 firstEvidence: new Map(
                     this.db
                         .prepare(
@@ -91,6 +106,27 @@ export const knowledge = {
             },
             now,
         );
+    },
+    // The detail's sources for one concept: the learner messages observed for it and the conversations whose replies met it.
+    // Null for an unknown name.
+    conceptSources(name) {
+        const id = this.concept(name)?.id;
+        if (!id) return null;
+        const place = places(this.db);
+        return {
+            messages: this.db
+                .prepare(
+                    'SELECT m.id AS message, m.tree AS conversation, m.text FROM observations o JOIN messages m ON m.id=o.message WHERE o.concept=? ORDER BY o.at, m.seq',
+                )
+                .all(id)
+                .map((m) => ({ ...m, ...place(m.conversation) })),
+            replies: this.db
+                .prepare(
+                    "SELECT m.tree AS conversation, t.title AS text, MIN(m.seq) AS seq, m.id AS message FROM evidence e JOIN messages m ON m.id=e.source JOIN trees t ON t.id=m.tree WHERE e.concept=? AND e.kind='met' GROUP BY m.tree ORDER BY MIN(e.at), MIN(m.seq)",
+                )
+                .all(id)
+                .map(({ seq, ...m }) => ({ ...m, ...place(m.conversation) })),
+        };
     },
     // Kept out of graph(): each tutor reply reads the graph, and only the Knowledge page needs anchors.
     topicAnchors() {

@@ -4,7 +4,14 @@ export type Stats = {
     growth: { at: number; met: number; known: number }[];
     topics: { name: string; familiarity: number; concepts: number }[];
     fading: { name: string; until: number }[];
-    misconceptions: { name: string; at: number; text: string; cleared: number | null }[];
+    // place: the message's conversation, for its address chip; null when the message is gone.
+    misconceptions: {
+        name: string;
+        at: number;
+        text: string;
+        cleared: number | null;
+        place: { root: string; address: string; ink: number } | null;
+    }[];
     // day is the local date as YYYY-MM-DD.
     activity: { day: string; messages: number }[];
 };

@@ -11,8 +11,7 @@ export function KnowledgeHeader({ graph, error, load }: KnowledgeState) {
                 <VStack gap={2}>
                     <Heading level={1}>Knowledge</Heading>
                     <Text color="secondary" className="library-intro">
-                        Concepts you have explored across every tree, grouped by topic. Familiarity
-                        is an estimate from what you write, not measured mastery.
+                        Concepts you have explored across every tree, grouped by topic.
                     </Text>
                 </VStack>
                 <IconButton

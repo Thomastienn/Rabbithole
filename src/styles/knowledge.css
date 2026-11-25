@@ -10,6 +10,23 @@
 .knowledge-panel > .knowledge-header + .knowledge-content {
     padding-block-start: calc(3 * var(--rabbithole-module));
 }
+/* Knowledge head (mockup line-diagram/knowledge.html .ret, .phead): the return link starts on the content
+   edge, 20px above the title, and the field sits 24px under the intro. */
+.knowledge-panel:has(> .knowledge-page) > .knowledge-header {
+    padding-block-start: 31px;
+}
+#return-to-learning {
+    margin-inline-start: -12px;
+}
+.knowledge-panel > .knowledge-header + .knowledge-page {
+    padding-block-start: 14px;
+}
+.knowledge-page .library-head {
+    margin-bottom: 24px;
+}
+.knowledge-page .library-head h1 {
+    line-height: 1.1;
+}
 .knowledge-content :focus-visible {
     outline: var(--focus-outline-width) solid var(--rabbithole-paper);
     outline-offset: var(--focus-outline-offset);
@@ -22,7 +39,7 @@
 }
 .knowledge-field {
     position: relative;
-    height: 35rem;
+    height: 600px;
     min-width: 0;
     overflow: hidden;
     border-radius: var(--radius-container);
@@ -35,7 +52,11 @@
 }
 .knowledge-field .map-toolbar {
     left: auto;
-    right: var(--spacing-3);
+    right: 12px;
+    bottom: 12px;
+    gap: 2px;
+    padding: 2px;
+    font-size: 13px;
 }
 .knowledge-map {
     position: absolute;
@@ -53,14 +74,18 @@
     overflow: visible;
     pointer-events: none;
 }
-/* The wide round stroke pads the hull past its concepts' rings; opacity keeps overlaps soft. */
+/* The wide round stroke pads the hull past its concepts' names. The hue sits on the field at 12% (17% in
+   light), mixed opaque since opacity cannot follow the scheme and an alpha fill would double under the stroke. */
 .knowledge-regions path {
-    fill: var(--topic);
-    stroke: var(--topic);
+    --hull: light-dark(
+        color-mix(in oklab, var(--topic) 17%, var(--color-background-muted)),
+        color-mix(in oklab, var(--topic) 12%, var(--color-background-muted))
+    );
+    fill: var(--hull);
+    stroke: var(--hull);
     stroke-width: 44px;
     stroke-linejoin: round;
     stroke-linecap: round;
-    opacity: 0.14;
 }
 .topic-label {
     position: absolute;
@@ -72,9 +97,9 @@
     font-weight: var(--font-weight-semibold);
     letter-spacing: 0.07em;
     text-transform: uppercase;
-    text-align: center;
-    /* break-word split words when the 1/k scale rounds a min-content line a hair short. */
-    overflow-wrap: normal;
+    white-space: nowrap;
+    /* Its bottom centre sits on the region's point, whatever the 1/k scale. */
+    transform-origin: 50% 100%;
 }
 .knowledge-links line {
     stroke: var(--color-border-emphasized);
@@ -125,11 +150,9 @@
 .concept-name {
     max-width: 11rem;
     overflow: hidden;
-    padding: 0 4px;
-    border-radius: var(--radius-inner);
-    background: color-mix(in oklab, var(--color-background-muted) 88%, transparent);
     font-family: var(--font-family-heading);
     font-size: 13px;
+    line-height: 1.2;
     font-weight: var(--font-weight-semibold);
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -164,17 +187,28 @@
     bottom: 14px;
     display: grid;
     gap: 6px;
-    padding: 4px;
-    border-radius: var(--radius-inner);
-    background: var(--color-background-muted);
+    padding: 8px 10px;
+    border-radius: var(--radius-container);
+    background: color-mix(in srgb, var(--color-background-muted) 88%, transparent);
     font-size: 12px;
     color: var(--color-text-secondary);
     pointer-events: none;
 }
 .knowledge-key span {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: 8px;
+}
+/* The key's and the stats rows' rings match the graph's 14px points. */
+.knowledge-key .fam,
+.stats-row .fam {
+    width: 14px;
+    height: 14px;
+}
+/* Off the graph (the key, the stats rows) rings stay porcelain and "Getting there" is a muted fill, as the mockup draws it. */
+.knowledge-key .fam[data-fill='some'],
+.stats-row .fam[data-fill='some'] {
+    background: var(--color-text-secondary);
 }
 .knowledge-detail {
     position: sticky;
@@ -188,15 +222,20 @@
     font-weight: 700;
 }
 .knowledge-detail h3 {
-    margin-top: 4px;
-    font-size: 15px;
-    font-weight: 700;
+    margin: 18px 0 6px;
+    color: var(--color-text-secondary);
+    font-family: var(--font-family-heading);
+    font-size: 12px;
+    line-height: 1.2;
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
 }
 .knowledge-facts {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: 1fr auto;
     gap: 8px 12px;
-    margin: 0;
+    margin: 16px 0;
     font-size: 13px;
 }
 .knowledge-facts dt {
@@ -205,8 +244,24 @@
 .knowledge-facts dd {
     margin: 0;
     color: var(--color-text-primary);
-    font-variant-numeric: tabular-nums;
-    text-align: end;
+}
+.knowledge-sources {
+    margin: 0;
+    padding-left: 22px;
+    list-style: disc;
+    font-size: 13px;
+}
+/* Each source opens its conversation; it reads as a link, as in the mockup. */
+.knowledge-sources button {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
 }
 .knowledge-empty {
     padding: 72px 0;

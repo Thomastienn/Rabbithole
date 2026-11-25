@@ -1,6 +1,6 @@
 /* Stats panel under the knowledge graph (mockup Rabbithole-mkg.7): plain sections on the ground, split by seams. */
 .knowledge-stats {
-    margin-top: calc(4 * var(--rabbithole-module));
+    margin-top: 48px;
 }
 .knowledge-stats > header h2 {
     font-size: 24px;
@@ -21,6 +21,7 @@
 }
 .stats-section h3 {
     font-size: 15px;
+    line-height: 1.2;
     font-weight: var(--font-weight-semibold);
 }
 .stats-section h3 + * {
@@ -69,7 +70,7 @@
 }
 .stats-rank {
     display: grid;
-    grid-template-columns: minmax(0, 9rem) minmax(0, 1fr) 10rem;
+    grid-template-columns: 28px minmax(0, 9rem) minmax(0, 1fr) 10rem;
     gap: 10px 12px;
     align-items: center;
     margin: 0;
@@ -79,6 +80,12 @@
 }
 .stats-rank li {
     display: contents;
+}
+.stats-rank .swatch {
+    width: 28px;
+    height: 7px;
+    border-radius: var(--radius-full);
+    background: var(--topic);
 }
 .stats-rank .track {
     height: 8px;
@@ -94,6 +101,7 @@
 }
 .stats-rank small {
     color: var(--color-text-secondary);
+    font-size: smaller;
     text-align: end;
 }
 .stats-list {
@@ -110,7 +118,7 @@
     grid-template-columns: 16px minmax(0, 1fr) auto;
     gap: 10px;
     align-items: center;
-    width: calc(100% + 16px);
+    width: 100%;
     min-height: 44px;
     margin: 0 -8px;
     padding: 6px 8px;
@@ -143,6 +151,13 @@
     margin-top: 1px;
     white-space: nowrap;
     text-overflow: ellipsis;
+}
+/* The message's branch address, smaller than in the reader. */
+.stats-row .address-chip {
+    margin-right: 6px;
+    padding: 2px 5px 1px;
+    font-size: 11px;
+    vertical-align: 1px;
 }
 .stats-row .open,
 .stats-row .cleared {
@@ -197,21 +212,27 @@
     border-radius: var(--radius-tick);
     background: var(--color-background-surface);
 }
-.stats-heat [data-l='1'],
+.stats-heat .cells i[data-l='1'],
 .stats-key [data-l='1'] {
     background: color-mix(in oklab, var(--rabbithole-paper) 25%, var(--color-background-surface));
 }
-.stats-heat [data-l='2'],
+.stats-heat .cells i[data-l='2'],
 .stats-key [data-l='2'] {
     background: color-mix(in oklab, var(--rabbithole-paper) 50%, var(--color-background-surface));
 }
-.stats-heat [data-l='3'],
+.stats-heat .cells i[data-l='3'],
 .stats-key [data-l='3'] {
     background: color-mix(in oklab, var(--rabbithole-paper) 75%, var(--color-background-surface));
 }
-.stats-heat [data-l='4'],
+.stats-heat .cells i[data-l='4'],
 .stats-key [data-l='4'] {
     background: var(--rabbithole-paper);
+}
+.stats-key i:first-of-type {
+    margin-inline-start: 8px;
+}
+.stats-key i:last-of-type {
+    margin-inline-end: 8px;
 }
 .stats-key {
     display: flex;

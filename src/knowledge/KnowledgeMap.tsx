@@ -2,10 +2,11 @@ import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from '
 import { select, zoom, zoomIdentity, type ZoomBehavior } from 'd3';
 import { HStack } from '@astryxdesign/core/Layout';
 import { IconButton } from '@astryxdesign/core/IconButton';
+import { Text } from '@astryxdesign/core/Text';
 import { ArrowsPointingOutIcon, MinusIcon, PlusIcon } from '@heroicons/react/24/outline';
-import { layoutConcepts, POINT_SPACE } from './knowledgeLayout';
+import { layoutConcepts } from './knowledgeLayout';
 import type { KnowledgeState } from './useKnowledge';
-import ConceptDetail from './ConceptDetail';
+import ConceptDetail, { type OpenSource } from './ConceptDetail';
 import {
     level,
     fill,
@@ -15,7 +16,13 @@ import {
     conceptLines,
     fitKnowledge,
 } from './knowledge';
-export default function KnowledgeMap(knowledge: KnowledgeState) {
+// The legend's room at the foot of the field (mockup inset 8px 8px 124px): Fit keeps the graph above it.
+const LEGEND_ROOM = 124;
+
+export default function KnowledgeMap({
+    open,
+    ...knowledge
+}: KnowledgeState & { open: OpenSource }) {
     const { graph, selected, setChosen } = knowledge;
     const field = useRef<HTMLDivElement>(null);
     const zoomer = useRef<ZoomBehavior<HTMLDivElement, unknown>>(undefined);
@@ -35,7 +42,12 @@ export default function KnowledgeMap(knowledge: KnowledgeState) {
         const box = field.current,
             z = zoomer.current;
         if (!box || !z || !places.length || !box.clientWidth) return;
-        const { x, y, k } = fitKnowledge(places, regions, box.clientWidth, box.clientHeight);
+        const { x, y, k } = fitKnowledge(
+            places,
+            regions,
+            box.clientWidth,
+            box.clientHeight - LEGEND_ROOM,
+        );
         fitted.current = shape;
         select(box).call(z.transform, zoomIdentity.translate(x, y).scale(k));
     }
@@ -141,7 +153,7 @@ export default function KnowledgeMap(knowledge: KnowledgeState) {
                                     />
                                 ))}
                             </svg>
-                            {/* Topic labels sit behind the concepts, with the hulls. */}
+                            {/* Topic names sit above their hulls, behind the concepts, at screen size. */}
                             {regions.map((r) => (
                                 <span
                                     key={r.name}
@@ -150,11 +162,7 @@ export default function KnowledgeMap(knowledge: KnowledgeState) {
                                     style={{
                                         left: r.x,
                                         top: r.y,
-                                        maxWidth: Math.max(
-                                            96,
-                                            POINT_SPACE * 4 * Math.min(1, view.k),
-                                        ),
-                                        transform: `translate(-50%, -50%) scale(${1 / view.k})`,
+                                        transform: `translate(-50%, -100%) scale(${1 / view.k})`,
                                     }}
                                 >
                                     {r.name}
@@ -200,8 +208,7 @@ export default function KnowledgeMap(knowledge: KnowledgeState) {
                             })}
                         </div>
                         <HStack
-                            padding={1}
-                            gap={1}
+                            gap={0}
                             vAlign="center"
                             className="map-toolbar"
                             role="group"
@@ -212,19 +219,23 @@ export default function KnowledgeMap(knowledge: KnowledgeState) {
                                 tooltip="Zoom out"
                                 icon={<MinusIcon />}
                                 variant="ghost"
-                                size="sm"
+                                size="lg"
                                 onClick={() =>
                                     field.current &&
                                     zoomer.current &&
                                     select(field.current).call(zoomer.current.scaleBy, 0.8)
                                 }
                             />
+                            <Text className="sr-only">Current zoom</Text>
+                            <Text type="supporting" hasTabularNumbers>
+                                {Math.round(view.k * 100)}%
+                            </Text>
                             <IconButton
                                 label="Zoom in"
                                 tooltip="Zoom in"
                                 icon={<PlusIcon />}
                                 variant="ghost"
-                                size="sm"
+                                size="lg"
                                 onClick={() =>
                                     field.current &&
                                     zoomer.current &&
@@ -236,30 +247,31 @@ export default function KnowledgeMap(knowledge: KnowledgeState) {
                                 tooltip="Fit map"
                                 icon={<ArrowsPointingOutIcon />}
                                 variant="ghost"
-                                size="sm"
+                                size="lg"
                                 onClick={fit}
                             />
                         </HStack>
-                        <div className="knowledge-key" aria-label="Key">
+                        <div className="knowledge-key" aria-label="Legend">
                             <span>
                                 <i className="fam" data-fill="none" />
-                                Unfamiliar
+                                New to you
                             </span>
                             <span>
                                 <i className="fam" data-fill="some" />
-                                Some familiarity
+                                Getting there
                             </span>
                             <span>
                                 <i className="fam" data-fill="full" />
-                                Familiar
+                                You know this
                             </span>
-                            <span>Colour: topic</span>
-                            <span>Line: related</span>
-                            <span>Arrow: builds on</span>
+                            <span>
+                                Colour shows the topic. An arrow points to the concept that builds
+                                on the other.
+                            </span>
                         </div>
                     </div>
                 </div>
-                <ConceptDetail graph={graph} selected={selected} />
+                <ConceptDetail graph={graph} selected={selected} open={open} />
             </div>
         )
     );
