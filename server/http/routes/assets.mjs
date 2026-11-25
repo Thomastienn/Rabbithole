@@ -28,7 +28,10 @@ export async function assetRoutes(req, res, url, { json, assets }) {
     if (req.method !== 'GET') return json(res, 405, { error: 'Method not allowed.' });
     const file = assetPath(assets, url.pathname);
     if (!file) return json(res, 404, { error: 'Not found.' });
-    const data = await readFile(file);
+    const data = await readFile(file).catch((error) => {
+        if (error.code !== 'EISDIR') throw error;
+    });
+    if (!data) return json(res, 404, { error: 'Not found.' });
     res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] ?? 'application/octet-stream' });
     res.end(data);
     return true;
