@@ -223,7 +223,13 @@ test('all six provider switches preserve root and nested history/context, inheri
                             // The fake endpoint has no native tool calls, so it gets the app tools as text.
                             ...(target === 'openai'
                                 ? { textTools: APP_TOOLS }
-                                : { tools: [{ name: 'update_memory_note' }, ...APP_TOOLS] }),
+                                : {
+                                      tools: [
+                                          { name: 'update_memory_note' },
+                                          { name: 'look_up_concept' },
+                                          ...APP_TOOLS,
+                                      ],
+                                  }),
                         }),
                     ),
                     label,

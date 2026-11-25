@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { select, zoom, zoomIdentity, type ZoomBehavior } from 'd3';
 import { HStack } from '@astryxdesign/core/Layout';
 import { IconButton } from '@astryxdesign/core/IconButton';
@@ -29,6 +29,7 @@ export default function KnowledgeMap(knowledge: KnowledgeState) {
         [shape],
     );
     const at = useMemo(() => new Map(places.map((p) => [p.name, p])), [places]);
+    const hue = new Map(regions.map((r) => [r.name, r.hue]));
     const lines = conceptLines(graph?.links ?? [], at, selected?.name);
     function fit() {
         const box = field.current,
@@ -100,12 +101,12 @@ export default function KnowledgeMap(knowledge: KnowledgeState) {
                         >
                             <svg className="knowledge-regions" aria-hidden="true">
                                 {regions.map((r) => (
-                                    <circle
+                                    <path
                                         key={r.name}
                                         data-topic={r.name}
-                                        cx={r.x}
-                                        cy={r.y}
-                                        r={r.radius}
+                                        d={`M${r.hull.join('L')}Z`}
+                                        data-hue={r.hue}
+                                        style={{ '--h': r.hue } as CSSProperties}
                                     />
                                 ))}
                             </svg>
@@ -140,8 +141,28 @@ export default function KnowledgeMap(knowledge: KnowledgeState) {
                                     />
                                 ))}
                             </svg>
+                            {/* Topic labels sit behind the concepts, with the hulls. */}
+                            {regions.map((r) => (
+                                <span
+                                    key={r.name}
+                                    className="topic-label"
+                                    data-topic-label={r.name}
+                                    style={{
+                                        left: r.x,
+                                        top: r.y,
+                                        maxWidth: Math.max(
+                                            96,
+                                            POINT_SPACE * 4 * Math.min(1, view.k),
+                                        ),
+                                        transform: `translate(-50%, -50%) scale(${1 / view.k})`,
+                                    }}
+                                >
+                                    {r.name}
+                                </span>
+                            ))}
                             {graph.concepts.map((c) => {
-                                const p = at.get(c.name);
+                                const p = at.get(c.name),
+                                    h = hue.get(c.topics[0]);
                                 return (
                                     p && (
                                         <button
@@ -149,7 +170,10 @@ export default function KnowledgeMap(knowledge: KnowledgeState) {
                                             type="button"
                                             className="concept-point"
                                             data-concept={c.name}
-                                            style={{ left: p.x, top: p.y }}
+                                            data-hue={h}
+                                            style={
+                                                { left: p.x, top: p.y, '--h': h } as CSSProperties
+                                            }
                                             aria-pressed={c === selected}
                                             aria-controls="concept-detail"
                                             onFocus={() => reveal(c.name)}
@@ -174,24 +198,6 @@ export default function KnowledgeMap(knowledge: KnowledgeState) {
                                     )
                                 );
                             })}
-                            {regions.map((r) => (
-                                <span
-                                    key={r.name}
-                                    className="topic-label"
-                                    data-topic-label={r.name}
-                                    style={{
-                                        left: r.x,
-                                        top: r.y,
-                                        maxWidth: Math.max(
-                                            96,
-                                            POINT_SPACE * 4 * Math.min(1, view.k),
-                                        ),
-                                        transform: `translate(-50%, -50%) scale(${1 / view.k})`,
-                                    }}
-                                >
-                                    {r.name}
-                                </span>
-                            ))}
                         </div>
                         <HStack
                             padding={1}
@@ -247,6 +253,7 @@ export default function KnowledgeMap(knowledge: KnowledgeState) {
                                 <i className="fam" data-fill="full" />
                                 Familiar
                             </span>
+                            <span>Colour: topic</span>
                             <span>Line: related</span>
                             <span>Arrow: builds on</span>
                         </div>

@@ -1,6 +1,8 @@
 import { familiarity } from '../familiarity.mjs';
 import { blob, vector } from './embeddings.mjs';
 import { mentions } from '../neighbourhood.mjs';
+import { knowledgeStats } from '../knowledge-stats.mjs';
+import { topicAnchors } from '../topicAnchors.mjs';
 
 const summary = (observations, met) => {
     const counts = [0, 0, 0, 0, 0, 0];
@@ -60,6 +62,46 @@ export const knowledge = {
             })),
             links: links.map((l) => ({ ...l })),
         };
+    },
+    // Read-only figures for the stats panel; nothing here is stored.
+    // shortcut: learner messages per day count recorded tutor calls whose reply still exists (messages have no time); upgrade if messages gain a timestamp.
+    graphStats(now = Date.now()) {
+        return knowledgeStats(
+            {
+                concepts: this.graph().concepts,
+                observations: this.db
+                    .prepare(
+                        'SELECT c.name AS concept, o.level, o.confidence, o.at, m.text FROM observations o JOIN concepts c ON c.id=o.concept LEFT JOIN messages m ON m.id=o.message',
+                    )
+                    .all(),
+                firstEvidence: new Map(
+                    this.db
+                        .prepare(
+                            'SELECT c.name, MIN(e.at) AS at FROM evidence e JOIN concepts c ON c.id=e.concept GROUP BY c.id',
+                        )
+                        .all()
+                        .map((r) => [r.name, r.at]),
+                ),
+                activity: this.db
+                    .prepare(
+                        "SELECT date(u.at/1000,'unixepoch','localtime') AS day, COUNT(*) AS messages FROM usage_events u JOIN messages m ON u.id='chat:'||m.id AND m.role='assistant' WHERE u.task='chat' GROUP BY day ORDER BY day",
+                    )
+                    .all()
+                    .map((r) => ({ ...r })),
+            },
+            now,
+        );
+    },
+    // Kept out of graph(): each tutor reply reads the graph, and only the Knowledge page needs anchors.
+    topicAnchors() {
+        return topicAnchors(
+            this.db
+                .prepare(
+                    "SELECT c.embedding, COALESCE((SELECT json_group_array(t.name) FROM concept_topics ct JOIN topics t ON t.id=ct.topic WHERE ct.concept=c.id),'[]') AS topics FROM concepts c ORDER BY c.name",
+                )
+                .all()
+                .map((c) => ({ topics: JSON.parse(c.topics), embedding: vector(c.embedding) })),
+        );
     },
     // Familiarity is derived from observations, never stored; "met" is counted for display and never moves it.
     familiarity(concept) {
@@ -174,6 +216,41 @@ export const knowledge = {
             )
             .run(this.conceptId(concept), `brief:${message}:${start}:${end}`, Date.now());
     },
+    // A briefed selection becomes a ready suggestion of its reply with no concept; true when one was added.
+    // shortcut: a pending row is skipped, as finishSuggestions replaces its passages; merge there if briefs during naming must stick.
+    suggestBriefed(conversation, { message, start, end, text }) {
+        return this.transaction(() => {
+            const row = this.db
+                .prepare(
+                    'SELECT status,passages FROM suggestions WHERE conversation=? AND message=?',
+                )
+                .get(conversation, message);
+            // A finished reply without a row (suggestions off) gets one, so its pending run is never blocked.
+            if (!row)
+                return (
+                    this.db
+                        .prepare(
+                            "INSERT INTO suggestions(message,conversation,status,passages,groundwork) SELECT ?,?,'ready',?,'[]' WHERE EXISTS(SELECT 1 FROM messages WHERE id=? AND tree=? AND status IN ('completed','interrupted'))",
+                        )
+                        .run(
+                            message,
+                            conversation,
+                            JSON.stringify([{ start, end, text }]),
+                            message,
+                            conversation,
+                        ).changes > 0
+                );
+            const passages = JSON.parse(row.passages ?? '[]');
+            if (row.status !== 'ready' || passages.some((p) => p.start === start && p.end === end))
+                return false;
+            passages.push({ start, end, text });
+            passages.sort((a, b) => a.start - b.start);
+            this.db
+                .prepare('UPDATE suggestions SET passages=? WHERE conversation=? AND message=?')
+                .run(JSON.stringify(passages), conversation, message);
+            return true;
+        });
+    },
     mergeConcepts(from, into) {
         const source = this.concept(from),
             target = this.concept(into);
@@ -231,11 +308,16 @@ export const knowledge = {
             return true;
         });
     },
-    // Names resolve case-insensitively to existing rows; a link needs both ends in the graph after this reply's concepts are added.
+    // Names resolve case-insensitively to existing rows or aliases; a link needs both ends in the graph after this reply's concepts are added.
     // Every concept in the reply was met there; the message id makes it count once per reply.
+    // Returns the concept and topic names this call created, for the automatic merge check (ADR 0022).
     addGraph({ concepts, links }, message = null) {
+        const added = { concepts: [], topics: [] };
         const id = (table, name) => {
-            this.db.prepare(`INSERT OR IGNORE INTO ${table}(name) VALUES (?)`).run(name);
+            if (
+                this.db.prepare(`INSERT OR IGNORE INTO ${table}(name) VALUES (?)`).run(name).changes
+            )
+                added[table].push(name);
             return this.db.prepare(`SELECT id FROM ${table} WHERE name=?`).get(name).id;
         };
         this.transaction(() => {
@@ -245,7 +327,7 @@ export const knowledge = {
                 for (const t of c.topics)
                     this.db
                         .prepare('INSERT OR IGNORE INTO concept_topics VALUES (?,?)')
-                        .run(concept, id('topics', t));
+                        .run(concept, this.topic(t)?.id ?? id('topics', t));
             }
             const find = (name) => this.concept(name)?.id;
             for (const l of links) {
@@ -257,6 +339,53 @@ export const knowledge = {
                         .run(a, b, l.kind);
             }
         });
+        return added;
+    },
+    topic(name) {
+        return this.db
+            .prepare(
+                'SELECT id, name FROM topics WHERE id=(SELECT id FROM topics WHERE name=? UNION ALL SELECT topic FROM topic_aliases WHERE name=? LIMIT 1)',
+            )
+            .get(name, name);
+    },
+    // A topic merge moves the other topic's concepts to the kept one and keeps its name as an alias.
+    mergeTopics(from, into) {
+        this.transaction(() => {
+            this.db
+                .prepare(
+                    'INSERT OR IGNORE INTO concept_topics SELECT concept, ? FROM concept_topics WHERE topic=?',
+                )
+                .run(into.id, from.id);
+            this.db.prepare('DELETE FROM concept_topics WHERE topic=?').run(from.id);
+            this.db.prepare('UPDATE topic_aliases SET topic=? WHERE topic=?').run(into.id, from.id);
+            this.db
+                .prepare('INSERT INTO topic_aliases(name,topic) VALUES (?,?)')
+                .run(from.name, into.id);
+            this.db.prepare('DELETE FROM topics WHERE id=?').run(from.id);
+        });
+    },
+    // Automatic merge (ADR 0022): the name with more evidence stays, the older (lower id) on a tie, and the other becomes its alias.
+    // A concept's evidence is its evidence and observation rows; a topic's is its concepts. Null when both already name one row.
+    mergeDuplicate(kind, a, b) {
+        const topic = kind === 'topic';
+        const weight = topic
+            ? (id) =>
+                  this.db.prepare('SELECT COUNT(*) AS n FROM concept_topics WHERE topic=?').get(id)
+                      .n
+            : (id) =>
+                  this.db
+                      .prepare(
+                          'SELECT (SELECT COUNT(*) FROM evidence WHERE concept=?)+(SELECT COUNT(*) FROM observations WHERE concept=?) AS n',
+                      )
+                      .get(id, id).n;
+        const rows = [a, b].map((name) => (topic ? this.topic(name) : this.concept(name)));
+        if (!rows[0] || !rows[1] || rows[0].id === rows[1].id) return null;
+        const [kept, merged] = rows
+            .map((r) => ({ ...r, n: weight(r.id) }))
+            .sort((x, y) => y.n - x.n || x.id - y.id);
+        if (topic) this.mergeTopics(merged, kept);
+        else this.mergeConcepts(merged.name, kept.name);
+        return { kept: kept.name, merged: merged.name };
     },
     // No selection: the tutor's own notes block, so no call is recorded and the reply shows no suggestions usage.
     finishSuggestions(conversation, message, passages, usage, selection, groundwork = []) {

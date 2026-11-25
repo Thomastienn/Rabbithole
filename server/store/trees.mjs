@@ -33,17 +33,6 @@ export const trees = {
                 }
             });
     },
-    // Title-only, newest first; saved conversation text is never scanned.
-    search(query) {
-        const q = query.trim().toLocaleLowerCase();
-        if (!q) return [];
-        return this.db
-            .prepare(
-                'SELECT id AS root,title FROM trees WHERE id NOT IN (SELECT child FROM branches) ORDER BY created DESC,rowid DESC',
-            )
-            .all()
-            .filter((t) => t.title.toLocaleLowerCase().includes(q));
-    },
     // Strip reply syntax before truncation; the stored messages remain the canonical source.
     previews(ids) {
         const messages = this.db.prepare(
@@ -217,9 +206,8 @@ export const trees = {
                     .all(id)
                     .map(({ usage, groundwork, ...s }) => ({
                         ...s,
-                        // A branched passage carries the start of its child's first reply for the popup.
                         passages: JSON.parse(s.passages ?? '[]').map(({ child, ...p }) =>
-                            this.live(child) ? { ...p, child, ...this.firstReply(child) } : p,
+                            this.live(child) ? { ...p, child } : p,
                         ),
                         // Absent when the tutor's notes block supplied them and no call ran.
                         ...(usage && { usage: JSON.parse(usage) }),
@@ -230,6 +218,18 @@ export const trees = {
                         'SELECT b.message,b.start,b.end,b.explanation FROM briefs b JOIN messages m ON m.id=b.message WHERE m.tree=?',
                     )
                     .all(id),
+                // Each passage branch's question and the start of its child's first reply, for the branch preview.
+                branchPreviews: Object.fromEntries(
+                    this.db
+                        .prepare(
+                            'SELECT child,question FROM branches WHERE parent=? AND artifactId IS NULL',
+                        )
+                        .all(id)
+                        .map(({ child, question }) => [
+                            child,
+                            { question, ...this.firstReply(child) },
+                        ]),
+                ),
             }
         );
     },
@@ -356,15 +356,18 @@ export const trees = {
     // The first question of an unstarted root replaces its placeholder title, using the branch-title rule.
     message(tree, role, text, status, title = text) {
         const id = randomUUID();
-        if (role === 'user')
+        this.atomically(() => {
+            if (role === 'user')
+                this.db
+                    .prepare(
+                        "UPDATE trees SET title=? WHERE id=? AND title='New chat' AND title_renamed=0 AND NOT EXISTS(SELECT 1 FROM branches b WHERE b.child=trees.id) AND NOT EXISTS(SELECT 1 FROM messages m WHERE m.tree=trees.id)",
+                    )
+                    .run(title.trim().slice(0, 200), tree);
             this.db
-                .prepare(
-                    "UPDATE trees SET title=? WHERE id=? AND title='New chat' AND title_renamed=0 AND NOT EXISTS(SELECT 1 FROM branches b WHERE b.child=trees.id) AND NOT EXISTS(SELECT 1 FROM messages m WHERE m.tree=trees.id)",
-                )
-                .run(title.trim().slice(0, 200), tree);
-        this.db
-            .prepare('INSERT INTO messages(id,tree,role,text,status) VALUES(?,?,?,?,?)')
-            .run(id, tree, role, text, status);
+                .prepare('INSERT INTO messages(id,tree,role,text,status) VALUES(?,?,?,?,?)')
+                .run(id, tree, role, text, status);
+            this.indexMessage(id);
+        });
         return id;
     },
     attach(conversation, message, attachments) {
@@ -440,9 +443,12 @@ export const trees = {
             .map((t) => ({ ...t, input: JSON.parse(t.input) }));
     },
     update(id, text, status, stopped = null) {
-        this.db
-            .prepare('UPDATE messages SET text=?,status=?,stopped=?,embedding=NULL WHERE id=?')
-            .run(text, status, stopped, id);
+        this.atomically(() => {
+            this.db
+                .prepare('UPDATE messages SET text=?,status=?,stopped=?,embedding=NULL WHERE id=?')
+                .run(text, status, stopped, id);
+            this.indexMessage(id);
+        });
         // Citations are rebuilt once the reply settles, not on every streamed save.
         if (status !== 'streaming') this.cite(id, text);
     },

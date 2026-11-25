@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
+import pkg from '../../package.json' with { type: 'json' };
 
 const auth = {
     status: () => ({ connected: false }),
@@ -46,6 +47,14 @@ const complete = async (tree, question, emit, saveThread) => {
     emit({ type: 'item', item: 'a', text: `Answer: ${question}` });
     emit({ type: 'status', status: 'completed' });
 };
+
+test('app state reports the running version for Settings', async (t) => {
+    const env = await open(join(dir, 'version.sqlite'), complete);
+    t.after(env.close);
+    const response = await fetch(`${env.origin}/api/state`);
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).version, process.env.RABBITHOLE_VERSION || pkg.version);
+});
 
 test('server shutdown ends concurrent reply streams as interrupted and saves pending-job recovery before restart', async () => {
     const path = join(dir, 'shutdown.sqlite');

@@ -210,7 +210,16 @@ export function useLearningTrees(c: View) {
             .catch((e) => setError(e.message));
     }
     useEffect(loadInitial, []);
-    const titleSearch = useMemo(() => treeSearchSource(setError), []);
+    // ChatGPT sign-in finishes in another window (the default browser in the desktop app), so returning rereads the state.
+    useEffect(() => {
+        const reread = () => void refresh().catch(() => {});
+        window.addEventListener('focus', reread);
+        return () => window.removeEventListener('focus', reread);
+    }, []);
+    // Search ranks the open learning tree first; a ref, so the source keeps its pending request.
+    const searchRoot = useRef(root);
+    searchRoot.current = root;
+    const titleSearch = useMemo(() => treeSearchSource(setError, () => searchRoot.current), []);
     function changeView(showOverview: boolean, id?: string) {
         // Snapshotting thousands of preview rows stalls large maps; their viewport still animates.
         if (

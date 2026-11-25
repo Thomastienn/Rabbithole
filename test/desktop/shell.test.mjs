@@ -89,7 +89,11 @@ test('the update banner appears only for a newer release, downloads on Install a
     const run = (...events) => events.reduce(updateState, null);
     const available = { type: 'available', version: '1.0.214', current: '1.0.198' };
     assert.equal(run({ type: 'error', message: 'net::ERR_INTERNET_DISCONNECTED' }), null);
-    assert.equal(run({ type: 'not-available' }), null);
+    assert.deepEqual(run({ type: 'not-available', current: '1.0.198' }), {
+        stage: 'current',
+        version: '1.0.198',
+        current: '1.0.198',
+    });
     assert.deepEqual(run(available), {
         stage: 'available',
         version: '1.0.214',

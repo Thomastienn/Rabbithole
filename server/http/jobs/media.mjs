@@ -98,6 +98,7 @@ export function mediaJobs(ctx) {
             startedAt: Date.now(),
             phaseStartedAt: Date.now(),
         });
+        store.videoStarted(job.conversation, job.id, job.attempt, running.startedAt);
         const cancel = () => running.controller.abort(parentSignal.reason);
         parentSignal?.addEventListener('abort', cancel, { once: true });
         if (parentSignal?.aborted) cancel();

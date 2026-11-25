@@ -8,6 +8,7 @@ import { markerNotes } from '../../server/media/markers.mjs';
 import { suggestionJobs } from '../../server/http/jobs/suggestions.mjs';
 import { backgroundJobs } from '../../server/http/jobs/background.mjs';
 import { start } from '../support/suggestion-kit.mjs';
+import { NOTES_RULE } from '../../server/suggestions.mjs';
 // The conversation data a quick thinking call sends after its task line.
 const data = (call) => JSON.parse(call.input.slice(call.input.lastIndexOf('\n') + 1));
 
@@ -183,4 +184,12 @@ test('a completed reply without [[end]] starts its briefs once quick thinking ha
     assert.equal(logs.length, 2);
     assert.match(logs[0], /INFO suggestions memory edit id="s"/);
     assert.match(logs[1], /WARN suggestions memory edit refused id="s".*limit/);
+});
+
+test('the suggestion notes ask the tutor to mark a term it would bold', () => {
+    const paragraph = NOTES_RULE.split('\n\n').find((p) => p.startsWith('Suggestion notes:'));
+    assert.match(
+        paragraph,
+        /When you would bold a term because it matters, the learner may not fully understand it yet, so mark it as a suggestion instead of only bolding it\./,
+    );
 });

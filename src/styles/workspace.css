@@ -278,7 +278,7 @@ button.contents-row > span:first-child > span {
     position: relative;
     background: var(--color-background-body);
 }
-/* Mockup Map: controls on the bottom edge, the line key top left, both flat on the map field. */
+/* Mockup Map: controls on the bottom edge, flat on the map field. */
 .map-toolbar {
     position: absolute;
     z-index: 5;
@@ -287,39 +287,6 @@ button.contents-row > span:first-child > span {
     border-radius: var(--radius-element);
     background: var(--color-background-surface);
     color: var(--color-text-secondary);
-}
-.ink-legend {
-    position: absolute;
-    z-index: 4;
-    left: 14px;
-    top: 14px;
-    max-width: min(18rem, calc(100% - 28px));
-    max-height: 25%;
-    overflow: auto;
-    padding: var(--spacing-1);
-    background: var(--color-background-muted);
-    color: var(--color-text-secondary);
-    font-size: var(--font-size-sm);
-}
-.ink-legend ul {
-    display: grid;
-    gap: 6px;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-}
-.ink-legend li {
-    display: flex;
-    align-items: baseline;
-    gap: var(--spacing-2);
-    overflow-wrap: anywhere;
-}
-/* A short length of the line itself, not a bar beside the text. */
-.ink-legend .contents-dot {
-    align-self: center;
-    width: 22px;
-    height: 5px;
-    border-radius: var(--radius-full);
 }
 .overview :focus-visible {
     outline: var(--focus-outline-width) solid var(--rabbithole-paper);

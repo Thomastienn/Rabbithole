@@ -23,7 +23,8 @@ const ADDONS = [
     {
         id: 'web-search',
         name: 'Web search',
-        enables: 'Lets the tutor search the web and cite what it finds.',
+        enables:
+            'Lets custom endpoint models search the web. With any model, finds images and real photos for visuals and videos. Claude and Codex search the web with their own tools.',
         size: 40e6,
         dependency: null,
         tools: ['searxng'],

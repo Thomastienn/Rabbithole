@@ -165,6 +165,15 @@ test('a brief explanation is written once, shared, saved with usage, counted onc
     });
     assert.equal(selected.status, 200);
     assert.equal(store.db.prepare('SELECT COUNT(*) AS n FROM observations').get().n, 1);
+    // The briefed selection becomes a ready suggestion with no concept, returned so it underlines at once.
+    const briefed = { start, end: start + 14, text: 'shared counter' };
+    const row = (await selected.json()).suggestions;
+    assert.equal(row.status, 'ready');
+    assert.deepEqual(row.passages, [passage, briefed]);
+    assert.deepEqual(store.tree(id).suggestions[0], row);
+    // A passage matching a suggestion adds nothing and keeps its brief.
+    assert.deepEqual(await (await brief()).json(), { explanation: answers[0][1].explanation });
+    assert.deepEqual(store.tree(id).suggestions[0].passages, row.passages);
     assert.equal((await post(`/${id}/brief`, { ...anchor, text: 'wrong' })).status, 400);
 
     // A visual part is explained on request too, from the part and its visual.

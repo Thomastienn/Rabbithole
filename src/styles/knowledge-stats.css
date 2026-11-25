@@ -1,0 +1,228 @@
+/* Stats panel under the knowledge graph (mockup Rabbithole-mkg.7): plain sections on the ground, split by seams. */
+.knowledge-stats {
+    margin-top: calc(4 * var(--rabbithole-module));
+}
+.knowledge-stats > header h2 {
+    font-size: 24px;
+}
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 48px;
+    margin-top: 20px;
+}
+.stats-section {
+    min-width: 0;
+    padding: 18px 0 32px;
+    border-top: 1px solid var(--color-border);
+}
+.stats-section.wide {
+    grid-column: 1 / -1;
+}
+.stats-section h3 {
+    font-size: 15px;
+    font-weight: var(--font-weight-semibold);
+}
+.stats-section h3 + * {
+    display: block;
+    margin: 4px 0 16px;
+    font-size: 13px;
+}
+.stats-none {
+    padding: 12px 0;
+    color: var(--color-text-secondary);
+    font-size: 13px;
+}
+.stats-chart {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+}
+.stats-chart .grid {
+    stroke: var(--color-border);
+}
+.stats-chart text {
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    fill: var(--color-text-secondary);
+}
+.stats-chart path {
+    fill: none;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+}
+.stats-chart .met {
+    stroke: var(--color-text-secondary);
+    stroke-width: 2;
+}
+.stats-chart .known {
+    stroke: var(--rabbithole-paper);
+    stroke-width: 3;
+}
+.stats-chart .end {
+    font-size: 12px;
+    font-weight: var(--font-weight-semibold);
+}
+.stats-chart .known-end {
+    fill: var(--rabbithole-paper);
+}
+.stats-rank {
+    display: grid;
+    grid-template-columns: minmax(0, 9rem) minmax(0, 1fr) 10rem;
+    gap: 10px 12px;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 13px;
+}
+.stats-rank li {
+    display: contents;
+}
+.stats-rank .track {
+    height: 8px;
+    overflow: hidden;
+    border-radius: var(--radius-full);
+    background: var(--color-background-surface);
+}
+.stats-rank .track b {
+    display: block;
+    height: 100%;
+    border-radius: var(--radius-full);
+    background: var(--rabbithole-paper);
+}
+.stats-rank small {
+    color: var(--color-text-secondary);
+    text-align: end;
+}
+.stats-list {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.stats-list li + li {
+    border-top: 1px solid var(--color-border);
+}
+.stats-row {
+    display: grid;
+    grid-template-columns: 16px minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    width: calc(100% + 16px);
+    min-height: 44px;
+    margin: 0 -8px;
+    padding: 6px 8px;
+    border: 0;
+    border-radius: var(--radius-inner);
+    background: none;
+    color: var(--color-text-primary);
+    font: inherit;
+    font-size: 14px;
+    text-align: start;
+    cursor: pointer;
+}
+.stats-row.misconception {
+    grid-template-columns: 3.5rem minmax(0, 1fr) auto;
+}
+.stats-row:hover {
+    background: color-mix(in oklab, var(--color-text-primary) 8%, transparent);
+}
+.stats-row b {
+    font-weight: var(--font-weight-semibold);
+}
+.stats-row small {
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+.stats-row span small {
+    display: block;
+    overflow: hidden;
+    margin-top: 1px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+.stats-row .open,
+.stats-row .cleared {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    white-space: nowrap;
+}
+.stats-row .cleared {
+    color: var(--color-text-primary);
+    font-weight: var(--font-weight-semibold);
+}
+.stats-row .cleared svg {
+    width: 14px;
+    height: 14px;
+}
+.stats-heat {
+    display: grid;
+    grid-template-columns: 2.25rem 1fr;
+    gap: 6px 8px;
+    overflow-x: auto;
+    color: var(--color-text-secondary);
+    font-size: 11px;
+}
+.stats-heat .months {
+    grid-column: 2;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 14px;
+    column-gap: 4px;
+    white-space: nowrap;
+}
+.stats-heat .days {
+    display: grid;
+    grid-template-rows: repeat(7, 14px);
+    row-gap: 4px;
+    align-items: center;
+}
+.stats-heat .cells {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-rows: repeat(7, 14px);
+    grid-auto-columns: 14px;
+    gap: 4px;
+}
+.stats-heat .cells i,
+.stats-key i {
+    width: 14px;
+    height: 14px;
+    border-radius: var(--radius-tick);
+    background: var(--color-background-surface);
+}
+.stats-heat [data-l='1'],
+.stats-key [data-l='1'] {
+    background: color-mix(in oklab, var(--rabbithole-paper) 25%, var(--color-background-surface));
+}
+.stats-heat [data-l='2'],
+.stats-key [data-l='2'] {
+    background: color-mix(in oklab, var(--rabbithole-paper) 50%, var(--color-background-surface));
+}
+.stats-heat [data-l='3'],
+.stats-key [data-l='3'] {
+    background: color-mix(in oklab, var(--rabbithole-paper) 75%, var(--color-background-surface));
+}
+.stats-heat [data-l='4'],
+.stats-key [data-l='4'] {
+    background: var(--rabbithole-paper);
+}
+.stats-key {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    margin-top: 14px;
+    color: var(--color-text-secondary);
+    font-size: 12px;
+}
+@media (max-width: 48rem) {
+    .stats-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

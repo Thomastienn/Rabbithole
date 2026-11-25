@@ -11,7 +11,7 @@ import CopyButton from '../markdown/CopyButton';
 import { artifactsAt } from '../media/artifacts';
 import { visualsReady } from '../media/visualProgress';
 import { replyUsageLine } from './turn';
-import { FreeBranches, Groundwork, NextQuestions, ReplyFeedback } from './ChatDetails';
+import { FreeBranches, Groundwork, NextQuestions, ReplyFeedback, ReplyUsage } from './ChatDetails';
 import Passage from './Passage';
 import Reply from './Reply';
 import BranchForm from './BranchForm';
@@ -128,13 +128,13 @@ export default function ChatThread({
                                 />
                             )}
                             {(message.usage !== undefined || !!message.mediaUsage?.length) && (
-                                <Text type="supporting" color="secondary" className="reply-usage">
-                                    {replyUsageLine(
+                                <ReplyUsage
+                                    line={replyUsageLine(
                                         message.usage ?? null,
                                         suggestions?.usage,
                                         message.mediaUsage,
                                     )}
-                                </Text>
+                                />
                             )}
                             {message.memoryUpdated && (
                                 <Button
@@ -200,6 +200,7 @@ export default function ChatThread({
                                           text: t.passage,
                                           child: t.id,
                                           title: t.title,
+                                          ...tree.branchPreviews?.[t.id],
                                       },
                                   ]
                                 : [],
@@ -308,7 +309,9 @@ export default function ChatThread({
                                     key={artifact.id}
                                     inline
                                     artifact={artifact}
-                                    onAction={(action) => videoAction(tree.id, artifact.id, action)}
+                                    onAction={(action, instruction) =>
+                                        videoAction(tree.id, artifact.id, action, instruction)
+                                    }
                                 />
                             ) : (
                                 <DiagramCard

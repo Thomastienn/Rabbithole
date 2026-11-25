@@ -29,6 +29,8 @@ import '@xyflow/react/dist/style.css';
 import '../styles/shell.css';
 import '../styles/library.css';
 import '../styles/knowledge.css';
+import '../styles/knowledge-stats.css';
+import '../themes/topicHues.css';
 import '../styles/workspace.css';
 import '../styles/reading.css';
 import '../styles/attachments.css';

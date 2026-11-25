@@ -6,7 +6,6 @@ import {
     sourceOf,
     keepCurrentFolded,
     revealAddedBranches,
-    familyLegend,
     branchEdges,
     reconcileNodes,
     keyMovement,
@@ -133,34 +132,7 @@ test('tree restore selects only its own saved conversation and panel; legacy def
     });
 });
 
-test('legend names only this trunk and its first branches, repeating inks and reflecting rename/delete', () => {
-    const list = [
-        tree('root'),
-        ...Array.from({ length: 5 }, (_, i) => tree(`a${i}`, 'root', i)),
-        tree('deep', 'a0'),
-        tree('other'),
-    ];
-    const legend = familyLegend('root', list);
-    assert.deepEqual(
-        legend.map((t) => [t.address, t.ink]),
-        [
-            ['1', 0],
-            ['1.1', 1],
-            ['1.2', 2],
-            ['1.3', 3],
-            ['1.4', 4],
-            ['1.5', 1],
-        ],
-    );
-    list[1] = { ...list[1], title: 'Renamed' };
-    assert.equal(familyLegend('root', list)[1].title, 'Renamed');
-    assert.equal(
-        familyLegend(
-            'root',
-            list.filter((t) => t.id !== 'a4'),
-        ).length,
-        5,
-    );
+test('ink styles start on paper and use the numbered inks after', () => {
     assert.deepEqual(inkStyle(0), {
         '--ink': 'var(--rabbithole-paper)',
         '--ink-on': 'var(--rabbithole-paper-ink)',
@@ -422,29 +394,53 @@ test('live previews keep earlier messages, replace retried replies and use bound
     assert.equal(saved.length, 2);
 });
 
-test('title search maps ordered saved results, encodes queries and surfaces failure without bootstrap/model calls', async (t) => {
-    const calls = [],
-        errors = [];
+test('search waits after typing, cancels stale requests, names the current tree and surfaces failure', async (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const errors = [];
     let fail = false;
-    fakeServer(t, (path) => {
-        calls.push(path);
+    const result = {
+        conversation: 'child',
+        root: 'new',
+        tree: 'Roman roads',
+        address: '1.1',
+        title: 'Aqueducts',
+        field: 'reply',
+        snippet: 'Water ran downhill.',
+        ranges: [[0, 5]],
+        message: 'm1',
+    };
+    const calls = fakeServer(t, () => {
         if (fail) throw new Error('Unavailable');
-        return [
-            { root: 'new', title: 'Roman roads' },
-            { root: 'old', title: 'Photosynthesis' },
-        ];
+        return [result];
     });
-    const source = treeSearchSource((e) => errors.push(e));
+    let current = 'new';
+    const source = treeSearchSource(
+        (e) => errors.push(e),
+        () => current,
+    );
     assert.deepEqual(source.bootstrap(), []);
-    assert.deepEqual(calls, []);
-    assert.deepEqual(await source.search('O & ?'), [
-        { id: 'new', label: 'Roman roads' },
-        { id: 'old', label: 'Photosynthesis' },
-    ]);
-    assert.deepEqual(calls, ['/api/search?q=O%20%26%20%3F']);
+    const stale = source.search('wa');
+    const latest = source.search('O & ?');
+    t.mock.timers.tick(119);
+    await Promise.resolve();
+    assert.equal(calls.length, 0, 'no request before the typing pause');
+    t.mock.timers.tick(1);
+    assert.deepEqual(await stale, []);
+    const [item] = await latest;
+    assert.deepEqual(
+        calls.map((c) => c.path),
+        ['/api/search?q=O%20%26%20%3F&tree=new'],
+    );
+    assert.equal(item.id, 'child');
+    assert.equal(item.auxiliaryData.group, 'Roman roads');
+    assert.equal(item.auxiliaryData.message, 'm1');
+    current = undefined;
     fail = true;
-    assert.deepEqual(await source.search('photo'), []);
-    assert.deepEqual(errors, ['Unavailable']);
+    const failed = source.search('photo');
+    t.mock.timers.tick(120);
+    assert.deepEqual(await failed, []);
+    assert.equal(calls.at(-1).path, '/api/search?q=photo');
+    assert.deepEqual(errors, ['Unavailable'], 'only the failure is reported, not the cancel');
 });
 
 test('Library scrolling marker stays through repeated scrolling and clears only after 800ms idle', (t) => {

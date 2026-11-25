@@ -27,6 +27,9 @@ const FIELDS = new Set([
     'piece',
     'choice',
     'reason',
+    // Automatic merges log both names and the kept one (ADR 0022).
+    'names',
+    'kept',
 ]);
 
 // Only diagnostic metadata reaches the terminal; unknown fields are dropped.
@@ -176,7 +179,7 @@ export function loggedProvider(log, provider, task, id, selection, detail = {}) 
 }
 
 const SEGMENTS = new Set(
-    'api state usage search previews models trees messages retry stop branches prepare unprepare position layout model rename delete artifacts media videos reveal trash export generate suggestions knowledge settings auth codex claude openai endpoints profiles test connect disconnect login logout status smart chat interface graph concepts roles duplicate active default remove edit merge cancel regenerate'.split(
+    'api state usage search previews models trees messages retry stop branches prepare unprepare position layout model rename delete artifacts media videos reveal trash export generate suggestions knowledge settings auth codex claude openai endpoints profiles test connect disconnect login logout status smart chat interface graph concepts roles duplicate active default remove edit cancel regenerate'.split(
         ' ',
     ),
 );

@@ -113,7 +113,8 @@ const Reply = memo(function Reply({
                                         artifact={v}
                                         onAction={
                                             onArtifactAction &&
-                                            ((kind) => action.current!(v.id, kind))
+                                            ((kind, instruction) =>
+                                                action.current!(v.id, kind, instruction))
                                         }
                                     />
                                 ) : (

@@ -5,7 +5,7 @@ import { dirname } from 'node:path';
 
 const ARTIFACTS = `CREATE TABLE IF NOT EXISTS artifacts (id TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), message TEXT NOT NULL,
         kind TEXT NOT NULL CHECK(kind IN ('mermaid','video','visual','discussion')), status TEXT NOT NULL CHECK(status IN ('pending','ready','failed','canceled','interrupted')),
-        title TEXT NOT NULL, description TEXT NOT NULL, source TEXT, error TEXT, created INTEGER NOT NULL, input TEXT, attempt TEXT, duration REAL, position INTEGER, side TEXT, previous TEXT,
+        title TEXT NOT NULL, description TEXT NOT NULL, source TEXT, error TEXT, created INTEGER NOT NULL, input TEXT, attempt TEXT, duration REAL, position INTEGER, side TEXT, previous TEXT, started INTEGER, playableAt INTEGER,
         FOREIGN KEY(message, conversation) REFERENCES messages(id, tree));
       CREATE INDEX IF NOT EXISTS artifacts_conversation ON artifacts(conversation, created);`;
 const BRANCHES = `CREATE TABLE IF NOT EXISTS branches (child TEXT PRIMARY KEY REFERENCES trees(id), parent TEXT NOT NULL REFERENCES trees(id), messageId TEXT NOT NULL REFERENCES messages(id), start INTEGER, end INTEGER, text TEXT NOT NULL, question TEXT NOT NULL, snapshot TEXT NOT NULL, artifactId TEXT, label TEXT, explanation TEXT, line INTEGER, speaker TEXT, discussion TEXT);`;
@@ -56,6 +56,11 @@ export function open(path) {
         // A visual's single previous version as JSON {source,title,description}; NULL when it has none.
         if (!hasColumn('artifacts', 'previous'))
             this.db.exec('ALTER TABLE artifacts ADD COLUMN previous TEXT');
+        // When a video's current attempt started and became playable; NULL on older rows, which show no time.
+        for (const name of ['started', 'playableAt']) {
+            if (!hasColumn('artifacts', name))
+                this.db.exec(`ALTER TABLE artifacts ADD COLUMN ${name} INTEGER`);
+        }
         for (const name of ['effort', 'working_effort']) {
             if (!hasColumn('trees', name))
                 this.db.exec(`ALTER TABLE trees ADD COLUMN ${name} TEXT`);
@@ -135,6 +140,9 @@ export function open(path) {
         // Reasoning tokens are part of output, kept apart where the provider reports them; older rows keep NULL (not reported).
         if (!hasColumn('usage_events', 'reasoning'))
             this.db.exec('ALTER TABLE usage_events ADD COLUMN reasoning INTEGER');
+        // A call's last recorded moment, so a video stage shows its time; older rows keep NULL (not recorded).
+        if (!hasColumn('usage_events', 'ended'))
+            this.db.exec('ALTER TABLE usage_events ADD COLUMN ended INTEGER');
         // Additive table: brief explanations sit beside tutor replies, keyed by reply and passage; the tutor never reads them.
         this.db.exec(
             'CREATE TABLE IF NOT EXISTS briefs (message TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE, start INTEGER NOT NULL, end INTEGER NOT NULL, text TEXT NOT NULL, concept TEXT, explanation TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY(message, start, end))',
@@ -227,6 +235,7 @@ export function open(path) {
             .exec(`CREATE TABLE IF NOT EXISTS concepts (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE COLLATE NOCASE);
         CREATE TABLE IF NOT EXISTS topics (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE COLLATE NOCASE);
         CREATE TABLE IF NOT EXISTS concept_aliases (name TEXT PRIMARY KEY COLLATE NOCASE, concept INTEGER NOT NULL REFERENCES concepts(id));
+        CREATE TABLE IF NOT EXISTS topic_aliases (name TEXT PRIMARY KEY COLLATE NOCASE, topic INTEGER NOT NULL REFERENCES topics(id));
         CREATE TABLE IF NOT EXISTS concept_topics (concept INTEGER NOT NULL REFERENCES concepts(id), topic INTEGER NOT NULL REFERENCES topics(id), PRIMARY KEY(concept, topic));
         CREATE TABLE IF NOT EXISTS concept_links (concept INTEGER NOT NULL REFERENCES concepts(id), target INTEGER NOT NULL REFERENCES concepts(id), kind TEXT NOT NULL CHECK(kind IN ('related','builds on')), PRIMARY KEY(concept, target, kind), CHECK(concept <> target));
         CREATE TABLE IF NOT EXISTS evidence (concept INTEGER NOT NULL REFERENCES concepts(id), kind TEXT NOT NULL CHECK(kind IN ('met','asked','used','ignored','known','unknown')), source TEXT, at INTEGER NOT NULL, UNIQUE(concept, kind, source));`);
@@ -352,6 +361,8 @@ export function open(path) {
             .prepare('PRAGMA table_info(trees)')
             .all()
             .find((c) => c.name === 'provider').notnull;
+        // After every table rebuild above, which would drop the index's triggers.
+        this.searchIndex();
         this.interrupt();
     } catch (error) {
         error.backupPath = this.backupPath;

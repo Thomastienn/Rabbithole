@@ -8,6 +8,7 @@ import { resources } from './store/resources.mjs';
 import { pieces } from './store/pieces.mjs';
 import { discussions } from './store/discussions.mjs';
 import { recovery } from './store/recovery.mjs';
+import { search } from './store/search.mjs';
 
 // Each record family's methods live in server/store/ and are installed on the Store prototype.
 export class Store {
@@ -43,4 +44,5 @@ Object.assign(
     pieces,
     discussions,
     recovery,
+    search,
 );

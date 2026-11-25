@@ -28,6 +28,7 @@ import type { Model } from './models';
 import type { ModelSelection } from '../chat/types';
 import type { Appearance, ThemeChoice } from '../shell/appearance';
 import InterfaceSettings, { Done, Section } from './InterfaceSettings';
+import { useDesktopUpdate } from '../shell/UpdateBanner';
 
 export type SettingsTab = 'models' | 'connections' | 'interface' | 'addons' | 'usage';
 // tab: the section to scroll to (undefined opens at the top); focus is a selector to focus once open.
@@ -70,6 +71,34 @@ const TABS: { id: SettingsTab; label: string; description: string; icon: typeof 
     },
 ];
 
+// The version comes from the server; only the desktop app's update state adds the latest version or Up to date.
+function AppVersion({ version }: { version?: string }) {
+    const [update, act] = useDesktopUpdate();
+    const newer = update?.stage !== 'current' && update;
+    const action =
+        update?.stage === 'ready'
+            ? 'restart'
+            : update?.stage === 'available' || update?.stage === 'failed'
+              ? 'install'
+              : null;
+    return (
+        <HStack gap={3} vAlign="center" wrap="wrap" className="settings-foot">
+            <Text type="supporting" color="secondary">
+                Rabbithole {version}
+                {newer ? ` · Latest is ${newer.version}` : update ? ' · Up to date' : ''}
+            </Text>
+            {action && (
+                <Button
+                    label={action === 'restart' ? 'Restart to update' : 'Update'}
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => act(action)}
+                />
+            )}
+        </HStack>
+    );
+}
+
 export default function SettingsWindow({
     request,
     close,
@@ -79,6 +108,7 @@ export default function SettingsWindow({
     loadModels,
     profileActivated,
     auth,
+    version,
     signIn,
     vim,
     setVim,
@@ -95,6 +125,7 @@ export default function SettingsWindow({
     loadModels: () => Promise<void>;
     profileActivated: (chat: ModelSelection) => void;
     auth?: { connected: boolean; email: string | null };
+    version?: string;
     signIn: () => Promise<void>;
     vim: boolean;
     setVim: (on: boolean) => void;
@@ -353,6 +384,7 @@ export default function SettingsWindow({
                         {nav}
                         {panel}
                     </div>
+                    <AppVersion version={version} />
                 </VStack>
             )}
         </main>

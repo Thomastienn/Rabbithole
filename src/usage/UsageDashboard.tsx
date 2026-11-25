@@ -33,6 +33,7 @@ const TASKS: Record<string, string> = {
     title: 'Conversation titles',
     verdict: 'Familiarity verdicts',
     brief: 'Brief explanations',
+    merge: 'Concept merges',
 };
 const n = (v: number) => v.toLocaleString();
 const counts = (t: Totals) =>

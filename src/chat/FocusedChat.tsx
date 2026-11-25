@@ -22,6 +22,7 @@ import {
     AttachButton,
     PendingAttachments,
     noModelNote,
+    holdEnter,
     pendingPlaceholder,
     useAttach,
 } from './Attachments';
@@ -313,7 +314,9 @@ export default function FocusedChat({
                                     maxRows={4}
                                     value={drafts[tree.id] ?? ''}
                                     onChange={(value) => setDraft(tree.id, value)}
-                                    isDisabled={active || (!!models && !models.length)}
+                                    // Typing stays open during a reply; only Enter waits for it to end.
+                                    onKeyDown={(e) => active && holdEnter(e)}
+                                    isDisabled={!!models && !models.length}
                                     placeholder={
                                         models && !models.length
                                             ? 'Sign in to a provider to ask'
