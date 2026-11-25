@@ -12,9 +12,10 @@ export function launch(
         cwd,
         env: {
             ...process.env,
-            // CLI detection also searches home install folders and npm's global bin, so these hide them too.
+            // Keep CLI discovery in the fixture's install folders.
             PATH: dir,
             HOME: dir,
+            HOMEBREW_PREFIX: dir,
             NPM_CONFIG_PREFIX: dir,
             npm_config_prefix: dir,
             RABBITHOLE_DATA_DIR: dir,

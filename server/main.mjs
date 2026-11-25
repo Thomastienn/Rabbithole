@@ -6,7 +6,7 @@ import { Store } from './store.mjs';
 import { Auth } from './providers/auth.mjs';
 import { Codex } from './providers/codex.mjs';
 import { Claude } from './providers/claude.mjs';
-import { cliPath } from './providers/findCli.mjs';
+import { cliPath, prepareCliLookup } from './providers/findCli.mjs';
 import { installCommand } from './providers/install.mjs';
 import { dataDir } from './desktop.mjs';
 import { OpenAI } from './providers/openai.mjs';
@@ -102,6 +102,7 @@ try {
     if (store.setupFinished()) void downloads.start();
     // Local diagnostics only. Start listening first so a missing or slow CLI cannot prevent reading saved trees.
     // The same lookup chat uses, so a short desktop PATH does not hide a CLI chat can run.
+    await prepareCliLookup('claude', 'codex');
     const hasClaude = claude.installed(),
         hasCodex = codex.installed();
     const signedIn = hasClaude && (await claude.status()).connected;

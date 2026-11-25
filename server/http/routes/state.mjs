@@ -1,5 +1,6 @@
 import { LABELS, isEndpoint } from '../roles.mjs';
 import { installCommand } from '../../providers/install.mjs';
+import { pendingCliLookup } from '../../providers/findCli.mjs';
 import pkg from '../../../package.json' with { type: 'json' };
 
 // The desktop shell passes its own version, which CI stamps; a browser-run server has the repo's.
@@ -75,6 +76,7 @@ export async function stateRoutes(req, res, url, ctx) {
         );
     }
     if (url.pathname === '/api/models') {
+        await pendingCliLookup;
         const ids = Object.keys(providers);
         const results = await Promise.allSettled(ids.map((id) => providers[id].models()));
         // Every known provider is named, connected or not, so clients never keep their own label list.

@@ -1,5 +1,5 @@
 import { accessSync, constants, readFileSync, statSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
 import { homedir } from 'node:os';
 import { delimiter, join, win32 } from 'node:path';
 
@@ -12,17 +12,36 @@ const runnable = (path) => {
     }
 };
 
+const npmArgs = ['prefix', '-g'];
+const npmOptions = { encoding: 'utf8', timeout: 5000, killSignal: 'SIGKILL' };
+const npmPrefix = (env) => env.NPM_CONFIG_PREFIX ?? env.npm_config_prefix;
 let npmBin;
+export let pendingCliLookup;
+
+// Resolve the optional npm fallback without blocking requests for saved trees during startup.
+export function prepareCliLookup(...names) {
+    if (
+        process.platform === 'win32' ||
+        npmPrefix(process.env) ||
+        npmBin !== undefined ||
+        names.every((name) => findCli(name, { npm: () => null }))
+    )
+        return;
+    return (pendingCliLookup ??= new Promise((resolve) => {
+        execFile('npm', npmArgs, npmOptions, (error, stdout) => {
+            npmBin = error ? null : join(stdout.trim(), 'bin');
+            resolve();
+        });
+    }));
+}
+
 // npm's global bin, asked once; a missing npm just skips this folder.
 function globalNpmBin(env) {
-    const prefix = env.NPM_CONFIG_PREFIX ?? env.npm_config_prefix;
+    const prefix = npmPrefix(env);
     if (prefix) return join(prefix, 'bin');
     if (npmBin === undefined)
         try {
-            npmBin = join(
-                execFileSync('npm', ['prefix', '-g'], { encoding: 'utf8', timeout: 5000 }).trim(),
-                'bin',
-            );
+            npmBin = join(execFileSync('npm', npmArgs, npmOptions).trim(), 'bin');
         } catch {
             npmBin = null;
         }
@@ -31,7 +50,13 @@ function globalNpmBin(env) {
 
 // npm's .cmd shim ends by running "%dp0%\<target>" (a .exe, or a script after node.exe); spawn cannot run the .cmd without a shell.
 const shimTarget = (shim, read) => {
-    const targets = [...read(shim).matchAll(/"%dp0%\\([^"]+)"/g)]
+    let source;
+    try {
+        source = read(shim);
+    } catch {
+        return null;
+    }
+    const targets = [...source.matchAll(/"%dp0%\\([^"]+)"/g)]
         .map((m) => m[1])
         .filter((t) => !/^node\.exe$/i.test(t));
     return targets.length ? win32.join(win32.dirname(shim), targets.at(-1)) : null;

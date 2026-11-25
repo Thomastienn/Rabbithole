@@ -121,6 +121,20 @@ test('a missing CLI is found once installed, and a found path is remembered', ()
     assert.equal(looks, 2, 'a found path is not searched again');
 });
 
+test('Windows detection keeps looking when an installer removes a shim during lookup', () => {
+    const fallback = 'C:\\Fallback\\claude.exe';
+    const options = {
+        env: { PATH: 'C:\\Tools;C:\\Fallback' },
+        platform: 'win32',
+        exists: (path) => path === 'C:\\Tools\\claude.cmd' || path === fallback,
+        read: () => {
+            throw Object.assign(new Error('Shim moved'), { code: 'ENOENT' });
+        },
+    };
+    assert.equal(findCli('claude', options), fallback);
+    assert.equal(findCli('claude', { ...options, env: { PATH: 'C:\\Tools' } }), null);
+});
+
 const child = (reply) => {
     const c = new EventEmitter();
     c.stdout = new PassThrough();
