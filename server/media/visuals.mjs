@@ -141,8 +141,11 @@ function paletteFor(theme) {
 
 // A mistake check, not a security boundary: execution stays in the opaque-origin, network-denied sandbox.
 async function validate(source) {
-    const invalid = (reason) => {
-        throw new Error(`Visual output is invalid: ${reason}.`);
+    // found names the offending text, so the retry and the log both show what to change.
+    const invalid = (reason, found) => {
+        throw new Error(
+            `Visual output is invalid: ${reason}${found ? ` (found ${JSON.stringify(found.slice(0, 80))})` : ''}.`,
+        );
     };
     if (!source.trim()) invalid('no fragment was returned');
     if (Buffer.byteLength(source) > MAX_SOURCE) invalid('the fragment exceeds 64 KiB');
@@ -153,22 +156,29 @@ async function validate(source) {
         /(["'`])http:\/\/www\.w3\.org\/(?:2000\/svg|1999\/xlink|1999\/xhtml)\1/g,
         '',
     );
-    if (/(?:https?|wss?|ftp|file|data|blob|javascript):|(?:["'`(=]|^)\s*\/\/[\w.-]/i.test(checked))
-        invalid('URLs and remote resources are unavailable');
-    for (const [, target] of checked.matchAll(/\burl\(\s*([^)]*)\)/gi))
+    // A scheme starts a word and has its URL shape, so CSS `grid-template-rows:` and JS keys like `data:` pass.
+    const url =
+        /(?<![\w-])(?:(?:https?|wss?|ftp|file):\/\/|data:\s*(?:[\w.+-]+\/|[,;])|blob:|javascript:)|(?:["'`(=]|^)\s*\/\/[\w.-]/i.exec(
+            checked,
+        );
+    if (url)
+        invalid(
+            'URLs and remote resources are unavailable',
+            checked.slice(Math.max(0, url.index - 20), url.index + url[0].length + 20),
+        );
+    for (const [call, target] of checked.matchAll(/\burl\(\s*([^)]*)\)/gi))
         if (!/^(["']?)#[\w-]+\1$/.test(target.trim()))
-            invalid('CSS resources must be local fragment references');
+            invalid('CSS resources must be local fragment references', call);
     if (/@import\b/i.test(checked)) invalid('use only inline code and the preloaded libraries');
     // Stock catalogs are retired (ADR 0005); every object is drawn in the house style.
     if (/\bstockPiece\b|fluent-emoji:/.test(source))
         invalid('stock pieces are retired; draw every object yourself in the house style');
     const javascript = (code) => {
-        if (
-            /\b(?:fetch|XMLHttpRequest|WebSocket|EventSource|sendBeacon|importScripts|Worker|SharedWorker|RTCPeerConnection|serviceWorker)\s*[.(\[]|\b(?:import|require)\s*\(|\bnew\s+Chart\b|\bLeaflet\s*\.|\w*Loader\b/.test(
+        const banned =
+            /\b(?:fetch|XMLHttpRequest|WebSocket|EventSource|sendBeacon|importScripts|Worker|SharedWorker|RTCPeerConnection|serviceWorker)\s*[.(\[]|\b(?:import|require)\s*\(|\bnew\s+Chart\b|\bLeaflet\s*\.|\w*Loader\b/.exec(
                 code,
-            )
-        )
-            invalid('use only inline code and the preloaded libraries');
+            );
+        if (banned) invalid('use only inline code and the preloaded libraries', banned[0]);
         try {
             new Script(code);
         } catch {
@@ -185,13 +195,19 @@ async function validate(source) {
                 element.localName,
             )
         )
-            invalid('links, images and embedded resources are unavailable');
+            invalid(
+                'links, images and embedded resources are unavailable',
+                `<${element.localName}>`,
+            );
         for (const { name, value } of element.attributes) {
             if (
                 /^(?:src|srcset|href|xlink:href|action|formaction)$/i.test(name) &&
                 !/^#[\w-]+$/.test(value)
             )
-                invalid('resource attributes must be local fragment references');
+                invalid(
+                    'resource attributes must be local fragment references',
+                    `${name}="${value}"`,
+                );
             if (/^on/i.test(name)) javascript(`function handler(event){${value}\n}`);
         }
         if (element.localName === 'script') {
@@ -216,7 +232,7 @@ export async function generateVisual(
     parentSignal,
     timeout = 7200000,
     onPartial = () => {},
-    { capable = false, mcp } = {},
+    { capable = false, mcp, onRetry = () => {} } = {},
 ) {
     const controller = new AbortController();
     const cancel = () => controller.abort(new Error('Visual generation canceled.'));
@@ -331,6 +347,7 @@ export async function generateVisual(
             validationError =
                 error?.message ??
                 `Visual output is invalid: it needs the ${missing.join(' and ')} skill, now included in your instructions; follow it.`;
+            onRetry(validationError);
         }
     };
     try {

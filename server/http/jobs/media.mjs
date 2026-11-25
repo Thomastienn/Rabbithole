@@ -290,7 +290,21 @@ export function mediaJobs(ctx) {
             signal,
             ctx.visualTimeout,
             onPartial,
-            { capable, mcp: ctx.mcp },
+            {
+                capable,
+                mcp: ctx.mcp,
+                // The first attempt's rejection is sent back to the model, so only this line records it.
+                onRetry: (reason) =>
+                    ctx.log(
+                        formatLog('warn', 'media', 'retry', {
+                            id: artifact.id,
+                            task: artifact.kind,
+                            provider: selection.provider,
+                            model: selection.model,
+                            cause: errorCause(reason, privateValues(artifact.input)),
+                        }),
+                    ),
+            },
         );
     };
     // Explicit Retry runs detached like a video job, with the same stop/delete/polling lifecycle.

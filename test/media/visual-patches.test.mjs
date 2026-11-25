@@ -40,3 +40,33 @@ test('a visual patch that does not apply falls back to a whole fragment', async 
     assert.match(provider.calls[2].task.validationError, /preloaded libraries/);
     assert.doesNotMatch(provider.calls[2].tree.instructions, /return only a unified diff/);
 });
+
+test('CSS properties and JS keys that end like a scheme are not URLs', async () => {
+    const fragment = source.replace(
+        '</svg>',
+        '</svg><div style="display:grid;grid-template-rows:repeat(3,48px)"></div><script>const shown = { data: [1], file: 2, rows: 3 };</script>',
+    );
+    const provider = writer([() => fragment]);
+    assert.equal(await run(provider), fragment);
+    assert.equal(provider.calls.length, 1);
+});
+
+test('a URL rejection names the text it found and reports the retry', async () => {
+    for (const url of [
+        'https://example.org/a.png',
+        'data:image/png;base64,AAAA',
+        '//cdn.example.org/x.js',
+    ]) {
+        const linked = source.replace('</svg>', `</svg><style>.x{background:'${url}'}</style>`);
+        const retries = [];
+        const provider = writer([() => linked, () => linked, () => linked]);
+        await assert.rejects(
+            generateVisual(provider, {}, input, new AbortController().signal, 10000, () => {}, {
+                onRetry: (reason) => retries.push(reason),
+            }),
+            (error) => error.message.includes('URLs and remote resources are unavailable (found'),
+        );
+        assert.equal(retries.length, 1);
+        assert.ok(retries[0].includes(url.slice(0, 10)), retries[0]);
+    }
+});
