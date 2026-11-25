@@ -11,7 +11,7 @@ import {
     tutorSystem,
 } from '../../server/media/tutor-instructions.mjs';
 import { diagramReply } from '../../server/media/reply-parser.mjs';
-import { TEACHING_SKILL, HUMANIZER_SKILL } from '../../server/media/skills.mjs';
+import { TEACHING_SKILL, HUMANIZER_SKILL, ADHD_SKILL } from '../../server/media/skills.mjs';
 import { DISCUSSION_RULE } from '../../server/media/discussions.mjs';
 import { NOTES_RULE } from '../../server/suggestions.mjs';
 
@@ -30,8 +30,13 @@ test('tutor prompt puts the fixed rules, then the skills, then the tutor style, 
         rules + 'Teach with sports analogies.',
     );
     const prompt = tutorSystem({ tutorStyle: 'Mine.' });
-    const at = [TEACHING_SKILL, HUMANIZER_SKILL, 'Mine.'].map((part) => prompt.indexOf(part));
-    assert.ok(at[0] > TUTOR_RULES.length && at[0] < at[1] && at[1] < at[2], `${at}`);
+    const at = [TEACHING_SKILL, HUMANIZER_SKILL, ADHD_SKILL, 'Mine.'].map((part) =>
+        prompt.indexOf(part),
+    );
+    assert.ok(
+        at[0] > TUTOR_RULES.length && at[0] < at[1] && at[1] < at[2] && at[2] < at[3],
+        `${at}`,
+    );
     const branch = { snapshot: 'Frozen fact', text: 'Passage' };
     const child = tutorSystem({ tutorStyle: 'Mine.', branch });
     assert.ok(child.startsWith(rules + 'Mine.\n'));
@@ -40,6 +45,17 @@ test('tutor prompt puts the fixed rules, then the skills, then the tutor style, 
         tutorSystem({ tutorStyle: 'Mine.', instructions: 'Worker only.' }),
         'Worker only.',
     );
+});
+
+test('every chat prompt carries the i-have-adhd skill once: app tools, text tools, no tools and a child branch', async () => {
+    const { APP_TOOLS } = await import('../../server/http/app-calls.mjs');
+    const branch = { snapshot: 'Frozen fact', text: 'Passage' };
+    for (const tree of [{ tools: APP_TOOLS }, { textTools: APP_TOOLS }, {}, { branch }])
+        assert.equal(
+            tutorSystem(tree).split(ADHD_SKILL).length,
+            2,
+            JSON.stringify(Object.keys(tree)),
+        );
 });
 
 test('the visual frequency sentence follows the setting after the unchanged visual and video rules', () => {
@@ -138,8 +154,16 @@ test('the tool-path tutor prompt stays within the budget before learner data', a
     // replaced shorter text and are allowed on top: 474 and 51 characters.
     const TEACHING = 474 + 51;
     // The concept mark sentences (ADR 0023) are allowed on top: 239 characters.
+    // The i-have-adhd skill (Rabbithole-adh.1) is allowed on top, as written.
     const MARKER_BEFORE =
-        9987 + 6121 + BOLD.length + TEACHING + 239 + VISUAL_FREQUENCY.often.length;
+        9987 +
+        6121 +
+        BOLD.length +
+        TEACHING +
+        239 +
+        VISUAL_FREQUENCY.often.length +
+        ADHD_SKILL.length +
+        2;
     for (const prompt of [native, text])
         assert.ok(prompt.length + definitions.length <= MARKER_BEFORE, `${prompt.length}`);
     assert.ok(native.includes(MEMORY_RULE));

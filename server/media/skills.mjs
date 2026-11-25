@@ -7,6 +7,8 @@ const read = (name) =>
 export const ANALOGY_SKILL = read('analogy');
 export const TEACHING_SKILL = `${read('teaching')}\n\n${ANALOGY_SKILL}`;
 export const HUMANIZER_SKILL = read('humanizer');
+// Vendored as written, without its YAML frontmatter.
+export const ADHD_SKILL = read('i-have-adhd');
 export const MANIM_TEACHING_SKILL = read('manim-teaching');
 export const REMOTION_SKILL = read('remotion');
 export const REMOTION_3D_SKILL = read('remotion-3d');
