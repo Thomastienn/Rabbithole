@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 type LearningTree = { id: string; parent: string | null; created: number };
-const localDay = (date: Date) =>
+export const localDay = (date: Date) =>
     Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86_400_000;
 
 export function treeGroups<T extends LearningTree>(trees: readonly T[], now = new Date()) {

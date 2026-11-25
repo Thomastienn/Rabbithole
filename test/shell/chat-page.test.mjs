@@ -424,7 +424,7 @@ test('Search from the narrow drawer returns focus to Contents when the palette c
     });
     const drawer = document.querySelector('dialog[open]');
     // A pointer press or Enter leaves focus on the drawer's Search; the palette takes it as its opener.
-    const search = button(drawer, 'Search learning trees');
+    const search = button(drawer, 'Search conversations');
     await act(async () => {
         search.focus();
         search.click();

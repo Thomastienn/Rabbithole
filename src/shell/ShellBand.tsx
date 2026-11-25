@@ -148,6 +148,23 @@ export default function ShellBand({
         addEventListener('keydown', shortcut);
         return () => removeEventListener('keydown', shortcut);
     }, [busy, newChat]);
+    // Ctrl+K opens search from anywhere, the composer included, as Ctrl+Shift+O does.
+    useEffect(() => {
+        const shortcut = (e: KeyboardEvent) => {
+            if (
+                e.isComposing ||
+                !(e.ctrlKey || e.metaKey) ||
+                e.shiftKey ||
+                e.altKey ||
+                e.key.toLowerCase() !== 'k'
+            )
+                return;
+            e.preventDefault();
+            if (!e.repeat) search();
+        };
+        addEventListener('keydown', shortcut);
+        return () => removeEventListener('keydown', shortcut);
+    }, [search]);
     // Narrow screens keep their header; Focus mode hides that header there.
     // Desktop: Focus mode shrinks the sidebar to the rail; the toggle leads both and stays one button.
     const rail = focusMode && !mobile;
@@ -276,8 +293,8 @@ export default function ShellBand({
                     />
                     <IconButton
                         className="tree-search"
-                        label="Search learning trees"
-                        tooltip="Search learning trees"
+                        label="Search conversations"
+                        tooltip="Search conversations (Ctrl+K)"
                         variant="ghost"
                         size="md"
                         icon={<MagnifyingGlassIcon />}
@@ -319,8 +336,8 @@ export default function ShellBand({
                     {focusButton}
                     <IconButton
                         className="tree-search"
-                        label="Search learning trees"
-                        tooltip="Search learning trees"
+                        label="Search conversations"
+                        tooltip="Search conversations (Ctrl+K)"
                         icon={<MagnifyingGlassIcon />}
                         variant="ghost"
                         size="md"

@@ -5,7 +5,7 @@
     outline-offset: 2px;
 }
 /* Fields show focus on their own frame (mockup .field.on), so the control inside draws no second ring.
-   The title search palette has no frame: its seam under the field turns porcelain instead. */
+   The search window has no input frame: its seam under the field turns porcelain instead. */
 .astryx-text-input :focus-visible,
 .astryx-command-palette-input :focus-visible,
 .astryx-chat-composer-input > [contenteditable] {
@@ -13,6 +13,72 @@
 }
 .astryx-layout-header:has(.astryx-command-palette-input :focus-visible) {
     border-bottom-color: var(--rabbithole-paper);
+}
+/* Search window (mockup Rabbithole-nav.2): chip, title and matched field on one line, a two-line snippet below. */
+.tree-search-window .astryx-command-palette-input input {
+    font-size: 17px;
+}
+.tree-search-window .astryx-command-palette-group + .astryx-command-palette-group {
+    margin-top: var(--spacing-2);
+    padding-top: var(--spacing-2);
+    border-top: 1px solid var(--color-border);
+}
+.search-count:not(:empty) {
+    padding: 10px 18px 2px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+}
+.search-hit {
+    display: grid;
+    flex: 1;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 2px 10px;
+    align-items: baseline;
+    min-width: 0;
+}
+.search-hit > strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+}
+.search-where {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+}
+@media (max-width: 30rem) {
+    .search-hit[data-recent] .search-where {
+        grid-column: 2 / -1;
+        white-space: normal;
+    }
+}
+.search-snippet {
+    grid-column: 2 / -1;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    font: 14px/1.5 var(--rabbithole-font-reading);
+    color: var(--color-text-secondary);
+}
+.search-none {
+    padding: 28px 18px 36px;
+    text-align: start;
+    overflow-wrap: anywhere;
+}
+.search-none strong {
+    display: block;
+    font: 700 20px/1.2 var(--font-family-heading);
+}
+.search-none p {
+    margin-top: 6px;
+    color: var(--color-text-secondary);
+}
+/* An opened search result keeps its matched words in the selection colour for two seconds. */
+::highlight(search-match) {
+    background-color: var(--rabbithole-selection);
+    color: var(--color-text-primary);
 }
 /* Overlays (menus, popovers, the passage box, dialogs) sit flat on raised enamel with a 1.5px porcelain seam. */
 .branch-form,
