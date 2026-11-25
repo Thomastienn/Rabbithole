@@ -22,8 +22,7 @@ const PROMPT =
     GRAPH +
     GROUND +
     " Also write up to three next questions: deep, curious how, why or what-if questions the answer raises but does not answer, in the learner's voice; none after a casual turn. " +
-    MEMORY +
-    '\n';
+    MEMORY;
 // After a reply that ended, the tutor's marks stand; quick thinking names their concepts and writes the graph.
 const NAMING =
     'The tutor already marked the terms in "suggestions" in "answer". Return each of them unchanged as "text" with "concept" naming the concept it is about, and add no other suggestions. ' +
@@ -57,8 +56,8 @@ export function anchored(source, { start, end, text }) {
 // Graph entries are optional: invalid or missing concepts and links are dropped without failing the suggestions.
 const json = (raw) => JSON.parse(raw.trim().replace(/^```(?:json)?\s*|\s*```$/g, ''));
 // The marks and next questions of one notes answer.
-const notes = (result, answer) => ({
-    ...marks(result, answer),
+const notes = (result, answer, preserved) => ({
+    ...marks(result, answer, preserved),
     questions: nextQuestions(result?.next_questions),
 });
 // Memory note edits as objects; each is checked when applied, and a missing list is none.
@@ -67,15 +66,15 @@ const memoryEdits = (list) =>
         (e) => e && typeof e === 'object' && !Array.isArray(e),
     );
 // Both answers (the tool call and plain JSON text) carry the memory edits.
-const read = (result, input, marked) => ({
-    ...(marked ? named(result, marked) : notes(result, input.answer)),
+const read = (result, input, marked, preserved) => ({
+    ...(marked ? named(result, marked) : notes(result, input.answer, preserved)),
     memory: memoryEdits(result?.memory),
 });
 
-export function marks(result, answer) {
+export function marks(result, answer, preserved = []) {
     const list = result?.suggestions;
     if (!Array.isArray(list)) throw new Error('Suggestions response was invalid.');
-    const kept = [];
+    const kept = [...preserved];
     let previous = 0;
     const find = (pattern, from = 0) => {
         const re = new RegExp(pattern, 'g');
@@ -133,7 +132,7 @@ export function marks(result, answer) {
 
 // The tutor marks the notes the learner sees inline (ADR 0016); the server strips every marker as it streams.
 export const NOTES_RULE =
-    '\n\nNotes: mark your notes in the reply text with double brackets. The app hides every marker from the learner, so never mention them. There are three kinds of note, each with its own rules below.\n\nGroundwork notes: when this reply relies without naming on concepts this learner probably needs first, judged from the concept neighbourhood, begin the reply with one line [[groundwork: name; name]] before any other text, with at most three names; usually there are none, so leave the line out. Never name one the reply names or the learner already knows well. When a groundwork concept is the same as one in the concept neighbourhood, even under another wording, use its name exactly.\n\nSuggestion notes: mark generously. Each mark is a door the learner can open to go deeper, so choose freely and lean toward more. Wrap in double brackets, where you write it, every term or short phrase of one to six words this learner might not understand or might want to explore further: technical or academic terms, jargon, names of methods, algorithms, theorems or results, and uncommon words that are not everyday public knowledge, as in "this is called [[sift down]]". Inside the brackets write only words of the reply, nothing else. Mark a term even when you explain it, including the name of the very method or idea that answers the question. When you would bold a term because it matters, the learner may not fully understand it yet, so mark it as a suggestion instead of only bolding it. Treat a concept missing from the concept neighbourhood, or of unknown familiarity, as one this learner has heard of once but cannot explain, and explain it at that level. Skip only everyday words, the exact words the learner asked about, section headings, whole sentences and concepts the learner already knows well. Mark each term once and never inside code or math; when a term appears only in math, name it in the prose beside it and mark it there, as in "the [[logarithmic integral]] $\\operatorname{Li}(x)$"; a technical reply usually has many, and a casual turn has none.\n\nEnd section: end every reply with up to three lines [[next: question]], each a deep, curious how, why or what-if question this reply raises but does not answer, in the learner\'s voice, then a last line [[end]]. After a casual turn write [[end]] alone. Rarely, as a last resort when the learner hinted at a video or still does not follow, one next question may be [[video offer: question]], worded as the learner asking for a video of the idea, such as "Can you make a video of how the heap reorders itself?"; never in a reply holding a visual, discussion or video.';
+    '\n\nNotes: mark your notes in the reply text with double brackets. The app hides every marker from the learner, so never mention them. There are three kinds of note, each with its own rules below.\n\nGroundwork notes: when this reply relies without naming on concepts this learner probably needs first, judged from the concept neighbourhood, begin the reply with one line [[groundwork: name; name]] before any other text, with at most three names; usually there are none, so leave the line out. Never name one the reply names or the learner already knows well. When a groundwork concept is the same as one in the concept neighbourhood, even under another wording, use its name exactly.\n\nSuggestion notes: mark generously. Each mark is a door the learner can open to go deeper, so choose freely and lean toward more. Wrap in double brackets, where you write it, every term or short phrase of one to six words this learner might not understand or might want to explore further: technical or academic terms, jargon, names of methods, algorithms, theorems or results, and uncommon words that are not everyday public knowledge, as in "this is called [[sift down]]". Inside the brackets write only words of the reply, as plain [[words]]; only when the shown words stand for a longer or more specific concept, name it first with a bar, as in "a [[safe state|safe]] one", and the learner sees only the words after the bar. In a table row write the bar as \\|. Mark a term even when you explain it, including the name of the very method or idea that answers the question. When you would bold a term because it matters, the learner may not fully understand it yet, so mark it as a suggestion instead of only bolding it. Treat a concept missing from the concept neighbourhood, or of unknown familiarity, as one this learner has heard of once but cannot explain, and explain it at that level. Skip only everyday words, the exact words the learner asked about, section headings, whole sentences and concepts the learner already knows well. Mark each term once and never inside code or math; when a term appears only in math, name it in the prose beside it and mark it there, as in "the [[logarithmic integral]] $\\operatorname{Li}(x)$"; a technical reply usually has many, and a casual turn has none.\n\nEnd section: end every reply with up to three lines [[next: question]], each a deep, curious how, why or what-if question this reply raises but does not answer, in the learner\'s voice, then a last line [[end]]. After a casual turn write [[end]] alone. Rarely, as a last resort when the learner hinted at a video or still does not follow, one next question may be [[video offer: question]], worded as the learner asking for a video of the idea, such as "Can you make a video of how the heap reorders itself?"; never in a reply holding a visual, discussion or video.';
 
 // The tutor's marked passages keep their places; quick thinking adds the concept each one names and the graph.
 export function named(result, { passages, groundwork }) {
@@ -144,7 +143,7 @@ export function named(result, { passages, groundwork }) {
                 : [],
         ),
     );
-    const concept = (p) => concepts.get(p.text.toLowerCase());
+    const concept = (p) => !p.concept && concepts.get(p.text.toLowerCase());
     return {
         passages: passages.map((p) => (concept(p) ? { ...p, concept: concept(p) } : p)),
         graph: marks({ ...result, suggestions: [], groundwork }, '').graph,
@@ -182,7 +181,7 @@ export async function suggest(
     input,
     signal,
     timeout = 120000,
-    { capable = false, mcp, marked = null } = {},
+    { capable = false, mcp, marked = null, preserved = [] } = {},
 ) {
     let usage = null;
     try {
@@ -190,8 +189,21 @@ export async function suggest(
             instructions: INSTRUCTIONS,
             prompt: marked
                 ? NAMING +
-                  JSON.stringify({ ...input, suggestions: marked.passages.map((p) => p.text) })
-                : PROMPT + JSON.stringify(input),
+                  JSON.stringify({
+                      ...input,
+                      // A mark that named its concept (ADR 0023) keeps it; only the others are named here.
+                      suggestions: marked.passages.filter((p) => !p.concept).map((p) => p.text),
+                  })
+                : PROMPT +
+                  (preserved.length
+                      ? ' Skip the terms the tutor already named in "alreadyMarked".'
+                      : '') +
+                  '\n' +
+                  JSON.stringify(
+                      preserved.length
+                          ? { ...input, alreadyMarked: preserved.map((p) => p.text) }
+                          : input,
+                  ),
             tool: {
                 spec: MARK_SUGGESTIONS,
                 read: (result) => {
@@ -199,13 +211,13 @@ export async function suggest(
                         throw new Error(
                             'suggestions must be a list of {text, concept}; use [] when none qualify.',
                         );
-                    return read(result, input, marked);
+                    return read(result, input, marked, preserved);
                 },
             },
             capable,
             mcp,
             // A model that answered in text: the JSON object it wrote.
-            read: (text) => read(json(text), input, marked),
+            read: (text) => read(json(text), input, marked, preserved),
             separator: '\n\n',
             signal: AbortSignal.any([signal, AbortSignal.timeout(timeout)]),
             missing: 'Suggestions did not complete.',

@@ -12,8 +12,20 @@ concurrency:
   group: desktop-build
 
 jobs:
+  # Runs first: the app's own install code for Claude Code and Codex on Windows, as the Install button runs it.
+  # Every other job needs it, directly or through wheels-check, so a broken install stops the run.
+  install-check:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node scripts/install-check.mjs
+
   # Installed apps read LINUX_WHEELS when they install video tools, so a pinned version the wheels release lacks is built first.
   wheels-check:
+    needs: install-check
     # A run from another branch only builds, like the release job.
     if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest

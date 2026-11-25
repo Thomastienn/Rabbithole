@@ -39,6 +39,8 @@ permission notice is kept beside the prompt.
     shell blocks, publishing, check-in files).
   - Trimmed to its core rules for the lean tutor prompt (Rabbithole-tcl.6):
     one short paragraph per habit, without the examples and asides.
+  - The familiarity-first paragraph ("Pitch each explanation…") is Rabbithole's
+    own text and replaces the excerpt's "Aim for…" line (Rabbithole-tex.3).
 - `humanizer.md` (tutor and video planner): blader/humanizer v3.1.0 `SKILL.md`
   (MIT, © 2025 Siqi Chen; `humanizer-LICENSE.txt`), commit
   `225a6f39ac85f76ee48dbad772ea4abe4ed6c9d8`:

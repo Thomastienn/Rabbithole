@@ -315,3 +315,87 @@ test('an older usage table gains the title task and keeps its rows', () => {
     );
     store.close();
 });
+
+test('the one-off cleanup renames activity and none explored concepts once, then drops them', async (t) => {
+    const store = new Store(
+        join(mkdtempSync(join(tmpdir(), 'rabbithole-explored-cleanup-')), 'trees.sqlite'),
+    );
+    store.saveSuggestionSettings({
+        enabled: false,
+        model: { provider: 'claude', model: 'quick-model' },
+        effort: 'low',
+    });
+    const root = (title, concept, question, file) => {
+        const tree = store.create(title, 'codex');
+        const message = store.message(tree.id, 'user', question, 'completed');
+        if (file)
+            store.attach(tree.id, message, [
+                {
+                    id: title,
+                    name: 'lecture.pdf',
+                    type: 'application/pdf',
+                    size: 1,
+                    delivery: 'pdf',
+                    text: file,
+                },
+            ]);
+        store.explore(tree.id, concept);
+        return tree.id;
+    };
+    const deadlocks = root(
+        'Lecture 7',
+        'Lecture learning',
+        'help me learn this lecture',
+        'Deadlocks: four conditions.',
+    );
+    const parsing = root(
+        'Lecture 9',
+        'Lecture learning',
+        'help me learn this lecture',
+        'Parsing: LL(1) grammars.',
+    );
+    const prolog = root('Prolog facts', 'none', 'How do Prolog rules work?');
+    const prompts = [];
+    const quick = {
+        models: async () => [{ model: 'quick-model', efforts: ['low'] }],
+        generate: async (tree, text, emit) => {
+            prompts.push(data(text));
+            const subject = ['Deadlock', 'Parsing', 'Prolog'].find((s) => text.includes(s));
+            emit({
+                type: 'item',
+                item: 't',
+                text: JSON.stringify({ title: 'New', concept: subject }),
+            });
+            emit({ type: 'status', status: 'completed' });
+        },
+    };
+    const start = () =>
+        createApp({
+            store,
+            providers: { claude: quick },
+            auth: { status: () => ({ connected: true }) },
+            log: () => {},
+        });
+    let app = start();
+    await app.settled();
+    app.stop();
+    const concept = (id) => store.list().find((c) => c.id === id).concept;
+    assert.deepEqual([deadlocks, parsing, prolog].map(concept), ['Deadlock', 'Parsing', 'Prolog']);
+    assert.deepEqual(prompts[0].attachments, 'Deadlocks: four conditions.');
+    assert.ok(prompts.every((p) => !p.nearestConcepts.includes('Lecture learning')));
+    // Titles stay; both bad concepts are gone.
+    assert.equal(store.tree(deadlocks).title, 'Lecture 7');
+    assert.equal(store.concept('Lecture learning'), undefined);
+    assert.equal(store.concept('none'), undefined);
+
+    // Recorded: a later start makes no call, even for a tree named badly again.
+    store.reexplore(prolog, 'none');
+    app = start();
+    t.after(() => {
+        app.stop();
+        store.close();
+    });
+    await app.settled();
+    assert.equal(prompts.length, 3);
+    assert.equal(concept(prolog), 'none');
+});

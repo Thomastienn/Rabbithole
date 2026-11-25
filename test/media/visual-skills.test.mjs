@@ -49,7 +49,7 @@ async function loadSkill(tree, name, signal) {
 const run = (provider, tools) =>
     generateVisual(provider, {}, input, new AbortController().signal, 10000, () => {}, tools);
 
-test('the visual writer receives the input kit catalogue', async () => {
+test('the visual writer receives the whole kit catalogue', async () => {
     const visual = '<rh-button label="Check" variant="primary"></rh-button>';
     const provider = writer([async () => visual]);
     assert.equal(await run(provider), visual);
@@ -64,6 +64,12 @@ test('the visual writer receives the input kit catalogue', async () => {
         choice: ['label', 'options', 'value'],
         text: ['label', 'placeholder', 'value'],
         reset: ['label'],
+        readout: ['label', 'unit', 'value'],
+        readouts: [],
+        result: ['variant', 'label'],
+        status: ['variant'],
+        legend: ['label', 'items', 'shape'],
+        table: ['label'],
     })) {
         const entry = new RegExp(`<rh-${tag}(?: ([^>]*))?>`).exec(instructions);
         assert.ok(entry, `rh-${tag} is available to the writer`);
@@ -79,6 +85,12 @@ test('the visual writer receives the input kit catalogue', async () => {
         'change',
         'click',
         'reset',
+        'correct',
+        'incorrect',
+        'neutral',
+        'info',
+        'success',
+        'warning',
     ])
         assert.match(instructions, new RegExp(`\\b${term}\\b`));
 });

@@ -38,8 +38,12 @@ export function saveLayout(run, ms = 3000) {
 
 // Add-ons install into a tools folder in the server's data folder (server/main.mjs, resolved from the server's cwd),
 // so the app never writes into its own, read-only folder and an app update keeps them.
-export const toolsDir = (cwd, env, dataDir) =>
-    join(resolve(cwd, env.RABBITHOLE_DATA_DIR ?? dataDir()), 'tools');
+const dataFolder = (cwd, env, dataDir) => resolve(cwd, env.RABBITHOLE_DATA_DIR ?? dataDir());
+export const toolsDir = (cwd, env, dataDir) => join(dataFolder(cwd, env, dataDir), 'tools');
+
+// The server creates its database on its first start, so a data folder without one means a first launch.
+export const firstLaunch = (cwd, env, dataDir) =>
+    !existsSync(join(dataFolder(cwd, env, dataDir), 'trees.sqlite'));
 
 // The installed Windows app keeps the learner's data, its add-ons and Electron's profile in a data folder inside the
 // install folder (ADR 0025), beside Rabbithole.exe; Linux and unpackaged runs keep the server's default.

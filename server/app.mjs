@@ -206,6 +206,7 @@ export function createApp({
     // Older messages left unembedded fill in from startup.
     ctx.embedMessages();
     if (mergeCleanup) ctx.cleanupMerges();
+    ctx.cleanupExplored();
     const server = http.createServer(async (req, res) => {
         const started = performance.now();
         const url = URL.parse(req.url, ctx.origin());

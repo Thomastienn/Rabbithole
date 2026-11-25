@@ -61,9 +61,59 @@ export const cleanTitle = (text) => {
         : line;
 };
 
+// Explored concepts named after an activity or "none" before the naming fix (Rabbithole-tex.6).
+const BAD_CONCEPTS = ['Lecture learning', 'none'];
+const EXPLORED_CLEANUP = 'rename-activity-explored-concepts';
+const bad = (name) => BAD_CONCEPTS.some((b) => b.toLowerCase() === name?.toLowerCase());
+
+// A message's attachment text as the title job reads it; images without extracted text add nothing.
+const attachmentText = (attachments = []) =>
+    attachments
+        .filter((a) => a.delivery !== 'image' && a.text)
+        .map((a) => a.text)
+        .join('\n\n')
+        .slice(0, 4000);
+
 // Detached quick thinking call; any failure keeps the placeholder and only logs a warning.
 export function titleJobs(ctx) {
     const { store } = ctx;
+    // One naming call; looks up the nearest concepts when the tree has no explored concept.
+    const nameConversation = async (tree, question, attachments, quick, signal) => {
+        const nearest =
+            tree.concept === null
+                ? (
+                      await lookUpConcept(
+                          store,
+                          ctx.videoEmbed,
+                          [question, attachments].filter(Boolean).join('\n\n'),
+                          signal,
+                      )
+                  ).concepts
+                      .map((c) => c.name)
+                      .filter((name) => !bad(name))
+                : [];
+        const named = await ctx.askQuick('title', quick, {
+            instructions:
+                'You name conversations. Never answer questions, request or generate media. Do not access files or execute code.',
+            prompt: titlePrompt(tree, question, nearest, attachments),
+            tool: {
+                spec: NAME_CONVERSATION,
+                read: (input) => {
+                    const named = titleCall(input);
+                    if (!named.title) throw new Error('title must be a short plain title.');
+                    return named;
+                },
+            },
+            read: (text) => {
+                const named = readTitle(text);
+                return named.title ? named : null;
+            },
+            separator: ' ',
+            signal,
+            missing: 'Quick thinking returned no title.',
+        });
+        return bad(named.concept) ? { ...named, concept: null } : named;
+    };
     // attachments: the first message's extracted attachment text, already cut to a few thousand characters.
     const startTitle = (conversation, question, attachments = '') => {
         const warn = (error) =>
@@ -83,37 +133,13 @@ export function titleJobs(ctx) {
                 const tree = store.tree(conversation);
                 if (!tree || ctx.stopping) return;
                 // Suggestion and groundwork branches already explore a concept; only the others look one up.
-                const nearest =
-                    tree.concept === null
-                        ? (
-                              await lookUpConcept(
-                                  store,
-                                  ctx.videoEmbed,
-                                  [question, attachments].filter(Boolean).join('\n\n'),
-                                  running.controller.signal,
-                              )
-                          ).concepts.map((c) => c.name)
-                        : [];
-                const { title, concept } = await ctx.askQuick('title', quick, {
-                    instructions:
-                        'You name conversations. Never answer questions, request or generate media. Do not access files or execute code.',
-                    prompt: titlePrompt(tree, question, nearest, attachments),
-                    tool: {
-                        spec: NAME_CONVERSATION,
-                        read: (input) => {
-                            const named = titleCall(input);
-                            if (!named.title) throw new Error('title must be a short plain title.');
-                            return named;
-                        },
-                    },
-                    read: (text) => {
-                        const named = readTitle(text);
-                        return named.title ? named : null;
-                    },
-                    separator: ' ',
-                    signal: running.controller.signal,
-                    missing: 'Quick thinking returned no title.',
-                });
+                const { title, concept } = await nameConversation(
+                    tree,
+                    question,
+                    attachments,
+                    quick,
+                    running.controller.signal,
+                );
                 if (ctx.stopping) return;
                 store.retitle(conversation, title);
                 if (concept && tree.concept === null) store.explore(conversation, concept);
@@ -122,5 +148,49 @@ export function titleJobs(ctx) {
             }),
         );
     };
-    return { startTitle };
+    // One-off cleanup: each root exploring a bad concept is named again from its first question and attachments,
+    // keeping its title, then the bad concepts go once unused. Recorded only when every root was renamed.
+    const cleanupExplored = () => {
+        if (store.cleanupRan(EXPLORED_CLEANUP)) return;
+        const finish = () => {
+            for (const name of BAD_CONCEPTS) store.dropUnusedConcept(name);
+            store.finishCleanup(EXPLORED_CLEANUP);
+        };
+        const roots = store.rootsExploring(BAD_CONCEPTS);
+        if (!roots.length) return finish();
+        let texts = [];
+        const warn = (error) =>
+            ctx.log(
+                formatLog('warn', 'title', 'explored concept cleanup skipped', {
+                    task: 'title',
+                    cause: errorCause(error, texts),
+                }),
+            );
+        if (!store.suggestionSettings().model) return warn('Quick thinking model is not set.');
+        ctx.jobs.start('explored-cleanup', 'all', null, ({ controller: { signal } }) =>
+            (async () => {
+                for (const id of roots) {
+                    const tree = store.tree(id),
+                        first = tree.messages.find((m) => m.role === 'user');
+                    if (!first) {
+                        store.reexplore(id, null);
+                        continue;
+                    }
+                    texts = [first.text, attachmentText(first.attachments)];
+                    const { concept } = await nameConversation(
+                        { ...tree, concept: null },
+                        ...texts,
+                        await ctx.quickModel(tree),
+                        signal,
+                    );
+                    if (ctx.stopping) return;
+                    store.reexplore(id, concept);
+                }
+                finish();
+            })().catch((error) => {
+                if (!ctx.stopping) warn(error);
+            }),
+        );
+    };
+    return { startTitle, cleanupExplored };
 }

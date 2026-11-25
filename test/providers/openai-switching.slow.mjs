@@ -80,8 +80,9 @@ for (const name of [TEST_PROVIDER])
         assert.match(compact.messages[1].content, /Root fact/);
         assert.equal(child.branch.snapshot, 'Frozen compaction fact');
         assert.equal(child.provider, id);
+        // Only the parent's branch previews list the new child.
         assert.deepEqual(
-            store.tree(root.id),
+            { ...store.tree(root.id), branchPreviews: rootBefore.branchPreviews },
             rootBefore,
             'compaction never changes source discussion or session',
         );

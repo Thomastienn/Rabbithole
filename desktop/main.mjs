@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { app, BrowserWindow, ipcMain, nativeTheme, shell } from 'electron';
 import electronUpdater from 'electron-updater';
 import {
+    firstLaunch,
     installedDataDir,
     moveOldData,
     navigation,
@@ -108,6 +109,16 @@ function startServer(window, loaded) {
             ? [SETPRIV, ['--pdeathsig', 'SIGTERM', node, ...args]]
             : [node, args];
     const cwd = join(resources, 'app');
+    // starting.html shows its progress bar for the 'first' class and fills it for 'ready'.
+    const mark = (name) =>
+        loaded
+            .then(() =>
+                window.webContents.executeJavaScript(`document.body.classList.add('${name}')`),
+            )
+            .catch(() => {});
+    // Checked before the spawn, since the server creates its database on start.
+    const first = firstLaunch(cwd, process.env, dataDir);
+    if (first) void mark('first');
     server = spawn(command, argv, {
         cwd,
         env: {
@@ -131,7 +142,10 @@ function startServer(window, loaded) {
             if (!url) log += `${line}\n`;
             else if (!window.isDestroyed()) {
                 origin = new URL(url).origin;
-                void window.loadURL(url);
+                // The bar fills before the window leaves the starting page.
+                void (first ? mark('ready') : Promise.resolve()).then(
+                    () => !window.isDestroyed() && window.loadURL(url),
+                );
             }
         });
     server.on('error', (error) =>

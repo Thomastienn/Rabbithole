@@ -1,4 +1,4 @@
-// ChatGPT OAuth: start returns the sign-in URL; the callback is the only permitted cross-site navigation.
+// ChatGPT OAuth and Claude Code sign-in. ChatGPT: start returns the sign-in URL; the callback is the only permitted cross-site navigation.
 export async function authRoutes(req, res, url, ctx) {
     if (req.method === 'GET' && url.pathname === '/auth/callback') {
         try {
@@ -18,5 +18,12 @@ export async function authRoutes(req, res, url, ctx) {
     }
     if (req.method === 'POST' && url.pathname === '/api/auth')
         return ctx.json(res, 200, { url: ctx.auth.start(ctx.origin()) });
+    // Claude Code signs in through its own CLI; without a printed address the learner runs the command.
+    if (req.method === 'POST' && url.pathname === '/api/claude/login')
+        return ctx.json(
+            res,
+            200,
+            (await ctx.providers.claude.login()) ?? { command: 'claude auth login' },
+        );
     return false;
 }

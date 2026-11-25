@@ -95,6 +95,37 @@ export class Claude {
             return { connected: false, email: null };
         }
     }
+    // Runs Claude Code's own browser sign-in in the background; resolves with the address it prints, or null when it needs a terminal.
+    login() {
+        if (this.signingIn) return this.signingIn;
+        const child = this.launch(...launchArgs(this.cli(), ['auth', 'login']), {
+            env: this.env(),
+            stdio: ['ignore', 'pipe', 'pipe'],
+        });
+        this.children.add(child);
+        let output = '';
+        this.signingIn = new Promise((resolve) => {
+            // A sign-in that prints no address soon is waiting on a terminal prompt.
+            const quiet = setTimeout(() => child.kill(), 20_000);
+            const read = (chunk) => {
+                output += chunk;
+                // The address may sit inside a terminal hyperlink escape.
+                const url = output.match(/https:\/\/[^\s\x07\x1b]+/)?.[0];
+                if (url) (clearTimeout(quiet), resolve({ url }));
+            };
+            child.stdout.setEncoding('utf8').on('data', read);
+            child.stderr.setEncoding('utf8').on('data', read);
+            const end = () => {
+                clearTimeout(quiet);
+                this.children.delete(child);
+                this.signingIn = null;
+                resolve(null);
+            };
+            child.on('error', end);
+            child.on('close', end);
+        });
+        return this.signingIn;
+    }
     // A signed-in answer is reused briefly; a signed-out one is not, so signing in shows on the next check.
     async models() {
         if (Date.now() >= this.signedInUntil && !(await this.status()).connected)
@@ -398,7 +429,7 @@ export class Claude {
                 saveThread(null, selectedModel);
             if (/not logged in|log ?in|authenticat/i.test(result?.result ?? ''))
                 throw new Error(
-                    'Claude Code is signed out. Run claude in a terminal and sign in, then retry.',
+                    'Claude Code is signed out. Sign in to Claude in Settings, then retry.',
                 );
             // The CLI's result text names the reason (usage limit, sign-in) without account identifiers.
             throw new Error(

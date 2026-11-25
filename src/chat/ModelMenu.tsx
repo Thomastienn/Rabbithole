@@ -175,7 +175,7 @@ export default function ModelMenu({
                                     label={`Check ${g.label} sign-in`}
                                     description={
                                         id === 'claude'
-                                            ? 'Run claude in a terminal and sign in, then check again'
+                                            ? 'Sign in from Settings, then check again'
                                             : 'Sign in, then check again'
                                     }
                                     onClick={() => void loadModels()}

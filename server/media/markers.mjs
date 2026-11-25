@@ -6,6 +6,29 @@ const MARKER =
     /\[\[(\s*(?:visual|discussion)\s*:(?:[^\]\r\n]|\](?!\]))*|[^[\]\r\n]*)(\]\]|\]?$|(?=\r?\n))|\[$/gi;
 const KIND = /^\s*([a-z]+(?: [a-z]+)*)\s*:(.*)$/i;
 
+// In a closed [[concept|shown]] (ADR 0023), an empty side makes it a plain mark of the other.
+// The shown words' range inside the body, and the concept or null.
+const alias = (body, closed) => {
+    const bar = /\\?\|/.exec(body);
+    if (!bar) return { shown: [0, body.length], concept: null };
+    const range = (from, to) => {
+        const part = body.slice(from, to);
+        const lead = part.length - part.trimStart().length;
+        return [from + lead, from + lead + part.trim().length];
+    };
+    const left = range(0, bar.index),
+        right = range(bar.index + bar[0].length, body.length);
+    return !closed || right[0] < right[1]
+        ? { shown: right, concept: left[0] < left[1] ? noteName(body.slice(...left)) : null }
+        : { shown: left, concept: null };
+};
+
+// Everything of a mark but its shown words leaves the text: the brackets, the concept and the bar.
+const shownCuts = (start, end, { shown: [from, to] }) => [
+    [start, start + 2 + from],
+    [start + 2 + to, end],
+];
+
 // Code and math keep [[ as written; the reply renderer's own parse finds them.
 const literal = (text) => {
     const spans = [];
@@ -53,10 +76,12 @@ export function stripMarkers(text, final = false) {
                 discussed = true;
                 cuts.push([start, text.length]);
             } else if (kind) cuts.push([start, end]);
-            else cuts.push([start, start + 2], [end - 2, end]);
+            const named = !kind && alias(body, true);
+            if (named) cuts.push(...shownCuts(start, end, named));
             markers.push({
                 kind: kind?.[1].toLowerCase() ?? null,
-                value: (kind ? (kind[2] ?? '') : body).trim(),
+                value: (kind ? (kind[2] ?? '') : body.slice(...named.shown)).trim(),
+                ...(named.concept && { concept: named.concept }),
                 start,
             });
         } else if (discussed) continue;
@@ -69,8 +94,7 @@ export function stripMarkers(text, final = false) {
                 closed: false,
                 start,
             });
-        } else if (whole !== '[')
-            cuts.push([start, start + 2], ...(whole.endsWith(']') ? [[end - 1, end]] : []));
+        } else if (whole !== '[') cuts.push(...shownCuts(start, end, alias(body, false)));
     }
     let out = '',
         cursor = 0;
@@ -114,12 +138,18 @@ export function markerNotes(text, markers, hasMedia = false) {
             // The term stays in the text; its passage is where it landed, skipping a repeat or one over six words.
             const start = text.indexOf(m.value, m.position);
             if (
+                m.value &&
                 start >= 0 &&
                 !text.slice(m.position, start).trim() &&
                 m.value.split(/\s+/).length <= 6 &&
                 !same(notes.passages, m.value)
             )
-                notes.passages.push({ start, end: start + m.value.length, text: m.value });
+                notes.passages.push({
+                    start,
+                    end: start + m.value.length,
+                    text: m.value,
+                    ...(m.concept && { concept: m.concept }),
+                });
         } else if (m.kind === 'next' || m.kind === 'video offer') {
             if (!m.value || notes.questions.length >= 3 || same(notes.questions, m.value)) continue;
             if (m.kind === 'video offer') {
