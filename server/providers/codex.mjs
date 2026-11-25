@@ -360,6 +360,13 @@ export class Codex {
                 idle();
                 // Set once a tool call finishes; only then does reasoning or a message begin a later model response.
                 let toolDone = false;
+                // Shown like Claude's short results so the learner knows why.
+                const failure = (reason) =>
+                    new Error(
+                        typeof reason === 'string' && reason.length < 300
+                            ? `Codex: ${reason} Partial reply saved; try again.`
+                            : 'Codex could not complete this reply. Partial reply saved; try again.',
+                    );
                 const listener = (message) => {
                     if (signal.aborted) return;
                     const p = message.params;
@@ -424,19 +431,24 @@ export class Codex {
                         contextWindow = p.tokenUsage?.modelContextWindow;
                         if (this.toolSession) emitUsage();
                     }
+                    // Codex retries a usage limit as a stream disconnect and may never send turn/completed; the limit flag is often 'other', so the text decides too.
+                    if (
+                        message.method === 'error' &&
+                        (p.willRetry === false ||
+                            p.error?.codexErrorInfo === 'usageLimitExceeded' ||
+                            /usage limit/i.test(p.error?.message ?? ''))
+                    ) {
+                        interrupt();
+                        if (!this.toolSession) emitUsage();
+                        emit({ type: 'status', status: 'failed' });
+                        finish(failure(p.error?.message));
+                    }
                     if (message.method === 'turn/completed') {
                         // inputTokens includes cached reads; report them apart like Claude. Failed turns still consumed what they report.
                         if (!this.toolSession) emitUsage();
                         emit({ type: 'status', status: p.turn.status });
-                        const reason = p.turn.error?.message; // e.g. usage limits; shown like Claude's short results so the learner knows why
                         finish(
-                            p.turn.status === 'failed'
-                                ? new Error(
-                                      typeof reason === 'string' && reason.length < 300
-                                          ? `Codex: ${reason} Partial reply saved; try again.`
-                                          : 'Codex could not complete this reply. Partial reply saved; try again.',
-                                  )
-                                : undefined,
+                            p.turn.status === 'failed' ? failure(p.turn.error?.message) : undefined,
                         );
                     }
                 };
@@ -456,7 +468,10 @@ export class Codex {
                         interrupt();
                         return;
                     }
-                    for (const event of earlyEvents) listener(event);
+                    for (const event of earlyEvents) {
+                        if (!this.listeners.has(listener)) break;
+                        listener(event);
+                    }
                     earlyEvents.length = 0;
                 }, finish);
             });
