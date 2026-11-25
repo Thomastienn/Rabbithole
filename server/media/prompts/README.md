@@ -53,6 +53,13 @@ permission notice is kept beside the prompt.
   page (CC BY-SA 4.0) that Humanizer credits was not copied. Trimmed for the
   lean tutor prompt (Rabbithole-tcl.6): the 26 rules are folded into five
   one-line groups (the "wrong reader" rule joins the leftovers).
+- `i-have-adhd.md` (tutor): ayghri/i-have-adhd `skills/i-have-adhd/SKILL.md`
+  (MIT, © 2026 Ayoub Ghriss; `i-have-adhd-LICENSE.txt`), commit
+  `f3e783bae5f4820416492091b3abeb670616c23a`, retrieved and licence checked
+  2026-11-25:
+  https://github.com/ayghri/i-have-adhd/blob/f3e783bae5f4820416492091b3abeb670616c23a/skills/i-have-adhd/SKILL.md
+  Unlike the excerpts above, it is kept as written; only the YAML frontmatter
+  (install metadata) is left out (Rabbithole-adh.1).
 - `manim-teaching.md` (video planner, scoped to Manim cuts):
   adithya-s-k/manim_skill `skills/manim-composer/references/visual-techniques.md`
   and `narrative-patterns.md` (MIT, © 2026 Adithya S Kolavi;

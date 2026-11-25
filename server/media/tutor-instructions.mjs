@@ -1,6 +1,6 @@
 import { DISCUSSION_RULE } from './discussions.mjs';
 import { NEIGHBOURHOOD_RULE } from '../neighbourhood.mjs';
-import { TEACHING_SKILL, HUMANIZER_SKILL } from './skills.mjs';
+import { TEACHING_SKILL, HUMANIZER_SKILL, ADHD_SKILL } from './skills.mjs';
 import { NOTES_RULE } from '../suggestions.mjs';
 import { MEMORY_LIMITS } from '../tools/memoryNote.mjs';
 
@@ -41,6 +41,8 @@ export const TUTOR_SKILLS =
     TEACHING_SKILL +
     '\n\n' +
     HUMANIZER_SKILL +
+    '\n\n' +
+    ADHD_SKILL +
     '\n\nTutor style (follow it where it differs from the skills above):\n';
 // With the app tools offered, visuals and discussions are markers (ADR 0018); the video tool description carries its rules (ADR 0013).
 const cut = (text, from, to) => {
