@@ -6,7 +6,6 @@ import {
     sourceOf,
     keepCurrentFolded,
     revealAddedBranches,
-    familyLegend,
     branchEdges,
     reconcileNodes,
     keyMovement,
@@ -133,34 +132,7 @@ test('tree restore selects only its own saved conversation and panel; legacy def
     });
 });
 
-test('legend names only this trunk and its first branches, repeating inks and reflecting rename/delete', () => {
-    const list = [
-        tree('root'),
-        ...Array.from({ length: 5 }, (_, i) => tree(`a${i}`, 'root', i)),
-        tree('deep', 'a0'),
-        tree('other'),
-    ];
-    const legend = familyLegend('root', list);
-    assert.deepEqual(
-        legend.map((t) => [t.address, t.ink]),
-        [
-            ['1', 0],
-            ['1.1', 1],
-            ['1.2', 2],
-            ['1.3', 3],
-            ['1.4', 4],
-            ['1.5', 1],
-        ],
-    );
-    list[1] = { ...list[1], title: 'Renamed' };
-    assert.equal(familyLegend('root', list)[1].title, 'Renamed');
-    assert.equal(
-        familyLegend(
-            'root',
-            list.filter((t) => t.id !== 'a4'),
-        ).length,
-        5,
-    );
+test('ink styles start on paper and use the numbered inks after', () => {
     assert.deepEqual(inkStyle(0), {
         '--ink': 'var(--rabbithole-paper)',
         '--ink-on': 'var(--rabbithole-paper-ink)',

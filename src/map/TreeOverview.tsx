@@ -25,10 +25,9 @@ import Branch, { Lanes, MeasureLanes } from './Branch';
 import { GhostTree } from './GhostTree';
 import { useGhostTrees, type GhostOptions } from './useGhostTrees';
 import { fit, useMapViewport } from './useMapViewport';
-import { InkLegend, MapToolbar } from './MapControls';
+import { MapToolbar } from './MapControls';
 import {
     branchEdges,
-    familyLegend,
     keepCurrentFolded,
     revealAddedBranches,
     reconcileNodes,
@@ -198,7 +197,6 @@ export default function TreeOverview({
         return path;
     }, [current, trees]);
     const addresses = useMemo(() => conversationAddresses(trees), [trees]);
-    const legend = familyLegend(root, trees, addresses);
     const desiredNodes = useMemo(
         () =>
             hierarchy.map(({ conversation, sources, hidden, stubs }): ConversationNode => {
@@ -399,7 +397,6 @@ export default function TreeOverview({
                 })}
                 {toolbar}
             </MapToolbar>
-            <InkLegend legend={legend} root={root} />
             <Text role="status" type="supporting" aria-live="polite" className="sr-only">
                 {notice}
             </Text>
