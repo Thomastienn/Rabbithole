@@ -74,17 +74,21 @@ test('the update card offers Install, shows progress, Restart and Retry, and hid
 });
 
 test('the sidebar rail marks an update on Settings', async (t) => {
-    const { container, cleanup } = await render(band(), (w) => {
+    let desktop;
+    const { container, act, cleanup } = await render(band(), (w) => {
         ui(w);
         w.localStorage.setItem('rabbithole.focus-mode', 'on');
-        fakeDesktop(w, { stage: 'available', version: '1.0.214', current: '1.0.198' });
+        desktop = fakeDesktop(w, { stage: 'current', version: '1.0.198', current: '1.0.198' });
     });
     t.after(() => {
         localStorage.removeItem('rabbithole.focus-mode');
         return cleanup();
     });
-    await new Promise((done) => setImmediate(done));
-    const settings = container.querySelector('.sidebar-rail .update-dot button');
-    assert.match(name(settings), /^Settings.*1\.0\.214/);
+    const markedSettings = () => container.querySelector('.sidebar-rail .update-dot button');
+    assert.equal(markedSettings(), null, 'the installed release is current');
+    await act(async () =>
+        desktop.push({ stage: 'available', version: '1.0.214', current: '1.0.198' }),
+    );
+    assert.match(name(markedSettings()), /^Settings.*1\.0\.214/);
     assert.equal(container.querySelector('.update-card'), null, 'no card in the rail');
 });

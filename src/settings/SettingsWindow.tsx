@@ -75,18 +75,24 @@ const TABS: { id: SettingsTab; label: string; description: string; icon: typeof 
 function AppVersion({ version }: { version?: string }) {
     const [update, act] = useDesktopUpdate();
     const newer = update?.stage !== 'current' && update;
+    const action =
+        update?.stage === 'ready'
+            ? 'restart'
+            : update?.stage === 'available' || update?.stage === 'failed'
+              ? 'install'
+              : null;
     return (
-        <HStack gap={3} vAlign="center" className="settings-foot">
+        <HStack gap={3} vAlign="center" wrap="wrap" className="settings-foot">
             <Text type="supporting" color="secondary">
                 Rabbithole {version}
                 {newer ? ` · Latest is ${newer.version}` : update ? ' · Up to date' : ''}
             </Text>
-            {newer && ['available', 'failed'].includes(newer.stage) && (
+            {action && (
                 <Button
-                    label="Update"
+                    label={action === 'restart' ? 'Restart to update' : 'Update'}
                     variant="secondary"
                     size="sm"
-                    onClick={() => act('install')}
+                    onClick={() => act(action)}
                 />
             )}
         </HStack>

@@ -66,16 +66,19 @@ const settings = (version) =>
         setTheme() {},
     });
 
-test("Settings' foot shows the version, and in the desktop app the update state with an Update button", async (t) => {
+test('Settings shows the running version in a browser without update controls', async (t) => {
+    fakeServer(t, () => ({ first: null, events: [] }));
+    const { container, cleanup } = await render(settings('1.0.198'), ui);
+    t.after(cleanup);
+    const foot = container.querySelector('.settings-foot');
+    assert.equal(foot.textContent, 'Rabbithole 1.0.198');
+    assert.equal(foot.querySelector('button'), null);
+});
+
+test('desktop Settings shows the update state and can apply an update without the sidebar', async (t) => {
     fakeServer(t, () => ({ first: null, events: [] }));
     let listener;
     const asked = [];
-    const browser = await render(settings('1.0.198'), (w) => ui(w));
-    const foot = () => document.querySelector('.settings-foot');
-    assert.equal(foot().textContent, 'Rabbithole 1.0.198');
-    assert.equal(foot().querySelector('button'), null, 'a browser has no update controls');
-    await browser.cleanup();
-
     const page = await render(settings('1.0.198'), (w) => {
         ui(w);
         w.rabbitholeDesktop = {
@@ -84,13 +87,18 @@ test("Settings' foot shows the version, and in the desktop app the update state 
         };
     });
     t.after(page.cleanup);
-    assert.equal(foot().textContent, 'Rabbithole 1.0.198', 'a failed check adds nothing');
+    const foot = page.container.querySelector('.settings-foot');
+    assert.equal(foot.textContent, 'Rabbithole 1.0.198', 'a failed check adds nothing');
     const push = (update) => page.act(async () => listener(update));
     await push({ stage: 'current', version: '1.0.198', current: '1.0.198' });
-    assert.equal(foot().textContent, 'Rabbithole 1.0.198 · Up to date');
-    assert.equal(foot().querySelector('button'), null);
-    await push({ stage: 'available', version: '1.0.214', current: '1.0.198' });
-    assert.match(foot().textContent, /^Rabbithole 1\.0\.198 · Latest is 1\.0\.214/);
-    await page.act(async () => button(foot(), 'Update').click());
+    assert.equal(foot.textContent, 'Rabbithole 1.0.198 · Up to date');
+    assert.equal(foot.querySelector('button'), null);
+    const newer = { version: '1.0.214', current: '1.0.198' };
+    await push({ ...newer, stage: 'available' });
+    assert.match(foot.textContent, /^Rabbithole 1\.0\.198 · Latest is 1\.0\.214/);
+    await page.act(async () => button(foot, 'Update').click());
     assert.equal(asked.at(-1), 'install', 'Update installs like the banner');
+    await push({ ...newer, stage: 'ready' });
+    await page.act(async () => button(foot, 'Restart to update').click());
+    assert.equal(asked.at(-1), 'restart');
 });
