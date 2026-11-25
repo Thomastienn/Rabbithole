@@ -288,6 +288,9 @@ async function keptCuts({ dir, artifact, previous, workspace }, prior) {
     return kept;
 }
 
+const CURRENT_PLAN_NOTE =
+    '\ncurrentPlan in the task is the plan of the video the learner has now. Plan the whole new version from it through the tools.';
+
 // The smart model builds the plan through calls; one stop without a valid finish gets a retry with the problem.
 // With saved pieces and an embedder, the planner looks up the nearest pieces by name and role before each look.
 async function planVideo({ artifact, signal }, deps, searching, clipping) {
@@ -304,6 +307,12 @@ async function planVideo({ artifact, signal }, deps, searching, clipping) {
                   }
               }
             : null;
+    const input = JSON.parse(artifact.input);
+    // A new version plans from the one it replaced, now in the previous slot.
+    const currentPlan =
+        input.differentVersion && artifact.previous
+            ? readSaved(JSON.parse(artifact.previous).source)?.plan
+            : undefined;
     const planned = async (note = '') => {
         const builder = planBuilder({ exhibits: searching, clips: !!clipping?.ready, pieces });
         let characters = 0;
@@ -312,11 +321,14 @@ async function planVideo({ artifact, signal }, deps, searching, clipping) {
                 (searching ? EXHIBITS_NOTE : '') +
                 (clipping?.ready ? CLIPS_NOTE : '') +
                 (pieces ? PIECES_PLAN_NOTE : '') +
-                (JSON.parse(artifact.input).differentVersion
-                    ? '\nCreate a different version: take a different approach than the previous version while explaining the same request.'
-                    : '') +
+                (currentPlan ? CURRENT_PLAN_NOTE : '') +
+                (input.instruction
+                    ? '\nUse the instruction field in the task for the changes the learner asks for.'
+                    : input.differentVersion
+                      ? '\nCreate a different version: take a different approach than the previous version while explaining the same request.'
+                      : '') +
                 note,
-            artifact.input,
+            currentPlan ? JSON.stringify({ ...input, currentPlan }) : artifact.input,
             {
                 stage: 'plan',
                 onText: (bytes) => deps.onPhase('planning', undefined, { characters: bytes }),

@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createElement as h, useState } from 'react';
 import { render } from '../support/render.mjs';
-import { ui, button, name } from '../support/ui.mjs';
+import { ui, button, name, inputValue } from '../support/ui.mjs';
 import { fakeServer } from '../support/fake-server.mjs';
 const { default: VideoCard } = await import('../../src/media/VideoCard.tsx');
 const { default: VideoLibrary } = await import('../../src/media/VideoLibrary.tsx');
@@ -25,8 +25,9 @@ const view = (card) => ({
 
 test('inline recovery states name their action; Retry, Cancel and Open large keep one focused button', async (t) => {
     const calls = [];
-    const onAction = async (action) => calls.push(action);
-    let set;
+    const onAction = async (action, instruction) =>
+        calls.push(instruction === undefined ? action : [action, instruction]);
+    let set, dom;
     function Stopped() {
         const [artifact, setArtifact] = useState(video('stopped', 'interrupted'));
         set = setArtifact;
@@ -43,7 +44,7 @@ test('inline recovery states name their action; Retry, Cancel and Open large kee
                 onAction,
             }),
         ),
-        ui,
+        (w) => (dom = ui(w)),
     );
     t.after(cleanup);
     const card = (id) => container.querySelector(`[data-artifact=${id}]`);
@@ -96,10 +97,32 @@ test('inline recovery states name their action; Retry, Cancel and Open large kee
         [true, false, 'metadata', '/api/trees/root/artifacts/stopped/media'],
     );
     assert.equal(player.getAttribute('aria-label'), 'Video: stopped');
+    // The versions menu offers a new version with an optional instruction, and the previous one while it exists.
+    const menu = async (label, count) => {
+        await act(async () => button(card('stopped'), 'Video versions: stopped').click());
+        await act(async () => dom.frames());
+        const items = [...document.querySelectorAll('[role=menuitem]')];
+        assert.equal(items.length, count);
+        await act(async () => items.find((e) => e.textContent.trim() === label).click());
+    };
+    await menu('Try a new version…', 1);
+    const input = card('stopped').querySelector('.new-version input');
+    assert.ok(document.activeElement === input, 'the instruction field takes focus');
+    await act(async () => inputValue(input, '  Slower pace  '));
     await act(async () =>
-        button(card('stopped'), 'Try a different version of video: stopped').click(),
+        input.dispatchEvent(
+            new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+        ),
     );
-    assert.equal(calls.at(-1), 'regenerate');
+    assert.deepEqual(calls.at(-1), ['regenerate', 'Slower pace']);
+    await act(async () => set(video('stopped', 'ready', { exported: true, hasPrevious: true })));
+    await menu('Previous version', 2);
+    assert.equal(calls.at(-1), 'previous');
+    for (const status of ['failed', 'canceled']) {
+        await act(async () => set(video('stopped', status, { hasPrevious: true })));
+        await menu('Previous version', 1);
+        assert.equal(calls.pop(), 'previous');
+    }
 });
 
 test('library cards lead with the frame; missing files offer only removal; trash keeps the entry until the server confirms', async (t) => {

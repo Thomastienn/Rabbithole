@@ -309,7 +309,9 @@ export default function ChatThread({
                                     key={artifact.id}
                                     inline
                                     artifact={artifact}
-                                    onAction={(action) => videoAction(tree.id, artifact.id, action)}
+                                    onAction={(action, instruction) =>
+                                        videoAction(tree.id, artifact.id, action, instruction)
+                                    }
                                 />
                             ) : (
                                 <DiagramCard
