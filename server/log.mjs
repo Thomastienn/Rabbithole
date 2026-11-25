@@ -141,7 +141,7 @@ export function loggedProvider(log, provider, task, id, selection, detail = {}) 
                 (signal?.aborted && !timedOut && streamed.status !== 'completed') ||
                 streamed.status === 'interrupted';
             const failed = failure || timedOut || streamed.status === 'failed';
-            const valid = validUsage(usage);
+            const valid = usage && validUsage(usage);
             log(
                 formatLog(
                     failed && !stopped ? 'error' : 'info',

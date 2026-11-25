@@ -118,7 +118,7 @@ export function replyTurn(
                 : null,
         );
         // Provider-reported counts only; failed, partial and canceled replies keep no usage.
-        if (!validUsage(usage)) usage = null;
+        if (usage && !validUsage(usage)) usage = null;
         if (status === 'completed' && usage)
             store.usage(reply, {
                 ...usage,
