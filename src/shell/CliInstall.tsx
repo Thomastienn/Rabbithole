@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useState } from 'react';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
@@ -6,7 +6,7 @@ import { Link } from '@astryxdesign/core/Link';
 import { Code } from '@astryxdesign/core/Code';
 import { ProgressBar } from '@astryxdesign/core/ProgressBar';
 import { request } from '../serverAccess';
-import type { Download } from './downloadProgress';
+import { useDownloadRows } from './useDownloadRows';
 
 const PAGES = {
     claude: { name: 'Claude Code', page: 'https://code.claude.com/docs/en/setup' },
@@ -15,30 +15,25 @@ const PAGES = {
 
 // Starts the server's official installer, then follows its download row until it ends.
 function useInstall(cli: string, done: () => void) {
-    const [status, setStatus] = useState<{ running: boolean; error?: string }>({
-        running: false,
-    });
-    const source = useRef<EventSource>(null);
-    useEffect(() => () => source.current?.close(), []);
+    const row = useDownloadRows().find((download) => download.id === cli);
+    const state = row?.state;
+    const [pending, setPending] = useState(false);
+    const [requestError, setRequestError] = useState('');
+    const refresh = useEffectEvent(done);
+    useEffect(() => {
+        if (state) setPending(false);
+        if (state === 'ready') refresh();
+    }, [state]);
     const start = () => {
-        setStatus({ running: true });
-        // The row is watched only once the server has started it, so an earlier failure is not read as this one.
-        request(`/api/downloads/install/${cli}`, {}).then(
-            () => {
-                source.current?.close();
-                const s = (source.current = new EventSource('/api/downloads'));
-                s.onmessage = (e) => {
-                    const row = (JSON.parse(e.data) as Download[]).find((d) => d.id === cli);
-                    if (row?.state !== 'ready' && row?.state !== 'failed') return;
-                    s.close();
-                    setStatus({ running: false, error: row.error });
-                    if (row.state === 'ready') done();
-                };
-            },
-            (e: Error) => setStatus({ running: false, error: e.message }),
-        );
+        setPending(true);
+        setRequestError('');
+        void request(`/api/downloads/install/${cli}`, {}).catch((error: Error) => {
+            setPending(false);
+            setRequestError(error.message);
+        });
     };
-    return { ...status, start };
+    const running = pending || state === 'running';
+    return { running, error: running ? '' : requestError || row?.error, start };
 }
 
 // A missing Claude Code or Codex: Install runs its official installer; the command and page stay for doing it by hand.
@@ -64,7 +59,7 @@ export default function CliInstall({
                 <Link href={page} isExternalLink>
                     the official {name} setup page
                 </Link>
-                ), then check again.
+                ) and choose Check again.
             </Text>
             {install.running && <ProgressBar label={`Installing ${name}`} isIndeterminate />}
             {install.error && (

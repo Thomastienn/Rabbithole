@@ -63,16 +63,24 @@ export function downloadManager(tools, { file = null } = {}) {
         percent: item.percent,
         ...(item.update && { update: true }),
         ...(item.error && { error: item.error }),
+        ...(item.seen && { seen: true }),
     });
     // A ready download stays listed until the learner has opened the list once.
-    const list = () => [...items.values()].filter((i) => !i.seen).map(view);
+    const list = (includeSeen = false) =>
+        [...items.values()].filter((i) => includeSeen || !i.seen).map(view);
     const changed = () => {
         const current = list();
         for (const listener of listeners) listener(current);
     };
     const run = async (item) => {
         if (controller.signal.aborted) return;
-        Object.assign(item, { state: 'running', bytes: null, total: null, percent: null });
+        Object.assign(item, {
+            state: 'running',
+            bytes: null,
+            total: null,
+            percent: null,
+            error: undefined,
+        });
         changed();
         const report = ({ bytes = null, total = null, percent = null }) => {
             // Only a whole-percent change is streamed, so chunked downloads do not flood the client.

@@ -48,8 +48,8 @@ You can open saved trees without a provider. To get new replies, set up at least
 
 | Provider | Setup |
 | --- | --- |
-| Claude (default) | Install [Claude Code](https://code.claude.com/docs/en/setup), then run `claude` and sign in. |
-| Codex | `npm install -g @openai/codex`, then **Map menu → Settings → Continue with ChatGPT**. |
+| Claude (default) | Choose **Install** in first-run setup or **Settings → Connections**, then run `claude` and sign in. |
+| Codex | Choose **Install** in first-run setup or **Settings → Connections**, then **Continue with ChatGPT**. |
 | Custom endpoint | **Map menu → Settings → Connections → Add endpoint**, with an OpenAI-compatible base URL and API key. |
 
 Claude and Codex use your plan's sign-in. Rabbithole has no API-key fallback for them.

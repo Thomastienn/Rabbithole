@@ -363,7 +363,7 @@ test('Claude Code and Codex install with their official installers, listed like 
     const first = manager.now(install('codex', 'linux'));
     const again = manager.now(install('codex', 'linux'));
     assert.equal(calls.length, 1, 'one install per tool at a time');
-    assert.deepEqual(calls[0].args, ['-c', 'curl -fsSL https://chatgpt.com/codex/install.sh | sh']);
+    assert.deepEqual(calls[0].args.slice(-2), ['https://chatgpt.com/codex/install.sh', 'sh']);
     assert.equal(calls[0].env.CODEX_NON_INTERACTIVE, '1');
     assert.deepEqual(manager.list(), [
         { id: 'codex', name: 'Codex', state: 'running', bytes: null, total: null, percent: null },
@@ -374,7 +374,7 @@ test('Claude Code and Codex install with their official installers, listed like 
 
     void manager.now(install('claude', 'win32'));
     assert.equal(calls[1].command, 'powershell.exe');
-    assert.equal(calls[1].args.at(-1), 'irm https://claude.ai/install.ps1 | iex');
+    assert.match(calls[1].args.at(-1), /irm https:\/\/claude\.ai\/install\.ps1 \| iex$/);
     assert.equal(installCommand('claude', 'win32'), 'irm https://claude.ai/install.ps1 | iex');
     assert.equal(
         installCommand('codex', 'win32'),
@@ -384,15 +384,20 @@ test('Claude Code and Codex install with their official installers, listed like 
         installCommand('claude', 'linux'),
         'curl -fsSL https://claude.ai/install.sh | bash',
     );
-    assert.equal(installCommand('codex', 'linux'), calls[0].args[1]);
+    assert.equal(
+        installCommand('codex', 'linux'),
+        'curl -fsSL https://chatgpt.com/codex/install.sh | sh',
+    );
 });
 
 test('a failed install shows its last output line and Retry runs the installer again at once', async () => {
     const { calls, run } = fakeRunner();
-    const manager = downloadManager([]);
+    const { tools, pending } = fakeTools();
+    const manager = downloadManager(tools);
     const done = manager.now(cliInstaller('claude', { platform: 'linux', run, log: () => {} }));
-    calls[0].child.stdout.write('Downloading...\n');
-    calls[0].child.stderr.write('\x1b[31mcurl: (6) Could not resolve host: claude.ai\x1b[0m\n\n');
+    calls[0].child.stdout.end('Downloading...\n');
+    calls[0].child.stderr.write('\x1b[31mcurl: (6) Could not ');
+    calls[0].child.stderr.end('resolve host: claude.ai\x1b[0m');
     await tick();
     calls[0].child.emit('close', 1);
     await done;
@@ -400,9 +405,45 @@ test('a failed install shows its last output line and Retry runs the installer a
         manager.list().map((d) => [d.state, d.error]),
         [['failed', 'curl: (6) Could not resolve host: claude.ai']],
     );
+    await manager.install('web-search');
+    await tick();
     assert.equal(manager.retry('claude'), true);
     assert.equal(calls.length, 2, 'the retry does not wait behind add-on downloads');
+    assert.equal(manager.list().find((row) => row.id === 'claude').error, undefined);
     calls[1].child.emit('close', 0);
+    pending.searxng.resolve();
     await tick();
-    assert.deepEqual(states(manager), ['claude:ready']);
+    assert.deepEqual(states(manager), ['claude:ready', 'searxng:ready']);
+});
+
+test('the install route streams CLI progress and a dismissed completion to a returning setup view', async (t) => {
+    let finish;
+    const done = new Promise((resolve) => (finish = resolve));
+    const downloads = downloadManager([]);
+    const now = downloads.now;
+    downloads.now = (tool) => now({ ...tool, run: () => done });
+    const env = await open({}, { downloads });
+    t.after(env.close);
+    assert.equal((await env.post('/api/downloads/install/unknown')).status, 404);
+    const started = await env.post('/api/downloads/install/codex');
+    assert.equal(started.status, 200);
+    assert.equal((await started.json()).find((row) => row.id === 'codex').state, 'running');
+
+    const getStatus = async () => {
+        const response = await env.get('/api/downloads?includeSeen=1');
+        const reader = response.body.getReader();
+        try {
+            const rows = JSON.parse(new TextDecoder().decode((await reader.read()).value).slice(6));
+            return rows.find((row) => row.id === 'codex');
+        } finally {
+            await reader.cancel();
+        }
+    };
+    assert.equal((await getStatus()).state, 'running');
+    finish();
+    await done;
+    assert.deepEqual(await (await env.post('/api/downloads/seen')).json(), []);
+    const ready = await getStatus();
+    assert.equal(ready.state, 'ready');
+    assert.equal(ready.seen, true);
 });

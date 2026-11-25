@@ -6,8 +6,11 @@ export async function downloadRoutes(req, res, url, ctx) {
     if (!url.pathname.startsWith('/api/downloads')) return false;
     if (!downloads) return json(res, 404, { error: 'Downloads are not managed by this server.' });
     if (req.method === 'GET' && url.pathname === '/api/downloads') {
+        const includeSeen = url.searchParams.get('includeSeen') === '1';
         res.writeHead(200, { 'Content-Type': 'text/event-stream', 'X-Accel-Buffering': 'no' });
-        const send = (list) => res.write(`data: ${JSON.stringify(list)}\n\n`);
+        // A setup view needs completion even if the learner dismissed it from the sidebar.
+        const send = (list) =>
+            res.write(`data: ${JSON.stringify(includeSeen ? downloads.list(true) : list)}\n\n`);
         send(downloads.list());
         const unsubscribe = downloads.subscribe(send);
         ctx.downloadStreams.add(res);
