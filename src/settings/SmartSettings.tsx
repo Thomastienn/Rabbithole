@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { VStack } from '@astryxdesign/core/Layout';
 import { Text } from '@astryxdesign/core/Text';
 import { Selector } from '@astryxdesign/core/Selector';
+import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
 import ModelPicker from './ModelPicker';
 import { Button } from '@astryxdesign/core/Button';
 import {
@@ -284,6 +285,58 @@ export function VideoMode() {
                 onChange={(value) => void save(value as VideoModeValue)}
                 description="Saving skips cut audits, piece improvements and reference photos to spend fewer tokens. Applies to every profile, from the next video or Retry."
             />
+            {error && (
+                <Text type="supporting" role="alert">
+                    {error}
+                </Text>
+            )}
+        </VStack>
+    );
+}
+
+type VisualFrequencyValue = 'sparing' | 'often' | 'only-asked';
+
+// How often the tutor draws visuals; app-wide, read when the next reply starts.
+export function VisualFrequency() {
+    const [frequency, setFrequency] = useState<VisualFrequencyValue>(),
+        [pending, setPending] = useState(false),
+        [error, setError] = useState('');
+    useEffect(() => {
+        api('/api/settings/visual-frequency').then(
+            (s) => setFrequency(s.frequency),
+            (e) => setError((e as Error).message),
+        );
+    }, []);
+    async function save(next: VisualFrequencyValue) {
+        setPending(true);
+        setError('');
+        try {
+            setFrequency(
+                (await api('/api/settings/visual-frequency', { frequency: next })).frequency,
+            );
+        } catch (e) {
+            setError((e as Error).message);
+        } finally {
+            setPending(false);
+        }
+    }
+    return (
+        <VStack gap={2}>
+            <Text weight="semibold">Visual frequency</Text>
+            <SegmentedControl
+                label="Visual frequency"
+                value={frequency ?? 'often'}
+                isDisabled={frequency === undefined || pending}
+                onChange={(value) => void save(value as VisualFrequencyValue)}
+            >
+                <SegmentedControlItem value="sparing" label="Sparing" />
+                <SegmentedControlItem value="often" label="Often" />
+                <SegmentedControlItem value="only-asked" label="Only when asked" />
+            </SegmentedControl>
+            <Text type="supporting">
+                How often the tutor draws visuals in a reply. A visual you ask for is always drawn,
+                and videos are unaffected. Applies from the next reply.
+            </Text>
             {error && (
                 <Text type="supporting" role="alert">
                     {error}

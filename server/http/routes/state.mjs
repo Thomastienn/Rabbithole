@@ -1,4 +1,5 @@
 import { LABELS, isEndpoint } from '../roles.mjs';
+import { installCommand } from '../../providers/install.mjs';
 import pkg from '../../../package.json' with { type: 'json' };
 
 // The desktop shell passes its own version, which CI stamps; a browser-run server has the repo's.
@@ -83,8 +84,11 @@ export async function stateRoutes(req, res, url, ctx) {
                 {
                     label: providers[id]?.label ?? LABELS[id] ?? id,
                     connected: results[ids.indexOf(id)]?.status === 'fulfilled',
-                    // Only CLI providers answer; false means setup shows the install page.
-                    ...(providers[id]?.installed && { installed: providers[id].installed() }),
+                    // Only CLI providers answer; false means setup offers Install and this system's command.
+                    ...(providers[id]?.installed &&
+                        (providers[id].installed()
+                            ? { installed: true }
+                            : { installed: false, command: installCommand(id) })),
                 },
             ]),
         );

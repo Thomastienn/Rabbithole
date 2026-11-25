@@ -247,6 +247,20 @@ export const profiles = {
             .run(mode);
         return this.videoMode();
     },
+    visualFrequency() {
+        return (
+            this.db.prepare('SELECT frequency FROM visual_frequency WHERE id=1').get()?.frequency ??
+            'often'
+        );
+    },
+    saveVisualFrequency(frequency) {
+        this.db
+            .prepare(
+                'INSERT INTO visual_frequency(id,frequency) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET frequency=excluded.frequency',
+            )
+            .run(frequency);
+        return this.visualFrequency();
+    },
     saveTutorStyle(text) {
         this.db
             .prepare(

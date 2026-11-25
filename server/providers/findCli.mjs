@@ -41,6 +41,8 @@ function findWindowsCli(name, env, exists, read) {
     const dirs = [
         ...(env.PATH ?? '').split(';'),
         env.LOCALAPPDATA,
+        // Where Codex's Windows installer puts it.
+        env.LOCALAPPDATA && win32.join(env.LOCALAPPDATA, 'Programs', 'OpenAI', 'Codex', 'bin'),
         env.APPDATA && win32.join(env.APPDATA, 'npm'),
         env.USERPROFILE && win32.join(env.USERPROFILE, '.local', 'bin'),
     ].filter(Boolean);

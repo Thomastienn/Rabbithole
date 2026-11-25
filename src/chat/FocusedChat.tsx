@@ -14,7 +14,7 @@ import type { Summary } from '../map/TreeOverview';
 import { TokenStats, InheritedContext } from './ChatDetails';
 import TurnRail from './TurnRail';
 import { inkStyle } from '../map/treeList';
-import OriginStrip from './OriginStrip';
+import OriginStrip, { backTarget } from './OriginStrip';
 import TitleEditor from './TitleEditor';
 import ChatHeadingRow from './ChatHeader';
 import ChatThread, { type ThreadProps } from './ChatThread';
@@ -120,6 +120,10 @@ export default function FocusedChat({
         ancestors.unshift(parent);
         id = parent.parent ?? undefined;
     }
+    const back = (id: string) => {
+        const { source, message } = backTarget(id, tree.branch!, ancestors);
+        void openConversation(id, source, undefined, message);
+    };
     // Ask on the side needs a finished reply to inherit, a typed question and no files; before the first reply it is not drawn.
     const draft = (drafts[tree.id] ?? '').trim();
     const replied = tree.messages.some((m) => m.role === 'assistant' && m.status === 'completed');
@@ -179,8 +183,8 @@ export default function FocusedChat({
                         ancestors={ancestors}
                         current={tree}
                         addresses={addresses}
-                        open={(id) => openConversation(id)}
-                        openParent={() => openConversation(tree.branch!.parent)}
+                        open={back}
+                        openParent={() => back(tree.branch!.parent)}
                         statsOpen={statsOpen}
                         toggleStats={() => setStatsOpen((open) => !open)}
                         expanded={expanded}
@@ -389,7 +393,12 @@ export default function FocusedChat({
                                 'parent conversation'
                             }
                             openParent={(source) =>
-                                void openConversation(tree.branch!.parent, source)
+                                void openConversation(
+                                    tree.branch!.parent,
+                                    source,
+                                    undefined,
+                                    tree.branch!.messageId,
+                                )
                             }
                         />
                     )}
