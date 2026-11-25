@@ -303,12 +303,17 @@ export function open(path) {
             'CREATE TABLE IF NOT EXISTS piece_versions (piece TEXT NOT NULL REFERENCES pieces(id) ON DELETE CASCADE, name TEXT NOT NULL, look TEXT NOT NULL, props TEXT NOT NULL, source TEXT NOT NULL, source3d TEXT, roles TEXT NOT NULL, true_colors TEXT, parts TEXT, improved INTEGER NOT NULL)',
         );
         // One-time cleanup: pieces sharing a name fold into one; backed up first when it changes anything.
-        if (!this.db.prepare("SELECT 1 FROM sqlite_master WHERE name='cleanups'").get()) {
+        if (
+            !this.db.prepare("SELECT 1 FROM sqlite_master WHERE name='cleanups'").get() ||
+            !this.db.prepare('SELECT 1 FROM cleanups WHERE name=?').get('fold-duplicate-pieces')
+        ) {
             if (this.db.prepare('SELECT 1 FROM pieces GROUP BY name HAVING COUNT(*)>1').get())
                 this.backupPath ??= backup(this.db, path);
             this.transaction(() => {
                 this.foldDuplicatePieces();
-                this.db.exec('CREATE TABLE cleanups (name TEXT PRIMARY KEY, at INTEGER NOT NULL)');
+                this.db.exec(
+                    'CREATE TABLE IF NOT EXISTS cleanups (name TEXT PRIMARY KEY, at INTEGER NOT NULL)',
+                );
                 this.db
                     .prepare('INSERT INTO cleanups VALUES (?,?)')
                     .run('fold-duplicate-pieces', Date.now());

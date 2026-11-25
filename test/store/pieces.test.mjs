@@ -4,6 +4,8 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import { playable } from '../../server/media/cut-state.mjs';
+import { readSaved } from '../../server/media/video-workspace.mjs';
 import { Store } from '../../server/store.mjs';
 
 const entry = (name, embedding) => ({
@@ -181,17 +183,47 @@ test('a one-time cleanup backs up, then folds pieces sharing a name into one wit
     const path = join(mkdtempSync(join(tmpdir(), 'tt-pieces-')), 'trees.sqlite');
     let store = new Store(path);
     t.after(() => store.close());
-    const older = store.savePiece(entry('Earth', [1, 0]), 'video-a');
+    const tree = store.create('Earth videos', 'codex');
+    const reply = store.message(tree.id, 'assistant', 'Two Earth videos.', 'completed');
+    const oldSource = entry('Earth').source;
+    const newSource = 'export function Earth() { return 2; }';
+    const saveVideo = (source) => {
+        const { id, attempt } = store.pendingArtifact(tree.id, reply, 'Earth', 'One cut.', 'video');
+        store.videoData(tree.id, id, attempt, {
+            plan: { styleBrief: { paletteRoles: {} }, cuts: [{}] },
+            pieces: source,
+            cuts: [
+                {
+                    engine: 'remotion',
+                    code: 'export default function Video() { return null; }',
+                    timing: { durationInFrames: 30 },
+                    audited: true,
+                },
+            ],
+        });
+        store.finishVideo(tree.id, id, attempt, { description: 'One cut.', duration: 1 });
+        return id;
+    };
+    const videoA = saveVideo(oldSource);
+    const videoB = saveVideo(newSource);
+    const older = store.savePiece(entry('Earth', [1, 0]), videoA);
     store.improvePiece(older, {
         ...entry('Earth'),
         source: 'export function Earth() { return 1; }',
     });
-    const newest = store.savePiece(entry('Earth', [0, 1]), 'video-b');
-    store.usePiece(older, 'video-b');
-    const moon = store.savePiece(entry('Moon', null), 'video-a');
+    const moon = store.savePiece({ ...entry('Moon'), parts: [{ name: 'Earth', id: older }] });
+    const newest = store.savePiece(
+        { ...entry('Earth', [0, 1]), source: newSource, parts: [{ name: 'Moon', id: moon }] },
+        videoB,
+    );
+    store.usePiece(older, videoB);
     const scene = store.savePiece({ ...entry('Scene'), parts: [{ name: 'Earth', id: older }] });
-    // A database from before the cleanup: no record that it ran.
-    store.db.exec('DROP TABLE cleanups');
+    const updateTime = store.db.prepare('UPDATE pieces SET improved=? WHERE id=?');
+    updateTime.run(2, older);
+    updateTime.run(3, newest);
+    store.db.prepare('UPDATE piece_versions SET improved=1 WHERE piece=?').run(older);
+    // Another cleanup is recorded, but the piece cleanup hasn't run.
+    store.db.exec("UPDATE cleanups SET name='another-cleanup'");
     store.close();
 
     store = new Store(path);
@@ -205,24 +237,39 @@ test('a one-time cleanup backs up, then folds pieces sharing a name into one wit
         [newest],
         'one Earth remains, the newest current',
     );
-    assert.deepEqual(store.piece(newest).videos, ['video-b', 'video-a']);
+    assert.equal(store.piece(newest).source, newSource);
+    assert.deepEqual(store.piece(newest).videos, [videoB, videoA]);
     assert.deepEqual(
         store.db
             .prepare('SELECT source FROM piece_versions WHERE piece=? ORDER BY improved, rowid')
             .all(newest)
             .map((r) => r.source),
-        [entry('Earth').source, 'export function Earth() { return 1; }'],
+        [oldSource, 'export function Earth() { return 1; }'],
         'both older versions are kept under the remaining piece',
     );
     assert.deepEqual(
         store.pieceTree(scene).parts.map((p) => p.piece.id),
         [newest],
     );
-    assert.ok(store.piece(moon), 'a piece with a unique name is untouched');
+    const moonTree = store.pieceTree(newest).parts[0].piece;
+    assert.equal(moonTree.id, moon);
+    assert.deepEqual(moonTree.parts, [], 'the part chain stops when it reaches Earth again');
+    for (const [id, source] of [
+        [videoA, oldSource],
+        [videoB, newSource],
+    ]) {
+        for (const row of [store.artifact(tree.id, id), store.libraryCuts(id)]) {
+            const video = readSaved(row.source);
+            assert.ok(playable(video.cuts[0]));
+            assert.equal(video.pieces, source, 'playback still uses the original set-piece module');
+        }
+    }
     const snapshot = () =>
         ['pieces', 'piece_versions', 'piece_videos'].map((table) =>
             store.db.prepare(`SELECT * FROM ${table} ORDER BY rowid`).all(),
         );
+    // If startup folds again, this newly saved piece would disappear or replace the keeper.
+    store.savePiece(entry('Earth', null));
     const before = snapshot();
     store.close();
 

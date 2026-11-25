@@ -8,6 +8,12 @@ import { Store } from '../../server/store.mjs';
 test('previews list every message in order, bound each text and survive reload without copies', () => {
     const path = join(mkdtempSync(join(tmpdir(), 'rabbithole-preview-')), 'trees.sqlite');
     let store = new Store(path);
+    const tables = () =>
+        store.db
+            .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+            .all()
+            .map((row) => row.name);
+    const before = tables();
     const a = store.create('A', 'codex'),
         b = store.create('B', 'codex'),
         empty = store.create('Empty', 'codex');
@@ -40,52 +46,7 @@ test('previews list every message in order, bound each text and survive reload w
         ['completed', 'completed', 'completed', 'interrupted'],
     );
     assert.equal(store.tree(a.id).messages[2].text.length, 1200);
-    assert.deepEqual(
-        store.db
-            .prepare(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
-            )
-            .all()
-            .map((row) => row.name),
-        [
-            'active_profile',
-            'artifacts',
-            'attachments',
-            'branches',
-            'briefs',
-            'chat_settings',
-            'citations',
-            'cleanups',
-            'concept_aliases',
-            'concept_links',
-            'concept_topics',
-            'concepts',
-            'endpoint_efforts',
-            'endpoint_models',
-            'evidence',
-            'first_run',
-            'memory_note',
-            'messages',
-            'observations',
-            'piece_versions',
-            'piece_videos',
-            'pieces',
-            'profiles',
-            'resources',
-            'searxng_settings',
-            'smart_settings',
-            'suggestion_settings',
-            'suggestions',
-            'tool_calls',
-            'topics',
-            'trees',
-            'tutor_style',
-            'tutor_tools',
-            'usage_events',
-            'video_mode',
-            'videos',
-        ],
-    );
+    assert.deepEqual(tables(), before);
     store.close();
 });
 

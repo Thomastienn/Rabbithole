@@ -113,7 +113,7 @@ export const pieces = {
                     `SELECT rowid, ${owner} AS owner, parts FROM ${table} WHERE parts IS NOT NULL`,
                 )
                 .all()) {
-                // A part folded into its own piece is dropped, so pieceTree never recurses into itself.
+                // Drop direct self-references created when a part folds into its owner.
                 const parts = JSON.parse(r.parts)
                     .map((p) => ({ ...p, id: moved.get(p.id) ?? p.id }))
                     .filter((p) => p.id !== r.owner);
@@ -167,11 +167,13 @@ export const pieces = {
         };
     },
     // A piece with each part's current saved version (and its parts) attached, so an improved part reaches
-    // every later assembly; a part whose entry is gone is dropped.
-    pieceTree(id) {
+    // every later assembly. Skip missing parts and edges that would revisit an ancestor after folding.
+    pieceTree(id, ancestors = new Set()) {
+        if (ancestors.has(id)) return null;
         const piece = this.piece(id);
         if (!piece) return null;
-        const parts = piece.parts.map((p) => ({ ...p, piece: this.pieceTree(p.id) }));
+        const path = new Set(ancestors).add(id);
+        const parts = piece.parts.map((p) => ({ ...p, piece: this.pieceTree(p.id, path) }));
         return { ...piece, parts: parts.filter((p) => p.piece) };
     },
     // The Pieces view, one page at a time. Without a query: newest improvement first. With a query
