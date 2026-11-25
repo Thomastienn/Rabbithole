@@ -94,7 +94,8 @@ export default function ShellBand({
 }) {
     const [focusMode, setFocusMode] = useState(savedFocusMode);
     const [revealed, setRevealed] = useState(false);
-    const [update, act] = useDesktopUpdate();
+    const [state, act] = useDesktopUpdate();
+    const update = state?.stage === 'current' ? null : state;
     const focusToggle = useRef<HTMLButtonElement>(null);
     const toggleFocusMode = useCallback(() => {
         const restoreFocus = document.activeElement === focusToggle.current;

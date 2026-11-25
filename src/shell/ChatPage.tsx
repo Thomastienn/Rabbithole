@@ -505,6 +505,7 @@ export default function ChatPage({
                         loadModels={loadModels}
                         profileActivated={model.profileActivated}
                         auth={state?.auth}
+                        version={state?.version}
                         signIn={signIn}
                         vim={vim}
                         setVim={(on) => {
