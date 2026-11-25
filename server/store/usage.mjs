@@ -60,7 +60,7 @@ export const usage = {
     replyMediaUsage(message) {
         return this.db
             .prepare(
-                `SELECT task,input,output,cacheRead FROM usage_events WHERE message=?
+                `SELECT task,input,output,cacheRead FROM usage_events WHERE message=? AND task IN ('diagram','video')
       UNION ALL SELECT CASE kind WHEN 'video' THEN 'video' ELSE 'diagram' END,NULL,NULL,NULL
       FROM artifacts a WHERE message=? AND kind!='discussion' AND NOT EXISTS (SELECT 1 FROM usage_events u
         WHERE u.message=a.message AND (
