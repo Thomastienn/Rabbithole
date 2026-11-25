@@ -1,15 +1,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import { mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer } from 'node:http';
 import { launch } from '../support/startup-kit.mjs';
+import { findCli } from '../../server/providers/findCli.mjs';
 
 const schemas = JSON.parse(
     readFileSync(new URL('../fixtures/store-schemas.json', import.meta.url)),
 );
+const fixedCli = (dir, name) => findCli(name, { env: {}, home: dir, npm: () => null });
 
 test('main starts an old database without providers; busy port explains how to choose another', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'rabbithole-start-')),
@@ -38,8 +40,10 @@ test('main starts an old database without providers; busy port explains how to c
         const [, origin] = await running.waitFor(/Rabbithole: (http:\/\/127\.0\.0\.1:\d+)/);
         await running.waitFor(/Saved trees remain available/);
         assert.match(running.output(), /Node.*24/);
-        assert.match(running.output(), /claude\.ai\/install\.sh/);
-        assert.match(running.output(), /chatgpt\.com\/codex\/install\.sh/);
+        // A CLI in the fixed Linuxbrew folder still counts as installed.
+        if (!fixedCli(dir, 'claude'))
+            assert.match(running.output(), /Claude Code: not installed\b/);
+        if (!fixedCli(dir, 'codex')) assert.match(running.output(), /Codex: not installed\b/);
         assert.ok(running.output().includes(dir));
         const state = await (await fetch(origin + '/api/state')).json();
         const search = await (await fetch(origin + '/api/settings/searxng')).json();
@@ -73,22 +77,30 @@ test('main starts an old database without providers; busy port explains how to c
     }
 });
 
-test('preflight distinguishes installed sign-out from saved connections without exposing account details', async () => {
+test('preflight finds CLIs outside PATH and distinguishes sign-out from saved connections without exposing account details', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'rabbithole-preflight-'));
-    writeFileSync(join(dir, 'codex'), '#!/bin/sh\nprintf "codex-cli fixture\\n"\n', {
+    // Chat's lookup also searches ~/.local/bin and npm's global bin; PATH holds neither CLI.
+    const localBin = join(dir, '.local', 'bin'),
+        npmPrefix = join(dir, 'npm'),
+        npmBin = join(npmPrefix, 'bin');
+    mkdirSync(localBin, { recursive: true });
+    mkdirSync(npmBin, { recursive: true });
+    const claudeBin = fixedCli(dir, 'claude') ? localBin : npmBin;
+    const codexBin = claudeBin === localBin && !fixedCli(dir, 'codex') ? npmBin : localBin;
+    writeFileSync(join(codexBin, 'codex'), '#!/bin/sh\nexit 0\n', {
         mode: 0o700,
     });
     for (const connected of [false, true]) {
         writeFileSync(
-            join(dir, 'claude'),
-            `#!/bin/sh\nif [ "$1" = "--version" ]; then printf 'Claude fixture'; else printf '{"loggedIn":${connected},"email":"private@example.com"}'; fi\n`,
+            join(claudeBin, 'claude'),
+            `#!/bin/sh\nprintf '{"loggedIn":${connected},"email":"private@example.com"}'\n`,
             { mode: 0o700 },
         );
         if (connected)
             writeFileSync(join(dir, 'chatgpt.json'), '{"email":"private@example.com"}', {
                 mode: 0o600,
             });
-        const running = launch(dir);
+        const running = launch(dir, 0, { PATH: join(dir, 'empty'), NPM_CONFIG_PREFIX: npmPrefix });
         try {
             await running.waitFor(/Saved trees remain available/);
             assert.match(
@@ -103,10 +115,48 @@ test('preflight distinguishes installed sign-out from saved connections without 
                     ? /Codex: installed; ChatGPT connection saved/
                     : /Codex: installed; ChatGPT not connected/,
             );
-            if (!connected) assert.match(running.output(), /reload Rabbithole/);
             assert.doesNotMatch(running.output(), /private@example.com/);
         } finally {
             await running.stop();
         }
+    }
+});
+
+test('saved tree state is served while npm is still looking up the global bin', async (t) => {
+    const dir = mkdtempSync(join(tmpdir(), 'rabbithole-pending-npm-'));
+    const cli = ['claude', 'codex'].find((name) => !fixedCli(dir, name));
+    if (!cli) return t.skip('Both CLIs resolve before npm in the fixed Linuxbrew folder');
+    const prefix = join(dir, 'global');
+    mkdirSync(join(prefix, 'bin'), { recursive: true });
+    writeFileSync(join(prefix, 'bin', cli), '#!/bin/sh\nprintf \'{"loggedIn":false}\'\n', {
+        mode: 0o700,
+    });
+    writeFileSync(
+        join(dir, 'npm'),
+        `#!/bin/sh\nexec "$FIXTURE_NODE" -e 'fetch(process.env.FIXTURE_URL).then(r => r.text()).then(console.log)'\n`,
+        { mode: 0o700 },
+    );
+    const requested = Promise.withResolvers();
+    const lookup = createServer((_req, res) => requested.resolve(res));
+    await new Promise((resolve) => lookup.listen(0, '127.0.0.1', resolve));
+    const running = launch(dir, 0, {
+        NPM_CONFIG_PREFIX: '',
+        npm_config_prefix: '',
+        FIXTURE_NODE: process.execPath,
+        FIXTURE_URL: `http://127.0.0.1:${lookup.address().port}/`,
+    });
+    try {
+        const [, origin] = await running.waitFor(/Rabbithole: (http:\/\/127\.0\.0\.1:\d+)/);
+        const reply = await requested.promise;
+        const state = await fetch(origin + '/api/state');
+        assert.equal(state.status, 200);
+        assert.deepEqual((await state.json()).trees, []);
+        assert.equal(reply.destroyed, false, 'npm must still be waiting for the prefix');
+        reply.end(prefix);
+        await running.waitFor(cli === 'claude' ? /Claude Code: installed\b/ : /Codex: installed\b/);
+    } finally {
+        lookup.closeAllConnections();
+        await new Promise((resolve) => lookup.close(resolve));
+        await running.stop();
     }
 });

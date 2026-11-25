@@ -12,9 +12,12 @@ export function launch(
         cwd,
         env: {
             ...process.env,
-            // CLI detection also searches home install folders, so HOME hides them too.
+            // Keep CLI discovery in the fixture's install folders.
             PATH: dir,
             HOME: dir,
+            HOMEBREW_PREFIX: dir,
+            NPM_CONFIG_PREFIX: dir,
+            npm_config_prefix: dir,
             RABBITHOLE_DATA_DIR: dir,
             RABBITHOLE_PORT: String(port),
             ...env,
