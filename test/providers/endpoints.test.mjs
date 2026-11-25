@@ -4,6 +4,7 @@ import { mkdtempSync, readFileSync, statSync, existsSync, writeFileSync } from '
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { OpenAI } from '../../server/providers/openai.mjs';
+import { readOwned } from '../../server/providers/endpointSettings.mjs';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
 import { fakeOpenAI, streamReply } from '../support/fake-openai.mjs';
@@ -138,6 +139,16 @@ test('several named endpoints are added, listed, used side by side, labelled in 
     env = await open(t, dir);
     assert.deepEqual((await env.get('/api/settings/endpoints')).json(), [added, second]);
     const path = join(dir, 'openai-endpoints.json');
+    // A file owned by someone else is refused; Windows, without getuid, still reloads the list.
+    const getuid = process.getuid;
+    t.after(() => (process.getuid = getuid));
+    process.getuid = () => getuid() + 1;
+    assert.throws(() => readOwned(path), /owner-only regular file/);
+    await env.close();
+    delete process.getuid;
+    env = await open(t, dir);
+    assert.deepEqual((await env.get('/api/settings/endpoints')).json(), [added, second]);
+    process.getuid = getuid;
     assert.equal(statSync(path).mode & 0o777, 0o600);
     assert.deepEqual(
         JSON.parse(readFileSync(path, 'utf8')).map((e) => e.apiKey),

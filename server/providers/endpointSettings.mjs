@@ -94,7 +94,9 @@ export function readOwned(path) {
     const fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
     try {
         const info = fstatSync(fd);
-        if (!info.isFile() || info.uid !== process.getuid() || info.nlink !== 1)
+        // Windows has no getuid and reports uid 0; the profile directory's ACL guards ownership there.
+        const foreign = process.getuid && info.uid !== process.getuid();
+        if (!info.isFile() || foreign || info.nlink !== 1)
             throw new EndpointError('Credential file is not an owner-only regular file.');
         fchmodSync(fd, 0o600);
         return JSON.parse(readFileSync(fd, 'utf8'));
