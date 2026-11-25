@@ -135,9 +135,12 @@ test('search window lists recent trees, groups marked results by tree, moves wit
         /Fungi.*Today · 9 conversations/,
     );
     let query = document.querySelector('dialog input');
-    await key(query, 'ArrowDown');
     await key(query, 'Enter');
-    assert.equal(opened.at(-1).recent, 'Today · 9 conversations', 'Enter opens a recent tree');
+    assert.equal(
+        opened.at(-1).recent,
+        'Today · 9 conversations',
+        'the first recent tree is selected on open, so Enter opens it',
+    );
 
     dialog = await open();
     await type('missing');
@@ -165,14 +168,18 @@ test('search window lists recent trees, groups marked results by tree, moves wit
         'snippet ranges are marked; a title match marks its title and shows no snippet',
     );
     assert.equal(options[1].querySelector('.search-snippet'), null);
-    await key(query, 'ArrowDown');
     const first = query.getAttribute('aria-activedescendant');
-    assert.ok(
-        document.getElementById(first) === options[0],
-        'the selected result is the active option',
+    assert.ok(document.getElementById(first) === options[0], 'typing selects the first result');
+    const selected = () =>
+        [...dialog.querySelectorAll('[role=option]')].map((o) => o.getAttribute('aria-selected'));
+    assert.deepEqual(
+        selected(),
+        ['true', 'false', 'false'],
+        'only the active option reads as selected',
     );
     await key(query, 'ArrowDown');
     assert.notEqual(query.getAttribute('aria-activedescendant'), first);
+    assert.deepEqual(selected(), ['false', 'true', 'false']);
     await key(query, 'ArrowUp');
     assert.equal(query.getAttribute('aria-activedescendant'), first);
     await key(query, 'Enter');

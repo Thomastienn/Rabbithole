@@ -88,12 +88,12 @@ export function treeSearchSource(
                             .filter((t) => !t.parent)
                             .map((t) => [t.id, t.created]),
                     );
-                    const groups = new Map<string, string>(),
+                    const groups = new Map<string, { group: string; detail: string }>(),
                         headings = new Set<string>(),
                         now = new Date();
                     return (data as SearchResult[]).map((r) => {
-                        let group = groups.get(r.root);
-                        if (group === undefined) {
+                        let found = groups.get(r.root);
+                        if (found === undefined) {
                             const date = created.get(r.root);
                             const detail =
                                 r.root === tree
@@ -102,17 +102,19 @@ export function treeSearchSource(
                                       ? ''
                                       : searchDay(date, now);
                             const heading = detail ? `${r.tree} · ${detail}` : r.tree;
-                            group = heading;
+                            let group = heading;
                             // Astryx keys groups by heading, so even same-day names must differ.
                             for (let i = 2; headings.has(group); i++) group = `${heading} (${i})`;
-                            groups.set(r.root, group);
+                            found = { group, detail };
+                            groups.set(r.root, found);
                             headings.add(group);
                         }
                         return {
                             id: r.conversation,
                             // Include the snippet so Astryx's immediate narrowing keeps text matches.
                             label: `${r.title} ${r.snippet}`,
-                            auxiliaryData: { ...r, group },
+                            // The detail ("This tree" or the day) is drawn apart from the name in the heading.
+                            auxiliaryData: { ...r, ...found },
                         };
                     });
                 })
