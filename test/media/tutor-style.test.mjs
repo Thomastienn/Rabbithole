@@ -8,6 +8,7 @@ import {
     TOOL_VISUAL_RULES,
     VERDICT_RULE,
     TUTOR_SKILLS,
+    VISUAL_FREQUENCY,
     tutorSystem,
 } from '../../server/media/tutor-instructions.mjs';
 import { diagramReply } from '../../server/media/reply-parser.mjs';
@@ -16,7 +17,13 @@ import { DISCUSSION_RULE } from '../../server/media/discussions.mjs';
 import { NOTES_RULE } from '../../server/suggestions.mjs';
 
 test('tutor prompt puts the fixed rules, then the skills, then the tutor style, and keeps the per-tree override', () => {
-    const rules = TUTOR_RULES + VERDICT_RULE + DISCUSSION_RULE + NOTES_RULE + TUTOR_SKILLS;
+    const rules =
+        TUTOR_RULES +
+        VISUAL_FREQUENCY.often +
+        VERDICT_RULE +
+        DISCUSSION_RULE +
+        NOTES_RULE +
+        TUTOR_SKILLS;
     for (const tutorStyle of [undefined, null, '', '  \n '])
         assert.equal(tutorSystem({ tutorStyle }), rules + DEFAULT_TUTOR_STYLE, `${tutorStyle}`);
     assert.equal(
@@ -34,6 +41,11 @@ test('tutor prompt puts the fixed rules, then the skills, then the tutor style, 
         tutorSystem({ tutorStyle: 'Mine.', instructions: 'Worker only.' }),
         'Worker only.',
     );
+});
+
+test('the visual frequency sentence follows the setting after the unchanged visual and video rules', () => {
+    for (const [visualFrequency, sentence] of Object.entries(VISUAL_FREQUENCY))
+        assert.ok(tutorSystem({ visualFrequency }).startsWith(TUTOR_RULES + sentence));
 });
 
 test('the chat prompt carries the whole-graph neighbourhood as data and omits an empty set', () => {
@@ -151,10 +163,10 @@ test('the tool-path tutor prompt before learner data is no larger than before vi
     const text = tutorSystem({ textTools: APP_TOOLS }).replace(definitions, '');
     // The visual and discussion marker rules replaced show_visual and start_discussion (ADR 0018), so they count against the
     // tool-path total at 3b6b9d0: that prompt plus its app tool definitions.
-    // The bold-term suggestion sentence (docs/reply-reading-polish-spec.md) is allowed on top.
+    // The bold-term suggestion sentence (docs/reply-reading-polish-spec.md) and the visual frequency sentence are allowed on top.
     const BOLD =
         'When you would bold a term because it matters, the learner may not fully understand it yet, so mark it as a suggestion instead of only bolding it. ';
-    const MARKER_BEFORE = 9987 + 6121 + BOLD.length;
+    const MARKER_BEFORE = 9987 + 6121 + BOLD.length + VISUAL_FREQUENCY.often.length;
     for (const prompt of [native, text])
         assert.ok(prompt.length + definitions.length <= MARKER_BEFORE, `${prompt.length}`);
     for (const part of [

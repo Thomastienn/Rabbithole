@@ -257,6 +257,7 @@ export async function sendRoute(res, ctx, id, tree, action, body, job) {
                                 : ctx.tools.run(name, input, { conversation: id, reply, signal }),
                     }),
                     tutorStyle: store.tutorStyle(),
+                    visualFrequency: store.visualFrequency(),
                     memoryNote: store.memoryNote(),
                     neighbourhood,
                     resources: store

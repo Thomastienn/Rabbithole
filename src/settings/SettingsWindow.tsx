@@ -16,7 +16,7 @@ import {
 import EndpointSettings from './EndpointSettings';
 import SuggestionSettings, { AutomaticSuggestions } from './SuggestionSettings';
 import ChatSettings from './ChatSettings';
-import SmartSettings, { VideoMode } from './SmartSettings';
+import SmartSettings, { VideoMode, VisualFrequency } from './SmartSettings';
 import ModelProfiles from './ModelProfiles';
 import TutorStyleSettings from './TutorStyleSettings';
 import MemoryNoteSettings from './MemoryNoteSettings';
@@ -254,7 +254,8 @@ export default function SettingsWindow({
                             />
                         </ModelProfiles>
                         <Divider />
-                        <Section title="Videos">
+                        <Section title="Visuals and videos">
+                            <VisualFrequency />
                             <VideoMode />
                         </Section>
                         <Divider />

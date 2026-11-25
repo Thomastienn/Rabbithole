@@ -88,6 +88,18 @@ const DISCUSSION_MARKER_RULE =
     'The voice is one or two sentences on how they talk and how they think, fitting their level and distinct from the others. Keep levels and voices private; never mention or label them in the lines or your text. ' +
     "Classmates write like casual online chat: everyday words and slang, contractions, the odd swear word or typo, short lines, rarely an emoji, no buzzwords or performed eagerness. The natural-writing guidance still applies to their lines but never flattens these voices into the tutor's register. Classmates have honest misunderstandings, ask each other questions and draw the learner in; only relevant classmates speak. The Tutor steps in only to untangle or confirm, in plain clear lines. " +
     "Never write learner lines or invent the learner's answer. Keep [, ], | and line breaks out of names, voices and lines, and write math in words inside the marker. Classmates belong only to this discussion and keep their levels and voices.";
+// The learner's Visual frequency setting adds one sentence to the visual guidance; videos keep their own rules.
+const ASKED =
+    ' Whenever the learner asks for a visual, draw it. This applies to visuals only, not videos.';
+export const VISUAL_FREQUENCY = {
+    sparing: '\n\nVisual frequency: draw a visual only where it clearly helps.' + ASKED,
+    often:
+        "\n\nVisual frequency: in a longer reply that covers several distinct concepts, draw a visual for each concept a picture helps; never add one where it doesn't help." +
+        ASKED,
+    'only-asked':
+        '\n\nVisual frequency: draw no visual unless the learner asked for one, whatever the guidance above or below suggests.' +
+        ASKED,
+};
 // A model without native tool calling writes Hermes-style calls as text; no result comes back.
 const textToolsRule = (tools) =>
     'You cannot call tools natively. Call each tool below by writing <tool_call>{"name": "tool name", "arguments": {...}}</tool_call> in your reply exactly where the call belongs, with the arguments as one JSON object. The app runs the call and hides it from the learner. No result comes back; continue your reply right after it. Call no other tools, and do not access files or execute code. Tools (name, description and JSON Schema parameters): ' +
@@ -113,6 +125,7 @@ export const tutorSystem = (tree) =>
                     textToolsRule(tree.textTools),
                 )
               : TUTOR_RULES) +
+            (VISUAL_FREQUENCY[tree.visualFrequency] ?? VISUAL_FREQUENCY.often) +
             // With the app tools offered, quick thinking writes the verdict (ADR 0016).
             ([...(tree.tools ?? []), ...(tree.textTools ?? [])].some((t) => t.name === 'make_video')
                 ? DISCUSSION_MARKER_RULE
