@@ -7,7 +7,11 @@ import { ui, button, inputValue } from '../support/ui.mjs';
 import { fakeServer } from '../support/fake-server.mjs';
 const { default: ModelProfiles } = await import('../../src/settings/ModelProfiles.tsx');
 const { default: ChatSettings } = await import('../../src/settings/ChatSettings.tsx');
-const { default: SmartSettings, VideoMode } = await import('../../src/settings/SmartSettings.tsx');
+const {
+    default: SmartSettings,
+    VideoMode,
+    VisualFrequency,
+} = await import('../../src/settings/SmartSettings.tsx');
 const { default: SuggestionSettings } = await import('../../src/settings/SuggestionSettings.tsx');
 
 const models = [
@@ -333,4 +337,38 @@ test('Video mode shows Quality by default and saves Saving', async (t) => {
     await settle();
     assert.deepEqual(writes, [{ mode: 'saving' }]);
     assert.match(checked(), /Saving/);
+});
+
+test('Visual frequency shows three buttons with Often pressed by default and saves the one pressed', async (t) => {
+    let dom,
+        frequency = 'often';
+    const writes = [];
+    fakeServer(t, async (path, body) => {
+        assert.equal(path, '/api/settings/visual-frequency');
+        if (body) {
+            writes.push(body);
+            frequency = body.frequency;
+        }
+        return { frequency };
+    });
+    const { container, act, cleanup } = await render(h(VisualFrequency), (w) => {
+        dom = ui(w);
+    });
+    t.after(cleanup);
+    const settle = () => act(async () => dom.frames());
+    await settle();
+    const choices = () => [...container.querySelectorAll('[role=radio]')];
+    assert.deepEqual(
+        choices().map((e) => e.textContent.trim()),
+        ['Sparing', 'Often', 'Only when asked'],
+    );
+    const pressed = () =>
+        choices()
+            .filter((e) => e.getAttribute('aria-checked') === 'true')
+            .map((e) => e.textContent.trim());
+    assert.deepEqual(pressed(), ['Often']);
+    await act(async () => choices()[2].click());
+    await settle();
+    assert.deepEqual(writes, [{ frequency: 'only-asked' }]);
+    assert.deepEqual(pressed(), ['Only when asked']);
 });

@@ -9,6 +9,7 @@ import { createApp } from '../../server/app.mjs';
 import {
     DEFAULT_TUTOR_STYLE,
     TUTOR_SKILLS,
+    VISUAL_FREQUENCY,
     tutorSystem,
 } from '../../server/media/tutor-instructions.mjs';
 
@@ -72,4 +73,56 @@ test('tutor style saves, normalizes empty or default text to null, restores and 
     assert.ok((await ask()).endsWith(TUTOR_SKILLS + DEFAULT_TUTOR_STYLE));
     for (const style of [undefined, 3, ['x']])
         assert.equal((await post('/api/settings/tutor-style', { style })).status, 400);
+});
+
+test('visual frequency reads Often on a fresh install, saves a choice that survives a restart and reaches the next reply', async (t) => {
+    const path = join(mkdtempSync(join(tmpdir(), 'tt-visual-frequency-')), 'trees.sqlite');
+    const store = new Store(path);
+    const prompts = [];
+    const app = createApp({
+        store,
+        auth: { status: () => ({ connected: false }) },
+        provider: observeProvider({
+            generate: async (tree, text, emit) => {
+                prompts.push(tutorSystem(tree));
+                emit({ type: 'item', item: 'a', text: 'Answer' });
+                emit({ type: 'status', status: 'completed' });
+            },
+        }),
+    });
+    await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
+    t.after(async () => {
+        await app.stop();
+        store.close();
+    });
+    const origin = `http://127.0.0.1:${app.server.address().port}`;
+    const { csrf } = await (await fetch(`${origin}/api/state`)).json();
+    const post = (path, body) =>
+        fetch(origin + path, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Rabbithole-CSRF': csrf },
+            body: JSON.stringify(body),
+        });
+    const read = async () =>
+        (await (await fetch(`${origin}/api/settings/visual-frequency`)).json()).frequency;
+    const tree = await (await post('/api/trees', {})).json();
+    const ask = async () => {
+        await (await post(`/api/trees/${tree.id}/messages`, { text: 'q' })).text();
+        return prompts.at(-1);
+    };
+    assert.equal(await read(), 'often');
+    assert.ok((await ask()).includes(VISUAL_FREQUENCY.often));
+    for (const frequency of ['sparing', 'only-asked']) {
+        const saved = await post('/api/settings/visual-frequency', { frequency });
+        assert.deepEqual(await saved.json(), { frequency });
+        assert.equal(await read(), frequency);
+        const prompt = await ask();
+        for (const [level, sentence] of Object.entries(VISUAL_FREQUENCY))
+            assert.equal(prompt.includes(sentence), level === frequency, `${frequency} ${level}`);
+    }
+    for (const frequency of ['always', null, 1, 'toString'])
+        assert.equal((await post('/api/settings/visual-frequency', { frequency })).status, 400);
+    const restarted = new Store(path);
+    assert.equal(restarted.visualFrequency(), 'only-asked');
+    restarted.close();
 });

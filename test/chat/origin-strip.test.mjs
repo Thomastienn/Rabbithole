@@ -130,3 +130,25 @@ test('a free branch says it was asked on the side and its chip opens the parent'
     await act(async () => buttons()[0].click());
     assert.deepEqual(opened, [undefined]);
 });
+
+test('going up targets the passage of the child on the path back, held on its reply', async () => {
+    const { backTarget } = await import('../../src/chat/OriginStrip.tsx');
+    const branch = { ...base, start: 4, end: 14, text: 'refraction' };
+    const ancestors = [
+        { id: 'root', parent: null, messageId: null, start: null, end: null, passage: null },
+        { id: 'p', parent: 'root', messageId: 'r1', start: 0, end: 5, passage: 'Light' },
+    ];
+    assert.deepEqual(backTarget('p', branch, ancestors), {
+        source: { messageId: 'm1', start: 4, end: 14, text: 'refraction' },
+        message: 'm1',
+    });
+    assert.deepEqual(backTarget('root', branch, ancestors), {
+        source: { messageId: 'r1', start: 0, end: 5, text: 'Light' },
+        message: 'r1',
+    });
+    // A free branch lands on the parent reply that was latest when it was asked.
+    assert.deepEqual(backTarget('p', { ...branch, start: null, end: null, text: '' }, ancestors), {
+        source: undefined,
+        message: 'm1',
+    });
+});
