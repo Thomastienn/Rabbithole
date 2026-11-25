@@ -399,7 +399,10 @@ export default function Passage({
                     if (!(e.relatedTarget as Element | null)?.closest?.('.brief-tip'))
                         setTip(undefined);
                 }}
-                onFocus={(e) => point(e.target, true)}
+                // Focus moved to a returned-to passage is not the learner asking for its tip.
+                onFocus={(e) =>
+                    !(e.target as Element).matches('mark, [data-reveal]') && point(e.target, true)
+                }
                 onBlur={() => setTip(undefined)}
                 onMouseUp={captureSelection}
                 onKeyUp={captureSelection}

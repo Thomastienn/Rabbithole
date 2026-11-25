@@ -152,3 +152,18 @@ test('a briefed selection inside a suggestion underlines, shows its own brief an
     await act(async () => rest.click());
     assert.deepEqual([branched.at(-1)[0].start, branched.at(-1)[0].end], [10, 19]);
 });
+
+test('going back to a branched passage focuses it without opening its tip', async (t) => {
+    const { container, act, update } = await passage(t);
+    const span = { start: 10, end: 19, text: 'repeat 😀' };
+    await act(async () =>
+        update((v) => ({
+            ...v,
+            suggestions: { message: 'reply', status: 'ready', passages: [{ ...span, child: 'c' }] },
+            branched: [{ ...span, child: 'c', question: 'Why?' }],
+            reveal: { messageId: 'reply', ...span },
+        })),
+    );
+    assert.ok(document.activeElement === container.querySelector('u mark'));
+    assert.equal(container.querySelector('[role="tooltip"]'), null);
+});
