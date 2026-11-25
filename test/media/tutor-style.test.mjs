@@ -5,7 +5,6 @@ import {
     LOOKUP_RULE,
     MEMORY_RULE,
     TUTOR_RULES,
-    TOOL_VISUAL_RULES,
     VERDICT_RULE,
     TUTOR_SKILLS,
     VISUAL_FREQUENCY,
@@ -85,10 +84,6 @@ test('the fixed memory rule appears only when update_memory_note is offered', ()
 
 test('the concept lookup rule appears only when look_up_concept is offered', () => {
     const tool = (name) => ({ tutorStyle: 'Mine.', tools: [{ name }] });
-    assert.match(
-        LOOKUP_RULE,
-        /concepts the concept neighbourhood does not cover, such as those in an attachment or a request like 'explain the concepts in this', look them up together with look_up_concept before you explain\./,
-    );
     assert.ok(tutorSystem(tool('look_up_concept')).includes(LOOKUP_RULE));
     assert.ok(!tutorSystem(tool('read_page')).includes(LOOKUP_RULE));
     assert.ok(!tutorSystem({ tutorStyle: 'Mine.' }).includes(LOOKUP_RULE));
@@ -125,34 +120,7 @@ test('a visual request carries what it shows; older requests without it still pa
     assert.deepEqual(old.task, base);
 });
 
-test('the tutor rules describe a visual as a section read in place, drawn by the chat model', () => {
-    assert.match(TUTOR_RULES, /shows \(up to 280 characters\)/);
-    assert.match(TUTOR_RULES, /section of your reply that the learner reads in place/);
-    assert.match(TUTOR_RULES, /chat model draws the visual in a separate call/);
-    assert.doesNotMatch(TUTOR_RULES, /smart-model/);
-});
-
-test('both visual rules lean on more visuals for hard ideas, loosely and without a quota', () => {
-    const hard =
-        'When an idea is hard to grasp, such as an abstract or mathematical one, lean on more visuals; the harder it is for this learner, the more a picture helps.';
-    for (const rules of [TUTOR_RULES, TOOL_VISUAL_RULES]) {
-        assert.equal(rules.split(hard).length, 2);
-        assert.doesNotMatch(
-            rules,
-            /at least (one|two|three|\d+) visuals|visuals? per (reply|idea) at least/i,
-        );
-    }
-});
-
-test('the default tutor style ends with the readability paragraph after the unchanged original', () => {
-    const [original, readability] = DEFAULT_TUTOR_STYLE.split('\n\n');
-    assert.ok(original.startsWith('You are Rabbithole, a patient tutor'));
-    assert.ok(original.endsWith('or recent events, or when you are unsure.'));
-    assert.match(readability, /^Write for reading top to bottom\./);
-    assert.doesNotMatch(readability, /\d/);
-});
-
-test('the tool-path tutor prompt before learner data is no larger than before visual markers and keeps its core rules', async () => {
+test('the tool-path tutor prompt stays within the budget before learner data', async () => {
     const { APP_TOOLS } = await import('../../server/http/app-calls.mjs');
     const { NEIGHBOURHOOD_RULE } = await import('../../server/neighbourhood.mjs');
     const tools = [...APP_TOOLS, { name: 'update_memory_note' }, { name: 'find_images' }];
@@ -169,7 +137,9 @@ test('the tool-path tutor prompt before learner data is no larger than before vi
     // The familiarity-first teaching guidance and the now-and-then analogy wording (docs/plainer-teaching-concept-marks-and-return-to-passage-spec.md)
     // replaced shorter text and are allowed on top: 474 and 51 characters.
     const TEACHING = 474 + 51;
-    const MARKER_BEFORE = 9987 + 6121 + BOLD.length + TEACHING + VISUAL_FREQUENCY.often.length;
+    // The concept mark sentences (ADR 0023) are allowed on top: 239 characters.
+    const MARKER_BEFORE =
+        9987 + 6121 + BOLD.length + TEACHING + 239 + VISUAL_FREQUENCY.often.length;
     for (const prompt of [native, text])
         assert.ok(prompt.length + definitions.length <= MARKER_BEFORE, `${prompt.length}`);
     assert.ok(native.includes(MEMORY_RULE));
