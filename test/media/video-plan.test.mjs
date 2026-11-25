@@ -21,6 +21,7 @@ import {
 } from '../../server/media/video-cut.mjs';
 import { MANIM_INSTRUCTIONS, MANIM_AUDIT_INSTRUCTIONS } from '../../server/media/manim-cut.mjs';
 import { MAX_CLIP_SECONDS } from '../../server/media/clips.mjs';
+import { videoPalette } from '../../server/media/video-colors.mjs';
 
 test('the planner carries Manim teaching notes scoped to Manim cuts only', () => {
     assert.ok(PLAN_INSTRUCTIONS.endsWith(MANIM_TEACHING_SKILL));
@@ -162,7 +163,7 @@ export default () => <div style={{background:palette.ground,color:colors.winner,
         composition,
         spatial,
         code.replace('colors.winner', 'palette.amber'),
-        code.replace('colors.winner', "'#dfae4e'"),
+        code.replace('colors.winner', `'${videoPalette().amber}'`),
         code.replace('fonts.heading', 'fonts.reading'),
         code.replace('colors,', 'colors as inks,').replace('colors.winner', 'inks.winner'),
         code.replace('<div ', '<div hidden '),

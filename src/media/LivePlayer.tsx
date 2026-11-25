@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { serverFetch } from '../serverAccess';
 
 type LiveCuts = {
+    palette: Record<string, string>;
     paletteRoles: Record<string, string>;
     trueColors?: Record<string, string>;
     pieces: string | null;
@@ -66,6 +67,7 @@ export default function LivePlayer({
                             frame.current?.contentWindow?.postMessage(
                                 {
                                     type: 'cuts',
+                                    palette: data.palette,
                                     paletteRoles: data.paletteRoles,
                                     trueColors: data.trueColors,
                                     pieces: data.pieces,

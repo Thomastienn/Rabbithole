@@ -118,6 +118,7 @@ test('explicit video request creates one job with frozen input, publishes owned 
         assert.deepEqual(input, {
             selection: { provider: 'codex', model: 'fixture-model', effort: null },
             chat: { provider: 'codex', model: 'conversation-only-model', effort: null },
+            theme: { name: 'platform', mode: 'dark' },
             request,
             intent: task.intent,
             excerpt: task.excerpt,

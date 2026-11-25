@@ -7,7 +7,7 @@ export const CUT_ATTEMPTS = 3;
 // Submissions a tool-calling cut writer may have checked within one attempt.
 export const CUT_CHECKS = 5;
 export const MAX_SOURCE = 64 * 1024;
-import { inks, neutrals, videoPalette, trueColorsOk, roleColor } from './video-colors.mjs';
+import { inks, neutrals, briefPalette, trueColorsOk, roleColor } from './video-colors.mjs';
 const modules = ['react', 'remotion', './kit', '@remotion/three', 'three', '@react-three/fiber'];
 
 // Recurring objects with a look become set pieces: one exported component each, named from the object.
@@ -228,7 +228,7 @@ export function cutSource(raw, brief, names) {
         ...(names ? [] : Object.values(brief.paletteRoles).filter((k) => inks.includes(k))),
     ]);
     const literals = new Set([
-        ...[...allowed].map((k) => videoPalette[k]),
+        ...[...allowed].map((k) => briefPalette(brief)[k].toLowerCase()),
         ...Object.values(brief.trueColors ?? {}).map((h) => h.toLowerCase()),
     ]);
     const styleError = (detail) => {

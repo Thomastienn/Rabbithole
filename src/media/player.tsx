@@ -34,6 +34,7 @@ const libraries: Record<string, unknown> = {
 const loaded: { code?: string; Component?: LiveCut['Component']; audio?: string; clip?: string }[] =
     [];
 let pieces: { code?: string; exports?: unknown } = {};
+let painted = '';
 const exhibitUrls: Record<string, string> = {};
 
 // The server compiled each cut to a CommonJS body; an inline script (allowed by this frame's CSP) defines it.
@@ -142,6 +143,14 @@ addEventListener('message', (event) => {
             typeof event.data.code3d === 'string' ? event.data.code3d : undefined,
         );
     if (event.data?.type !== 'cuts' || !Array.isArray(event.data.cuts)) return;
+    // The video's theme paints the kit first; a new palette recompiles pieces and cuts that read it at load.
+    const palette = JSON.stringify(event.data.palette ?? null);
+    if (event.data.palette && palette !== painted) {
+        painted = palette;
+        kit.setPalette(event.data.palette);
+        pieces = {};
+        loaded.forEach((own) => delete own.code);
+    }
     const roles = inks(event.data.paletteRoles ?? {}, event.data.trueColors ?? {});
     // Exhibits arrive as data; an image's or clip's blob URL is made once and kept for the frame's life.
     const exhibits: Parameters<typeof kit.setStock>[0] = {};

@@ -19,6 +19,7 @@ import {
     pass,
     problems,
     planText,
+    themed,
 } from '../support/video-kit.mjs';
 import { auditFix, auditReport } from '../../server/media/audit-answers.mjs';
 import { ENGINES } from '../../server/media/cut-engines.mjs';
@@ -131,7 +132,7 @@ test('audits start together, see code, stills and the previous last frame; issue
     assert.deepEqual(first.input.cut, plan.cuts[0]);
     assert.equal(first.input.previousEndState, null);
     assert.equal(second.input.previousEndState, plan.cuts[0].endState);
-    assert.deepEqual(first.input.styleBrief, plan.styleBrief);
+    assert.deepEqual(first.input.styleBrief, themed(plan).styleBrief);
     // A contact sheet, then one still per sentence end plus the last frame; fakeNarration's last sentence ends
     // before the audio does.
     assert.equal(first.images.length, 3);
@@ -168,7 +169,7 @@ test('audits start together, see code, stills and the previous last frame; issue
     assert.equal(fixes[0].i, 0);
     assert.deepEqual(fixes[0].input.issues, issues);
     assert.deepEqual(fixes[0].input.cut, plan.cuts[0]);
-    assert.deepEqual(fixes[0].input.styleBrief, plan.styleBrief);
+    assert.deepEqual(fixes[0].input.styleBrief, themed(plan).styleBrief);
     assert.equal(fixes[0].input.code, written(0));
     assert.ok(fixes[0].text.endsWith('\n\ncode:\n' + written(0)), 'the code follows as raw lines');
     assert.equal(fixes[0].input.previousLastFrame, false);

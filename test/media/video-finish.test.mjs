@@ -7,6 +7,7 @@ import { remapRoles } from '../../server/media/video-pieces.mjs';
 import { CUT_3D, PIECES_3D, PIECE_IMPROVE_INSTRUCTIONS } from '../../server/media/video-cut.mjs';
 import { HOUSE_STYLE_SKILL } from '../../server/media/skills.mjs';
 import { styleBrief } from '../support/video-kit.mjs';
+import { videoPalette } from '../../server/media/video-colors.mjs';
 
 const finishes = ['matte', 'plastic', 'metal', 'glass', 'glow'];
 const patterns = ['wood', 'brushed metal', 'panel lines', 'fabric', 'stone', 'tiles', 'bands'];
@@ -37,7 +38,7 @@ test('each finish and pattern gives a material in the given colour; a pattern is
 test('the finish colour passes the colour validator like any other colour', () => {
     const cut = (colour) => `import {colors, palette, finish} from './kit';
 export default () => <mesh material={finish('metal', ${colour}, 'wood')} />;`;
-    for (const ok of ['colors.winner', 'palette.paper', "'#dfae4e'", 'props.tint'])
+    for (const ok of ['colors.winner', 'palette.paper', `'${videoPalette().amber}'`, 'props.tint'])
         assert.equal(cutSource(cut(ok), styleBrief), cut(ok));
     for (const bad of ["'red'", "'#ff0000'", 'palette.leaf', 'colors.missing'])
         assert.throws(() => cutSource(cut(bad), styleBrief), /style brief colors/);

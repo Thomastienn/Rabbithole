@@ -13,7 +13,7 @@ import { cutSource } from './video-plan.mjs';
 import { unfenced } from './audit-answers.mjs';
 import { MANIM_INSTRUCTIONS, MANIM_AUDIT_INSTRUCTIONS, MANIM_COMPONENT } from './manim-cut.mjs';
 import { REMOTION_SKILL, REMOTION_3D_SKILL, MANIM_SKILL, MOTION_DESIGN_SKILL } from './skills.mjs';
-import { videoPalette, roleColor } from './video-colors.mjs';
+import { briefPalette, roleColor } from './video-colors.mjs';
 import { withoutPaths, validateOutput } from './video-sandbox.mjs';
 import { cutClip } from './video-workspace.mjs';
 
@@ -87,7 +87,7 @@ export const ENGINES = {
                 join(dir, 'brief.json'),
                 JSON.stringify({
                     palette: Object.fromEntries(
-                        Object.entries(videoPalette).filter(
+                        Object.entries(briefPalette(plan.styleBrief)).filter(
                             ([ink]) =>
                                 !['amber', 'leaf', 'rust', 'lichen'].includes(ink) ||
                                 Object.values(plan.styleBrief.paletteRoles).includes(ink),

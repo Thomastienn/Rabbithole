@@ -13,6 +13,7 @@ import {
     fixerTask,
     repairAnswer,
     planText,
+    themed,
 } from '../support/video-kit.mjs';
 import { fakeNarration } from '../support/fake-narration.mjs';
 import { tutorContext } from '../../server/media/tutor-context.mjs';
@@ -98,7 +99,7 @@ test('three cut writers and narrators start in parallel; reversed completions pe
         env.store.tree(tree.id).artifacts.find((a) => a.status === 'ready'),
     );
     const data = JSON.parse(ready.source);
-    assert.deepEqual(data.plan, plan);
+    assert.deepEqual(data.plan, themed(plan));
     assert.deepEqual(
         data.cuts.map((c) => c.status),
         ['written', 'written', 'written'],
@@ -122,7 +123,7 @@ test('three cut writers and narrators start in parallel; reversed completions pe
                 ],
             ][i],
         );
-        assert.deepEqual(inputs[i].input.styleBrief, plan.styleBrief);
+        assert.deepEqual(inputs[i].input.styleBrief, themed(plan).styleBrief);
         assert.deepEqual(inputs[i].input.cut, plan.cuts[i]);
         assert.equal(
             inputs[i].input.cut.camera,

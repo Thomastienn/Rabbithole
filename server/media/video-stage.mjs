@@ -2,7 +2,7 @@ import { CUT_ENTRY } from './video-cut.mjs';
 import { readFileSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { videoPalette, roleColor } from './video-colors.mjs';
+import { inks, briefPalette, roleColor } from './video-colors.mjs';
 import { ENGINES } from './cut-engines.mjs';
 
 const runtime = readFileSync(new URL('./video-stock.tsx', import.meta.url), 'utf8').replace(
@@ -31,11 +31,13 @@ export async function stageCut({
     await writeFile(
         join(dir, 'kit.tsx'),
         kit +
+            // The kit paints this video's theme before any cut or piece reads it.
+            `\nsetPalette(${JSON.stringify(briefPalette(plan.styleBrief))});\n` +
             '\nexport const colors = {\n' +
             Object.entries(plan.styleBrief.paletteRoles)
                 .map(
                     ([role, ink]) =>
-                        `  ${JSON.stringify(role)}: ${Object.hasOwn(videoPalette, ink) ? `palette.${ink}` : JSON.stringify(roleColor(plan.styleBrief, role))},`,
+                        `  ${JSON.stringify(role)}: ${inks.includes(ink) ? `palette.${ink}` : JSON.stringify(roleColor(plan.styleBrief, role))},`,
                 )
                 .join('\n') +
             '\n};\n' +

@@ -12,6 +12,7 @@ import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { createPatch } from 'diff';
 import { planBuilder } from '../../server/media/plan-calls.mjs';
+import { videoPalette } from '../../server/media/video-colors.mjs';
 
 // Where a task's raw source starts: a blank line, its field name and a colon, after the JSON.
 const RAW_SOURCE = /\n\n\w+:\n/;
@@ -93,6 +94,11 @@ export const styleBrief = {
     recurringObjects: [{ name: 'Winner', position: 'centre', colorRole: 'winner' }],
     exactTerms: ['Winner', 'Final'],
 };
+// A saved plan carries the default theme's palette, since fixture requests send no theme.
+export const themed = (plan) => ({
+    ...plan,
+    styleBrief: { ...plan.styleBrief, palette: videoPalette() },
+});
 export const planFor = (source = composition, count = 1) => ({
     title: task.title,
     description: /^\/\/ Description: (.+)$/m.exec(source)?.[1] ?? task.description,

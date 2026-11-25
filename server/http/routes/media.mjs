@@ -5,6 +5,7 @@ import ts from 'typescript';
 import { mediaPath } from '../../media/videos.mjs';
 import { playable } from '../../media/cut-state.mjs';
 import { withParts } from '../../media/video-pieces.mjs';
+import { briefPalette } from '../../media/video-colors.mjs';
 import { readable } from '../jobs/media.mjs';
 import {
     videoWork,
@@ -205,6 +206,8 @@ export async function mediaRoutes(req, res, url, ctx, body) {
             if (!data) return json(res, 404, { error: 'Live video not available.' });
             if (!file)
                 return json(res, 200, {
+                    // The video's own theme, so live cuts match its rendered Manim clips and export.
+                    palette: briefPalette(data.plan.styleBrief),
                     paletteRoles: data.plan.styleBrief.paletteRoles,
                     // Roles naming a real object's true colour resolve through these hexes.
                     trueColors: data.plan.styleBrief.trueColors ?? {},

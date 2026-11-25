@@ -7,6 +7,7 @@ import { block as visualBlock } from '../support/visual-kit.mjs';
 import { MANIM_INSTRUCTIONS } from '../../server/media/manim-cut.mjs';
 import { CUT_INSTRUCTIONS } from '../../server/media/video-cut.mjs';
 import { ENGINES } from '../../server/media/cut-engines.mjs';
+import { videoPalette } from '../../server/media/video-colors.mjs';
 import {
     open,
     complete,
@@ -20,6 +21,7 @@ import {
     repairAnswer,
     planText,
     job,
+    themed,
 } from '../support/video-kit.mjs';
 
 test('Python cut validation accepts kit math and rejects imports and off-brief styles without executing scenes', () => {
@@ -83,7 +85,7 @@ for (const repair of [false, true])
                     writes[index]++;
                     if (index === 1) {
                         assert.ok(tree.instructions.includes(MANIM_INSTRUCTIONS));
-                        assert.deepEqual(input.styleBrief, plan.styleBrief);
+                        assert.deepEqual(input.styleBrief, themed(plan).styleBrief);
                         assert.equal(input.previousEndState, plan.cuts[0].endState);
                         if (writes[index] > 1) assert.ok(input.validationError);
                     } else assert.ok(tree.instructions.includes(CUT_INSTRUCTIONS));
@@ -107,7 +109,7 @@ for (const repair of [false, true])
                         assert.equal(readFileSync(join(ws, 'Cut.py'), 'utf8'), manimCut.trim());
                         assert.ok(!existsSync(join(ws, 'public/manim.mp4')));
                         const brief = JSON.parse(readFileSync(join(ws, 'brief.json')));
-                        assert.equal(brief.colors.winner, '#dfae4e');
+                        assert.equal(brief.colors.winner, videoPalette().amber);
                         assert.ok(!('leaf' in brief.palette));
                         if (repair && math === 1) throw new Error('Invalid math cut fixture.');
                         return fakeRender(ws, out);

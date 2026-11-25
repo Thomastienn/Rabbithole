@@ -32,6 +32,7 @@ export {
 export { finish, type Finish, type Pattern } from './video-finish';
 import type { TargetMark } from './video-stock';
 
+// Defaults until setPalette paints the video's theme.
 export const palette = {
     ground: '#1a1613',
     raised: '#241e19',
@@ -161,6 +162,23 @@ export const three = {
         paper: palette.paper,
     },
 };
+
+// Paints a video's theme (its brief palette) over these defaults in place, so the kit's own parts and every
+// import see it; the render calls it as the staged kit loads, the live player before it compiles cuts.
+export function setPalette(next: typeof palette) {
+    Object.assign(palette, next);
+    series.splice(0, 4, palette.amber, palette.leaf, palette.rust, palette.lichen);
+    for (const style of Object.values(type))
+        style.color = style === type.caption ? palette.muted : palette.paper;
+    three.background = palette.ground;
+    Object.assign(three.materials, {
+        amber: palette.amber,
+        leaf: palette.leaf,
+        rust: palette.rust,
+        lichen: palette.lichen,
+        paper: palette.paper,
+    });
+}
 // Emphasis overlay: the app draws these above every cut (Manim included) from the plan's cut.emphasis marks,
 // timed to narration sentence frames, in the shared 1920x1080 frame space. A 3D cut's marks name a target set
 // piece (and optionally a part) instead; the cut draws those itself with <Marks>, so the overlay skips them.

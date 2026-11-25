@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { Script } from 'node:vm';
-import { savedTheme, themeChoices } from '../../src/shell/appearance.ts';
+import { paletteFor } from './theme-palette.mjs';
 import { visualMarkup } from '../../src/media/visualMarkup.ts';
 import {
     VISUAL_SKILL,
@@ -14,6 +14,8 @@ import { readCall } from './reply-parser.mjs';
 import { mediaCall, raced } from './media-call.mjs';
 import { patched, withSource } from './patches.mjs';
 import { DIFF } from './video-cut.mjs';
+
+export { visualTheme } from './theme-palette.mjs';
 
 // Appended to the instructions of a retry of a fragment that failed.
 const VISUAL_PATCH_NOTE =
@@ -84,60 +86,6 @@ const VISUAL_CALL = {
     failed: (reason) =>
         `Visual provider could not generate a result: ${reason.replace(/\.$/, '')}. Check the conversation’s chat model, then Retry.`,
 };
-
-// Read Astryx's built colours so the worker prompt and browser share one palette.
-const palettes = Object.fromEntries(
-    themeChoices.map(({ id }) => {
-        const css = readFileSync(
-            new URL(`../../src/themes/${id}/${id}.css`, import.meta.url),
-            'utf8',
-        );
-        const tokens = [
-            '--color-background-body',
-            '--color-background-surface',
-            '--color-text-primary',
-            '--color-text-secondary',
-            '--color-border',
-            '--color-accent',
-            '--focus-outline-color',
-            '--color-text-yellow',
-            '--color-text-green',
-            '--color-text-pink',
-            '--color-text-blue',
-        ];
-        return [
-            id,
-            Object.fromEntries(
-                tokens.map((name) => [
-                    name,
-                    css
-                        .match(new RegExp(`${name}: light-dark\\(([^)]+)\\)`))[1]
-                        .split(',')
-                        .map((s) => s.trim()),
-                ]),
-            ),
-        ];
-    }),
-);
-
-export const visualTheme = (theme) => ({
-    name: savedTheme(theme?.name),
-    mode: theme?.mode === 'light' ? 'light' : 'dark',
-});
-
-function paletteFor(theme) {
-    const { name, mode } = visualTheme(theme);
-    return {
-        name,
-        mode,
-        tokens: Object.fromEntries(
-            Object.entries(palettes[name]).map(([token, pair]) => [
-                token,
-                pair[mode === 'light' ? 0 : 1],
-            ]),
-        ),
-    };
-}
 
 // A mistake check, not a security boundary: execution stays in the opaque-origin, network-denied sandbox.
 async function validate(source) {

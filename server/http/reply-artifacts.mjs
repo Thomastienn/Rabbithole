@@ -35,6 +35,7 @@ export function replyArtifacts(ctx, { id, tree, user, reply, body, emit, signal 
     };
     const videoInput = ({ intent, excerpt }, context) => ({
         ...ctx.videoRoles(tree),
+        theme: visualTheme(body.theme),
         request: body.text.trim().slice(0, LIMITS.intent),
         intent,
         excerpt,

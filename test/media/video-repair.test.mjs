@@ -15,6 +15,7 @@ import {
     audit,
     pass,
     planText,
+    themed,
 } from '../support/video-kit.mjs';
 
 const look = 'A rounded box 240x120 px with a crown on top.';
@@ -77,7 +78,7 @@ test('a failed cut gets one repair with the failed code, set pieces and the prev
     assert.match(input.validationError, /import/i);
     assert.equal(input.failedCode, broken);
     assert.equal(input.setPieces, JSON.parse(row.source).pieces);
-    assert.deepEqual(input.styleBrief, plan.styleBrief);
+    assert.deepEqual(input.styleBrief, themed(plan).styleBrief);
     assert.equal(input.previousEndState, plan.cuts[0].endState);
     assert.equal(input.previousLastFrame, true);
     const first = audits.find((a) => a.i === 0);

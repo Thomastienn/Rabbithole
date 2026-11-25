@@ -14,6 +14,7 @@ import {
     composition,
     noSnapshot,
     models,
+    themed,
 } from '../support/video-kit.mjs';
 
 // A planner that calls tools natively: each attempt's calls go through tree.runTool, whose errors it reads back.
@@ -77,7 +78,7 @@ test('a plan built through valid native calls produces a video as before', async
         !plans[0].instructions.includes('<tool_call>'),
         'native planners get no text-call note',
     );
-    assert.deepEqual(saved, want);
+    assert.deepEqual(saved, themed(want));
     // An empty library offers no piece lookup.
     assert.ok(!plans[0].tools.some((t) => t.name === 'find_pieces'));
     assert.ok(!plans[0].instructions.includes(PIECES_PLAN_NOTE));

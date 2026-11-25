@@ -21,6 +21,7 @@ import { detectManim, videoBrowser } from './manim.mjs';
 import { sandboxManim, checkManim } from './manim-cut.mjs';
 import { cutEngines } from './cut-engines.mjs';
 import { attemptWork, cutWork, cutAudio, readSaved } from './video-workspace.mjs';
+import { videoPalette } from './video-colors.mjs';
 
 export const KIT = readFileSync(new URL('./video-kit.tsx', import.meta.url), 'utf8');
 // The learner must name a video; the tutor's block alone never starts one.
@@ -185,6 +186,10 @@ export async function generateVideo({ dir, artifact, previous, signal }, given) 
         const clipping = searching && deps.clips();
         const plan = (video.plan =
             prior?.plan ?? (await planVideo(video, deps, searching, clipping)));
+        // A new plan takes the app theme the video was asked in; a Retry keeps its plan's, so kept cuts still match.
+        plan.styleBrief.palette =
+            (prior?.plan && plan.styleBrief.palette) ||
+            videoPalette(JSON.parse(artifact.input).theme);
         const kinds = deps.engines({
             signal: controller.signal,
             stop: video.stop,
