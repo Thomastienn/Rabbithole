@@ -30,6 +30,12 @@ test('title prompt: a root reads its question; a child also reads its inherited 
         nearestConcepts: [],
         question: 'Why winners?',
     });
+    const lecture = titlePrompt({ branch: null }, 'help me learn this lecture', [], 'Deadlocks');
+    assert.deepEqual(data(lecture), {
+        nearestConcepts: [],
+        question: 'help me learn this lecture',
+        attachments: 'Deadlocks',
+    });
 });
 
 test('clean title keeps one plain line of about 60 characters at most', () => {
@@ -48,6 +54,10 @@ test('read title: JSON title and concept, a plain line, and an unreadable concep
     });
     assert.deepEqual(readTitle('{"title":"Heaps","concept":null}'), {
         title: 'Heaps',
+        concept: null,
+    });
+    assert.deepEqual(readTitle('{"title":"Greeting","concept":" None "}'), {
+        title: 'Greeting',
         concept: null,
     });
     assert.deepEqual(readTitle('{"title":"Heaps","concept":42}'), {
@@ -143,6 +153,14 @@ test('the title job sets the explored concept once, from the nearest concepts or
     const none = await ask('Hello there', '{"title":"Greeting","concept":null}');
     assert.equal(concept(none), null);
     assert.equal(store.list().find((c) => c.id === none).learnerMessages, 1);
+    const named = await ask('Hi again', '{"title":"Greeting","concept":"none"}');
+    assert.equal(concept(named), null);
+    assert.ok(!store.graph().concepts.some((c) => /^none$/i.test(c.name)));
+
+    // A second tree on the same subject reuses its concept.
+    const again = await ask('Heaps again?', '{"title":"Heaps","concept":"Binary heap"}');
+    assert.equal(concept(again), 'Binary heap');
+    assert.equal(store.graph().concepts.filter((c) => c.name === 'Binary heap').length, 1);
 });
 
 test('first question saves the placeholder, then quick thinking replaces it unless renamed, failed or unset', async (t) => {

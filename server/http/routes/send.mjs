@@ -133,9 +133,16 @@ export async function sendRoute(res, ctx, id, tree, action, body, job) {
         );
     if (!retried) store.attach(id, user, prepared);
     // The placeholder title shows at once; quick thinking may replace it while the title is unrenamed.
-    // An attachment-only question titles from the attachments' text, which starts with each file name.
+    // The title job also reads the attachments' extracted text; images without OCR text add nothing.
     if (!retried && !tree.messages.length && !tree.title_renamed)
-        ctx.startTitle(id, body.text.trim() ? body.text : prompt.slice(0, 4000));
+        ctx.startTitle(
+            id,
+            body.text,
+            prepared
+                .flatMap((a) => a.parts.filter((p) => !p.image).map((p) => p.text))
+                .join('\n\n')
+                .slice(0, 4000),
+        );
     const reply = store.message(id, 'assistant', '', 'streaming');
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'X-Accel-Buffering': 'no' });
     const heartbeat = setInterval(() => {

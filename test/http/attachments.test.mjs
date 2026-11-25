@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
-import { existsSync, mkdtempSync, readdirSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
@@ -10,6 +10,8 @@ import { prepareAttachment, withAttachments } from '../../server/attachments.mjs
 import { OCR_UNAVAILABLE } from '../../server/ocr.mjs';
 import { canAttach } from '../../src/chat/attachmentTypes.ts';
 import { compactionPrompt } from '../../server/http/jobs/compaction.mjs';
+
+const fixture = (name) => readFileSync(new URL(`../fixtures/pdf/${name}.pdf`, import.meta.url));
 
 const bytes = (text) => new TextEncoder().encode(text);
 
@@ -251,8 +253,25 @@ test('multipart send stores text attachments, delivers them, serves them safely 
     ).text();
     assert.match(onlyStream, /"title":"Lecture 3.md"/);
     await app.settled();
-    assert.match(titles[0], /"question":"\[Attached file: Lecture 3.md\]\\n# Binary heaps"/);
+    assert.match(
+        titles[0],
+        /"question":"","attachments":"\[Attached file: Lecture 3.md\]\\n# Binary heaps"/,
+    );
     assert.equal(store.tree(only).title, 'Heap notes');
+    // A lecture PDF's text reaches the title job, so the concept names its subject, not the request.
+    const lecture = await create();
+    titles.length = 0;
+    await (
+        await upload(`/${lecture}/messages`, 'help me learn this lecture', [
+            ['typed.pdf', fixture('typed'), 'application/pdf'],
+        ])
+    ).text();
+    await app.settled();
+    assert.match(
+        titles[0],
+        /"question":"help me learn this lecture","attachments":"\[Attached PDF: typed.pdf, page 1\]\\nBinary heaps\\nParent child"/,
+    );
+    assert.match(titles[0], /never the activity of studying/);
     assert.equal(
         (await upload(`/${only}/messages`, ' ', [])).status,
         400,
