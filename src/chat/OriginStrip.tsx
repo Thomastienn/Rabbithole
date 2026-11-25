@@ -1,12 +1,26 @@
 import { useState } from 'react';
 import { Button } from '@astryxdesign/core/Button';
-import type { Source } from '../map/TreeOverview';
+import type { Source, Summary } from '../map/TreeOverview';
 import type { Branch } from './branch';
 
 // shortcut: length/line heuristic instead of measuring overflow; measure with scrollHeight if it misfires.
 const isLong = (text: string) => text.length > 160 || text.split('\n').length > 2;
 
-export function originSource(branch: Branch): Source {
+export function originSource(
+    branch: Pick<
+        Branch,
+        | 'messageId'
+        | 'text'
+        | 'start'
+        | 'end'
+        | 'artifactId'
+        | 'line'
+        | 'label'
+        | 'explanation'
+        | 'trail'
+        | 'step'
+    >,
+): Source {
     return branch.line !== undefined
         ? {
               messageId: branch.messageId,
@@ -31,6 +45,15 @@ export function originSource(branch: Branch): Source {
                 end: branch.end ?? -1,
                 text: branch.text,
             };
+}
+
+// Going up to ancestor `id` targets the passage of the child on the path back here, held on that child's reply; a free branch has only the reply.
+export function backTarget(id: string, branch: Branch, ancestors: Summary[]) {
+    const step = ancestors.find((a) => a.parent === id);
+    const child = step
+        ? { ...step, messageId: step.messageId ?? '', text: step.passage ?? '' }
+        : branch;
+    return { source: child.text ? originSource(child) : undefined, message: child.messageId };
 }
 
 // The origin line under a child's title: "From <parent> at “passage”", or "Asked on the side of <parent>" for a free branch; the parent link jumps to the source.

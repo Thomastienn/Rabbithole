@@ -56,17 +56,32 @@ export function useChatTargets({ overview }: Pick<ChatState, 'overview'>, tree: 
         // ChatLayout follows the bottom until its scroll listener sees the reader move up, so hold the position for a few frames.
         let frame = 0,
             frames = 0;
+        const artifact = reveal?.tree === messageTarget.conversation && reveal.source.artifactId;
         const tick = () => {
             const message = document.querySelector<HTMLElement>(
                 messageTarget.message
                     ? `.focused-chat [data-chat-message="${CSS.escape(messageTarget.message)}"]`
                     : '.focused-chat .chat-title',
             );
-            if (message && document.activeElement !== message) {
-                message.tabIndex = -1;
-                message.focus({ preventScroll: true });
+            // Going back holds on the revealed passage or part; one no longer in the reply leaves the reply itself.
+            const passage =
+                reveal?.tree === messageTarget.conversation
+                    ? message?.querySelector<HTMLElement>(
+                          artifact
+                              ? `[data-artifact="${CSS.escape(artifact)}"]`
+                              : 'mark, [data-reveal]',
+                      )
+                    : undefined;
+            if (passage) {
+                if (document.activeElement !== passage) passage.focus({ preventScroll: true });
+                passage.scrollIntoView({ block: 'center' });
+            } else {
+                if (message && document.activeElement !== message) {
+                    message.tabIndex = -1;
+                    message.focus({ preventScroll: true });
+                }
+                message?.scrollIntoView({ block: 'start' });
             }
-            message?.scrollIntoView({ block: 'start' });
             if (++frames < 12) frame = requestAnimationFrame(tick);
             else {
                 if (message && messageTarget.field && messageTarget.words?.length) {
@@ -81,7 +96,7 @@ export function useChatTargets({ overview }: Pick<ChatState, 'overview'>, tree: 
         };
         frame = requestAnimationFrame(tick);
         return () => cancelAnimationFrame(frame);
-    }, [tree?.id, overview, messageTarget]);
+    }, [tree?.id, overview, messageTarget, reveal]);
 
     // Conversation `id` opens on one target, or on the composer when none is given.
     function goTo(id: string, source?: Source, artifact?: string, message?: string) {
