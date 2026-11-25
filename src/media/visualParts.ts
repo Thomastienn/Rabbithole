@@ -27,8 +27,10 @@ export function trackPointerHandlers(view: Window & typeof globalThis) {
 }
 
 const nameOf = (e: Element) => e.getAttribute('data-part')?.trim();
+// Every visual control (rh-slider, rh-choice and the rest) is a control, its readout included.
 const control = (e: Element) =>
     e.matches(CONTROLS) ||
+    e.localName.startsWith('rh-') ||
     handled.has(e) ||
     POINTER.some((type) => (e as unknown as Record<string, unknown>)[`on${type}`]);
 

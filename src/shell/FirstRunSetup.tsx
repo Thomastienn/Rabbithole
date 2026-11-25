@@ -4,60 +4,14 @@ import { Heading, Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import ModelPicker from '../settings/ModelPicker';
 import { Divider } from '@astryxdesign/core/Divider';
-import { Link } from '@astryxdesign/core/Link';
 import { Code } from '@astryxdesign/core/Code';
 import { CheckIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import SandboxSettings from '../settings/SandboxSettings';
 import FirstRunAddOns from './FirstRunAddOns';
+import CliInstall from './CliInstall';
 import type { Model } from '../settings/models';
 import type { ModelSelection, Providers } from '../chat/types';
 import { request as api } from '../serverAccess';
-
-// Official installers; the app never installs or bundles either CLI.
-const INSTALL = {
-    claude: {
-        name: 'Claude Code',
-        page: 'https://code.claude.com/docs/en/setup',
-        command: 'curl -fsSL https://claude.ai/install.sh | bash',
-    },
-    codex: {
-        name: 'Codex',
-        page: 'https://developers.openai.com/codex/cli',
-        command: 'npm install -g @openai/codex',
-    },
-};
-
-function Install({
-    cli,
-    check,
-    optional,
-}: {
-    cli: keyof typeof INSTALL;
-    check: () => void;
-    optional: boolean;
-}) {
-    const { name, page, command } = INSTALL[cli];
-    return (
-        <VStack gap={2}>
-            <Text type="supporting">
-                {optional && 'Optional. '}
-                {name} is not installed. Install it from{' '}
-                <Link href={page} isExternalLink>
-                    the official {name} setup page
-                </Link>{' '}
-                or run <Code>{command}</Code> in a terminal, then check again.
-            </Text>
-            <HStack>
-                <Button
-                    label="Check again"
-                    variant={optional ? 'ghost' : 'secondary'}
-                    size="sm"
-                    onClick={check}
-                />
-            </HStack>
-        </VStack>
-    );
-}
 
 type SystemPackages = { command?: string; words?: string };
 
@@ -207,7 +161,12 @@ export default function FirstRunSetup({
             <VStack gap={2}>
                 <Connection name="Claude" connected={claude} />
                 {missing('claude') ? (
-                    <Install cli="claude" check={loadModels} optional={codex} />
+                    <CliInstall
+                        cli="claude"
+                        command={providers?.claude?.command}
+                        check={loadModels}
+                        optional={codex}
+                    />
                 ) : (
                     <>
                         <Text type="supporting">
@@ -232,7 +191,12 @@ export default function FirstRunSetup({
             <VStack gap={2}>
                 <Connection name="Codex" connected={codex} />
                 {missing('codex') ? (
-                    <Install cli="codex" check={loadModels} optional={claude} />
+                    <CliInstall
+                        cli="codex"
+                        command={providers?.codex?.command}
+                        check={loadModels}
+                        optional={claude}
+                    />
                 ) : (
                     <>
                         <Text type="supporting">

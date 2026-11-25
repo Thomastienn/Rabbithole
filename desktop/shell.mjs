@@ -1,4 +1,4 @@
-import { join, resolve } from 'node:path';
+import { join, resolve, win32 } from 'node:path';
 
 // The shell's decisions, free of Electron so node --test checks them without opening a window.
 
@@ -39,6 +39,11 @@ export function saveLayout(run, ms = 3000) {
 // so the app never writes into its own, read-only folder and an app update keeps them.
 export const toolsDir = (cwd, env, dataDir) =>
     join(resolve(cwd, env.RABBITHOLE_DATA_DIR ?? dataDir()), 'tools');
+
+// The installed Windows app keeps the learner's data, its add-ons and Electron's profile in a data folder inside the
+// install folder (ADR 0025), beside Rabbithole.exe; Linux and unpackaged runs keep the server's default.
+export const installedDataDir = (platform, packaged, execPath) =>
+    platform === 'win32' && packaged ? win32.join(win32.dirname(execPath), 'data') : null;
 
 // The update banner's state: null (nothing to show), then available, downloading, ready or failed, and restarting;
 // current when the check found nothing newer, which only Settings shows.

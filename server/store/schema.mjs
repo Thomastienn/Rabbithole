@@ -91,7 +91,7 @@ export function open(path) {
         // Durable usage: counts, time and attribution only, so deleting content never shrinks history. NULL counts = not reported.
         if (!this.db.prepare("SELECT 1 FROM sqlite_master WHERE name='usage_events'").get()) {
             this.db
-                .exec(`CREATE TABLE usage_events (id TEXT PRIMARY KEY, at INTEGER NOT NULL, provider TEXT, model TEXT, task TEXT NOT NULL CHECK(task IN ('chat','suggestions','compaction','diagram','video','title','verdict','brief')),
+                .exec(`CREATE TABLE usage_events (id TEXT PRIMARY KEY, at INTEGER NOT NULL, provider TEXT, model TEXT, task TEXT NOT NULL CHECK(task IN ('chat','suggestions','compaction','diagram','video','title','verdict','brief','merge')),
           input INTEGER, output INTEGER, cacheRead INTEGER, CHECK((input IS NULL) = (output IS NULL) AND (input IS NULL) = (cacheRead IS NULL)));
           CREATE INDEX usage_events_at ON usage_events(at);
           INSERT OR IGNORE INTO usage_events(id,at,task,input,output,cacheRead) SELECT 'chat:'||id,usage->>'at','chat',usage->>'input',usage->>'output',usage->>'cacheRead' FROM messages WHERE usage IS NOT NULL;
@@ -149,6 +149,23 @@ export function open(path) {
         // A call's last recorded moment, so a video stage shows its time; older rows keep NULL (not recorded).
         if (!hasColumn('usage_events', 'ended'))
             this.db.exec('ALTER TABLE usage_events ADD COLUMN ended INTEGER');
+        // Concept merge confirmations widen the task check again (ADR 0022); this rebuild keeps every later column.
+        if (
+            !this.db
+                .prepare("SELECT sql FROM sqlite_master WHERE name='usage_events'")
+                .get()
+                .sql.includes("'merge'")
+        )
+            this.transaction(() =>
+                this.db.exec(`ALTER TABLE usage_events RENAME TO usage_events_old;
+          CREATE TABLE usage_events (id TEXT PRIMARY KEY, at INTEGER NOT NULL, provider TEXT, model TEXT, task TEXT NOT NULL CHECK(task IN ('chat','suggestions','compaction','diagram','video','title','verdict','brief','merge')),
+            input INTEGER, output INTEGER, cacheRead INTEGER, message TEXT REFERENCES messages(id) ON DELETE SET NULL, stage TEXT, cut INTEGER, reasoning INTEGER, ended INTEGER, CHECK((input IS NULL) = (output IS NULL) AND (input IS NULL) = (cacheRead IS NULL)));
+          INSERT INTO usage_events(id,at,provider,model,task,input,output,cacheRead,message,stage,cut,reasoning,ended)
+            SELECT id,at,provider,model,task,input,output,cacheRead,message,stage,cut,reasoning,ended FROM usage_events_old;
+          DROP TABLE usage_events_old;
+          CREATE INDEX usage_events_at ON usage_events(at);
+          CREATE INDEX usage_events_message ON usage_events(message);`),
+            );
         // Additive table: brief explanations sit beside tutor replies, keyed by reply and passage; the tutor never reads them.
         this.db.exec(
             'CREATE TABLE IF NOT EXISTS briefs (message TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE, start INTEGER NOT NULL, end INTEGER NOT NULL, text TEXT NOT NULL, concept TEXT, explanation TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY(message, start, end))',
@@ -173,6 +190,10 @@ export function open(path) {
         // Video mode: no row means Quality.
         this.db.exec(
             "CREATE TABLE IF NOT EXISTS video_mode (id INTEGER PRIMARY KEY CHECK(id=1), mode TEXT NOT NULL CHECK(mode IN ('quality','saving')))",
+        );
+        // Visual frequency: no row means Often.
+        this.db.exec(
+            "CREATE TABLE IF NOT EXISTS visual_frequency (id INTEGER PRIMARY KEY CHECK(id=1), frequency TEXT NOT NULL CHECK(frequency IN ('sparing','often','only-asked')))",
         );
         // Learner-typed efforts for custom endpoint models, listed after the endpoint's advertised efforts.
         this.db.exec(

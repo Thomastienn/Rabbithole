@@ -8,6 +8,8 @@ import { gsap } from 'gsap';
 import { renderVisual } from './visualMarkup';
 import { reflectSvgHidden, stepThrough } from './stepThrough';
 import { trackPointerHandlers, watchParts } from './visualParts';
+import { defineControls } from './visualControls';
+import './visualControls.css';
 import 'katex/dist/katex.min.css';
 import '@fontsource/barlow/400.css';
 import '@fontsource/barlow/600.css';
@@ -23,6 +25,7 @@ Object.assign(window, {
     stepThrough,
 });
 reflectSvgHidden(window);
+defineControls(window);
 trackPointerHandlers(window);
 const root = document.getElementById('visual')!,
     tokens = document.head.appendChild(document.createElement('style'));

@@ -102,3 +102,63 @@ test('desktop Settings shows the update state and can apply an update without th
     await page.act(async () => button(foot, 'Restart to update').click());
     assert.equal(asked.at(-1), 'restart');
 });
+
+test('Connections offers Install and the shown command for a missing CLI, beside the ChatGPT sign-in', async (t) => {
+    const calls = fakeServer(t, (path) => (path === '/api/settings/endpoints' ? [] : {}));
+    const sources = [];
+    globalThis.EventSource = class {
+        constructor(url) {
+            this.url = url;
+            sources.push(this);
+        }
+        close() {
+            this.closed = true;
+        }
+    };
+    t.after(() => delete globalThis.EventSource);
+    let checks = 0;
+    const command =
+        'powershell -ExecutionPolicy ByPass -c "irm https://chatgpt.com/codex/install.ps1 | iex"';
+    const page = await render(
+        h(SettingsWindow, {
+            ...settings().props,
+            async loadModels() {
+                checks++;
+            },
+            providers: {
+                claude: { label: 'Claude', connected: true, installed: true },
+                codex: { label: 'Codex', connected: false, installed: false, command },
+            },
+        }),
+        ui,
+    );
+    t.after(page.cleanup);
+    const tab = (name) => page.act(async () => document.getElementById(`settings-${name}`).click());
+    const section = () =>
+        page.container.querySelector('[aria-labelledby="settings-section-connections"]');
+    const source = () => sources.at(-1);
+    const row = (state) =>
+        page.act(async () =>
+            source().onmessage({ data: JSON.stringify([{ id: 'codex', state }]) }),
+        );
+    await tab('connections');
+    assert.ok(section().textContent.includes(command));
+    assert.equal(
+        button(section(), 'Install Claude Code'),
+        undefined,
+        'an installed CLI offers none',
+    );
+    assert.ok(button(section(), 'Continue with ChatGPT'));
+    await page.act(async () => button(section(), 'Install Codex').click());
+    assert.ok(calls.some((c) => c.path === '/api/downloads/install/codex'));
+    await row('running');
+    const first = source();
+    await tab('interface');
+    assert.ok(first.closed);
+    await tab('connections');
+    await row('running');
+    assert.ok(section().querySelector('[role="progressbar"]'));
+    await row('ready');
+    await row('ready');
+    assert.equal(checks, 1, 'completion refreshes models once without clicking Check again');
+});

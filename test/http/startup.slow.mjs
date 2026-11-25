@@ -38,11 +38,8 @@ test('main starts an old database without providers; busy port explains how to c
         const [, origin] = await running.waitFor(/Rabbithole: (http:\/\/127\.0\.0\.1:\d+)/);
         await running.waitFor(/Saved trees remain available/);
         assert.match(running.output(), /Node.*24/);
-        assert.match(running.output(), /Claude Code: not installed/);
-        assert.match(running.output(), /claude.ai\/install.sh/);
-        assert.match(running.output(), /Codex: not installed/);
-        assert.match(running.output(), /npm install -g @openai\/codex/);
-        assert.match(running.output(), /Continue with ChatGPT/);
+        assert.match(running.output(), /claude\.ai\/install\.sh/);
+        assert.match(running.output(), /chatgpt\.com\/codex\/install\.sh/);
         assert.ok(running.output().includes(dir));
         const state = await (await fetch(origin + '/api/state')).json();
         const search = await (await fetch(origin + '/api/settings/searxng')).json();

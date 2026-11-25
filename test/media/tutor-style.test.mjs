@@ -7,6 +7,7 @@ import {
     TUTOR_RULES,
     VERDICT_RULE,
     TUTOR_SKILLS,
+    VISUAL_FREQUENCY,
     tutorSystem,
 } from '../../server/media/tutor-instructions.mjs';
 import { diagramReply } from '../../server/media/reply-parser.mjs';
@@ -15,7 +16,13 @@ import { DISCUSSION_RULE } from '../../server/media/discussions.mjs';
 import { NOTES_RULE } from '../../server/suggestions.mjs';
 
 test('tutor prompt puts the fixed rules, then the skills, then the tutor style, and keeps the per-tree override', () => {
-    const rules = TUTOR_RULES + VERDICT_RULE + DISCUSSION_RULE + NOTES_RULE + TUTOR_SKILLS;
+    const rules =
+        TUTOR_RULES +
+        VISUAL_FREQUENCY.often +
+        VERDICT_RULE +
+        DISCUSSION_RULE +
+        NOTES_RULE +
+        TUTOR_SKILLS;
     for (const tutorStyle of [undefined, null, '', '  \n '])
         assert.equal(tutorSystem({ tutorStyle }), rules + DEFAULT_TUTOR_STYLE, `${tutorStyle}`);
     assert.equal(
@@ -33,6 +40,11 @@ test('tutor prompt puts the fixed rules, then the skills, then the tutor style, 
         tutorSystem({ tutorStyle: 'Mine.', instructions: 'Worker only.' }),
         'Worker only.',
     );
+});
+
+test('the visual frequency sentence follows the setting after the unchanged visual and video rules', () => {
+    for (const [visualFrequency, sentence] of Object.entries(VISUAL_FREQUENCY))
+        assert.ok(tutorSystem({ visualFrequency }).startsWith(TUTOR_RULES + sentence));
 });
 
 test('the chat prompt carries the whole-graph neighbourhood as data and omits an empty set', () => {
@@ -116,8 +128,8 @@ test('the tool-path tutor prompt stays within the budget before learner data', a
         APP_TOOLS.map(({ name, description, parameters }) => ({ name, description, parameters })),
     );
     const text = tutorSystem({ textTools: APP_TOOLS }).replace(definitions, '');
-    // Prompt and tools at 3b6b9d0, plus the bold-term and ADR 0023 allowances.
-    const budget = 16_494;
+    // Prompt and tools at 3b6b9d0, plus the bold-term, ADR 0023 and visual frequency allowances.
+    const budget = 16_494 + VISUAL_FREQUENCY.often.length;
     for (const prompt of [native, text])
         assert.ok(prompt.length + definitions.length <= budget, `${prompt.length}`);
 });
