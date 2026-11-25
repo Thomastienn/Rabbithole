@@ -90,7 +90,7 @@ export default function LibraryPanel({
                                           isLabelHidden
                                           placeholder="Search learning trees"
                                           startIcon={MagnifyingGlassIcon}
-                                          size="sm"
+                                          size="lg"
                                           hasClear
                                           value={libraryQuery}
                                           onChange={setLibraryQuery}
@@ -98,6 +98,7 @@ export default function LibraryPanel({
                                       />
                                       <SegmentedControl
                                           label="Library layout"
+                                          size="lg"
                                           value={libraryLayout}
                                           onChange={(v) => {
                                               setLibraryLayout(v as 'shelf' | 'list');

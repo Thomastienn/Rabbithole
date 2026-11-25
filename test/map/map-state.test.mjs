@@ -10,6 +10,7 @@ import {
     reconcileNodes,
     keyMovement,
     revealViewport,
+    openingViewport,
     restoredTree,
 } from '../../src/map/mapState.ts';
 import { foldHierarchy } from '../../src/map/canvas.ts';
@@ -258,6 +259,20 @@ test('selection reveal keeps an already visible conversation, fits tall transcri
         0.2,
     );
     assert.deepEqual(revealViewport({ x: 0, y: 0, zoom: 0.001 }, bounds, 440, 900).zoom, 0.2);
+});
+
+test('an untouched map opens at 100%: the full map frames the start, the dock centres the current card', () => {
+    const root = { x: 0, y: 0, width: 220, height: 200 };
+    assert.deepEqual(openingViewport(root, 1168, 864, false), { x: 40, y: 332, zoom: 1 });
+    assert.deepEqual(
+        openingViewport({ ...root, width: 160 }, 390, 728, false).x,
+        16,
+        'narrow edge',
+    );
+    const card = { x: 320, y: -100, width: 160, height: 240 };
+    assert.deepEqual(openingViewport(card, 440, 864, true), { x: -180, y: 412, zoom: 1 });
+    const tall = { ...card, height: 2000 };
+    assert.equal(openingViewport(tall, 1168, 864, true).y, 140, 'a tall card shows its top');
 });
 
 test('message jump labels flatten and bound text; source reveal keeps exact UTF-16 offsets or visual metadata', () => {

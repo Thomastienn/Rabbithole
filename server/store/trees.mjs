@@ -36,7 +36,7 @@ export const trees = {
     // Strip reply syntax before truncation; the stored messages remain the canonical source.
     previews(ids) {
         const messages = this.db.prepare(
-            'SELECT id, role, text, status FROM messages WHERE tree=? ORDER BY seq',
+            'SELECT id, role, text, status, stopped FROM messages WHERE tree=? ORDER BY seq',
         );
         const artifacts = this.db.prepare(
             // A video's source tells live() whether its saved cuts can play; live() drops it before sending.
@@ -59,8 +59,10 @@ export const trees = {
                 }
                 return [
                     id,
-                    messages.all(id).map((m) => ({
+                    messages.all(id).map(({ stopped, ...m }) => ({
                         ...m,
+                        // Only a stopped reply says why, so the map knows a shutdown cut-off can be retried.
+                        ...(stopped && { stopped }),
                         text: previewText(m.text, m.role),
                         ...(byMessage.has(m.id) && { artifacts: byMessage.get(m.id) }),
                     })),

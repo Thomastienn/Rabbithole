@@ -202,6 +202,16 @@ button.contents-row > span:first-child > span {
     display: block;
     padding-inline: var(--rabbithole-module);
 }
+/* The context meter stays above the sidebar foot while the outline scrolls under it (mockup .meter).
+   shortcut: the offset assumes a one-row foot; an update card in the foot covers the meter until it closes. */
+.sidebar .contents-context {
+    position: sticky;
+    bottom: calc(2 * var(--rabbithole-module) + 35px);
+    background: var(--color-background-muted);
+}
+.sidebar .new-chat {
+    height: 36px;
+}
 .contents-context {
     flex: none;
     padding: 12px calc(2 * var(--rabbithole-module)) calc(2 * var(--rabbithole-module));
@@ -233,6 +243,7 @@ button.contents-row > span:first-child > span {
 }
 .sidebar .view-tab {
     width: 100%;
+    height: 34px;
     justify-content: flex-start;
     font-weight: 400;
 }
@@ -288,10 +299,16 @@ button.contents-row > span:first-child > span {
     background: var(--color-background-surface);
     color: var(--color-text-secondary);
 }
-/* Mockup search-inside-hints: Search keeps its words; narrow screens wrap the rest of the controls instead. */
+/* Mockup Map .ctl: one row of 36px controls; the dock and narrow screens keep it one row with Search as an icon. */
 .map-toolbar {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    gap: 2px;
+    padding: 2px 12px 2px 2px;
     max-width: calc(100% - 2 * var(--spacing-3));
+}
+.map-toolbar .astryx-switch-field {
+    margin-inline-start: var(--spacing-2);
+    white-space: nowrap;
 }
 .map-search {
     flex-shrink: 0;

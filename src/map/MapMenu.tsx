@@ -32,7 +32,7 @@ export default function MapMenu({
                     tooltip="Map menu"
                     icon={<EllipsisHorizontalIcon />}
                     variant="ghost"
-                    size="sm"
+                    size="lg"
                 />
             )}
             items={[

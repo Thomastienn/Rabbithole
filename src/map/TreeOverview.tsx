@@ -6,6 +6,7 @@ import { Text } from '@astryxdesign/core/Text';
 import type { ReactNode, SetStateAction } from 'react';
 import {
     MIN_ZOOM,
+    tidySlots,
     foldHierarchy,
     offsetCoveredBoxes,
     placeBox,
@@ -24,7 +25,7 @@ import {
 import Branch, { Lanes, MeasureLanes } from './Branch';
 import { GhostTree } from './GhostTree';
 import { useGhostTrees, type GhostOptions } from './useGhostTrees';
-import { fit, useMapViewport } from './useMapViewport';
+import { useMapViewport } from './useMapViewport';
 import { MapToolbar } from './MapControls';
 import {
     branchEdges,
@@ -77,6 +78,8 @@ export type Preview = {
     role: string;
     text: string;
     status: string;
+    // 'shutdown' when Rabbithole stopping cut the reply off, so it can be retried.
+    stopped?: 'learner' | 'shutdown';
     artifacts?: ArtifactSummary[];
 }[];
 export type MapActions = {
@@ -86,6 +89,13 @@ export type MapActions = {
     canKeep: boolean;
 };
 const noStubs: ConversationNode['data']['stubs'] = [];
+// Address order, so 1.10 sorts after 1.9.
+const byAddress = (a: string, b: string) => {
+    const x = a.split('.').map(Number),
+        y = b.split('.').map(Number);
+    for (let i = 0; i < Math.min(x.length, y.length); i++) if (x[i] !== y[i]) return x[i] - y[i];
+    return x.length - y.length;
+};
 const noMarks: string[] = [];
 const nodeTypes = { conversation: Conversation, ghost: GhostTree };
 const edgeTypes = { branch: Branch };
@@ -155,8 +165,18 @@ export default function TreeOverview({
         [],
     );
     const [nodes, setNodes, onNodesChange] = useNodesState<ConversationNode>([]);
-    const { flow, savedViewport, navigated, zoom, setZoom, pan, zoomOut, zoomIn, fitTree } =
-        useMapViewport({ root, trees, nodes, selected });
+    const {
+        flow,
+        savedViewport,
+        navigated,
+        zoom,
+        setZoom,
+        pan,
+        zoomOut,
+        zoomIn,
+        fitTree,
+        openView,
+    } = useMapViewport({ root, trees, nodes, selected });
     const [canCull, setCanCull] = useState(false);
     const known = useRef(new Set(trees.map((t) => t.id)));
     const createdBranches = useRef(new Map<string, number>());
@@ -280,6 +300,17 @@ export default function TreeOverview({
                 setCanCull(true);
             let next = [...nodes];
             const positions: Record<string, Point> = {};
+            const slots = tidySlots(
+                root,
+                next
+                    .filter((n) => !n.hidden)
+                    .sort((a, b) => byAddress(a.data.address, b.data.address))
+                    .map((n) => ({
+                        id: n.id,
+                        parent: n.data.conversation.parent,
+                        height: n.measured!.height!,
+                    })),
+            );
             for (let i = 0; i < next.length; i++) {
                 const node = next[i];
                 if (node.hidden || node.dragging) continue;
@@ -288,29 +319,16 @@ export default function TreeOverview({
                 if (node.data.conversation.x !== null && node.data.conversation.y !== null)
                     continue;
                 const parent = next.find((n) => n.id === node.data.conversation.parent);
-                const handle = document.querySelector<HTMLElement>(`[data-source="${node.id}"]`);
-                const parentElement = handle?.closest('.react-flow__node');
-                const bounds = handle?.getBoundingClientRect();
-                const cachedHandle =
-                    parent &&
-                    flow.current
-                        ?.getInternalNode(parent.id)
-                        ?.internals.handleBounds?.source?.find((h) => h.id === node.id);
-                const offset =
-                    bounds && parentElement
-                        ? (bounds.top +
-                              bounds.height / 2 -
-                              parentElement.getBoundingClientRect().top) /
-                          (flow.current?.getZoom() ?? 1)
-                        : cachedHandle
-                          ? cachedHandle.y + cachedHandle.height / 2
-                          : 0;
-                const preferred = parent
-                    ? {
-                          x: parent.position.x + parent.measured!.width! + 96,
-                          y: parent.position.y + offset,
-                      }
-                    : { x: 0, y: 0 };
+                // A new card keeps its tidy offset from its parent, wherever the parent was moved.
+                const slot = slots.get(node.id),
+                    parentSlot = parent && slots.get(parent.id);
+                const preferred =
+                    parent && slot && parentSlot
+                        ? {
+                              x: parent.position.x + slot.x - parentSlot.x,
+                              y: parent.position.y + slot.y - parentSlot.y,
+                          }
+                        : { x: 0, y: 0 };
                 const occupied = next
                     .filter(
                         (n) =>
@@ -374,8 +392,7 @@ export default function TreeOverview({
                 next = next.map((n) => (positions[n.id] ? { ...n, position: positions[n.id] } : n));
                 setNodes(next);
                 callbacks.current.save(positions);
-                if (!navigated.current)
-                    void requestAnimationFrame(() => flow.current?.fitView(fit));
+                if (!navigated.current) void requestAnimationFrame(openView);
             }
         });
         return () => cancelAnimationFrame(frame);
@@ -510,8 +527,6 @@ export default function TreeOverview({
                             disableKeyboardA11y
                             colorMode={mode}
                             proOptions={{ hideAttribution: true }}
-                            fitView={!savedViewport}
-                            fitViewOptions={fit}
                             minZoom={MIN_ZOOM}
                             maxZoom={1.5}
                             zoomOnScroll

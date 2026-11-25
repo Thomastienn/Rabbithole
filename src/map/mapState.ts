@@ -172,6 +172,17 @@ export function revealViewport(
     return { x: view.x + dx, y: view.y + dy, zoom };
 }
 
+// An untouched map opens at 100% (mockups Map, Read, Narrow): the dock centres the current card; the full map
+// sets the tree's start at the left edge. A card taller than the map shows its top.
+export function openingViewport(node: Box, width: number, height: number, centre: boolean) {
+    const pad = width < 640 ? 16 : 40;
+    return {
+        x: centre ? width / 2 - node.x - node.width / 2 : pad - node.x,
+        y: Math.max(height / 2 - node.y - node.height / 2, pad - node.y),
+        zoom: 1,
+    };
+}
+
 export function rootOf(id: string, trees: Summary[]) {
     const seen = new Set<string>();
     for (

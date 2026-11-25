@@ -38,12 +38,17 @@ test('previews list every message in order, bound each text and survive reload w
     );
     assert.deepEqual(both[empty.id], []);
     assert.equal(both[a.id][3].status, 'streaming');
-    store.update(reply, 'partial', 'interrupted');
+    store.update(reply, 'partial', 'interrupted', 'shutdown');
     store.close();
     store = new Store(path);
     assert.deepEqual(
         store.previews([a.id])[a.id].map((m) => m.status),
         ['completed', 'completed', 'completed', 'interrupted'],
+    );
+    assert.equal(
+        store.previews([a.id])[a.id][3].stopped,
+        'shutdown',
+        'a shutdown cut-off can be retried',
     );
     assert.equal(store.tree(a.id).messages[2].text.length, 1200);
     assert.deepEqual(tables(), before);

@@ -10,6 +10,12 @@
     overflow-wrap: anywhere;
     transition: border-color var(--duration-fast) ease-out;
 }
+/* Full-map cards are 220px (mockup Map); the dock and narrow screens keep the theme's 160px. */
+@media (min-width: 48.0625rem) {
+    .overview[data-chat-open='false'] {
+        --rabbithole-map-node-width: 220px;
+    }
+}
 .react-flow__node:hover .conversation-box {
     border-color: var(--color-border-emphasized);
 }

@@ -110,7 +110,7 @@ export const Conversation = memo(function Conversation({ data }: NodeProps<Conve
                                 <Text type="inherit" className="node-address" hasTabularNumbers>
                                     {stub.address}
                                 </Text>{' '}
-                                · {1 + stub.beneath} folded
+                                {child.title} · {1 + stub.beneath} folded
                             </Text>
                         </Button>
                     </HStack>
@@ -272,37 +272,41 @@ export const Conversation = memo(function Conversation({ data }: NodeProps<Conve
                                     </Button>
                                 )}
                                 {m.role === 'assistant' && m.status !== 'completed' && (
-                                    <Text
-                                        type="supporting"
-                                        className="node-status"
-                                        data-status={m.status}
-                                    >
-                                        {m.status === 'failed' && (
-                                            <ExclamationTriangleIcon aria-hidden />
-                                        )}
-                                        {m.status === 'streaming'
-                                            ? 'Replying…'
-                                            : `Reply ${m.status}`}
-                                    </Text>
+                                    <HStack gap={2} vAlign="center" wrap="wrap">
+                                        <Text
+                                            type="supporting"
+                                            className="node-status"
+                                            data-status={m.status}
+                                        >
+                                            {m.status === 'failed' && (
+                                                <ExclamationTriangleIcon aria-hidden />
+                                            )}
+                                            {m.status === 'streaming'
+                                                ? 'Replying…'
+                                                : `Reply ${m.status}`}
+                                        </Text>
+                                        {/* The server retries a failed reply or one cut off by shutdown, not one the learner stopped. */}
+                                        {(m.status === 'failed' ||
+                                            (m.status === 'interrupted' &&
+                                                m.stopped === 'shutdown')) &&
+                                            m === preview.at(-1) &&
+                                            preview.at(-2)?.role === 'user' &&
+                                            !data.active && (
+                                                <Button
+                                                    label="Retry reply"
+                                                    className="node-retry nodrag nopan"
+                                                    variant="secondary"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        document
+                                                            .getElementById(`open-${t.id}`)
+                                                            ?.focus({ preventScroll: true });
+                                                        data.retry(t.id);
+                                                    }}
+                                                />
+                                            )}
+                                    </HStack>
                                 )}
-                                {m.role === 'assistant' &&
-                                    m.status === 'failed' &&
-                                    m === preview.at(-1) &&
-                                    preview.at(-2)?.role === 'user' &&
-                                    !data.active && (
-                                        <Button
-                                            label="Retry reply"
-                                            className="node-retry nodrag nopan"
-                                            variant="secondary"
-                                            size="sm"
-                                            onClick={() => {
-                                                document
-                                                    .getElementById(`open-${t.id}`)
-                                                    ?.focus({ preventScroll: true });
-                                                data.retry(t.id);
-                                            }}
-                                        />
-                                    )}
                                 {m.role === 'assistant' && !!artifacts.length && (
                                     <HStack
                                         gap={1}

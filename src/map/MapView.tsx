@@ -93,14 +93,16 @@ export default function MapView({
                         vim={vim}
                         lead={
                             // Labelled because the rail and the hidden narrow header leave no named way in.
+                            // The dock and narrow screens keep one row of controls, so Search is an icon there.
                             <Button
                                 className="map-search"
-                                label={mobile ? 'Search' : 'Search tree'}
+                                label="Search tree"
                                 tooltip="Search inside every conversation in this tree (Ctrl+K)"
                                 icon={<MagnifyingGlassIcon />}
-                                endContent={mobile ? undefined : <Kbd keys="mod+k" />}
+                                isIconOnly={mobile || !overview}
+                                endContent={mobile || !overview ? undefined : <Kbd keys="mod+k" />}
                                 variant="ghost"
-                                size="sm"
+                                size="lg"
                                 aria-haspopup="dialog"
                                 aria-keyshortcuts="Control+K"
                                 onClick={search}
@@ -116,13 +118,14 @@ export default function MapView({
                                         savePreference('ghost-trees', on ? 'on' : 'off');
                                     }}
                                 />
-                                {overview && tree && (
+                                {/* Narrow screens reach Read from the drawer; the controls keep one row (mockup Narrow). */}
+                                {overview && tree && !mobile && (
                                     <IconButton
                                         label="Reopen chat"
                                         tooltip={`Open chat: ${tree.title}`}
                                         icon={<ChatBubbleLeftRightIcon />}
                                         variant="ghost"
-                                        size="sm"
+                                        size="lg"
                                         onClick={() => {
                                             focusNext();
                                             changeView(false, tree.id);

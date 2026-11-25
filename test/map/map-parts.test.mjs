@@ -215,7 +215,7 @@ test('depth stops show one ring per level under the address chip, the last fille
     }
 });
 
-test('fold stubs, source reveal and latest-failed-only Retry use distinct controls and preserve focus', async (t) => {
+test('fold stubs, source reveal and latest-failed-or-cut-off-only Retry use distinct controls and preserve focus', async (t) => {
     const opens = [],
         toggles = [],
         retries = [];
@@ -263,7 +263,11 @@ test('fold stubs, source reveal and latest-failed-only Retry use distinct contro
         stub.getAttribute('aria-label'),
         'Show hidden branch child, 1 more conversation hidden beneath',
     );
-    assert.equal(stub.textContent, '1.2.1 · 2 folded');
+    assert.equal(
+        stub.textContent,
+        '1.2.1 child · 2 folded',
+        'address and title of the folded branch',
+    );
     assert.equal(stub.querySelector('.node-address').textContent, '1.2.1');
     assert.equal(container.querySelector('#open-root').hasAttribute('aria-current'), false);
     assert.equal(stub.closest('[data-message]').dataset.message, 'answer');
@@ -320,6 +324,21 @@ test('fold stubs, source reveal and latest-failed-only Retry use distinct contro
         await act(async () => update({ ...data, ...changes }));
         assert.equal(container.querySelector('.node-retry'), null);
     }
+    // A reply cut off by shutdown is retried like a failed one (mockup Map 1.1.1).
+    await act(async () =>
+        update({
+            ...data,
+            preview: [
+                message('q', 'user', 'Stop'),
+                {
+                    ...message('answer', 'assistant', 'Partial', 'interrupted'),
+                    stopped: 'shutdown',
+                },
+            ],
+        }),
+    );
+    assert.equal(container.querySelector('.node-status').textContent, 'Reply interrupted');
+    assert.ok(container.querySelector('.node-retry'));
     await act(async () => update({ ...data, folded: false, stubs: [] }));
     assert.equal(fold.getAttribute('aria-expanded'), 'true');
     assert.equal(container.querySelector('.fold-stub'), null);

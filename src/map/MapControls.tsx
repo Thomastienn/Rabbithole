@@ -22,8 +22,7 @@ export function MapToolbar({
 }) {
     return (
         <HStack
-            padding={1}
-            gap={1}
+            gap={0}
             vAlign="center"
             className="map-toolbar"
             role="group"
@@ -40,7 +39,7 @@ export function MapToolbar({
                 tooltip="Zoom out"
                 icon={<MinusIcon />}
                 variant="ghost"
-                size="sm"
+                size="lg"
                 onClick={zoomOut}
             />
             <Text className="sr-only">Current zoom</Text>
@@ -52,7 +51,7 @@ export function MapToolbar({
                 tooltip="Zoom in"
                 icon={<PlusIcon />}
                 variant="ghost"
-                size="sm"
+                size="lg"
                 onClick={zoomIn}
             />
             <IconButton
@@ -60,7 +59,7 @@ export function MapToolbar({
                 tooltip="Fit tree"
                 icon={<ArrowsPointingOutIcon />}
                 variant="ghost"
-                size="sm"
+                size="lg"
                 onClick={fitTree}
             />
             {children}

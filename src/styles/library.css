@@ -57,6 +57,18 @@
     justify-content: space-between;
     margin-bottom: var(--rabbithole-module);
 }
+/* Mockup Library .seg: 30px items in a 3px well, the active one filled porcelain with dark text. */
+.library-tools .astryx-segmented-control {
+    padding: 3px;
+}
+.library-tools .astryx-segmented-control-item {
+    height: 30px;
+}
+.library-tools .astryx-segmented-control-item[data-selected='selected'] {
+    background: var(--rabbithole-paper);
+    color: var(--rabbithole-paper-ink);
+    font-weight: 600;
+}
 /* Date groups wear the caps label. */
 .tree-date-heading {
     margin: 28px 0 10px;

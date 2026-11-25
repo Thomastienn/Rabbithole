@@ -7,6 +7,8 @@ import { DatabaseSync } from 'node:sqlite';
 import {
     parseViewport,
     placeBox,
+    tidySlots,
+    COLUMN,
     offsetCoveredBoxes,
     vimAction,
     zoomLabel,
@@ -58,22 +60,49 @@ test('placement skips occupied rectangles without changing existing positions', 
     assert.deepEqual(occupied, before);
 });
 
-test('message-row placement keeps the source height when free and clears branches already beside that row', () => {
-    const parent = { x: -240, y: 60, width: 256, height: 900 };
-    const preferred = { x: parent.x + parent.width + 72, y: parent.y + 230.5 };
-    const size = { width: 256, height: 160 };
-    const first = placeBox(preferred, size, [parent]);
-    assert.deepEqual(first, preferred);
-    const second = placeBox(preferred, size, [parent, { ...first, ...size }]);
-    assert.deepEqual(second, { x: preferred.x, y: first.y + size.height + 48 });
-    assert.deepEqual(
-        placeBox({ ...preferred, y: 800 }, size, [
-            parent,
-            { ...first, ...size },
-            { ...second, ...size },
-        ]),
-        { ...preferred, y: 800 },
+test('tidy layout centres every card on its children, keeps sibling subtrees apart and new branches clear', () => {
+    const card = (id, parent, height = 100) => ({ id, parent, height });
+    // Mockup Map: 1.1 above, 1.2 beside and 1.3 below the trunk; 1.1 and 1.2 each have two children.
+    const slots = tidySlots('1', [
+        card('1', null, 300),
+        card('1.1', '1'),
+        card('1.2', '1', 200),
+        card('1.3', '1'),
+        card('1.1.1', '1.1'),
+        card('1.1.2', '1.1'),
+        card('1.2.1', '1.2'),
+        card('1.2.2', '1.2'),
+    ]);
+    const centre = (id, height = 100) => slots.get(id).y + height / 2;
+    assert.deepEqual(slots.get('1'), { x: 0, y: 0 });
+    assert.equal(slots.get('1.1').x, COLUMN);
+    assert.equal(slots.get('1.1.1').x, 2 * COLUMN);
+    assert.ok(slots.get('1.1').y < 0 && slots.get('1.3').y > 300, '1.1 above the trunk, 1.3 below');
+    for (const [parent, height, kids] of [
+        ['1.1', 100, ['1.1.1', '1.1.2']],
+        ['1.2', 200, ['1.2.1', '1.2.2']],
+    ])
+        assert.equal(
+            centre(parent, height),
+            (centre(kids[0]) + centre(kids[1])) / 2,
+            `${parent} centred`,
+        );
+    assert.equal(
+        centre('1', 300),
+        (slots.get('1.1.1').y + slots.get('1.3').y + 100) / 2,
+        'the trunk is centred on the whole stack of subtrees',
     );
+    assert.ok(
+        slots.get('1.2.1').y >= slots.get('1.1.2').y + 100 + 48,
+        'cousin subtrees never overlap',
+    );
+    // A new branch whose slot is taken goes below the cards already beside the parent.
+    const size = { width: 220, height: 100 };
+    const taken = { ...slots.get('1.1.1'), ...size };
+    assert.deepEqual(placeBox(slots.get('1.1.1'), size, [taken]), {
+        x: taken.x,
+        y: taken.y + 100 + 48,
+    });
 });
 
 const box = (id, x, y, height = 100, parent = null, extra = {}) => ({

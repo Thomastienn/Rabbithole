@@ -49,6 +49,45 @@ export function placeBox(
     }
 }
 
+// One map column: a full-map card (220px) and its gutter (mockup Map: cards 320px apart).
+export const COLUMN = 320;
+
+// Tidy layout (mockup Map): every card is centred on the stack of its children's subtrees, which never overlap,
+// one column per depth. Boxes come in sibling order; slots are relative to the root at 0, 0.
+export function tidySlots(
+    root: string,
+    boxes: { id: string; parent: string | null; height: number }[],
+    gap = 48,
+) {
+    const children = new Map<string, typeof boxes>();
+    for (const box of boxes)
+        if (box.parent) children.set(box.parent, [...(children.get(box.parent) ?? []), box]);
+    const extents = new Map<string, number>();
+    const extent = (box: (typeof boxes)[number]): number => {
+        const list = children.get(box.id) ?? [];
+        const stack = list.reduce((sum, child) => sum + extent(child), gap * (list.length - 1));
+        const size = Math.max(box.height, stack);
+        extents.set(box.id, size);
+        return size;
+    };
+    const slots = new Map<string, Point>();
+    const place = (box: (typeof boxes)[number], x: number, top: number) => {
+        const size = extents.get(box.id)!,
+            list = children.get(box.id) ?? [];
+        slots.set(box.id, { x, y: top + (size - box.height) / 2 });
+        let y =
+            top +
+            (size - list.reduce((sum, c) => sum + extents.get(c.id)!, gap * (list.length - 1))) / 2;
+        for (const child of list) {
+            place(child, x + COLUMN, y);
+            y += extents.get(child.id)! + gap;
+        }
+    };
+    const start = boxes.find((box) => box.id === root);
+    if (start) place(start, 0, -(extent(start) - start.height) / 2);
+    return slots;
+}
+
 // Only collisions connected to growth/reveal can move a subtree; manual layout stays intact.
 export function offsetCoveredBoxes(
     boxes: PlacedBox[],
