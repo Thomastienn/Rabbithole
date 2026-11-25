@@ -299,8 +299,8 @@ dialog.tree-search-window::backdrop {
 .delete-dialog[data-failed='true'] [id$='description'] {
     color: var(--color-text-error);
 }
-/* Confirm a delete (mockup States): 22px inset and title; Cancel outlined at the start, the delete a solid scarlet
-   fill at the end, both 36px. */
+/* Confirm a delete (mockup States): 22px inset and title; Cancel outlined at the start, the delete outlined in
+   scarlet at the end and filled only on keyboard focus, both 36px. */
 .delete-dialog {
     padding: 6px;
 }
@@ -319,6 +319,11 @@ dialog.tree-search-window::backdrop {
     box-shadow: inset 0 0 0 1.5px var(--color-border-emphasized);
 }
 .delete-dialog .astryx-button[data-variant='destructive'] {
+    background: none;
+    box-shadow: inset 0 0 0 1px var(--color-border-error);
+    color: var(--color-text-error);
+}
+.delete-dialog .astryx-button[data-variant='destructive']:focus-visible {
     background: var(--color-error);
     color: var(--color-on-error);
 }

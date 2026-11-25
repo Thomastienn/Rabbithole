@@ -307,7 +307,7 @@ Ink, muted ink, hover, seams and selection follow the same recipe in every theme
 
 **The No Bar Beside Text Rule.** No coloured vertical or horizontal bar sits beside text as an accent. A branch's line shows as the filled address chip that leads a title. The Contents route strip and the swatches in keys and legends are the diagram itself, not accents, and are the only places a line runs alongside text.
 
-**The Scarlet Means Failure Rule.** Scarlet appears only when something failed, and always with words ("Reply failed") and a way forward (Retry, Cancel, a reason). It is never a brand colour, a highlight or a destructive-button decoration.
+**The Scarlet Means Failure Rule.** Scarlet appears only when something failed, and always with words ("Reply failed") and a way forward (Retry, Cancel, a reason). It is never a brand colour or a highlight. The one exception is the Delete button of a delete confirmation: outlined in scarlet, filled only on keyboard focus.
 
 **The One Action Colour Rule.** Porcelain is the only action fill (New chat, Send, a dialog's primary); everything else is a quiet ghost control.
 
