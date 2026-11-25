@@ -3,8 +3,11 @@ export async function authRoutes(req, res, url, ctx) {
     if (req.method === 'GET' && url.pathname === '/auth/callback') {
         try {
             await ctx.auth.callback(url);
-            res.writeHead(303, { Location: '/' });
-            res.end();
+            // A page, not a redirect: the browser marks a redirect from here cross-site, and the app refuses it.
+            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+            res.end(
+                '<!doctype html><title>Rabbithole</title><p>Signed in to ChatGPT. Return to Rabbithole, or <a href="/">open it here</a>.</p>',
+            );
         } catch {
             res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
             res.end(

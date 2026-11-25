@@ -210,6 +210,12 @@ export function useLearningTrees(c: View) {
             .catch((e) => setError(e.message));
     }
     useEffect(loadInitial, []);
+    // ChatGPT sign-in finishes in another window (the default browser in the desktop app), so returning rereads the state.
+    useEffect(() => {
+        const reread = () => void refresh().catch(() => {});
+        window.addEventListener('focus', reread);
+        return () => window.removeEventListener('focus', reread);
+    }, []);
     // Search ranks the open learning tree first; a ref, so the source keeps its pending request.
     const searchRoot = useRef(root);
     searchRoot.current = root;
