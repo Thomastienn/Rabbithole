@@ -346,6 +346,19 @@ mark {
     color: var(--color-text-primary);
     border-radius: var(--radius-inner);
 }
+/* A returned-to passage holds its mark, then fades; useChatTargets drops it at the end (REVEAL_MS). */
+.reply-md :is(mark, [data-reveal]) {
+    animation: reveal-fade 2.5s ease-in forwards;
+}
+@keyframes reveal-fade {
+    0%,
+    60% {
+        background: var(--rabbithole-selection);
+    }
+    100% {
+        background: transparent;
+    }
+}
 ::highlight(passage) {
     background-color: var(--rabbithole-selection);
     color: var(--color-text-primary);

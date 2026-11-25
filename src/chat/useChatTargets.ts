@@ -5,6 +5,8 @@ import type { SearchResult } from '../shell/treeSearchSource';
 import type { ChatState } from './useChatState';
 import type { Tree } from './types';
 
+export const REVEAL_MS = 2500;
+
 const searchContent = {
     title: '.chat-title h2',
     passage: '.origin-source',
@@ -97,6 +99,13 @@ export function useChatTargets({ overview }: Pick<ChatState, 'overview'>, tree: 
         frame = requestAnimationFrame(tick);
         return () => cancelAnimationFrame(frame);
     }, [tree?.id, overview, messageTarget, reveal]);
+    // A returned-to passage is marked only until its fade ends (REVEAL_MS, matching reading.css); then the reply renders as usual, branch underline included.
+    useEffect(() => {
+        if (!reveal || reveal.source.artifactId !== undefined || overview) return;
+        if (tree?.id !== reveal.tree) return;
+        const timer = setTimeout(() => setReveal(undefined), REVEAL_MS);
+        return () => clearTimeout(timer);
+    }, [tree?.id, overview, reveal]);
 
     // Conversation `id` opens on one target, or on the composer when none is given.
     function goTo(id: string, source?: Source, artifact?: string, message?: string) {
