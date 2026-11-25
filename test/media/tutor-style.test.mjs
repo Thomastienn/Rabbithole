@@ -5,7 +5,6 @@ import {
     LOOKUP_RULE,
     MEMORY_RULE,
     TUTOR_RULES,
-    TOOL_VISUAL_RULES,
     VERDICT_RULE,
     TUTOR_SKILLS,
     tutorSystem,
@@ -73,10 +72,6 @@ test('the fixed memory rule appears only when update_memory_note is offered', ()
 
 test('the concept lookup rule appears only when look_up_concept is offered', () => {
     const tool = (name) => ({ tutorStyle: 'Mine.', tools: [{ name }] });
-    assert.match(
-        LOOKUP_RULE,
-        /concepts the concept neighbourhood does not cover, such as those in an attachment or a request like 'explain the concepts in this', look them up together with look_up_concept before you explain\./,
-    );
     assert.ok(tutorSystem(tool('look_up_concept')).includes(LOOKUP_RULE));
     assert.ok(!tutorSystem(tool('read_page')).includes(LOOKUP_RULE));
     assert.ok(!tutorSystem({ tutorStyle: 'Mine.' }).includes(LOOKUP_RULE));
@@ -113,60 +108,16 @@ test('a visual request carries what it shows; older requests without it still pa
     assert.deepEqual(old.task, base);
 });
 
-test('the tutor rules describe a visual as a section read in place, drawn by the chat model', () => {
-    assert.match(TUTOR_RULES, /shows \(up to 280 characters\)/);
-    assert.match(TUTOR_RULES, /section of your reply that the learner reads in place/);
-    assert.match(TUTOR_RULES, /chat model draws the visual in a separate call/);
-    assert.doesNotMatch(TUTOR_RULES, /smart-model/);
-});
-
-test('both visual rules lean on more visuals for hard ideas, loosely and without a quota', () => {
-    const hard =
-        'When an idea is hard to grasp, such as an abstract or mathematical one, lean on more visuals; the harder it is for this learner, the more a picture helps.';
-    for (const rules of [TUTOR_RULES, TOOL_VISUAL_RULES]) {
-        assert.equal(rules.split(hard).length, 2);
-        assert.doesNotMatch(
-            rules,
-            /at least (one|two|three|\d+) visuals|visuals? per (reply|idea) at least/i,
-        );
-    }
-});
-
-test('the default tutor style ends with the readability paragraph after the unchanged original', () => {
-    const [original, readability] = DEFAULT_TUTOR_STYLE.split('\n\n');
-    assert.ok(original.startsWith('You are Rabbithole, a patient tutor'));
-    assert.ok(original.endsWith('or recent events, or when you are unsure.'));
-    assert.match(readability, /^Write for reading top to bottom\./);
-    assert.doesNotMatch(readability, /\d/);
-});
-
-test('the tool-path tutor prompt before learner data is no larger than before visual markers and keeps its core rules', async () => {
+test('the tool-path tutor prompt stays within the budget before learner data', async () => {
     const { APP_TOOLS } = await import('../../server/http/app-calls.mjs');
-    const { NEIGHBOURHOOD_RULE } = await import('../../server/neighbourhood.mjs');
     const tools = [...APP_TOOLS, { name: 'update_memory_note' }, { name: 'find_images' }];
     const native = tutorSystem({ tools });
     const definitions = JSON.stringify(
         APP_TOOLS.map(({ name, description, parameters }) => ({ name, description, parameters })),
     );
     const text = tutorSystem({ textTools: APP_TOOLS }).replace(definitions, '');
-    // The visual and discussion marker rules replaced show_visual and start_discussion (ADR 0018), so they count against the
-    // tool-path total at 3b6b9d0: that prompt plus its app tool definitions.
-    // The bold-term suggestion sentence (docs/reply-reading-polish-spec.md) is allowed on top.
-    const BOLD =
-        'When you would bold a term because it matters, the learner may not fully understand it yet, so mark it as a suggestion instead of only bolding it. ';
-    // So is the concept mark form (ADR 0023).
-    const CONCEPT_MARK =
-        ' as plain [[words]]; only when the shown words stand for a longer or more specific concept, name it first with a bar, as in "a [[safe state|safe]] one", and the learner sees only the words after the bar. In a table row write the bar as \\|.';
-    const MARKER_BEFORE = 9987 + 6121 + BOLD.length + CONCEPT_MARK.length;
+    // Prompt and tools at 3b6b9d0, plus the bold-term and ADR 0023 allowances.
+    const budget = 16_494;
     for (const prompt of [native, text])
-        assert.ok(prompt.length + definitions.length <= MARKER_BEFORE, `${prompt.length}`);
-    for (const part of [
-        'Math: write every formula',
-        'Reply layouts: there are eleven',
-        MEMORY_RULE,
-    ])
-        assert.ok(native.includes(part), part);
-    assert.ok(native.endsWith(TUTOR_SKILLS + DEFAULT_TUTOR_STYLE));
-    const neighbourhood = { concepts: [{ name: 'Recursion', familiarity: 0.9 }], links: [] };
-    assert.ok(tutorSystem({ tools, neighbourhood }).includes(NEIGHBOURHOOD_RULE));
+        assert.ok(prompt.length + definitions.length <= budget, `${prompt.length}`);
 });

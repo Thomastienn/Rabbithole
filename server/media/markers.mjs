@@ -6,9 +6,9 @@ const MARKER =
     /\[\[(\s*(?:visual|discussion)\s*:(?:[^\]\r\n]|\](?!\]))*|[^[\]\r\n]*)(\]\]|\]?$|(?=\r?\n))|\[$/gi;
 const KIND = /^\s*([a-z]+(?: [a-z]+)*)\s*:(.*)$/i;
 
-// [[concept|shown]] (ADR 0023): the first | or \| splits it; with one side empty it is a plain mark of the other.
+// In a closed [[concept|shown]] (ADR 0023), an empty side makes it a plain mark of the other.
 // The shown words' range inside the body, and the concept or null.
-const alias = (body) => {
+const alias = (body, closed) => {
     const bar = /\\?\|/.exec(body);
     if (!bar) return { shown: [0, body.length], concept: null };
     const range = (from, to) => {
@@ -18,7 +18,7 @@ const alias = (body) => {
     };
     const left = range(0, bar.index),
         right = range(bar.index + bar[0].length, body.length);
-    return right[0] < right[1]
+    return !closed || right[0] < right[1]
         ? { shown: right, concept: left[0] < left[1] ? noteName(body.slice(...left)) : null }
         : { shown: left, concept: null };
 };
@@ -76,7 +76,7 @@ export function stripMarkers(text, final = false) {
                 discussed = true;
                 cuts.push([start, text.length]);
             } else if (kind) cuts.push([start, end]);
-            const named = !kind && alias(body);
+            const named = !kind && alias(body, true);
             if (named) cuts.push(...shownCuts(start, end, named));
             markers.push({
                 kind: kind?.[1].toLowerCase() ?? null,
@@ -94,7 +94,7 @@ export function stripMarkers(text, final = false) {
                 closed: false,
                 start,
             });
-        } else if (whole !== '[') cuts.push(...shownCuts(start, end, alias(body)));
+        } else if (whole !== '[') cuts.push(...shownCuts(start, end, alias(body, false)));
     }
     let out = '',
         cursor = 0;

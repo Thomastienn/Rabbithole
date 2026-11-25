@@ -3,12 +3,16 @@ import assert from 'node:assert/strict';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { JSDOM } from 'jsdom';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
 import { OpenAI } from '../../server/providers/openai.mjs';
 import { fakeOpenAI, streamReply } from '../support/fake-openai.mjs';
 import { diagramReply } from '../../server/media/reply-parser.mjs';
 import { markerNotes } from '../../server/media/markers.mjs';
+import { underlineRanges } from '../../src/chat/turn.ts';
+import { renderMarkdown } from '../../src/markdown/markdown.ts';
 import { complete, open, until } from '../support/visual-kit.mjs';
 
 const notesOf = (raw, final = true, hasMedia = false) => {
@@ -86,7 +90,7 @@ test('notes stream as their markers close', () => {
     }
 });
 
-test('a mark may name its concept: only the shown words stay, underlined, in tables too', () => {
+test('a mark may name its concept: only the shown words stay, underlined, in tables too', (t) => {
     const shown = (raw) => {
         const notes = notesOf(raw);
         return [notes.text, notes.passages.map(({ text, concept }) => [text, concept ?? null])];
@@ -109,14 +113,24 @@ test('a mark may name its concept: only the shown words stay, underlined, in tab
         ],
     ]);
     assert.deepEqual(shown('A [[|]] b.'), ['A  b.', []]);
-    // In a table row, either bar leaves a clean row of two cells.
-    for (const bar of ['|', '\\|'])
-        assert.equal(
-            notesOf(`| Term | Use |\n| --- | --- |\n| [[safe state${bar}safe]] | ok |`).text,
-            '| Term | Use |\n| --- | --- |\n| safe | ok |',
+    for (const bar of ['|', '\\|']) {
+        const { text, passages } = notesOf(
+            `| Term | Use |\n| --- | --- |\n| [[safe state${bar}safe]] | ok |`,
         );
-    // A mark cut off at the end of its line shows only its shown words.
-    assert.equal(notesOf('A [[safe state|safe\nNext.').text, 'A safe\nNext.');
+        const ranges = underlineRanges(text, { status: 'ready', passages });
+        const { window } = new JSDOM(renderToStaticMarkup(renderMarkdown(text, undefined, ranges)));
+        t.after(() => window.close());
+        const cells = [...window.document.querySelectorAll('table tbody td')];
+        assert.deepEqual(
+            cells.map((cell) => cell.textContent),
+            ['safe', 'ok'],
+        );
+        assert.equal(cells[0].querySelector('[role="button"][tabindex="0"]')?.textContent, 'safe');
+
+        // A mark cut off at the end of its line shows only its shown words.
+        assert.equal(notesOf(`A [[safe state${bar}safe\nNext.`, false).text, 'A safe\nNext.');
+        assert.equal(notesOf(`A [[safe state${bar}\nNext.`, false).text, 'A \nNext.');
+    }
     // While streaming, neither the bar nor the concept ever shows.
     const raw = 'A [[safe state\\|safe]] one.\n[[end]]';
     for (let i = 1; i <= raw.length; i++) {
@@ -159,14 +173,15 @@ test('notes reach the learner while the reply streams, and quick thinking writes
                         emit,
                         ended
                             ? '{"suggestions":[{"text":"mutex","concept":"Mutex"}],"concepts":[{"name":"Mutex","topics":["Concurrency"]}],"links":[]}'
-                            : '{"suggestions":[{"text":"semaphore"}],"groundwork":["Counting"],"next_questions":["Why count permits?"]}',
+                            : '{"suggestions":[{"text":"semaphore","concept":"Wrong concept"},{"text":"permits","concept":"Permit"}],"groundwork":["Counting"],"next_questions":["Why count permits?"]}',
                     );
                 }
                 if (tree.role === 'verdict') {
                     quick.push('verdicts');
                     return complete(emit, '[{"concept":"Mutex","level":1,"confidence":"low"}]');
                 }
-                if (!ended) return complete(emit, 'A semaphore counts permits.');
+                if (!ended)
+                    return complete(emit, 'A [[counting semaphore|semaphore]] counts [[permits]].');
                 const delta = (t) => emit({ type: 'delta', item: 'answer', text: t });
                 delta('[[groundwork: Threads]]\nA ');
                 // Groundwork shows before the reply's text finishes.
@@ -216,7 +231,7 @@ test('notes reach the learner while the reply streams, and quick thinking writes
         // The verdict keeps its own call.
         assert.deepEqual(concepts().Mutex.observations, [0, 1, 0, 0, 0, 0]);
 
-        // A reply without [[end]] gets its suggestions, groundwork and next questions from the same call.
+        // A reply without [[end]] keeps the tutor's named suggestions and gets the remaining notes in one call.
         ended = false;
         quick.length = 0;
         watched = watch(await env.post(`/api/trees/${tree.id}/messages`, { text: 'Semaphore?' }));
@@ -224,9 +239,20 @@ test('notes reach the learner while the reply streams, and quick thinking writes
         await until(() => quick.length === 2);
         await env.app.settled();
         const after = await env.get(`/api/trees/${tree.id}`);
+        assert.equal(after.messages.at(-1).text, 'A semaphore counts permits.');
+        assert.deepEqual(
+            JSON.parse(
+                quick
+                    .find((q) => q !== 'verdicts')
+                    .split('\n')
+                    .at(-1),
+            ).alreadyMarked,
+            ['semaphore'],
+        );
         assert.deepEqual(after.messages.at(-1).questions, ['Why count permits?']);
         assert.deepEqual(after.suggestions.at(-1).passages, [
-            { start: 2, end: 11, text: 'semaphore' },
+            { start: 2, end: 11, text: 'semaphore', concept: 'counting semaphore' },
+            { start: 19, end: 26, text: 'permits', concept: 'Permit' },
         ]);
         assert.deepEqual(after.suggestions.at(-1).groundwork, ['Counting']);
     } finally {

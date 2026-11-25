@@ -8,7 +8,6 @@ import { markerNotes } from '../../server/media/markers.mjs';
 import { suggestionJobs } from '../../server/http/jobs/suggestions.mjs';
 import { backgroundJobs } from '../../server/http/jobs/background.mjs';
 import { start } from '../support/suggestion-kit.mjs';
-import { NOTES_RULE } from '../../server/suggestions.mjs';
 // The conversation data a quick thinking call sends after its task line.
 const data = (call) => JSON.parse(call.input.slice(call.input.lastIndexOf('\n') + 1));
 
@@ -189,6 +188,7 @@ test('a completed reply without [[end]] starts its briefs once quick thinking ha
 test('a mark that names its concept stores it, and quick thinking names only the other marks', async () => {
     const calls = [],
         prompts = [];
+    let failed = false;
     const store = {
         tree: () => ({ provider: 'claude' }),
         suggestionSettings: () => ({ enabled: true }),
@@ -203,8 +203,14 @@ test('a mark that names its concept stores it, and quick thinking names only the
     const quick = {
         models: async () => [{ model: 'haiku' }],
         generate: async (tree, text, emit) => {
+            if (failed) throw new Error('Quick thinking is unavailable');
             prompts.push(text);
-            const answer = { suggestions: [{ text: 'mutex', concept: 'Mutex' }] };
+            const answer = {
+                suggestions: [
+                    { text: 'safe', concept: 'Safety' },
+                    { text: 'mutex', concept: 'Mutex' },
+                ],
+            };
             emit({ type: 'item', item: 'a', text: JSON.stringify(answer) });
             emit({ type: 'status', status: 'completed' });
         },
@@ -230,12 +236,11 @@ test('a mark that names its concept stores it, and quick thinking names only the
         ['name', [safe, { start: 17, end: 22, text: 'mutex', concept: 'Mutex' }]],
     ]);
     assert.deepEqual(data({ input: prompts[0] }).suggestions, ['mutex']);
-});
 
-test('the suggestion notes ask the tutor to mark a term it would bold', () => {
-    const paragraph = NOTES_RULE.split('\n\n').find((p) => p.startsWith('Suggestion notes:'));
-    assert.match(
-        paragraph,
-        /When you would bold a term because it matters, the learner may not fully understand it yet, so mark it as a suggestion instead of only bolding it\./,
-    );
+    calls.length = 0;
+    failed = true;
+    const unfinished = notesOf('A [[safe state|safe]] run and a [[mutex]].', true);
+    noteSuggestions('c', 's', 'completed', unfinished, 'Q', 'A safe run and a mutex.');
+    await jobs.get('suggestion', 's').done;
+    assert.deepEqual(calls, [['finish', [safe]]]);
 });

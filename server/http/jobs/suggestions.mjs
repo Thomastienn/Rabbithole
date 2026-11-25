@@ -103,8 +103,9 @@ export function suggestionJobs(ctx) {
             }
         });
     };
-    // marked: the tutor's saved passages and groundwork, so the call only names concepts and writes the graph.
-    const startSuggestions = (conversation, message, question, answer, marked = null) => {
+    const startSuggestions = (conversation, message, question, answer, notes) => {
+        const marked = notes.ended ? notes : null;
+        const preserved = marked ? [] : notes.passages.filter((p) => p.concept);
         const settings = store.suggestionSettings();
         if (!ctx.suggestions || !settings.enabled) return;
         if (!marked && !store.pendingSuggestions(conversation, message)) return;
@@ -148,6 +149,7 @@ export function suggestionJobs(ctx) {
                         capable,
                         mcp: ctx.mcp,
                         marked,
+                        preserved,
                     },
                 );
                 const added = store.addGraph(result.graph, message);
@@ -200,7 +202,7 @@ export function suggestionJobs(ctx) {
                         store.finishSuggestions(
                             conversation,
                             message,
-                            null,
+                            preserved.length ? preserved : null,
                             error.usage ?? null,
                             settings.model ?? tree,
                         );
@@ -224,7 +226,7 @@ export function suggestionJobs(ctx) {
                 startSuggestions(conversation, message, question, answer, notes);
             }
         } else if (status === 'completed')
-            startSuggestions(conversation, message, question, answer);
+            startSuggestions(conversation, message, question, answer, notes);
     };
     return { noteSuggestions, cleanupMerges };
 }

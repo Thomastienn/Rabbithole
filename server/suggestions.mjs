@@ -22,8 +22,7 @@ const PROMPT =
     GRAPH +
     GROUND +
     " Also write up to three next questions: deep, curious how, why or what-if questions the answer raises but does not answer, in the learner's voice; none after a casual turn. " +
-    MEMORY +
-    '\n';
+    MEMORY;
 // After a reply that ended, the tutor's marks stand; quick thinking names their concepts and writes the graph.
 const NAMING =
     'The tutor already marked the terms in "suggestions" in "answer". Return each of them unchanged as "text" with "concept" naming the concept it is about, and add no other suggestions. ' +
@@ -57,8 +56,8 @@ export function anchored(source, { start, end, text }) {
 // Graph entries are optional: invalid or missing concepts and links are dropped without failing the suggestions.
 const json = (raw) => JSON.parse(raw.trim().replace(/^```(?:json)?\s*|\s*```$/g, ''));
 // The marks and next questions of one notes answer.
-const notes = (result, answer) => ({
-    ...marks(result, answer),
+const notes = (result, answer, preserved) => ({
+    ...marks(result, answer, preserved),
     questions: nextQuestions(result?.next_questions),
 });
 // Memory note edits as objects; each is checked when applied, and a missing list is none.
@@ -67,15 +66,15 @@ const memoryEdits = (list) =>
         (e) => e && typeof e === 'object' && !Array.isArray(e),
     );
 // Both answers (the tool call and plain JSON text) carry the memory edits.
-const read = (result, input, marked) => ({
-    ...(marked ? named(result, marked) : notes(result, input.answer)),
+const read = (result, input, marked, preserved) => ({
+    ...(marked ? named(result, marked) : notes(result, input.answer, preserved)),
     memory: memoryEdits(result?.memory),
 });
 
-export function marks(result, answer) {
+export function marks(result, answer, preserved = []) {
     const list = result?.suggestions;
     if (!Array.isArray(list)) throw new Error('Suggestions response was invalid.');
-    const kept = [];
+    const kept = [...preserved];
     let previous = 0;
     const find = (pattern, from = 0) => {
         const re = new RegExp(pattern, 'g');
@@ -144,7 +143,7 @@ export function named(result, { passages, groundwork }) {
                 : [],
         ),
     );
-    const concept = (p) => concepts.get(p.text.toLowerCase());
+    const concept = (p) => !p.concept && concepts.get(p.text.toLowerCase());
     return {
         passages: passages.map((p) => (concept(p) ? { ...p, concept: concept(p) } : p)),
         graph: marks({ ...result, suggestions: [], groundwork }, '').graph,
@@ -182,7 +181,7 @@ export async function suggest(
     input,
     signal,
     timeout = 120000,
-    { capable = false, mcp, marked = null } = {},
+    { capable = false, mcp, marked = null, preserved = [] } = {},
 ) {
     let usage = null;
     try {
@@ -195,7 +194,16 @@ export async function suggest(
                       // A mark that named its concept (ADR 0023) keeps it; only the others are named here.
                       suggestions: marked.passages.filter((p) => !p.concept).map((p) => p.text),
                   })
-                : PROMPT + JSON.stringify(input),
+                : PROMPT +
+                  (preserved.length
+                      ? ' Skip the terms the tutor already named in "alreadyMarked".'
+                      : '') +
+                  '\n' +
+                  JSON.stringify(
+                      preserved.length
+                          ? { ...input, alreadyMarked: preserved.map((p) => p.text) }
+                          : input,
+                  ),
             tool: {
                 spec: MARK_SUGGESTIONS,
                 read: (result) => {
@@ -203,13 +211,13 @@ export async function suggest(
                         throw new Error(
                             'suggestions must be a list of {text, concept}; use [] when none qualify.',
                         );
-                    return read(result, input, marked);
+                    return read(result, input, marked, preserved);
                 },
             },
             capable,
             mcp,
             // A model that answered in text: the JSON object it wrote.
-            read: (text) => read(json(text), input, marked),
+            read: (text) => read(json(text), input, marked, preserved),
             separator: '\n\n',
             signal: AbortSignal.any([signal, AbortSignal.timeout(timeout)]),
             missing: 'Suggestions did not complete.',
