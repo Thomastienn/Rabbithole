@@ -27,15 +27,17 @@ every stage at once uses no step helper and no step controls.
 stepThrough(root, steps) takes the visual's root element and an array with one
 entry per stage. Each entry is either a function, which continues the scene, or
 { scene: true, show } to change scene. Both are called with { index, duration }.
-A continuing step keeps the same elements and animates their attributes with d3
-transitions using duration; never rebuild the graphic or toggle near-copies of
-it. Use a scene change only when the layout really changes: the helper fades
+A continuing step keeps the same elements. When duration is positive, animate
+their attributes with d3 transitions using duration. When duration is 0, set the
+final attributes directly without scheduling a transition, so the helper can
+measure the step. Never rebuild the graphic or toggle near-copies of it. Use a
+scene change only when the layout really changes: the helper fades
 root out, runs show, which redraws root, and fades it back in. Mixing
 continuing steps and scene changes is allowed. For CSS transitions read the
 --step-duration CSS variable it sets on root; duration is 0 under
 prefers-reduced-motion and on first render. The helper places Previous and Next
-on either side of root, "Step n of m" below it, and wires Enter, Space and arrow
-keys; do not add your own step controls or indicator.
+on either side of root, Play and "Step n of m" below it, and wires Enter, Space
+and arrow keys; do not add your own step controls, autoplay or indicator.
 
 The frame holds only this visual, so CSS selectors need no id scoping.
 
