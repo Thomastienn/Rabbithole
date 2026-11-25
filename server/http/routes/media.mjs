@@ -355,11 +355,28 @@ export async function mediaRoutes(req, res, url, ctx, body) {
         return json(res, 200, live(job));
     }
     if (action === 'previous') {
-        if (!tree || artifact?.kind !== 'visual')
-            return json(res, 404, { error: 'Visual not found in this conversation.' });
+        if (!tree || !['visual', 'video'].includes(artifact?.kind))
+            return json(res, 404, { error: 'Visual or video not found in this conversation.' });
         const switched = !jobs.get('drawing', artifactId) && store.switchVersion(id, artifactId);
         if (!switched)
-            return json(res, 409, { error: 'This visual has no previous version to switch to.' });
+            return json(res, 409, {
+                error: `This ${artifact.kind} has no previous version to switch to.`,
+            });
+        if (
+            artifact.kind === 'video' &&
+            artifact.status !== 'ready' &&
+            !store.libraryVideo(artifactId)
+        ) {
+            await jobs.settled(artifactId);
+            await rm(videoWork(dir, artifactId), { recursive: true, force: true }).catch((error) =>
+                ctx.log(
+                    formatLog('warn', 'media', 'could not remove unfinished video work', {
+                        id: artifactId,
+                        cause: errorCause(error),
+                    }),
+                ),
+            );
+        }
         return json(res, 200, live(switched));
     }
     if (tree && ['mermaid', 'visual'].includes(artifact?.kind) && action === 'retry') {

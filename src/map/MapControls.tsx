@@ -4,32 +4,6 @@ import { Text } from '@astryxdesign/core/Text';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { MinusIcon, PlusIcon, ArrowsPointingOutIcon } from '@heroicons/react/24/outline';
 import { zoomLabel } from './canvas';
-import { inkStyle } from './treeList';
-import type { familyLegend } from './mapState';
-
-export function InkLegend({
-    legend,
-    root,
-}: {
-    legend: ReturnType<typeof familyLegend>;
-    root: string;
-}) {
-    return (
-        <aside className="ink-legend" aria-label="First branches" tabIndex={0}>
-            <ul>
-                {legend.map((t) => (
-                    <li key={t.id} style={inkStyle(t.ink)}>
-                        <span className="contents-dot" aria-hidden />
-                        <span>
-                            {t.address} {t.title}
-                            {t.id === root && ' · trunk'}
-                        </span>
-                    </li>
-                ))}
-            </ul>
-        </aside>
-    );
-}
 
 export function MapToolbar({
     zoom,

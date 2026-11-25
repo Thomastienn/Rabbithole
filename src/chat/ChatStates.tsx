@@ -9,6 +9,7 @@ import { ArrowUpIcon } from '@heroicons/react/24/outline';
 import {
     AttachButton,
     PendingAttachments,
+    holdEnter,
     noModelNote,
     pendingPlaceholder,
     useAttach,
@@ -59,16 +60,15 @@ export function FirstQuestion({
                         {modelMenu}
                     </>
                 }
-                isDisabled={busy}
                 sendButton={
-                    !available ? (
+                    !available || busy ? (
                         <IconButton
                             label="Send"
                             icon={<ArrowUpIcon />}
                             variant="primary"
                             isDisabled
                         />
-                    ) : files.length && !draft.trim() && !busy ? (
+                    ) : files.length && !draft.trim() ? (
                         // The composer's own send needs text; files alone are a question too.
                         <IconButton
                             label="Send"
@@ -101,7 +101,8 @@ export function FirstQuestion({
                             value={draft}
                             onChange={setDraft}
                             onFiles={attach.add}
-                            isDisabled={busy || !available}
+                            onKeyDown={(e) => busy && holdEnter(e)}
+                            isDisabled={!available}
                             placeholder={
                                 files.length
                                     ? pendingPlaceholder(files.length)

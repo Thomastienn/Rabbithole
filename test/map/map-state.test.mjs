@@ -6,7 +6,6 @@ import {
     sourceOf,
     keepCurrentFolded,
     revealAddedBranches,
-    familyLegend,
     branchEdges,
     reconcileNodes,
     keyMovement,
@@ -16,7 +15,7 @@ import {
 import { foldHierarchy } from '../../src/map/canvas.ts';
 import { conversationAddresses, inkStyle, markLibraryScrolling } from '../../src/map/treeList.ts';
 import { withLiveTurn, previewRequests, replyingPreviews } from '../../src/map/previews.ts';
-import { treeSearchSource } from '../../src/shell/treeSearchSource.ts';
+import { recentTrees, treeSearchSource } from '../../src/shell/treeSearchSource.ts';
 import { fakeServer } from '../support/fake-server.mjs';
 
 const tree = (id, parent = null, created = 0) => ({
@@ -133,34 +132,7 @@ test('tree restore selects only its own saved conversation and panel; legacy def
     });
 });
 
-test('legend names only this trunk and its first branches, repeating inks and reflecting rename/delete', () => {
-    const list = [
-        tree('root'),
-        ...Array.from({ length: 5 }, (_, i) => tree(`a${i}`, 'root', i)),
-        tree('deep', 'a0'),
-        tree('other'),
-    ];
-    const legend = familyLegend('root', list);
-    assert.deepEqual(
-        legend.map((t) => [t.address, t.ink]),
-        [
-            ['1', 0],
-            ['1.1', 1],
-            ['1.2', 2],
-            ['1.3', 3],
-            ['1.4', 4],
-            ['1.5', 1],
-        ],
-    );
-    list[1] = { ...list[1], title: 'Renamed' };
-    assert.equal(familyLegend('root', list)[1].title, 'Renamed');
-    assert.equal(
-        familyLegend(
-            'root',
-            list.filter((t) => t.id !== 'a4'),
-        ).length,
-        5,
-    );
+test('ink styles start on paper and use the numbered inks after', () => {
     assert.deepEqual(inkStyle(0), {
         '--ink': 'var(--rabbithole-paper)',
         '--ink-on': 'var(--rabbithole-paper-ink)',
@@ -439,14 +411,39 @@ test('search waits after typing, cancels stale requests, names the current tree 
     };
     const calls = fakeServer(t, () => {
         if (fail) throw new Error('Unavailable');
-        return [result];
+        return [
+            result,
+            { ...result, conversation: 'old-child', root: 'old' },
+            { ...result, conversation: 'other-child', root: 'other' },
+            { ...result, conversation: 'old-sibling', root: 'old' },
+        ];
     });
     let current = 'new';
+    let library = [];
     const source = treeSearchSource(
         (e) => errors.push(e),
         () => current,
+        () => library,
     );
-    assert.deepEqual(source.bootstrap(), []);
+    assert.deepEqual(source.bootstrap(), [], 'an empty library lists nothing');
+    // Seven trees a day apart, the newest with one branch: the empty query lists the six newest.
+    const day = (n) => new Date(2026, 10, 24 - n, 12).getTime();
+    library = [
+        ...[0, 1, 2, 3, 4, 5, 6].map((n) => tree(`t${n}`, null, day(n))),
+        tree('t0b', 't0', day(0)),
+    ];
+    const recent = recentTrees(library, new Date(2026, 10, 24, 18));
+    assert.deepEqual(
+        recent.map((r) => r.id),
+        ['t0', 't1', 't2', 't3', 't4', 't5'],
+    );
+    assert.deepEqual(
+        recent.slice(0, 2).map((r) => r.auxiliaryData.recent),
+        ['Today · 2 conversations', 'Yesterday · 1 conversation'],
+    );
+    assert.equal(new Set(recent.map((r) => r.auxiliaryData.group)).size, 1);
+    assert.equal(source.bootstrap().length, 6);
+    library.push(tree('old', null, day(4)), tree('other', null, day(4)));
     const stale = source.search('wa');
     const latest = source.search('O & ?');
     t.mock.timers.tick(119);
@@ -454,13 +451,16 @@ test('search waits after typing, cancels stale requests, names the current tree 
     assert.equal(calls.length, 0, 'no request before the typing pause');
     t.mock.timers.tick(1);
     assert.deepEqual(await stale, []);
-    const [item] = await latest;
+    const [item, old, other, sibling] = await latest;
     assert.deepEqual(
         calls.map((c) => c.path),
         ['/api/search?q=O%20%26%20%3F&tree=new'],
     );
     assert.equal(item.id, 'child');
-    assert.equal(item.auxiliaryData.group, 'Roman roads');
+    assert.ok(item.auxiliaryData.group.startsWith(item.auxiliaryData.tree));
+    assert.equal(old.auxiliaryData.group, sibling.auxiliaryData.group);
+    assert.notEqual(old.auxiliaryData.group, other.auxiliaryData.group);
+    assert.notEqual(item.auxiliaryData.group, old.auxiliaryData.group);
     assert.equal(item.auxiliaryData.message, 'm1');
     current = undefined;
     fail = true;

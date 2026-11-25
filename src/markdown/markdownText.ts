@@ -201,9 +201,10 @@ export function previewText(text: string, role: string) {
     return chars.slice(0, 512).join('') + (chars.length > 512 ? '…' : '');
 }
 
-// The start of a reply as plain text, cut at a word boundary with an ellipsis.
-export function excerpt(raw: string, max = 200) {
-    const text = plainText(raw);
+// A reply's first paragraph as plain text, cut at a word boundary with an ellipsis.
+export function excerpt(raw: string, max = 280) {
+    const at = parse(raw).children?.find((n) => n.type === 'paragraph')?.position;
+    const text = plainText(at ? raw.slice(at.start.offset, at.end.offset) : raw);
     if (text.length <= max) return text;
     const head = text.slice(0, max + 1),
         space = head.search(/\s\S*$/);

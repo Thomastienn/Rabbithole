@@ -424,7 +424,7 @@ test('Search from the narrow drawer returns focus to Contents when the palette c
     });
     const drawer = document.querySelector('dialog[open]');
     // A pointer press or Enter leaves focus on the drawer's Search; the palette takes it as its opener.
-    const search = button(drawer, 'Search learning trees');
+    const search = button(drawer, 'Search conversations');
     await act(async () => {
         search.focus();
         search.click();
@@ -470,4 +470,50 @@ test('narrow screens keep the header and contents drawer, also after saved focus
     Object.defineProperty(exit, 'propertyName', { value: 'transform' });
     await act(async () => drawer.dispatchEvent(exit));
     assert.ok(!document.querySelector('dialog[open]'));
+});
+
+test('while a reply streams the learner keeps typing; Enter sends nothing, Attach waits, Stop stays, the draft survives', async (t) => {
+    let reply;
+    const wire = (event) => new TextEncoder().encode(`data: ${JSON.stringify(event)}\n\n`);
+    const { container, act, calls } = await mount(t, [summary], {
+        respond: (path) =>
+            path === '/api/trees/t1/messages' &&
+            new Response(
+                new ReadableStream({
+                    start(controller) {
+                        reply = controller;
+                    },
+                }),
+            ),
+    });
+    const composer = () => container.querySelector('#focused-chat .attachment-composer');
+    const input = () => composer().querySelector('[role=textbox]');
+    const type = (text) =>
+        act(async () => {
+            input().textContent = text;
+            input().dispatchEvent(new Event('input', { bubbles: true }));
+        });
+    const enter = () =>
+        act(async () =>
+            input().dispatchEvent(
+                new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+            ),
+        );
+    await type('Continue');
+    await enter();
+    assert.ok(button(composer(), 'Stop'), 'Stop takes the Send place during the reply');
+    assert.equal(input().getAttribute('contenteditable'), 'true');
+    assert.equal(input().getAttribute('aria-disabled'), null);
+    assert.equal(button(composer(), 'Attach files').disabled, true);
+    await type('And lichens?');
+    await enter();
+    assert.equal(calls.filter((p) => p === '/api/trees/t1/messages').length, 1);
+    assert.equal(input().textContent, 'And lichens?');
+    await act(async () => {
+        reply.enqueue(wire({ type: 'done', status: 'completed' }));
+        reply.close();
+    });
+    assert.equal(input().textContent, 'And lichens?', 'kept, not sent, when the reply ends');
+    assert.equal(calls.filter((p) => p === '/api/trees/t1/messages').length, 1);
+    assert.equal(button(composer(), 'Send').disabled, false);
 });

@@ -1,3 +1,4 @@
+import { setImmediate } from 'node:timers/promises';
 import { cosine } from './store/embeddings.mjs';
 import { quickCall } from './http/quick.mjs';
 import { CONFIRM_MERGES } from './tools/quickTools.mjs';
@@ -12,33 +13,32 @@ const INSTRUCTIONS =
 export const MERGE_RULE =
     'Each entry of "pairs" holds two concept names or two topic names from one knowledge graph. Two names are the same when they name one concept or topic and differ only in wording, plural, case or a qualifier that adds nothing, such as "thread" and "Threads". They are different when one is a part, kind, process, use or a related idea of the other. When unsure, answer different. List in "same" the numbers of the pairs that are the same; [] when none.\n';
 
-// Every name this reply added paired with each other name at or above the threshold, once per pair.
-export function candidates(rows, added, threshold) {
-    const fresh = new Set(added.map((n) => n.toLowerCase()));
-    const pairs = [],
-        seen = new Set();
-    for (const a of rows)
-        if (a.embedding && fresh.has(a.name.toLowerCase()))
-            for (const b of rows) {
-                if (b === a || !b.embedding || cosine(a.embedding, b.embedding) < threshold)
-                    continue;
-                // Built only for close pairs: the one-time cleanup compares every name with every other.
-                const key = [a.name, b.name]
-                    .map((n) => n.toLowerCase())
-                    .sort()
-                    .join('\n');
-                if (!seen.has(key)) {
-                    seen.add(key);
-                    pairs.push([a.name, b.name]);
-                }
-            }
+// Compare the added names (every name during cleanup), yielding during large scans.
+export async function candidates(rows, added, threshold, signal) {
+    const addedNames = added && new Set(added.map((name) => name.toLowerCase()));
+    const embedded = rows.filter((row) => row.embedding);
+    const fresh = embedded.map((row) => !addedNames || addedNames.has(row.name.toLowerCase()));
+    const pairs = [];
+    let scanned = 0;
+    for (const [i, a] of embedded.entries()) {
+        if (!fresh[i]) continue;
+        if (scanned++ % 16 === 0) await setImmediate(undefined, { signal });
+        for (const [j, b] of embedded.entries()) {
+            if (i === j || (j < i && fresh[j])) continue;
+            if (
+                a.embedding.length === b.embedding.length &&
+                cosine(a.embedding, b.embedding) >= threshold
+            )
+                pairs.push([a.name, b.name]);
+        }
+    }
     return pairs;
 }
 
-// Candidate pairs for the concepts and topics one reply added; concepts saved without a vector are embedded first.
+// A null selection checks the whole graph. Concepts saved without a vector are embedded first.
 export async function mergeCandidates(store, embed, added, signal) {
     const pairs = [];
-    if (added.concepts.length) {
+    if (!added || added.concepts.length) {
         const pending = store.conceptEmbeddings().filter((c) => !c.embedding);
         if (pending.length) {
             const vectors = await embed(pending.map((c) => c.name));
@@ -46,33 +46,47 @@ export async function mergeCandidates(store, embed, added, signal) {
             for (const [i, c] of pending.entries())
                 if (vectors[i]) store.embedConcept(c.id, c.name, vectors[i]);
         }
-        for (const names of candidates(
+        for (const names of await candidates(
             store.conceptEmbeddings(),
-            added.concepts,
+            added?.concepts,
             MERGE_THRESHOLD.concept,
+            signal,
         ))
             pairs.push({ kind: 'concept', names });
     }
-    if (added.topics.length) {
+    if (!added || added.topics.length) {
         // shortcut: topic names are embedded on each check, not stored; store them if topics grow to hundreds.
-        const topics = store.graph().topics,
-            vectors = await embed(topics);
-        signal.throwIfAborted();
-        const rows = topics.map((name, i) => ({ name, embedding: vectors[i] }));
-        for (const names of candidates(rows, added.topics, MERGE_THRESHOLD.topic))
-            pairs.push({ kind: 'topic', names });
+        const topics = store.graph().topics;
+        if (topics.length) {
+            const vectors = await embed(topics);
+            signal.throwIfAborted();
+            const rows = topics.map((name, i) => ({ name, embedding: vectors[i] }));
+            for (const names of await candidates(
+                rows,
+                added?.topics,
+                MERGE_THRESHOLD.topic,
+                signal,
+            ))
+                pairs.push({ kind: 'topic', names });
+        }
     }
     return pairs;
 }
 
-const same = (list) => {
-    if (!Array.isArray(list) || !list.every(Number.isInteger))
-        throw new Error('same must be a list of pair numbers; use [] when none are the same.');
-    return list;
-};
-
 // One quick thinking call for every candidate pair of a reply; returns the confirmed pairs.
 export async function confirmMerges(provider, quick, pairs, signal, { capable = false, mcp } = {}) {
+    const same = (list) => {
+        if (
+            !Array.isArray(list) ||
+            !list.every(
+                (number) => Number.isInteger(number) && number >= 1 && number <= pairs.length,
+            )
+        )
+            throw new Error(
+                `same must list pair numbers from 1 to ${pairs.length}, or [] for none.`,
+            );
+        return list;
+    };
     const numbers = await quickCall(provider, 'merge', quick, {
         instructions: INSTRUCTIONS,
         prompt:

@@ -204,14 +204,14 @@ try {
             await home();
             await nav();
             await b('click', '.tree-search');
-            await b('fill', 'dialog[open][aria-label="Search learning trees"] input', 'fungi');
+            await b('fill', 'dialog[open][aria-label="Search conversations"] input', 'fungi');
             await wait(
-                `document.querySelectorAll('dialog[open][aria-label="Search learning trees"] [role=option]').length > 0`,
+                `document.querySelectorAll('dialog[open][aria-label="Search conversations"] [role=option]').length > 0`,
             );
             await shot('3-sidebar-search');
             await b('press', 'Escape');
             await wait(
-                `!document.querySelector('dialog[open][aria-label="Search learning trees"]')`,
+                `!document.querySelector('dialog[open][aria-label="Search conversations"]')`,
             );
             await shot('3-sidebar');
             await page('Settings');

@@ -51,7 +51,7 @@ test('desktop sidebar and narrow band keep control order, current views, drawer 
         'Shrink sidebar to rail',
         'Rabbithole',
         'New chat',
-        'Search learning trees',
+        'Search conversations',
         'Read',
         'Map',
         'Knowledge',
@@ -74,7 +74,7 @@ test('desktop sidebar and narrow band keep control order, current views, drawer 
         assert.equal(band().querySelector('[aria-current=page]').textContent, label);
     }
     for (const [label, expected] of [
-        ['Search learning trees', 'search'],
+        ['Search conversations', 'search'],
         ['New chat', 'new'],
         ['Settings', 'settings'],
         ['Rabbithole', 'library'],
@@ -97,11 +97,11 @@ test('desktop sidebar and narrow band keep control order, current views, drawer 
         'Contents',
         'Rabbithole',
         'Hide top bar',
-        'Search learning trees',
+        'Search conversations',
         'New chat',
     ]);
     for (const [label, expected] of [
-        ['Search learning trees', 'search'],
+        ['Search conversations', 'search'],
         ['New chat', 'new'],
         ['Rabbithole', 'library'],
     ]) {
@@ -113,7 +113,7 @@ test('desktop sidebar and narrow band keep control order, current views, drawer 
     for (const [label, expected] of [
         ['Close contents', undefined],
         ['New chat', 'new'],
-        ['Search learning trees', 'search'],
+        ['Search conversations', 'search'],
         ['Knowledge', 'Knowledge'],
         ['Library', 'library'],
         ['1 Fungi', undefined],
@@ -200,7 +200,7 @@ test('focus mode shrinks the sidebar to a labelled rail of named icons that keep
     assert.deepEqual(buttons().map(name), [
         'Show full sidebar',
         'New chat',
-        'Search learning trees',
+        'Search conversations',
         'Read',
         'Map',
         'Knowledge',
@@ -232,7 +232,7 @@ test('focus mode shrinks the sidebar to a labelled rail of named icons that keep
     }
     for (const [label, expected] of [
         ['New chat', 'new'],
-        ['Search learning trees', 'search'],
+        ['Search conversations', 'search'],
         ['Library', 'library'],
         ['Settings', 'settings'],
     ]) {
@@ -361,7 +361,7 @@ test('the toggle and shortcut switch between rail and full sidebar, survive a sh
     assert.equal(localStorage.getItem('rabbithole.focus-mode'), 'off');
 });
 
-test('Ctrl+Shift+O starts one new chat per press from anywhere, including text entry, but not while opening', async (t) => {
+test('Ctrl+Shift+O starts one new chat and Ctrl+K opens search per press from anywhere, including text entry; new chat waits while opening', async (t) => {
     let setBusy;
     const calls = [];
     function Fixture() {
@@ -378,7 +378,7 @@ test('Ctrl+Shift+O starts one new chat per press from anywhere, including text e
                 views: [],
                 saveAlert: null,
                 setDrawer() {},
-                search() {},
+                search: () => calls.push('search'),
                 newChat: () => calls.push('new'),
                 library() {},
                 settings() {},
@@ -422,4 +422,11 @@ test('Ctrl+Shift+O starts one new chat per press from anywhere, including text e
     await act(async () => setBusy(true));
     assert.equal(await press(container), true);
     assert.equal(calls.length, 3, 'nothing while a tree is opening');
+    const k = { key: 'k', shiftKey: false };
+    assert.equal(await press(container.querySelector('textarea'), k), true);
+    assert.equal(await press(container, { ...k, ctrlKey: false, metaKey: true }), true);
+    assert.equal(await press(container, { ...k, repeat: true }), true);
+    assert.equal(await press(container, { ...k, shiftKey: true }), false);
+    assert.equal(await press(container, { ...k, ctrlKey: false }), false);
+    assert.deepEqual(calls.slice(3), ['search', 'search'], 'Ctrl+K or Cmd+K, once per press');
 });

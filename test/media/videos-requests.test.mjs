@@ -1,6 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { mediaPath } from '../../server/media/videos.mjs';
 import {
+    audit,
+    pass,
+    mp4,
     task,
     directive,
     composition,
@@ -217,23 +223,41 @@ test('deleting a conversation while its request block is streaming cannot recrea
     }
 });
 
-test('Try a different version gives a ready video a new job; the chat shows only the newest and the library keeps both', async () => {
+test('Try a new version plans from the current video as the learner asks; the chat shows only the newest, the library keeps both and Previous version switches back', async () => {
     const workers = [];
+    const audits = [];
     let release,
         held = false;
-    const env = await open({
-        generate: async (tree, text, emit) => {
-            if (tree.role === 'video') {
-                if (tree.stage === 'plan') workers.push({ tree, text });
-                if (held && tree.stage === 'plan')
-                    await new Promise((r) => {
-                        release = r;
-                    });
-                return complete(emit, videoResponse(tree));
-            }
-            complete(emit, 'Here is the idea.' + directive);
+    const env = await open(
+        {
+            generate: async (tree, text, emit) => {
+                if (tree.role === 'video') {
+                    if (tree.stage === 'audit') {
+                        audits.push(workers.length);
+                        return audit(tree, emit, pass);
+                    }
+                    if (tree.stage === 'plan') workers.push({ tree, text });
+                    if (held && tree.stage === 'plan')
+                        await new Promise((r) => {
+                            release = r;
+                        });
+                    const source =
+                        workers.length === 1
+                            ? composition
+                            : composition
+                                  .replace('Winners advance.', 'Both winners advance.')
+                                  .replace('A + B → Final', 'Both winners → Final');
+                    return complete(emit, videoResponse(tree, source));
+                }
+                complete(emit, 'Here is the idea.' + directive);
+            },
         },
-    });
+        {
+            videoSnapshot: async (_dir, frames) => {
+                for (const { file } of frames) writeFileSync(file, 'jpeg');
+            },
+        },
+    );
     try {
         const tree = env.store.create('Videos', 'codex');
         await (
@@ -253,8 +277,29 @@ test('Try a different version gives a ready video a new job; the chat shows only
             ).status,
             404,
         );
+        const firstPlan = JSON.parse(env.store.artifact(tree.id, first.id).source).plan;
+        const artifactUrl = (id) => `/api/trees/${tree.id}/artifacts/${id}`;
+        const cuts = async (id) => {
+            const response = await env.get(`${artifactUrl(id)}/cuts`);
+            assert.equal(response.status, 200);
+            return response.json();
+        };
+        const bytes = async (url) => {
+            const response = await env.get(url);
+            assert.equal(response.status, 200);
+            return Buffer.from(await response.arrayBuffer());
+        };
+        const firstCuts = await cuts(first.id);
+        assert.equal(firstCuts.cuts[0].playable, true);
+        const firstAudio = await bytes(`${artifactUrl(first.id)}/cuts/0/narration`);
+        mkdirSync(join(env.dir, 'videos'), { recursive: true });
+        writeFileSync(mediaPath(env.dir, first.id), mp4);
+        assert.deepEqual(audits, [1], 'the original was made in Quality mode');
+        const videoModeUrl = '/api/settings/video-mode';
+        assert.equal((await env.post(videoModeUrl, { mode: 'saving' })).status, 200);
         held = true;
-        const response = await env.post(url, { input: 'UNTRUSTED' });
+        assert.equal((await env.post(url, { instruction: 'x'.repeat(501) })).status, 400);
+        const response = await env.post(url, { input: 'UNTRUSTED', instruction: ' Slower pace ' });
         assert.equal(response.status, 200);
         const next = await response.json();
         assert.notEqual(next.id, first.id);
@@ -269,12 +314,13 @@ test('Try a different version gives a ready video a new job; the chat shows only
             'one generation at a time',
         );
         assert.equal((await env.post(url)).status, 404, 'the previous id is no longer in the chat');
-        // The previous video stays in the library while the new one is made; it was never exported.
-        // Its live playback outside the chat is Rabbithole-exp.2 (cut routes keyed by video id).
+        // The previous video stays in the library while the new one is made.
         assert.deepEqual(
             (await (await env.get('/api/videos')).json()).map((v) => [v.id, v.exported]),
-            [[first.id, false]],
+            [[first.id, true]],
         );
+        assert.deepEqual(await bytes(`/api/videos/${first.id}/media`), mp4);
+        assert.equal((await env.post(videoModeUrl, { mode: 'quality' })).status, 200);
         release();
         await until(() =>
             env.store.tree(tree.id).artifacts.find((a) => a.id === next.id && a.status === 'ready'),
@@ -289,20 +335,73 @@ test('Try a different version gives a ready video a new job; the chat shows only
             (await (await env.get('/api/videos')).json()).map((v) => v.id).sort(),
             [first.id, next.id].sort(),
         );
-        assert.equal(
-            (await env.get(`/api/trees/${tree.id}/artifacts/${next.id}/cuts`)).status,
-            200,
-        );
+        assert.deepEqual(audits, [1], 'a new version started in Saving skips the audit');
+        assert.notDeepEqual(await cuts(next.id), firstCuts);
         const [a, b] = workers.map((w) => JSON.parse(w.text));
         assert.deepEqual(
-            { ...b, differentVersion: undefined },
-            { ...a, differentVersion: undefined },
+            { ...b, differentVersion: undefined, instruction: undefined, currentPlan: undefined },
+            { ...a, differentVersion: undefined, instruction: undefined, currentPlan: undefined },
             'same frozen request and selection',
         );
         assert.equal(b.differentVersion, true);
-        assert.notEqual(workers[1].tree.instructions, workers[0].tree.instructions);
+        assert.deepEqual(b.currentPlan, firstPlan, 'plans from the current version');
+        assert.equal(a.currentPlan, undefined);
+        assert.equal(b.instruction, 'Slower pace');
+        assert.ok(!workers[1].tree.instructions.includes(b.instruction));
         assert.doesNotMatch(workers[1].text, /UNTRUSTED/);
         assert.equal(workers[1].tree.thread, null);
+        // Previous version swaps the whole video back, cuts and all, with no new job; the library keeps both.
+        const chat = async () =>
+            (await (await env.get(`/api/trees/${tree.id}`)).json()).artifacts.map((v) => [
+                v.id,
+                v.status,
+                v.hasPrevious,
+            ]);
+        assert.deepEqual(await chat(), [[next.id, 'ready', true]]);
+        const back = await (
+            await env.post(`/api/trees/${tree.id}/artifacts/${next.id}/previous`)
+        ).json();
+        assert.deepEqual(
+            [back.id, back.status, back.title, back.exported],
+            [first.id, 'ready', first.title, true],
+        );
+        assert.deepEqual(await chat(), [[first.id, 'ready', true]]);
+        assert.deepEqual(JSON.parse(env.store.artifact(tree.id, first.id).input), a);
+        assert.deepEqual(await cuts(first.id), firstCuts);
+        assert.deepEqual(await bytes(`${artifactUrl(first.id)}/cuts/0/narration`), firstAudio);
+        assert.deepEqual(await bytes(`${artifactUrl(first.id)}/media`), mp4);
+        assert.equal(
+            (await (await env.post(`/api/trees/${tree.id}/artifacts/${first.id}/previous`)).json())
+                .id,
+            next.id,
+        );
+        assert.equal(
+            JSON.parse(env.store.artifact(tree.id, next.id).input).instruction,
+            b.instruction,
+        );
+        assert.equal(workers.length, 2, 'switching redraws nothing');
+        assert.deepEqual(
+            (await (await env.get('/api/videos')).json()).map((v) => v.id).sort(),
+            [first.id, next.id].sort(),
+        );
+        // Generating again after a switch builds on the video the learner chose.
+        assert.equal((await env.post(`${artifactUrl(next.id)}/previous`)).status, 200);
+        const third = await (await env.post(`${artifactUrl(first.id)}/regenerate`)).json();
+        await until(() => workers.length === 3);
+        const c = JSON.parse(workers[2].text);
+        assert.deepEqual(c.currentPlan, firstPlan);
+        assert.equal(c.instruction, undefined);
+        const alternative = /\b(?:different|alternative|another)\b[^.!?\n]*\b(?:approach|take)\b/i;
+        assert.match(workers[2].tree.instructions, alternative);
+        assert.doesNotMatch(workers[1].tree.instructions, alternative);
+        assert.equal((await env.post(`${artifactUrl(third.id)}/previous`)).status, 409);
+        assert.equal((await env.post(`${artifactUrl(third.id)}/cancel`)).status, 200);
+        release();
+        assert.equal((await env.post(`${artifactUrl(third.id)}/previous`)).status, 200);
+        assert.deepEqual(await chat(), [[first.id, 'ready', undefined]]);
+        assert.deepEqual(await bytes(`${artifactUrl(first.id)}/cuts/0/narration`), firstAudio);
+        assert.deepEqual(await bytes(`${artifactUrl(first.id)}/media`), mp4);
+        assert.equal(workers.length, 3, 'restoring a canceled version redraws nothing');
     } finally {
         release?.();
         env.close();

@@ -6,6 +6,7 @@ import { confirmMerges, mergeCandidates } from '../../merges.mjs';
 
 // Candidate pairs per confirmation call in the one-time cleanup, so one call stays small.
 const MERGE_BATCH = 20;
+const MERGE_CLEANUP = 'merge-duplicate-concepts-and-topics';
 
 // One quick thinking call after a completed reply (ADR 0016): the hidden notes for the tutor's marks, or every note for a reply that never ended. Detached from the reply stream so chat stays usable; stop() leaves the row pending and the next start marks it failed.
 export function suggestionJobs(ctx) {
@@ -15,6 +16,7 @@ export function suggestionJobs(ctx) {
         pairs,
         { id, fields, selection, quick, capable, signal, detail },
     ) => {
+        signal.throwIfAborted();
         const confirmed = await confirmMerges(
             ctx.metered(pick(selection), 'merge', id, selection, detail),
             quick,
@@ -67,33 +69,23 @@ export function suggestionJobs(ctx) {
     // One-time cleanup (ADR 0022): every existing concept and topic goes through the same check in batches of pairs,
     // after a database backup. Recorded only once it finished, so a failed run retries at the next startup.
     const cleanupMerges = () => {
-        if (!ctx.videoEmbed || !store.suggestionSettings().enabled || store.mergeCleanupRan())
-            return;
+        const settings = store.suggestionSettings();
+        if (!ctx.videoEmbed || !settings.enabled || store.cleanupRan(MERGE_CLEANUP)) return;
         ctx.jobs.start('merge-cleanup', 'all', null, async ({ controller: { signal } }) => {
             const fields = { task: 'merge' };
             try {
-                const pairs = await mergeCandidates(
-                    store,
-                    ctx.videoEmbed,
-                    {
-                        concepts: store.conceptEmbeddings().map((c) => c.name),
-                        topics: store.graph().topics,
-                    },
-                    signal,
-                );
+                const pairs = await mergeCandidates(store, ctx.videoEmbed, null, signal);
                 if (pairs.length) {
                     const chat = ctx.chatDefault();
                     // As for suggestions: without a quick thinking model the cheap default needs a subscription provider.
-                    if (
-                        !store.suggestionSettings().model &&
-                        !['claude', 'codex'].includes(chat.provider)
-                    )
+                    if (!settings.model && !['claude', 'codex'].includes(chat.provider))
                         throw new Error(
                             'Merge cleanup requires a signed-in subscription provider.',
                         );
                     const quick = await ctx.quickModel(chat, true),
                         capable = await ctx.toolCapable(quick).catch(() => false);
-                    store.backup('merge-');
+                    signal.throwIfAborted();
+                    await store.backupMergeCleanup();
                     for (let i = 0; i < pairs.length; i += MERGE_BATCH)
                         await confirmAndMerge(pairs.slice(i, i + MERGE_BATCH), {
                             id: randomUUID(),
@@ -104,7 +96,8 @@ export function suggestionJobs(ctx) {
                             signal,
                         });
                 }
-                store.finishMergeCleanup();
+                signal.throwIfAborted();
+                store.finishCleanup(MERGE_CLEANUP);
             } catch (error) {
                 skipped('merge cleanup skipped', fields, error, signal);
             }

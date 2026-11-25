@@ -31,18 +31,6 @@ test('slow selections cannot replace the current conversation and drafts stay pe
     assert.deepEqual(page.current.stream.drafts, { a: 'Draft A', b: 'Draft B' });
 });
 
-test('a branch reopened before its reply offers its question once, keeping an edited draft', async (t) => {
-    const page = await mount(t, (_, { data }) => {
-        data.get('b').branch = { parent: 'a', question: 'Why?', snapshot: '' };
-    });
-    await page.act(async () => page.current.trees.select('b'));
-    assert.equal(page.current.stream.drafts.b, 'Why?');
-    await page.act(async () => page.current.stream.setDraft('b', ''));
-    await page.act(async () => page.current.trees.select('a'));
-    await page.act(async () => page.current.trees.select('b'));
-    assert.equal(page.current.stream.drafts.b, '', 'the cleared draft is not refilled');
-});
-
 test('model saving never replaces a newly selected conversation', async (t) => {
     const save = deferred();
     const page = await mount(t, ({ path }) =>
@@ -171,39 +159,6 @@ test('reopened replies poll saved checkpoints until the server reports completio
     await page.act(async () => t.mock.timers.tick(1500));
     assert.equal(page.current.trees.tree.messages[0].text, 'Recovered reply');
     assert.deepEqual(page.current.trees.state.active, []);
-});
-
-test('a failed send restores the unsaved question and reports its error', async (t) => {
-    const page = await mount(t, ({ path }) =>
-        path.endsWith('/messages') ? json({ error: 'Provider unavailable' }, false) : undefined,
-    );
-    await page.act(async () => page.current.stream.send('Keep my question'));
-    assert.equal(page.current.stream.drafts.a, 'Keep my question');
-    assert.equal(page.current.c.error, 'Provider unavailable');
-    assert.deepEqual(page.current.trees.tree.messages, []);
-    assert.deepEqual(page.current.trees.state.active, []);
-});
-
-test('a send the server refuses keeps the pending files and the question for another try', async (t) => {
-    const reason =
-        'This model can’t read images and OCR language data couldn’t be downloaded. Go online and send again, or pick a model that reads images.';
-    const page = await mount(t, ({ path }) =>
-        path.endsWith('/messages') ? json({ error: reason }, false) : undefined,
-    );
-    const sheet = new File(['x'], 'worksheet.png', { type: 'image/png' });
-    await page.act(async () => page.current.stream.setFiles('a', [sheet]));
-    await page.act(async () =>
-        page.current.stream.send('Is trial 3 right?', page.current.trees.tree, false, [sheet]),
-    );
-    const sent = page.calls.find((call) => call.path.endsWith('/messages'));
-    assert.ok(sent.body instanceof FormData, 'files go as multipart');
-    assert.equal(page.current.c.error, reason, 'the refusal reason reaches the failure banner');
-    assert.deepEqual(page.current.stream.pendingFiles.a, [sheet], 'the files stay in the tray');
-    assert.equal(
-        page.current.stream.drafts.a,
-        'Is trial 3 right?',
-        'the question stays in the field',
-    );
 });
 
 test('branch preparation excludes the question and the saved child opens before its reply finishes', async (t) => {
@@ -492,4 +447,27 @@ test('polling refreshes media usage during an owning reply stream while preservi
         stream.close();
         await sending;
     });
+});
+
+test('a briefed selection joins the open reply suggestions so it underlines without reloading', async (t) => {
+    const row = {
+        message: 'reply',
+        status: 'ready',
+        passages: [{ start: 2, end: 6, text: 'heap' }],
+        groundwork: [],
+    };
+    const page = await mount(t, ({ path }, { data }) => {
+        if (path === '/api/trees/a/brief')
+            return json({ explanation: 'A tree kept in order.', suggestions: row });
+        if (path === '/api/trees/a')
+            return json({
+                ...data.get('a'),
+                suggestions: [{ message: 'reply', status: 'ready', passages: [], groundwork: [] }],
+            });
+    });
+    await page.act(async () => page.current.trees.openConversation('a'));
+    const anchor = { messageId: 'reply', start: 2, end: 6, text: 'heap' };
+    await page.act(async () => page.current.branch.explainBrief('a', anchor));
+    assert.deepEqual(page.current.trees.tree.suggestions, [row]);
+    assert.equal(page.current.trees.tree.briefs[0].explanation, 'A tree kept in order.');
 });

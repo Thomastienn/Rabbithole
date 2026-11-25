@@ -53,6 +53,9 @@ function offerUpdates(window, restart) {
     autoUpdater.on('update-available', ({ version }) =>
         set({ type: 'available', version, current: app.getVersion() }),
     );
+    autoUpdater.on('update-not-available', () =>
+        set({ type: 'not-available', current: app.getVersion() }),
+    );
     autoUpdater.on('download-progress', (progress) => set({ type: 'progress', ...progress }));
     autoUpdater.on('update-downloaded', () => set({ type: 'downloaded' }));
     autoUpdater.on('error', (error) => {
@@ -98,6 +101,8 @@ function startServer(window, loaded) {
         env: {
             ...process.env,
             RABBITHOLE_TOOLS_DIR: toolsDir(cwd, process.env, dataDir),
+            // CI stamps only the shell's version, so Settings learns it from here.
+            RABBITHOLE_VERSION: app.getVersion(),
             // Model-written code runs through the bundled launcher (desktop/sandbox) beside the Codex helpers.
             ...(windows && { RABBITHOLE_SANDBOX: join(resources, 'rabbithole-sandbox.exe') }),
         },

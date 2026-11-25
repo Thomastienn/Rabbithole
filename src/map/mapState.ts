@@ -1,7 +1,7 @@
 import type { Summary, Source } from './TreeOverview';
 import type { ConversationNode } from './Conversation';
 import type { Box, Viewport } from './canvas';
-import { conversationAddresses } from './treeList.ts';
+import type { conversationAddresses } from './treeList.ts';
 
 export type Open = (id: string, source?: Source, message?: string, artifact?: string) => void;
 
@@ -64,17 +64,6 @@ export function keepCurrentFolded(root: string, trees: Summary[], current?: stri
             )
             .map((t) => t.id),
     );
-}
-
-export function familyLegend(
-    root: string,
-    trees: Summary[],
-    addresses = conversationAddresses(trees),
-) {
-    return [...addresses].flatMap(([id, address]) => {
-        const t = trees.find((t) => t.id === id);
-        return t && (id === root || t.parent === root) ? [{ ...t, ...address }] : [];
-    });
 }
 
 export function branchEdges(

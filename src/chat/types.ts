@@ -27,12 +27,15 @@ export type Tree = {
     resources?: Resource[];
     suggestions?: Suggestions[];
     briefs?: Brief[];
+    // Keyed by child: the branch's question and the start of the child's first reply.
+    branchPreviews?: Record<string, { question: string; preview?: string }>;
     compaction?: { status: 'compacting' | 'failed'; error?: string };
 };
 export type ModelSelection = Pick<Tree, 'provider' | 'model' | 'effort'>;
 export type Providers = Record<string, { label: string; connected: boolean; installed?: boolean }>;
 export type State = {
     csrf: string;
+    version?: string;
     auth: { connected: boolean; email: string | null };
     firstRun?: boolean;
     trees: Summary[];

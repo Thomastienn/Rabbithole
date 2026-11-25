@@ -55,7 +55,11 @@ test('recursive branches compact fixed ancestor context without reading live anc
         const first = await api.compacted(
             (await (await api.post(`/${root.id}/branches`, anchor)).json()).id,
         );
-        assert.deepEqual(await api.get(root.id), rootBefore);
+        // Only the parent's branch previews list the new child.
+        assert.deepEqual(
+            { ...(await api.get(root.id)), branchPreviews: rootBefore.branchPreviews },
+            rootBefore,
+        );
         const snapshots = [first.branch];
         store.message(root.id, 'user', 'Later root change: Nova has 99 branches.', 'completed');
         let parent = first;
@@ -91,14 +95,22 @@ test('recursive branches compact fixed ancestor context without reading live anc
             assert.equal(call.tree.thread, null);
             assert.equal(child.model, 'fixture-model');
             assert.equal(child.branch.snapshot, 'Luma has 37 branches.');
-            assert.deepEqual(await api.get(parent.id), before);
+            assert.deepEqual(
+                { ...(await api.get(parent.id)), branchPreviews: before.branchPreviews },
+                before,
+            );
             snapshots.push(child.branch);
             parent = child;
         }
         // Descendant turns never become input for a root turn.
         await (await api.post(`/${root.id}/messages`, { text: 'Continue root only' })).text();
         assert.equal(calls.at(-1).tree.branch, null);
-        assert.doesNotMatch(JSON.stringify(calls.at(-1)), /focused|Explain Luma/);
+        // branchPreviews feeds the client's branch preview; providers never read it.
+        const { branchPreviews, ...rootTree } = calls.at(-1).tree;
+        assert.doesNotMatch(
+            JSON.stringify({ ...calls.at(-1), tree: rootTree }),
+            /focused|Explain Luma/,
+        );
         const records = await Promise.all(store.list().map((t) => api.get(t.id)));
         app.stop();
         store.close();
@@ -263,7 +275,7 @@ test('quick thinking recursively compacts root, child and grandchild context wit
                 'child keeps the chat choice, not quick thinking',
             );
             assert.deepEqual(
-                await api.get(parent.id),
+                { ...(await api.get(parent.id)), branchPreviews: before.branchPreviews },
                 before,
                 'parent and source messages unchanged',
             );

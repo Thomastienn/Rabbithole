@@ -40,12 +40,15 @@ export function saveLayout(run, ms = 3000) {
 export const toolsDir = (cwd, env, dataDir) =>
     join(resolve(cwd, env.RABBITHOLE_DATA_DIR ?? dataDir()), 'tools');
 
-// The update banner's state: null (nothing to show), then available, downloading, ready or failed, and restarting.
+// The update banner's state: null (nothing to show), then available, downloading, ready or failed, and restarting;
+// current when the check found nothing newer, which only Settings shows.
 // A failed check stays null, so being offline shows nothing; only a failed download is shown, with its reason.
 export function updateState(state, event) {
     switch (event.type) {
         case 'available':
             return { stage: 'available', version: event.version, current: event.current };
+        case 'not-available':
+            return { stage: 'current', version: event.current, current: event.current };
         case 'install':
             return state?.stage === 'available' || state?.stage === 'failed'
                 ? { ...state, stage: 'downloading', percent: 0, transferred: 0, total: 0 }

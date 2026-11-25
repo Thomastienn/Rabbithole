@@ -1,0 +1,9 @@
+/* Topic hues, shared by every theme: --h is a hue angle set where the colour applies. Each hue is a
+   light-dark pair mixed toward the theme's ink, so it reads on both variants. */
+[data-hue] {
+    --topic: color-mix(
+        in oklch,
+        light-dark(oklch(0.5 0.13 var(--h)), oklch(0.8 0.12 var(--h))) 85%,
+        var(--color-text-primary)
+    );
+}

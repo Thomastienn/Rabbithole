@@ -1,6 +1,8 @@
 import { familiarity } from '../familiarity.mjs';
 import { blob, vector } from './embeddings.mjs';
 import { mentions } from '../neighbourhood.mjs';
+import { knowledgeStats } from '../knowledge-stats.mjs';
+import { topicAnchors } from '../topicAnchors.mjs';
 
 const summary = (observations, met) => {
     const counts = [0, 0, 0, 0, 0, 0];
@@ -60,6 +62,46 @@ export const knowledge = {
             })),
             links: links.map((l) => ({ ...l })),
         };
+    },
+    // Read-only figures for the stats panel; nothing here is stored.
+    // shortcut: learner messages per day count recorded tutor calls whose reply still exists (messages have no time); upgrade if messages gain a timestamp.
+    graphStats(now = Date.now()) {
+        return knowledgeStats(
+            {
+                concepts: this.graph().concepts,
+                observations: this.db
+                    .prepare(
+                        'SELECT c.name AS concept, o.level, o.confidence, o.at, m.text FROM observations o JOIN concepts c ON c.id=o.concept LEFT JOIN messages m ON m.id=o.message',
+                    )
+                    .all(),
+                firstEvidence: new Map(
+                    this.db
+                        .prepare(
+                            'SELECT c.name, MIN(e.at) AS at FROM evidence e JOIN concepts c ON c.id=e.concept GROUP BY c.id',
+                        )
+                        .all()
+                        .map((r) => [r.name, r.at]),
+                ),
+                activity: this.db
+                    .prepare(
+                        "SELECT date(u.at/1000,'unixepoch','localtime') AS day, COUNT(*) AS messages FROM usage_events u JOIN messages m ON u.id='chat:'||m.id AND m.role='assistant' WHERE u.task='chat' GROUP BY day ORDER BY day",
+                    )
+                    .all()
+                    .map((r) => ({ ...r })),
+            },
+            now,
+        );
+    },
+    // Kept out of graph(): each tutor reply reads the graph, and only the Knowledge page needs anchors.
+    topicAnchors() {
+        return topicAnchors(
+            this.db
+                .prepare(
+                    "SELECT c.embedding, COALESCE((SELECT json_group_array(t.name) FROM concept_topics ct JOIN topics t ON t.id=ct.topic WHERE ct.concept=c.id),'[]') AS topics FROM concepts c ORDER BY c.name",
+                )
+                .all()
+                .map((c) => ({ topics: JSON.parse(c.topics), embedding: vector(c.embedding) })),
+        );
     },
     // Familiarity is derived from observations, never stored; "met" is counted for display and never moves it.
     familiarity(concept) {
@@ -173,6 +215,41 @@ export const knowledge = {
                 "INSERT OR IGNORE INTO observations(concept,message,level,confidence,at) VALUES (?,?,2,'low',?)",
             )
             .run(this.conceptId(concept), `brief:${message}:${start}:${end}`, Date.now());
+    },
+    // A briefed selection becomes a ready suggestion of its reply with no concept; true when one was added.
+    // shortcut: a pending row is skipped, as finishSuggestions replaces its passages; merge there if briefs during naming must stick.
+    suggestBriefed(conversation, { message, start, end, text }) {
+        return this.transaction(() => {
+            const row = this.db
+                .prepare(
+                    'SELECT status,passages FROM suggestions WHERE conversation=? AND message=?',
+                )
+                .get(conversation, message);
+            // A finished reply without a row (suggestions off) gets one, so its pending run is never blocked.
+            if (!row)
+                return (
+                    this.db
+                        .prepare(
+                            "INSERT INTO suggestions(message,conversation,status,passages,groundwork) SELECT ?,?,'ready',?,'[]' WHERE EXISTS(SELECT 1 FROM messages WHERE id=? AND tree=? AND status IN ('completed','interrupted'))",
+                        )
+                        .run(
+                            message,
+                            conversation,
+                            JSON.stringify([{ start, end, text }]),
+                            message,
+                            conversation,
+                        ).changes > 0
+                );
+            const passages = JSON.parse(row.passages ?? '[]');
+            if (row.status !== 'ready' || passages.some((p) => p.start === start && p.end === end))
+                return false;
+            passages.push({ start, end, text });
+            passages.sort((a, b) => a.start - b.start);
+            this.db
+                .prepare('UPDATE suggestions SET passages=? WHERE conversation=? AND message=?')
+                .run(JSON.stringify(passages), conversation, message);
+            return true;
+        });
     },
     mergeConcepts(from, into) {
         const source = this.concept(from),

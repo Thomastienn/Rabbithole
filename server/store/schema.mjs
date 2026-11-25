@@ -1,6 +1,6 @@
-import { DatabaseSync } from 'node:sqlite';
+import { DatabaseSync, backup as copyDatabase } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
-import { mkdirSync, chmodSync, writeFileSync, renameSync } from 'node:fs';
+import { mkdirSync, chmodSync, writeFileSync, renameSync, rmSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 const ARTIFACTS = `CREATE TABLE IF NOT EXISTS artifacts (id TEXT PRIMARY KEY, conversation TEXT NOT NULL REFERENCES trees(id), message TEXT NOT NULL,
@@ -10,10 +10,25 @@ const ARTIFACTS = `CREATE TABLE IF NOT EXISTS artifacts (id TEXT PRIMARY KEY, co
       CREATE INDEX IF NOT EXISTS artifacts_conversation ON artifacts(conversation, created);`;
 const BRANCHES = `CREATE TABLE IF NOT EXISTS branches (child TEXT PRIMARY KEY REFERENCES trees(id), parent TEXT NOT NULL REFERENCES trees(id), messageId TEXT NOT NULL REFERENCES messages(id), start INTEGER, end INTEGER, text TEXT NOT NULL, question TEXT NOT NULL, snapshot TEXT NOT NULL, artifactId TEXT, label TEXT, explanation TEXT, line INTEGER, speaker TEXT, discussion TEXT);`;
 
+function reserveBackup(path, label = '') {
+    const backupPath = `${path}.backup-${label}${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID().slice(0, 8)}.sqlite`;
+    writeFileSync(backupPath + '.tmp', '', { mode: 0o600, flag: 'wx' });
+    return backupPath;
+}
+
+// SQLite copies a consistent snapshot, including committed WAL pages, before any upgrade writes.
+function backup(db, path) {
+    const backupPath = reserveBackup(path);
+    db.prepare('VACUUM INTO ?').run(backupPath + '.tmp');
+    renameSync(backupPath + '.tmp', backupPath);
+    return backupPath;
+}
+
 // The Store constructor body: opens, backs up and migrates the database; called with the Store as this.
 export function open(path) {
     mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
     this.db = new DatabaseSync(path);
+    this.path = path;
     const hasColumn = (table, name) =>
         this.db.prepare('SELECT 1 FROM pragma_table_info(?) WHERE name=?').get(table, name);
     try {
@@ -25,9 +40,9 @@ export function open(path) {
         chmodSync(path, 0o600);
         // A fresh database starts with no model profile and no assumed provider; existing installs keep theirs.
         const fresh = !this.db.prepare("SELECT 1 FROM sqlite_master WHERE type='table'").get();
-        this.path = path;
-        // Before any upgrade writes.
-        if (version < 1 && !fresh) this.backupPath = this.backup();
+        if (version < 1 && !fresh) {
+            this.backupPath = backup(this.db, path);
+        }
         this.db.exec('PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;');
         if (version < 1) {
             this.transaction(() => {
@@ -302,6 +317,18 @@ export function open(path) {
         this.db.exec(
             'CREATE TABLE IF NOT EXISTS piece_versions (piece TEXT NOT NULL REFERENCES pieces(id) ON DELETE CASCADE, name TEXT NOT NULL, look TEXT NOT NULL, props TEXT NOT NULL, source TEXT NOT NULL, source3d TEXT, roles TEXT NOT NULL, true_colors TEXT, parts TEXT, improved INTEGER NOT NULL)',
         );
+        // One-time cleanup: pieces sharing a name fold into one; backed up first when it changes anything.
+        this.db.exec(
+            'CREATE TABLE IF NOT EXISTS cleanups (name TEXT PRIMARY KEY, at INTEGER NOT NULL)',
+        );
+        if (!this.cleanupRan('fold-duplicate-pieces')) {
+            if (this.db.prepare('SELECT 1 FROM pieces GROUP BY name HAVING COUNT(*)>1').get())
+                this.backupPath ??= backup(this.db, path);
+            this.transaction(() => {
+                this.foldDuplicatePieces();
+                this.finishCleanup('fold-duplicate-pieces');
+            });
+        }
         // Discussion kind and reply positions migrate in place; existing rows keep their content and positions.
         this.transaction(() => this.rebuildArtifacts("'discussion'"));
         // Visual passages keep their source artifact and part instead of inventing reply offsets.
@@ -330,10 +357,6 @@ export function open(path) {
             this.db
                 .exec(`CREATE TABLE first_run (id INTEGER PRIMARY KEY CHECK(id=1), finished INTEGER NOT NULL CHECK(finished IN (0,1)));
           INSERT INTO first_run SELECT 1, EXISTS(SELECT 1 FROM profiles) OR EXISTS(SELECT 1 FROM trees);`);
-        // The one-time duplicate merge cleanup (ADR 0022): a row once it ran.
-        this.db.exec(
-            'CREATE TABLE IF NOT EXISTS merge_cleanup (id INTEGER PRIMARY KEY CHECK(id=1), at INTEGER NOT NULL)',
-        );
         // Trees on a fresh database may have no provider; older databases keep assuming the default provider.
         this.assumesProvider = !!this.db
             .prepare('PRAGMA table_info(trees)')
@@ -350,19 +373,22 @@ export function open(path) {
 }
 
 export const schema = {
-    // SQLite copies a consistent snapshot beside the database, including committed WAL pages; returns its path.
-    backup(label = '') {
-        const backupPath = `${this.path}.backup-${label}${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID().slice(0, 8)}.sqlite`;
-        writeFileSync(backupPath + '.tmp', '', { mode: 0o600, flag: 'wx' });
-        this.db.prepare('VACUUM INTO ?').run(backupPath + '.tmp');
-        renameSync(backupPath + '.tmp', backupPath);
-        return backupPath;
+    async backupMergeCleanup() {
+        const backupPath = reserveBackup(this.path, 'merge-');
+        const partial = backupPath + '.tmp';
+        try {
+            await copyDatabase(this.db, partial);
+            renameSync(partial, backupPath);
+        } catch (error) {
+            rmSync(partial, { force: true });
+            throw error;
+        }
     },
-    mergeCleanupRan() {
-        return !!this.db.prepare('SELECT 1 FROM merge_cleanup').get();
+    cleanupRan(name) {
+        return !!this.db.prepare('SELECT 1 FROM cleanups WHERE name=?').get(name);
     },
-    finishMergeCleanup() {
-        this.db.prepare('INSERT OR IGNORE INTO merge_cleanup VALUES (1, ?)').run(Date.now());
+    finishCleanup(name) {
+        this.db.prepare('INSERT INTO cleanups VALUES (?,?)').run(name, Date.now());
     },
     migrate(fresh) {
         this.db

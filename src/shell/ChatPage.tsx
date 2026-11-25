@@ -14,7 +14,6 @@ import type { Appearance, ThemeChoice } from './appearance';
 import type { MapActions } from '../map/TreeOverview';
 import MapMenu from '../map/MapMenu';
 import MapView from '../map/MapView';
-import { rootOf } from '../map/mapState';
 import KnowledgePage from '../knowledge/KnowledgePage';
 import VideoLibrary from '../media/VideoLibrary';
 import PieceLibrary from '../media/PieceLibrary';
@@ -278,10 +277,12 @@ export default function ChatPage({
                         );
                 }}
                 searchSource={titleSearch}
-                onValueChange={(id) => {
-                    // A branch result opens that conversation; a root reopens its tree as saved.
-                    const root = id && rootOf(id, state?.trees ?? []);
-                    if (root) openTree(root, undefined, root === id ? undefined : id);
+                ink={(id) => addresses.get(id)?.ink ?? 0}
+                onOpen={(r) => {
+                    // A recent tree reopens as saved; a match opens its conversation in chat at the matched words.
+                    if (r.recent) return openTree(r.root, undefined, undefined, true);
+                    trees.targets.find(r);
+                    openTree(r.root, undefined, r.conversation);
                 }}
             />
             <HStack gap={0} style={{ flex: 1, minHeight: 0 }}>
@@ -505,6 +506,7 @@ export default function ChatPage({
                         loadModels={loadModels}
                         profileActivated={model.profileActivated}
                         auth={state?.auth}
+                        version={state?.version}
                         signIn={signIn}
                         vim={vim}
                         setVim={(on) => {
