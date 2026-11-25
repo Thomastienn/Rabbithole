@@ -86,6 +86,46 @@ test('notes stream as their markers close', () => {
     }
 });
 
+test('a mark may name its concept: only the shown words stay, underlined, in tables too', () => {
+    const shown = (raw) => {
+        const notes = notesOf(raw);
+        return [notes.text, notes.passages.map(({ text, concept }) => [text, concept ?? null])];
+    };
+    assert.deepEqual(shown('A [[safe state|safe]] one.'), [
+        'A safe one.',
+        [['safe', 'safe state']],
+    ]);
+    assert.deepEqual(shown('A [[safe state\\|safe]] one.'), [
+        'A safe one.',
+        [['safe', 'safe state']],
+    ]);
+    assert.deepEqual(shown('A [[mutex]] one.'), ['A mutex one.', [['mutex', null]]]);
+    // An empty side leaves a plain mark of the other.
+    assert.deepEqual(shown('A [[ |safe]] and [[lock| ]].'), [
+        'A safe and lock.',
+        [
+            ['safe', null],
+            ['lock', null],
+        ],
+    ]);
+    assert.deepEqual(shown('A [[|]] b.'), ['A  b.', []]);
+    // In a table row, either bar leaves a clean row of two cells.
+    for (const bar of ['|', '\\|'])
+        assert.equal(
+            notesOf(`| Term | Use |\n| --- | --- |\n| [[safe state${bar}safe]] | ok |`).text,
+            '| Term | Use |\n| --- | --- |\n| safe | ok |',
+        );
+    // A mark cut off at the end of its line shows only its shown words.
+    assert.equal(notesOf('A [[safe state|safe\nNext.').text, 'A safe\nNext.');
+    // While streaming, neither the bar nor the concept ever shows.
+    const raw = 'A [[safe state\\|safe]] one.\n[[end]]';
+    for (let i = 1; i <= raw.length; i++) {
+        const partial = notesOf(raw.slice(0, i), false);
+        assert.doesNotMatch(partial.text, /\||state|\[|\]/);
+        assert.equal(partial.passages.length, i >= raw.indexOf(']]') + 2 ? 1 : 0);
+    }
+});
+
 // Reads server-sent events as they arrive, so a test can wait on one mid-reply.
 const watch = (response) => {
     const seen = [];

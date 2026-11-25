@@ -186,6 +186,52 @@ test('a completed reply without [[end]] starts its briefs once quick thinking ha
     assert.match(logs[1], /WARN suggestions memory edit refused id="s".*limit/);
 });
 
+test('a mark that names its concept stores it, and quick thinking names only the other marks', async () => {
+    const calls = [],
+        prompts = [];
+    const store = {
+        tree: () => ({ provider: 'claude' }),
+        suggestionSettings: () => ({ enabled: true }),
+        pendingSuggestions: () => true,
+        finishSuggestions: (...args) => calls.push(['finish', args[2]]),
+        nameSuggestions: (...args) => calls.push(['name', args[2]]),
+        addGraph: () => {},
+        graph: () => ({ topics: [], concepts: [] }),
+        mentioned: () => ({}),
+        memoryNote: () => '',
+    };
+    const quick = {
+        models: async () => [{ model: 'haiku' }],
+        generate: async (tree, text, emit) => {
+            prompts.push(text);
+            const answer = { suggestions: [{ text: 'mutex', concept: 'Mutex' }] };
+            emit({ type: 'item', item: 'a', text: JSON.stringify(answer) });
+            emit({ type: 'status', status: 'completed' });
+        },
+    };
+    const jobs = backgroundJobs();
+    const { noteSuggestions } = suggestionJobs({
+        store,
+        suggestions: true,
+        jobs,
+        neighbourhood: async () => ({ concepts: [] }),
+        pick: () => quick,
+        logged: (provider) => provider,
+        toolCapable: async () => false,
+        quickModel: async () => ({ provider: 'claude', model: 'haiku', effort: null }),
+        startBriefs: () => {},
+    });
+    const notes = notesOf('A [[safe state|safe]] run and a [[mutex]].\n[[end]]', true);
+    noteSuggestions('c', 'r', 'completed', notes, 'Q', 'A safe run and a mutex.\n');
+    await jobs.get('suggestion', 'r').done;
+    const safe = { start: 2, end: 6, text: 'safe', concept: 'safe state' };
+    assert.deepEqual(calls, [
+        ['finish', [safe, { start: 17, end: 22, text: 'mutex' }]],
+        ['name', [safe, { start: 17, end: 22, text: 'mutex', concept: 'Mutex' }]],
+    ]);
+    assert.deepEqual(data({ input: prompts[0] }).suggestions, ['mutex']);
+});
+
 test('the suggestion notes ask the tutor to mark a term it would bold', () => {
     const paragraph = NOTES_RULE.split('\n\n').find((p) => p.startsWith('Suggestion notes:'));
     assert.match(
