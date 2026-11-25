@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 // The shell's decisions, free of Electron so node --test checks them without opening a window.
@@ -37,8 +38,12 @@ export function saveLayout(run, ms = 3000) {
 
 // Add-ons install into a tools folder in the server's data folder (server/main.mjs, resolved from the server's cwd),
 // so the app never writes into its own, read-only folder and an app update keeps them.
-export const toolsDir = (cwd, env, dataDir) =>
-    join(resolve(cwd, env.RABBITHOLE_DATA_DIR ?? dataDir()), 'tools');
+const dataFolder = (cwd, env, dataDir) => resolve(cwd, env.RABBITHOLE_DATA_DIR ?? dataDir());
+export const toolsDir = (cwd, env, dataDir) => join(dataFolder(cwd, env, dataDir), 'tools');
+
+// The server creates its database on its first start, so a data folder without one means a first launch.
+export const firstLaunch = (cwd, env, dataDir) =>
+    !existsSync(join(dataFolder(cwd, env, dataDir), 'trees.sqlite'));
 
 // The update banner's state: null (nothing to show), then available, downloading, ready or failed, and restarting;
 // current when the check found nothing newer, which only Settings shows.

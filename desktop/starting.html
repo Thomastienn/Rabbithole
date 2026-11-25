@@ -32,6 +32,12 @@
       .word { font: 700 22px/1 "Barlow Semi Condensed", Barlow, "Segoe UI", Helvetica, Arial, sans-serif; letter-spacing: 0.09em; text-transform: uppercase; }
       #status { color: var(--mute); font-size: 14px; margin-top: -8px; }
       .fail, .next { display: none; }
+      /* First launch (main.mjs adds .first): a thin bar eases toward 90 % over about 20 s, then .ready fills it. */
+      .bar { display: none; width: 160px; height: 3px; margin-top: -8px; border-radius: 2px; background: var(--line); overflow: hidden; }
+      .bar > div { height: 100%; background: var(--fg); transform: scaleX(0); transform-origin: left; animation: fill 20s cubic-bezier(.2, .6, .3, 1) forwards; }
+      body.first .bar { display: block; }
+      body.ready .bar > div { animation: none; transform: scaleX(1); }
+      @keyframes fill { to { transform: scaleX(.9); } }
       /* The trunk leaves the station, the two branches fork off it, the drawing holds, then fades and starts again. */
       .trunk { animation: trunk 2.8s cubic-bezier(.4, 0, .2, 1) infinite; }
       .branch { animation: branch 2.8s cubic-bezier(.4, 0, .2, 1) infinite; }
@@ -44,6 +50,7 @@
         .trunk, .branch { animation: none; stroke-dashoffset: 0; }
         .ping { animation: none; }
         #status { animation: breathe 3s ease-in-out infinite; }
+        .bar > div { animation-timing-function: steps(4); }
       }
       @keyframes breathe { 50% { opacity: .55; } }
       /* Start error: main.mjs swaps #status for <pre id=status>. The page reacts with CSS alone. */
@@ -52,6 +59,7 @@
       body:has(pre#status) svg { width: 56px; height: 56px; }
       body:has(pre#status) .word { display: none; }
       body:has(pre#status) .fail, body:has(pre#status) .next { display: block; }
+      body:has(pre#status) .bar { display: none; }
       .fail { font: 600 20px/1.2 "Barlow Semi Condensed", Barlow, "Segoe UI", Helvetica, Arial, sans-serif; color: var(--fg); margin: -4px 0 0; }
       pre#status { margin: 0; color: var(--fg); text-align: left; font: 12px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; white-space: pre-wrap; max-width: min(60rem, 100%); max-height: 40vh; overflow: auto; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; user-select: text; }
       .next { color: var(--mute); font-size: 13px; max-width: 46ch; margin: 0; }
@@ -68,6 +76,8 @@
     <div class="word">Rabbithole</div>
     <h1 class="fail">Rabbithole could not start</h1>
     <p id="status" role="status">Starting…</p>
+    <!-- No value: the status line above is the polite announcement, so screen readers don't hear every tick. -->
+    <div class="bar" role="progressbar" aria-label="Starting"><div></div></div>
     <p class="next">Close the app and open it again. If this keeps happening, copy the text above into an issue.</p>
   </body>
 </html>

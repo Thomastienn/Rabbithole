@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
-import { resolve } from 'node:path';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import test from 'node:test';
 import { dataDir } from '../../server/desktop.mjs';
 import {
+    firstLaunch,
     navigation,
     saveLayout,
     serverUrl,
@@ -83,6 +86,15 @@ test('add-ons install into a tools folder inside the data folder the server uses
         toolsDir('/app', { RABBITHOLE_DATA_DIR: 'data' }, home({})),
         resolve('/app/data/tools'),
     );
+});
+
+test('the starting progress bar shows only while the data folder has no database yet', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'rabbithole-first-'));
+    const env = { RABBITHOLE_DATA_DIR: dir };
+    const none = () => assert.fail('the data folder variable wins');
+    assert.equal(firstLaunch('/app', env, none), true);
+    writeFileSync(join(dir, 'trees.sqlite'), '');
+    assert.equal(firstLaunch('/app', env, none), false);
 });
 
 test('the update banner appears only for a newer release, downloads on Install and quietly ignores a failed check', () => {
