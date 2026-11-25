@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
-import { existsSync, mkdtempSync, readdirSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
@@ -88,9 +88,9 @@ test('the composer’s accepted types agree with what the server prepares', asyn
 test('multipart send stores text attachments, delivers them, serves them safely and deletes them with the conversation', async (t) => {
     const dir = mkdtempSync(join(tmpdir(), 'rabbithole-attachments-'));
     const store = new Store(join(dir, 'trees.sqlite'));
-    const calls = [],
-        titles = [];
+    const calls = [];
     const chat = {
+        readsImages: true,
         generate: async (tree, text, emit) => {
             calls.push({ tree, text });
             emit({ type: 'item', item: 'a', text: 'An answer.' });
@@ -100,8 +100,18 @@ test('multipart send stores text attachments, delivers them, serves them safely 
     const quick = {
         models: async () => [{ model: 'quick-model', efforts: ['low'] }],
         generate: async (tree, text, emit) => {
-            titles.push(text);
-            emit({ type: 'item', item: 't', text: 'Heap notes' });
+            const { question, attachments, nearestConcepts } = JSON.parse(
+                text.slice(text.indexOf('\n') + 1),
+            );
+            const concept = attachments?.includes('Binary heaps')
+                ? (nearestConcepts.find((name) => name === 'Binary heaps') ??
+                  (question ? 'Heap data structures' : 'Binary heaps'))
+                : null;
+            emit({
+                type: 'item',
+                item: 't',
+                text: JSON.stringify({ title: 'Heap notes', concept }),
+            });
             emit({ type: 'status', status: 'completed' });
         },
     };
@@ -245,14 +255,37 @@ test('multipart send stores text attachments, delivers them, serves them safely 
     // Attachment-only first question: placeholder is the file name, the title job reads the text.
     await app.settled();
     const only = await create();
-    titles.length = 0;
     const onlyStream = await (
         await upload(`/${only}/messages`, '', [['Lecture 3.md', '# Binary heaps', 'text/markdown']])
     ).text();
     assert.match(onlyStream, /"title":"Lecture 3.md"/);
     await app.settled();
-    assert.match(titles[0], /"question":"\[Attached file: Lecture 3.md\]\\n# Binary heaps"/);
     assert.equal(store.tree(only).title, 'Heap notes');
+    const explored = (tree) => store.list().find((entry) => entry.id === tree).concept;
+    assert.equal(explored(only), 'Binary heaps');
+
+    // The PDF's subject reaches the title model and matches the concept explored by the first tree.
+    const lecture = await create();
+    const pdf = readFileSync(new URL('../fixtures/pdf/typed.pdf', import.meta.url));
+    const lectureStream = await (
+        await upload(`/${lecture}/messages`, 'help me learn this lecture', [
+            ['typed.pdf', pdf, 'application/pdf'],
+        ])
+    ).text();
+    assert.match(lectureStream, /"status":"completed"/);
+    await app.settled();
+    assert.equal(explored(lecture), 'Binary heaps');
+
+    // A native image alone has no question or extracted text for the title model.
+    const image = await create();
+    const imageStream = await (
+        await upload(`/${image}/messages`, '', [['red.png', 'PNG', 'image/png']])
+    ).text();
+    assert.match(imageStream, /"status":"completed"/);
+    await app.settled();
+    assert.equal(store.tree(image).title, 'red.png');
+    assert.equal(explored(image), null);
+
     assert.equal(
         (await upload(`/${only}/messages`, ' ', [])).status,
         400,
