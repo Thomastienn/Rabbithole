@@ -492,6 +492,10 @@ dialog.tree-search-window::backdrop {
 .focused-chat .astryx-chat-layout > :last-child {
     pointer-events: none;
 }
+/* The composer draws its own foot padding on the ground, so nothing scrolls into view beneath it. */
+.focused-chat .astryx-chat-layout > :last-child > :last-child {
+    padding: 0;
+}
 .focused-chat .astryx-chat-layout > :last-child > * {
     pointer-events: auto;
 }
@@ -512,9 +516,22 @@ dialog.tree-search-window::backdrop {
     box-sizing: border-box;
     background: var(--color-background-body);
 }
+/* Narrow (mockup narrow.html): the composer fills the foot; pills keep their labels and wrap before they shrink, and Ask on the side keeps only its fork icon. */
 @media (max-width: 48rem) {
     .focused-chat .astryx-chat-composer {
-        padding-inline: 16px;
+        padding: 8px 12px 12px;
+    }
+    .focused-chat .astryx-chat-composer > :first-child > :last-child > :first-child {
+        flex-wrap: wrap;
+        row-gap: var(--spacing-1);
+    }
+    .focused-chat .ask-side > span > span:last-child {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
     }
 }
 .focused-chat .astryx-chat-composer > :first-child {
@@ -553,6 +570,12 @@ dialog.tree-search-window::backdrop {
 }
 .focused-chat .astryx-chat-send-button {
     border-radius: var(--radius-element);
+}
+/* Send keeps its porcelain look in an empty box (mockup Read, fbv.1); it still cannot send empty text. */
+:is(.focused-chat, .first-question) .astryx-chat-send-button:disabled {
+    background-color: var(--color-accent);
+    color: var(--color-on-accent);
+    opacity: 1;
 }
 .tree-canvas {
     flex: 1;

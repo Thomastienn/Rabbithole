@@ -17,6 +17,7 @@ import Reply from './Reply';
 import BranchForm from './BranchForm';
 import type { Summary } from '../map/TreeOverview';
 import type { Tree } from './types';
+import { figureList } from './figures';
 import type { ChatModel } from './useChatModel';
 import type { LearningTrees } from './useLearningTrees';
 import type { ReplyStream } from './useReplyStream';
@@ -27,7 +28,7 @@ import type { SettingsTab } from '../settings/SettingsWindow';
 
 // The values the thread reads besides its conversation, its source passage and whether it replies.
 export type ThreadProps = Pick<ChatModel, 'modelLabel'> &
-    Pick<LearningTrees, 'openConversation' | 'addresses'> &
+    Pick<LearningTrees, 'openConversation' | 'addresses' | 'previews'> &
     Pick<ReplyStream, 'send' | 'replyDiscussion'> &
     Pick<
         BranchFormState,
@@ -63,6 +64,7 @@ export default function ChatThread({
     modelLabel,
     openConversation,
     addresses,
+    previews,
     trees,
     send,
     replyDiscussion,
@@ -91,6 +93,12 @@ export default function ChatThread({
     source?: Source;
     validSource?: boolean;
 }) {
+    // Previews cover only the open tree, so other trees add no figures and the count matches the sidebar.
+    const figures = figureList(
+        [...addresses.keys()].map((id) => ({ id })),
+        previews,
+        tree,
+    ).map((f) => f.id);
     return tree.messages.map((message) => {
         const suggestions = tree.suggestions?.find((s) => s.message === message.id),
             index =
@@ -318,6 +326,7 @@ export default function ChatThread({
                                     key={artifact.id}
                                     artifact={artifact}
                                     steps={all.filter((a) => a.kind === 'mermaid')}
+                                    figure={figures.indexOf(artifact.id) + 1 || undefined}
                                     onRetry={() => videoAction(tree.id, artifact.id, 'retry')}
                                 />
                             ),

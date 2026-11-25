@@ -83,29 +83,49 @@
 }
 .diagram-card {
     align-self: stretch;
+    /* Mermaid sizes its labels from this (mockup figure text, 13px). */
+    font-size: 13px;
     min-width: 0;
     max-width: 100%;
+    margin-block: 4px 18px;
+    overflow: hidden;
     border-radius: var(--radius-container);
-    background: var(--color-background-surface);
+    background: var(--color-background-muted);
     color: var(--color-text-primary);
     overflow-wrap: anywhere;
 }
+/* Figure head (mockup .figc .fh): "Fig N · title" in porcelain, step and view controls muted at the end. */
+.diagram-head {
+    padding: 6px 6px 6px 16px;
+    min-height: 44px;
+}
 .diagram-card h3 {
+    flex: 1;
+    min-width: 0;
     font-size: 14px;
     font-weight: 600;
+    color: var(--rabbithole-paper);
 }
-.diagram-open {
-    display: block;
-    max-width: 100%;
-    padding: 0;
-    border: 0;
-    background: none;
-    cursor: zoom-in;
+.diagram-tools {
+    flex: none;
+    color: var(--color-text-secondary);
 }
-.diagram-open img {
+.diagram-tools .astryx-text {
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+.diagram-body {
+    padding: 4px 16px 14px;
+}
+.diagram-drawing {
     display: block;
     max-width: 100%;
     height: auto;
+    margin-inline: auto;
+}
+.diagram-caption {
+    font-size: 12px;
+    text-align: center;
 }
 .video-library {
     display: grid;
@@ -145,13 +165,25 @@
     font-size: 12px;
     font-variant-numeric: tabular-nums;
 }
+/* Title 10px under the frame, then the 13px origin and description; one action row 6px below. */
 .video-volume h3 {
-    margin-top: 4px;
+    margin-top: 2px;
     font-size: 17px;
     font-weight: 700;
 }
+.video-volume-caption .astryx-text {
+    font-size: 13px;
+}
 .video-volume-actions {
-    margin-inline-start: -10px;
+    gap: 2px;
+    margin: -2px 0 0 -10px;
+}
+.video-volume-actions .astryx-button {
+    height: 30px;
+}
+.video-volume-actions .astryx-button,
+.video-volume-actions .astryx-button .astryx-text {
+    font-size: 13px;
 }
 .video-frame {
     display: block;
@@ -404,8 +436,12 @@
     outline: medium solid var(--color-text-primary);
     outline-offset: var(--spacing-1);
 }
-/* Inherited context: a collapsible tonal section on raised enamel (mockup .inh). */
+/* Inherited context: a compact raised pill that opens in place (mockup .inh). */
 .inherited-context {
+    align-self: flex-start;
+    margin-block-start: 20px;
+    width: fit-content;
+    max-width: 100%;
     border-radius: var(--radius-container);
     background: var(--color-background-surface);
     padding-inline: 14px;
@@ -413,9 +449,22 @@
     font-size: 13px;
 }
 .inherited-context .astryx-collapsible-trigger {
+    width: auto;
+    gap: 10px;
     padding: 10px 0;
-    color: inherit;
+    color: var(--color-text-secondary);
+}
+.inherited-context .astryx-collapsible-trigger .astryx-text {
+    font-size: 13px;
+    line-height: 19px;
+}
+/* Mockup: 24px from the pill to the first question. */
+.focused-chat .inherited-context + .chat-question {
+    margin-block-start: 16px;
+}
+.inherited-context .astryx-collapsible-trigger strong {
     font-weight: 600;
+    color: var(--color-text-primary);
 }
 .inherited-body {
     margin: 0;
@@ -451,7 +500,6 @@
     font-size: var(--font-size-sm);
 }
 .diagram-card:focus-visible,
-.diagram-open:focus-visible,
 .diagram-source:focus-visible {
     outline: medium solid var(--color-text-primary);
     outline-offset: calc(-1 * var(--spacing-1));
@@ -469,12 +517,14 @@
         transform: translate(-50%, var(--spacing-1));
     }
 }
+/* Passage box (mockup States): opens under the selection, up to 400px wide. Its top is the passage's first line,
+   so it drops one reply line. shortcut: a selection over several lines is partly covered; place it at the anchor's
+   `below` in Passage.tsx to sit under any selection. */
 .passage-box {
     position: absolute;
     z-index: 3;
-    width: min(100%, 320px);
-    transform: translateY(-100%);
-    margin-top: calc(-1 * var(--spacing-1));
+    width: min(100%, 400px);
+    margin-top: calc(1lh + var(--spacing-1));
 }
 /* Origin line under the title (mockup .origin): a porcelain ring, then From <parent> at “passage”. */
 .origin-line {

@@ -74,12 +74,23 @@ export function TokenStats({
     );
 }
 
+// The pill's summary: what the child inherited and its rough size.
+export function inheritedSummary(branch: Branch, parentAddress: string) {
+    // shortcut: about 4 characters a token; use the provider's count if the server ever stores one.
+    const tokens = Math.ceil([branch.snapshot, branch.text, branch.discussion].join('').length / 4);
+    // An empty passage marks a free branch, which inherits the parent up to its latest reply.
+    const what = branch.text
+        ? `1 passage from ${parentAddress}`
+        : `${parentAddress} up to its latest reply`;
+    return `${what} · ${tokens.toLocaleString('en-US')} tokens`;
+}
+
 export function InheritedContext({
     branch,
-    parentTitle,
+    parentAddress,
 }: {
     branch: Branch | null;
-    parentTitle: string;
+    parentAddress: string;
 }) {
     return (
         <>
@@ -87,7 +98,13 @@ export function InheritedContext({
                 <Collapsible
                     className="inherited-context"
                     defaultIsOpen={false}
-                    trigger={<Text weight="medium">Inherited from {parentTitle}</Text>}
+                    chevronPosition="start"
+                    trigger={
+                        <Text type="supporting" color="secondary">
+                            <strong>Context the tutor received</strong> ·{' '}
+                            {inheritedSummary(branch, parentAddress)}
+                        </Text>
+                    }
                 >
                     <dl className="inherited-body">
                         {branch.text && (

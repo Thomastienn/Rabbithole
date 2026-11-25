@@ -173,25 +173,28 @@ export default function FocusedChat({
         <>
             <header className="chat-header">
                 <VStack paddingInline={2} paddingBlock={1} gap={1}>
-                    <ChatHeadingRow
-                        parentTitle={
-                            tree.branch
-                                ? (trees.find((t) => t.id === tree.branch!.parent)?.title ??
-                                  'parent conversation')
-                                : undefined
-                        }
-                        ancestors={ancestors}
-                        current={tree}
-                        addresses={addresses}
-                        open={back}
-                        openParent={() => back(tree.branch!.parent)}
-                        statsOpen={statsOpen}
-                        toggleStats={() => setStatsOpen((open) => !open)}
-                        expanded={expanded}
-                        toggleExpanded={toggleExpanded}
-                        returnToTree={returnToTree}
-                        rename={() => setRenaming({ id: tree.id, place: 'header' })}
-                    />
+                    {/* Narrow (mockup narrow.html): the title sits under the app bar; the origin line, drawer and Esc navigate. */}
+                    {!mobile && (
+                        <ChatHeadingRow
+                            parentTitle={
+                                tree.branch
+                                    ? (trees.find((t) => t.id === tree.branch!.parent)?.title ??
+                                      'parent conversation')
+                                    : undefined
+                            }
+                            ancestors={ancestors}
+                            current={tree}
+                            addresses={addresses}
+                            open={back}
+                            openParent={() => back(tree.branch!.parent)}
+                            statsOpen={statsOpen}
+                            toggleStats={() => setStatsOpen((open) => !open)}
+                            expanded={expanded}
+                            toggleExpanded={toggleExpanded}
+                            returnToTree={returnToTree}
+                            rename={() => setRenaming({ id: tree.id, place: 'header' })}
+                        />
+                    )}
                     {modelNotice && (
                         <Text type="supporting" role="status">
                             {modelNotice}
@@ -404,10 +407,7 @@ export default function FocusedChat({
                     )}
                     <InheritedContext
                         branch={tree.branch}
-                        parentTitle={
-                            trees.find((t) => t.id === tree.branch?.parent)?.title ??
-                            'parent conversation'
-                        }
+                        parentAddress={addresses.get(tree.branch?.parent ?? '')?.address ?? ''}
                     />
                     {!tree.messages.length && (
                         <VStack gap={3} padding={6}>

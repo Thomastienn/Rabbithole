@@ -1,8 +1,14 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Heading, Text } from '@astryxdesign/core/Text';
-import { Collapsible } from '@astryxdesign/core/Collapsible';
 import { Button } from '@astryxdesign/core/Button';
+import { IconButton } from '@astryxdesign/core/IconButton';
+import {
+    ArrowsPointingOutIcon,
+    ChevronLeftIcon,
+    ChevronRightIcon,
+    CodeBracketIcon,
+} from '@heroicons/react/24/outline';
 import { Lightbox } from '@astryxdesign/core/Lightbox';
 import { useTheme } from '@astryxdesign/core/theme';
 import { renderArtifact, type Artifact, type DiagramState } from './artifacts';
@@ -10,10 +16,13 @@ import { renderArtifact, type Artifact, type DiagramState } from './artifacts';
 export default function DiagramCard({
     artifact,
     steps = [artifact],
+    figure,
     onRetry,
 }: {
     artifact: Artifact;
     steps?: Artifact[];
+    // Its number in the tree's Figures list, shown as "Fig N ·" (mockup Read .figc).
+    figure?: number;
     onRetry?: () => Promise<void>;
 }) {
     const id = useId();
@@ -24,6 +33,8 @@ export default function DiagramCard({
     // Keeps the Retry button mounted (loading) while its rerun is pending, so keyboard focus stays put.
     const [retried, setRetried] = useState(false);
     const [renderAttempt, setRenderAttempt] = useState(0);
+    // Unset until the learner toggles it: the source starts open only as a failed drawing's fallback.
+    const [sourceShown, setSourceShown] = useState<boolean>();
     useEffect(() => {
         let cancelled = false;
         setDrawing({ status: 'pending' });
@@ -43,6 +54,16 @@ export default function DiagramCard({
             card.current?.focus();
     }, [retried, drawing.status]);
     const failed = drawing.status === 'failed';
+    const showSource = sourceShown ?? failed;
+    const step = steps.indexOf(artifact);
+    // Each step is its own card; Previous and Next move focus to the neighbouring step's card.
+    const goTo = (i: number) => {
+        const next = card.current?.ownerDocument.querySelector<HTMLElement>(
+            `[data-artifact="${steps[i].id}"]`,
+        );
+        next?.scrollIntoView?.({ block: 'nearest' });
+        next?.focus();
+    };
     return (
         <section
             ref={card}
@@ -53,16 +74,59 @@ export default function DiagramCard({
             data-artifact={artifact.id}
             data-state={drawing.status}
         >
-            <VStack gap={3} padding={3}>
-                {steps.length > 1 && (
-                    <Text type="supporting" color="secondary" id={`${id}-step`}>
-                        Step {steps.indexOf(artifact) + 1} of {steps.length}
-                    </Text>
-                )}
+            <HStack gap={2} vAlign="center" className="diagram-head">
                 <Heading level={3} id={`${id}-title`}>
+                    {figure ? `Fig ${figure} · ` : ''}
                     {artifact.title}
                 </Heading>
-                <Text id={`${id}-description`}>{artifact.description}</Text>
+                <HStack vAlign="center" className="diagram-tools">
+                    {steps.length > 1 && (
+                        <>
+                            <IconButton
+                                label="Previous step"
+                                icon={<ChevronLeftIcon />}
+                                variant="ghost"
+                                size="sm"
+                                isDisabled={step < 1}
+                                onClick={() => goTo(step - 1)}
+                            />
+                            <Text type="supporting" color="secondary" id={`${id}-step`}>
+                                Step {step + 1} of {steps.length}
+                            </Text>
+                            <IconButton
+                                label="Next step"
+                                icon={<ChevronRightIcon />}
+                                variant="ghost"
+                                size="sm"
+                                isDisabled={step >= steps.length - 1}
+                                onClick={() => goTo(step + 1)}
+                            />
+                        </>
+                    )}
+                    {artifact.source && (
+                        <IconButton
+                            label="Mermaid source"
+                            icon={<CodeBracketIcon />}
+                            variant="ghost"
+                            size="sm"
+                            aria-expanded={showSource}
+                            aria-controls={`${id}-source`}
+                            onClick={() => setSourceShown(!showSource)}
+                        />
+                    )}
+                    {drawing.status === 'ready' && (
+                        <IconButton
+                            label={`Open diagram large: ${artifact.title}`}
+                            tooltip="Open large"
+                            icon={<ArrowsPointingOutIcon />}
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEnlarged(true)}
+                        />
+                    )}
+                </HStack>
+            </HStack>
+            <VStack gap={2} className="diagram-body">
                 {drawing.status === 'pending' && (
                     <Text type="supporting" color="secondary" role="status">
                         {artifact.status === 'pending' ? 'Creating diagram…' : 'Rendering diagram…'}
@@ -94,18 +158,12 @@ export default function DiagramCard({
                 )}
                 {drawing.status === 'ready' && (
                     <>
-                        <button
-                            type="button"
-                            className="diagram-open"
-                            aria-label={`Open diagram large: ${artifact.title}`}
-                            onClick={() => setEnlarged(true)}
-                        >
-                            <img
-                                src={drawing.url}
-                                alt={artifact.description}
-                                onError={() => setDrawing({ status: 'failed' })}
-                            />
-                        </button>
+                        <img
+                            className="diagram-drawing"
+                            src={drawing.url}
+                            alt={artifact.description}
+                            onError={() => setDrawing({ status: 'failed' })}
+                        />
                         <Lightbox
                             className="diagram-lightbox"
                             isOpen={enlarged}
@@ -115,16 +173,18 @@ export default function DiagramCard({
                         />
                     </>
                 )}
-                {artifact.source && (
-                    <Collapsible
-                        key={failed ? 'fallback' : 'source'}
-                        trigger={<Text weight="medium">Mermaid source</Text>}
-                        defaultIsOpen={failed}
-                    >
-                        <pre className="diagram-source" tabIndex={0}>
-                            {artifact.source}
-                        </pre>
-                    </Collapsible>
+                <Text
+                    type="supporting"
+                    color="secondary"
+                    className="diagram-caption"
+                    id={`${id}-description`}
+                >
+                    {artifact.description}
+                </Text>
+                {artifact.source && showSource && (
+                    <pre className="diagram-source" id={`${id}-source`} tabIndex={0}>
+                        {artifact.source}
+                    </pre>
                 )}
             </VStack>
         </section>

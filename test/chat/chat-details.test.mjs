@@ -5,8 +5,15 @@ import { createElement as h, useState } from 'react';
 import { render } from '../support/render.mjs';
 import { ui, button } from '../support/ui.mjs';
 import { threadProps } from '../support/thread-props.mjs';
-const { InheritedContext, TokenStats, TokenStatsToggle, ReplyFeedback, NextQuestions, Groundwork } =
-    await import('../../src/chat/ChatDetails.tsx');
+const {
+    InheritedContext,
+    inheritedSummary,
+    TokenStats,
+    TokenStatsToggle,
+    ReplyFeedback,
+    NextQuestions,
+    Groundwork,
+} = await import('../../src/chat/ChatDetails.tsx');
 
 test('chat details keep inherited context collapsed and read-only, show usage, and retry a failed compaction', async (t) => {
     let update;
@@ -37,7 +44,7 @@ test('chat details keep inherited context collapsed and read-only, show usage, a
         return h(
             'div',
             { role: 'log' },
-            h(InheritedContext, { branch: value.branch, parentTitle: 'Mutex basics' }),
+            h(InheritedContext, { branch: value.branch, parentAddress: '1' }),
             h('article', null, question.text),
             h(TokenStatsToggle, {
                 open: value.open,
@@ -76,7 +83,7 @@ test('chat details keep inherited context collapsed and read-only, show usage, a
     await act(async () => button(container, 'Token stats').click());
     assert.equal(container.querySelector('.chat-stats-body'), null);
     await act(async () => update((v) => ({ ...v, branch })));
-    const trigger = button(container, 'Inherited from Mutex basics');
+    const trigger = button(container, 'Context the tutor received · 1 passage from 1 · 12 tokens');
     assert.equal(trigger.getAttribute('aria-expanded'), 'false');
     const context = container.querySelector('.inherited-context');
     assert.ok(
@@ -373,11 +380,13 @@ test('a discussion branch labels its speaker and shows the inherited discussion'
         snapshot: 'Fixed context.',
     };
     const { container, act, cleanup } = await render(
-        h(InheritedContext, { branch, parentTitle: 'Fungi' }),
+        h(InheritedContext, { branch, parentAddress: '1.2' }),
         ui,
     );
     t.after(cleanup);
-    await act(async () => button(container, 'Inherited from Fungi').click());
+    await act(async () =>
+        button(container, 'Context the tutor received · 1 passage from 1.2 · 14 tokens').click(),
+    );
     const body = container.querySelector('.inherited-body');
     assert.deepEqual(
         [...body.querySelectorAll('dt')].map((e) => e.textContent),
@@ -494,4 +503,11 @@ test('a streaming reply holds its place with sized skeleton lines until its firs
     assert.equal(container.querySelector('.reply-skeleton'), null);
     await act(async () => update({ message: { ...reply, text: 'A hypha' }, overview: false }));
     assert.equal(container.querySelector('.reply-skeleton'), null);
+});
+
+test('a free branch inherits its parent up to the latest reply', () => {
+    assert.equal(
+        inheritedSummary({ text: '', snapshot: 'x'.repeat(6440) }, '1.2'),
+        '1.2 up to its latest reply · 1,610 tokens',
+    );
 });

@@ -7,10 +7,17 @@ let queue = Promise.resolve();
 export function renderDiagram(source: string, card: HTMLElement, dark: boolean): Promise<string> {
     const style = getComputedStyle(card);
     const probe = card.appendChild(document.createElement('span'));
-    const series = DIAGRAM_HUES.map((hue) => {
-        probe.style.color = `var(--color-text-${hue})`;
+    const token = (name: string) => {
+        probe.style.color = `var(${name})`;
         return getComputedStyle(probe).color;
-    });
+    };
+    const series = DIAGRAM_HUES.map((hue) => token(`--color-text-${hue}`));
+    // Steps are filled raised boxes on the card's deep field, joined by muted arrows (mockup Read, Fig 2).
+    const [raised, seam, muted] = [
+        '--color-background-surface',
+        '--color-border-emphasized',
+        '--color-text-secondary',
+    ].map(token);
     probe.remove();
     // Trusted app classes the worker may assign (A:::blue). Each also differs by border so colour is never the only cue.
     const hex = (color: string) => {
@@ -42,15 +49,15 @@ export function renderDiagram(source: string, card: HTMLElement, dark: boolean):
             startOnLoad: false,
             securityLevel: 'strict',
             htmlLabels: false,
-            flowchart: { htmlLabels: false },
+            // Padding 21 gives the mockup's 56px step boxes at 13px labels.
+            flowchart: { htmlLabels: false, padding: 21 },
             suppressErrorRendering: true,
             maxTextSize: 17 * 1024,
             theme: 'base',
             look: 'classic',
             themeVariables: diagramTheme(style, series, dark),
             // Line Diagram: 8px container corners and round-capped, line-weight strokes.
-            themeCSS:
-                '.node rect{rx:8px;ry:8px;stroke-width:1.5px}.flowchart-link{stroke-width:2px;stroke-linecap:round;stroke-linejoin:round}',
+            themeCSS: `.node :is(rect,polygon,circle,ellipse,path){fill:${raised};stroke:${seam};stroke-width:1.5px}.node rect{rx:8px;ry:8px}.flowchart-link{stroke:${muted};stroke-width:1.5px;stroke-linecap:round;stroke-linejoin:round}.marker{fill:${muted};stroke:${muted}}.nodeLabel,.node text{font-weight:600}`,
         });
         const { svg } = await mermaid.render(`diagram-${crypto.randomUUID()}`, styled);
         const drawing = new DOMParser().parseFromString(svg, 'image/svg+xml').documentElement;

@@ -206,6 +206,7 @@ export default function ChatPage({
         modelLabel: model.modelLabel,
         openConversation,
         addresses,
+        previews,
         trees: state?.trees ?? [],
         send: stream.send,
         replyDiscussion: stream.replyDiscussion,

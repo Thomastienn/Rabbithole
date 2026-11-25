@@ -185,13 +185,15 @@ test('diagrams: steps name their position; failures and unsafe sources keep a te
         document.getElementById(card('first').getAttribute('aria-describedby')).textContent,
         'first description',
     );
-    assert.equal(card('first').querySelector('[role=status]').textContent, 'Creating diagram…');
+    // The head's step buttons carry Astryx's own empty status regions; the card's status is in its body.
+    const status = (id) => card(id).querySelector('.diagram-body > [role=status]');
+    assert.equal(status('first').textContent, 'Creating diagram…');
     assert.match(
-        card('second').querySelector('[role=status]').textContent,
+        status('second').textContent,
         /^Diagram unavailable\. The diagram source has an error\.$/,
     );
     assert.match(
-        card('third').querySelector('[role=status]').textContent,
+        status('third').textContent,
         /could not be rendered\. Read the description and Mermaid source below\./,
     );
     for (const id of ['second', 'third']) {
@@ -206,6 +208,26 @@ test('diagrams: steps name their position; failures and unsafe sources keep a te
         );
         assert.equal(card(id).querySelectorAll('img, a, script, iframe, foreignObject').length, 0);
     }
+    // Previous and Next step between the cards; the ends cannot go further.
+    const stepButton = (id, label) => button(card(id), label);
+    assert.ok(stepButton('first', 'Previous step').matches(':disabled, [aria-disabled=true]'));
+    assert.ok(stepButton('third', 'Next step').matches(':disabled, [aria-disabled=true]'));
+    await act(async () => stepButton('first', 'Next step').click());
+    assert.ok(document.activeElement === card('second'));
+    await act(async () => stepButton('second', 'Previous step').click());
+    assert.ok(document.activeElement === card('first'));
+    // The head's source button hides and shows the fallback source.
+    await act(async () => button(card('second'), 'Mermaid source').click());
+    assert.equal(card('second').querySelector('pre.diagram-source'), null);
+    await act(async () => button(card('second'), 'Mermaid source').click());
+    assert.ok(card('second').querySelector('pre.diagram-source'));
     await act(async () => button(card('second'), 'Retry diagram').click());
     assert.deepEqual(retried, ['second']);
+});
+
+test('a diagram card heads itself with its figure number', async (t) => {
+    const artifact = diagram('tip', 'pending', null, { title: 'Tip growth' });
+    const { container, cleanup } = await render(h(DiagramCard, { artifact, figure: 2 }), ui);
+    t.after(cleanup);
+    assert.equal(container.querySelector('.diagram-card h3').textContent, 'Fig 2 · Tip growth');
 });

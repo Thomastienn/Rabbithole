@@ -8,6 +8,7 @@ import { conversationAddresses, inkStyle } from '../map/treeList';
 import { conversationContext, type Message } from './turn';
 import { routeStrip, STATION_Y } from './routeStrip';
 import type { Resource } from './types';
+import { figureList } from './figures';
 
 type Current = {
     id: string;
@@ -41,22 +42,7 @@ export default function Contents({
     const conversations = [...addresses].flatMap(([id, address]) =>
         byId.has(id) ? [{ ...byId.get(id)!, ...address }] : [],
     );
-    const figures = conversations.flatMap((t) =>
-        (t.id === current?.id
-            ? current.messages.map((m) => ({
-                  artifacts: current.artifacts.filter((a) => a.message === m.id),
-              }))
-            : (previews[t.id] ?? [])
-        ).flatMap((m) =>
-            (m.artifacts ?? [])
-                .filter(
-                    (a) =>
-                        a.kind !== 'discussion' &&
-                        !(a.kind === 'visual' && a.status === 'canceled'),
-                )
-                .map((a) => ({ ...a, conversation: t.id })),
-        ),
-    );
+    const figures = figureList(conversations, previews, current);
     const resources = current?.resources ?? [];
     const strip = routeStrip(conversations);
     const context = current && conversationContext(current);

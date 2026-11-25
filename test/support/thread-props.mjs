@@ -6,6 +6,7 @@ export const threadProps = (props) => ({
     modelLabel: () => 'Fixture',
     openConversation: noop,
     addresses: new Map(),
+    previews: {},
     trees: [],
     send: noop,
     replyDiscussion: noop,
