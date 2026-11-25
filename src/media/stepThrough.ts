@@ -40,7 +40,6 @@ export function stepThrough(root: HTMLElement, steps: Step[], duration = 600) {
     label(previous, 'Previous', chevron('M10 3 5 8l5 5'));
     label(next, 'Next', chevron('m6 3 5 5-5 5'));
     label(play, 'Play', PLAY);
-    play.className = 'tt-play';
     indicator.setAttribute('aria-live', 'polite');
     root.replaceWith(controls);
     controls.append(previous, root, next, play, indicator);
@@ -69,9 +68,9 @@ export function stepThrough(root: HTMLElement, steps: Step[], duration = 600) {
         show(target, ms);
     };
 
-    const show = (target: number, animate = duration) => {
+    const show = (target: number, motionMs: number) => {
         index = Math.max(0, Math.min(steps.length - 1, target));
-        const ms = view.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 0 : animate;
+        const ms = view.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 0 : motionMs;
         root.style.setProperty('--step-duration', `${ms}ms`);
         // A step during a fade first finishes the pending scene so later steps start from it.
         if (pending) {
@@ -126,7 +125,7 @@ export function stepThrough(root: HTMLElement, steps: Step[], duration = 600) {
         if (!move && !activate) return;
         event.preventDefault(); // stops the native click so Enter and Space act once
         if (move) stepTo(index + move);
-        else toggle();
+        else if (!event.repeat) toggle();
     });
     // Space activates a button on keyup; the keydown above already stepped.
     controls.addEventListener('keyup', (event) => event.key === ' ' && event.preventDefault());
@@ -152,6 +151,7 @@ export function stepThrough(root: HTMLElement, steps: Step[], duration = 600) {
         motion = steps.map((step, i) => {
             (typeof step === 'function' ? step : step.show)({ index: i, duration: 0 });
             tallest = Math.max(tallest, root.offsetHeight);
+            // shortcut: times synchronous DOM changes only, extend if asynchronous steps need adaptive timing.
             const changed = new Set(changes.takeRecords().map((record) => record.target)).size;
             return Math.min(2500, 1500 + 100 * changed);
         });
@@ -173,7 +173,7 @@ export function stepThrough(root: HTMLElement, steps: Step[], duration = 600) {
         measure();
     });
     document.fonts?.ready.then(measure);
-    return { show };
+    return { show: (target: number, animate = true) => stepTo(target, animate ? duration : 0) };
 }
 
 // SVG elements have no hidden property; reflect it to the attribute the frame's base style hides.

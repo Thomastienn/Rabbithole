@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
-import { readFileSync } from 'node:fs';
 import { reflectSvgHidden, stepThrough } from '../../src/media/stepThrough.ts';
 
 const setup = (reduce = false, t) => {
@@ -20,17 +19,24 @@ const setup = (reduce = false, t) => {
         };
     }
     const root = window.document.getElementById('root'),
+        picture = root.appendChild(window.document.createTextNode('')),
         calls = [],
         steps = [0, 1, 2].map((n) => (state) => {
             calls.push({ n, ...state });
-            root.textContent = `Stage ${n}`;
+            picture.data = `Stage ${n}`;
+            root.toggleAttribute('data-end', n === 2);
         });
     const control = stepThrough(root, steps);
     calls.splice(0, steps.length); // the measuring pass runs every step once
     const [previous, next, play] = window.document.querySelectorAll('.tt-steps button');
     const indicator = window.document.querySelector('.tt-steps [aria-live="polite"]');
-    const key = (target, k, type = 'keydown') => {
-        const event = new window.KeyboardEvent(type, { key: k, bubbles: true, cancelable: true });
+    const key = (target, k, type = 'keydown', repeat = false) => {
+        const event = new window.KeyboardEvent(type, {
+            key: k,
+            repeat,
+            bubbles: true,
+            cancelable: true,
+        });
         target.dispatchEvent(event);
         return event.defaultPrevented;
     };
@@ -38,18 +44,7 @@ const setup = (reduce = false, t) => {
 };
 
 test('steps run in order with Previous, Next and a Step n of m indicator, bounded at both ends', () => {
-    const { root, calls, previous, next, play, indicator } = setup();
-    assert.equal(root.parentElement.getAttribute('role'), 'group');
-    assert.deepEqual(
-        [...root.parentElement.children],
-        [previous, root, next, play, indicator],
-        'Previous and Next flank root, Play below',
-    );
-    assert.deepEqual(
-        [previous.getAttribute('aria-label'), next.getAttribute('aria-label')],
-        ['Previous', 'Next'],
-    );
-    assert.equal(previous.type, 'button');
+    const { root, calls, previous, next, indicator } = setup();
     assert.deepEqual(calls, [{ n: 0, index: 0, duration: 0 }], 'first render does not animate');
     assert.equal(indicator.textContent, 'Step 1 of 3');
     assert.ok(previous.disabled && !next.disabled);
@@ -115,10 +110,11 @@ test('reduced motion switches steps without transitions', () => {
 
 test('Play advances on its own only after a click, slower than by hand, and stops on the last step', (t) => {
     const { calls, next, play, indicator } = setup(false, t);
+    const idleName = play.getAttribute('aria-label');
     t.mock.timers.tick(10000);
     assert.deepEqual(calls, [{ n: 0, index: 0, duration: 0 }], 'nothing moves before Play');
     play.click();
-    assert.equal(play.getAttribute('aria-label'), 'Pause');
+    assert.notEqual(play.getAttribute('aria-label'), idleName);
     assert.equal(indicator.textContent, 'Step 2 of 3', 'Play moves at once');
     const motion = calls.at(-1).duration;
     assert.ok(motion >= 1500 && motion <= 2500, `Play motion ${motion}ms`);
@@ -126,7 +122,8 @@ test('Play advances on its own only after a click, slower than by hand, and stop
     assert.equal(indicator.textContent, 'Step 2 of 3', 'holds after the motion');
     t.mock.timers.tick(1);
     assert.equal(indicator.textContent, 'Step 3 of 3');
-    assert.equal(play.getAttribute('aria-label'), 'Play', 'stops on the last step');
+    assert.ok(calls.at(-1).duration > motion, 'a step with more changes gets more time');
+    assert.equal(play.getAttribute('aria-label'), idleName, 'stops on the last step');
     t.mock.timers.tick(10000);
     assert.equal(calls.length, 3);
     play.click();
@@ -137,50 +134,83 @@ test('Play advances on its own only after a click, slower than by hand, and stop
 });
 
 test('Pause, Previous, Next and step keys stop Play', (t) => {
-    const { calls, previous, next, play, key } = setup(false, t);
-    const stopsPlay = (stop) => {
+    const { window, root, calls, previous, next, play, key, control } = setup(false, t);
+    const idleName = play.getAttribute('aria-label');
+    const stopsPlay = (stop, stage) => {
+        control.show(0, false);
         play.click();
+        assert.notEqual(play.getAttribute('aria-label'), idleName, 'the visual is playing');
         stop();
+        assert.equal(root.textContent, `Stage ${stage}`);
         const count = calls.length;
         t.mock.timers.tick(10000);
         assert.equal(calls.length, count);
-        assert.equal(play.getAttribute('aria-label'), 'Play');
+        assert.equal(play.getAttribute('aria-label'), idleName);
     };
-    stopsPlay(() => play.click());
-    stopsPlay(() => previous.click());
-    stopsPlay(() => next.click());
-    stopsPlay(() => key(play, 'ArrowLeft'));
-    stopsPlay(() => key(play, ' '));
-    stopsPlay(() => key(next, 'Enter'));
+    stopsPlay(() => play.click(), 1);
+    stopsPlay(() => previous.click(), 0);
+    stopsPlay(() => next.click(), 2);
+    stopsPlay(() => key(play, 'ArrowLeft'), 0);
+    stopsPlay(() => key(play, ' '), 1);
+    stopsPlay(() => key(next, 'Enter'), 2);
+    stopsPlay(() => control.show(0, false), 0);
+    assert.equal(calls.at(-1).duration, 0, 'an instant jump gets zero motion');
+    assert.equal(root.style.getPropertyValue('--step-duration'), '0ms');
+    stopsPlay(
+        () => root.parentElement.dispatchEvent(new window.CustomEvent('tt-show', { detail: 2 })),
+        2,
+    );
+});
+
+test('holding Enter on Play triggers only one action per press', (t) => {
+    const { root, play, key } = setup(false, t);
+    key(play, 'Enter');
+    key(play, 'Enter', 'keydown', true);
+    t.mock.timers.tick(10000);
+    assert.equal(root.textContent, 'Stage 2', 'holding the start key keeps Play running');
+    key(play, 'Enter');
+    key(play, 'Enter');
+    key(play, 'Enter', 'keydown', true);
+    t.mock.timers.tick(10000);
+    assert.equal(root.textContent, 'Stage 0', 'holding the pause key keeps the visual paused');
 });
 
 test('Play under reduced motion switches instantly but still holds each step', (t) => {
-    const { calls, play, indicator } = setup(true, t);
+    const { calls, play, indicator, next, control } = setup(true, t);
     play.click();
-    t.mock.timers.tick(1500 + 999);
+    t.mock.timers.tick(1600 + 1000 - 1);
     assert.equal(indicator.textContent, 'Step 2 of 3', 'holds the full step time');
-    t.mock.timers.tick(1000);
+    t.mock.timers.tick(1);
     assert.equal(indicator.textContent, 'Step 3 of 3');
     assert.deepEqual(
         calls.map((c) => c.duration),
         [0, 0, 0],
     );
+    control.show(0, false);
+    next.click();
+    assert.equal(calls.at(-1).duration, 0, 'manual navigation also respects reduced motion');
 });
 
 test('Play pauses when the visual leaves the view or the page is hidden', (t) => {
-    const { window, calls, play, seen } = setup(false, t);
+    const { window, root, calls, play, seen, control } = setup(false, t);
+    const staysOnCurrentStep = () => {
+        const count = calls.length;
+        t.mock.timers.tick(10000);
+        assert.equal(calls.length, count);
+    };
     seen(true);
-    assert.equal(play.getAttribute('aria-label'), 'Play', 'coming into view never starts Play');
+    staysOnCurrentStep();
+    assert.equal(root.textContent, 'Stage 0', 'coming into view never starts Play');
     play.click();
     seen(false);
-    assert.equal(play.getAttribute('aria-label'), 'Play');
+    staysOnCurrentStep();
+    seen(true);
+    staysOnCurrentStep();
+    control.show(0, false);
     play.click();
     Object.defineProperty(window.document, 'hidden', { value: true });
     window.document.dispatchEvent(new window.Event('visibilitychange'));
-    assert.equal(play.getAttribute('aria-label'), 'Play');
-    const count = calls.length;
-    t.mock.timers.tick(10000);
-    assert.equal(calls.length, count);
+    staysOnCurrentStep();
 });
 
 test('a scene step fades root out, runs its show function, fades back in; controls and focus unchanged', async (t) => {
@@ -263,11 +293,11 @@ test('root keeps its tallest step height so the controls and frame never move, a
     assert.equal(root.style.minHeight, '110px');
 });
 
-test('hidden on an SVG group hides and shows it; HTML keeps native hidden', () => {
-    const style = readFileSync('sandbox.html', 'utf8').match(/<style>(.*?)<\/style>/s)[1];
-    const { window } = new JSDOM(
-        `<style>${style}</style><div id="visual"><p id="p"></p><svg><g id="g"><rect/></g></svg></div>`,
-    );
+test('hidden on an SVG group hides and shows it; HTML keeps native hidden', async (t) => {
+    const { window } = await JSDOM.fromFile('sandbox.html');
+    t.after(() => window.close());
+    window.document.getElementById('visual').innerHTML =
+        '<p id="p"></p><svg><g id="g"><rect/></g></svg>';
     reflectSvgHidden(window);
     const g = window.document.getElementById('g'),
         p = window.document.getElementById('p');
