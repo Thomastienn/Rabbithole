@@ -334,6 +334,21 @@ test('UTF-8 split across HTTP chunks preserves original text; malformed JSON rej
             body: '{',
         });
         assert.equal(bad.status, 400);
+        for (const body of ['null', '[]', '"text"'])
+            assert.deepEqual(
+                await (
+                    await fetch(`${env.origin}/api/trees`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Rabbithole-CSRF': state.csrf,
+                        },
+                        body,
+                    })
+                ).json(),
+                { error: 'Invalid request.' },
+                body,
+            );
     } finally {
         env.close();
     }

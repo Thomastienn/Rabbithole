@@ -297,6 +297,9 @@ export function createApp({
                 }
                 try {
                     body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+                    // Every JSON route reads fields, so null, arrays and primitives are bad requests.
+                    if (typeof body !== 'object' || body === null || Array.isArray(body))
+                        throw new TypeError('Not an object');
                 } catch {
                     return json(res, 400, { error: 'Invalid request.' });
                 }
