@@ -117,13 +117,13 @@ export async function mediaRoutes(req, res, url, ctx, body) {
             ctx.pieceStills.fill();
             return json(res, 200, store.pieceList({ query, vector, offset, limit }));
         }
-        // Card stills are JPEG bytes from the store; the client adds the improvement time, so a URL never goes stale.
+        // Card stills are PNG bytes from the store; the client adds the improvement time, so a URL never goes stale.
         const stillMatch = url.pathname.match(/^\/api\/pieces\/([^/]+)\/still(3d)?$/);
         if (stillMatch) {
             const still = store.pieceStill(stillMatch[1], stillMatch[2] ? '3d' : '2d');
             if (!still) return json(res, 404, { error: 'Still not available.' });
             res.writeHead(200, {
-                'Content-Type': 'image/jpeg',
+                'Content-Type': 'image/png',
                 'Cache-Control': 'private, max-age=31536000, immutable',
             });
             res.end(still);

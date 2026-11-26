@@ -209,12 +209,12 @@ export default function PieceLibrary({ theme }: { theme: string }) {
 }
 
 // One server-rendered 2D still per tile (mockup Pieces), never a live player; the 3D form shows in the piece's
-// preview. The improvement time keeps the URL fresh.
+// preview. The improvement time keeps the URL fresh; png skips the year-cached JPEGs of older builds.
 function PieceStill({ piece }: { piece: PieceRow }) {
     return piece.still ? (
         <img
             className="piece-still"
-            src={`/api/pieces/${piece.id}/still?v=${piece.improved}`}
+            src={`/api/pieces/${piece.id}/still?v=${piece.improved}&f=png`}
             alt="2D form"
             loading="lazy"
         />

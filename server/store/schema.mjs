@@ -324,7 +324,7 @@ export function open(path) {
         // A piece's optional 3D form; pieces saved before it have none and stay 2D-only.
         if (!hasColumn('pieces', 'source3d'))
             this.db.exec('ALTER TABLE pieces ADD COLUMN source3d TEXT');
-        // JPEG stills of both forms for the library cards; pieces saved before them are backfilled.
+        // Stills of both forms for the library cards; pieces saved before them are backfilled.
         if (!hasColumn('pieces', 'still'))
             this.db.exec(
                 'ALTER TABLE pieces ADD COLUMN still BLOB; ALTER TABLE pieces ADD COLUMN still3d BLOB',
@@ -350,6 +350,12 @@ export function open(path) {
                 this.finishCleanup('fold-duplicate-pieces');
             });
         }
+        // One-time cleanup: JPEG stills baked the kit's default ground in; dropped so they backfill as transparent PNGs.
+        if (!this.cleanupRan('transparent-piece-stills'))
+            this.transaction(() => {
+                this.db.exec('UPDATE pieces SET still=NULL, still3d=NULL');
+                this.finishCleanup('transparent-piece-stills');
+            });
         // Discussion kind and reply positions migrate in place; existing rows keep their content and positions.
         this.transaction(() => this.rebuildArtifacts("'discussion'"));
         // Visual passages keep their source artifact and part instead of inventing reply offsets.

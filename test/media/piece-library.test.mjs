@@ -253,8 +253,8 @@ test('cards show one 2D still as an image, or a pending still, without a live pl
     const images = (name) =>
         [...card(name).querySelectorAll('img')].map((i) => [i.getAttribute('src'), i.alt]);
     // The 3D form shows in the piece's preview, not on its tile.
-    assert.deepEqual(images('Both'), [['/api/pieces/Both/still?v=7', '2D form']]);
-    assert.deepEqual(images('Flat'), [['/api/pieces/Flat/still?v=7', '2D form']]);
+    assert.deepEqual(images('Both'), [['/api/pieces/Both/still?v=7&f=png', '2D form']]);
+    assert.deepEqual(images('Flat'), [['/api/pieces/Flat/still?v=7&f=png', '2D form']]);
     assert.deepEqual(images('Fresh'), []);
     assert.match(card('Fresh').textContent, /Still pending/);
     assert.equal(container.querySelector('iframe'), null, 'no live player per card');

@@ -163,7 +163,7 @@ test('the piece list route pages and searches, embedding the query with pending 
     assert.doesNotMatch(logs.join('\n'), /rocket/, 'the query stays out of the log');
 });
 
-test('the piece list backfills stills through the snapshot path and serves them as JPEG', async (t) => {
+test('the piece list backfills stills through the snapshot path and serves them as transparent PNG', async (t) => {
     const dir = mkdtempSync(join(tmpdir(), 'tt-pieces-http-')),
         store = new Store(join(dir, 'trees.sqlite')),
         logs = [],
@@ -175,7 +175,7 @@ test('the piece list backfills stills through the snapshot path and serves them 
         dir,
         auth: { status: () => ({ connected: true }) },
         log: (line) => logs.push(line),
-        // Stands in for the sandboxed Remotion still render: reads the staged entry, writes each JPEG.
+        // Stands in for the sandboxed Remotion still render: reads the staged entry, writes each PNG.
         pieceSnapshot: async (workspace, stills) => {
             shots.push({
                 entry: readFileSync(join(workspace, 'index.tsx'), 'utf8'),
@@ -185,7 +185,7 @@ test('the piece list backfills stills through the snapshot path and serves them 
                 frames: stills.map((s) => s.frame),
             });
             if (broken) throw new Error('renderer missing');
-            for (const { frame, file } of stills) writeFileSync(file, `jpeg ${frame}`);
+            for (const { frame, file } of stills) writeFileSync(file, `png ${frame}`);
             return { stills: stills.length };
         },
     });
@@ -217,6 +217,11 @@ test('the piece list backfills stills through the snapshot path and serves them 
     assert.match(one.pieces, /export function Flat/);
     assert.match(one.entry, /\(flat as any\)\["Flat"\]/);
     assert.doesNotMatch(one.entry, /ThreeCanvas/, 'a 2D-only piece renders no 3D frame');
+    assert.doesNotMatch(
+        two.entry,
+        /background|palette\.ground/,
+        'stills keep a transparent ground',
+    );
     assert.match(
         two.entry,
         /ThreeCanvas[\s\S]*\(solid as any\)\["Solid3D"\]|\(solid as any\)\["Solid3D"\][\s\S]*ThreeCanvas/,
@@ -231,9 +236,9 @@ test('the piece list backfills stills through the snapshot path and serves them 
         ],
     );
     const res = await fetch(`${base}/api/pieces/${solid}/still3d`);
-    assert.equal(res.headers.get('content-type'), 'image/jpeg');
-    assert.equal(await res.text(), 'jpeg 1');
-    assert.equal(await (await fetch(`${base}/api/pieces/${solid}/still`)).text(), 'jpeg 0');
+    assert.equal(res.headers.get('content-type'), 'image/png');
+    assert.equal(await res.text(), 'png 1');
+    assert.equal(await (await fetch(`${base}/api/pieces/${solid}/still`)).text(), 'png 0');
     assert.equal((await fetch(`${base}/api/pieces/${flat}/still3d`)).status, 404);
 
     broken = true;

@@ -223,7 +223,7 @@ test('a one-time cleanup backs up, then folds pieces sharing a name into one wit
     updateTime.run(3, newest);
     store.db.prepare('UPDATE piece_versions SET improved=1 WHERE piece=?').run(older);
     // Another cleanup is recorded, but the piece cleanup hasn't run.
-    store.db.exec("UPDATE cleanups SET name='another-cleanup'");
+    store.db.exec("UPDATE cleanups SET name='another-cleanup' WHERE name='fold-duplicate-pieces'");
     store.close();
 
     store = new Store(path);

@@ -83,7 +83,8 @@ if (stills) {
             browserExecutable,
             output: file,
             frame,
-            imageFormat: 'jpeg',
+            // A .png still (piece cards) keeps its transparent ground.
+            imageFormat: file.endsWith('.png') ? 'png' : 'jpeg',
             scale: 0.5,
             logLevel: 'error',
         });

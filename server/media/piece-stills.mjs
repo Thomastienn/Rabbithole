@@ -11,24 +11,25 @@ const KIT = readFileSync(new URL('./video-kit.tsx', import.meta.url), 'utf8');
 // Pieces colour only through roles; like the library view, each role borrows a house hue in order.
 const HUES = ['amber', 'leaf', 'rust', 'lichen'];
 
-// Frame 0 is the 2D form on the ground; frame 1, when present, the 3D form at the turntable's camera, turned 3/4.
+// Frame 0 is the 2D form; frame 1, when present, the 3D form at the turntable's camera, turned 3/4. Both are drawn
+// on a transparent ground, so a card shows the app theme behind the piece.
 const entry = (
     name,
     solid,
 ) => `import { AbsoluteFill, Composition, Sequence, continueRender, delayRender, registerRoot } from 'remotion';
 import * as flat from './pieces';
-import { Lights, frame, palette, three } from './kit';
+import { Lights, frame } from './kit';
 ${solid ? "import { ThreeCanvas } from '@remotion/three';\nimport * as solid from './pieces3d';\n" : ''}${FONTS}
 const Piece = (flat as any)[${JSON.stringify(name)}];
 ${solid ? `const Solid = (solid as any)[${JSON.stringify(`${name}3D`)}];` : ''}
 const Still = () => <>
-  <Sequence durationInFrames={1}><AbsoluteFill style={{ background: palette.ground }}><Piece x={frame.width / 2} y={frame.height / 2} scale={1} /></AbsoluteFill></Sequence>
-  ${solid ? '<Sequence from={1}><ThreeCanvas width={frame.width} height={frame.height} camera={{ position: [0, 0, 7], fov: 40 }}><color attach="background" args={[three.background]} /><Lights /><group rotation={[0.25, 0.6, 0]}><Solid /></group></ThreeCanvas></Sequence>' : ''}
+  <Sequence durationInFrames={1}><AbsoluteFill><Piece x={frame.width / 2} y={frame.height / 2} scale={1} /></AbsoluteFill></Sequence>
+  ${solid ? '<Sequence from={1}><ThreeCanvas width={frame.width} height={frame.height} camera={{ position: [0, 0, 7], fov: 40 }}><Lights /><group rotation={[0.25, 0.6, 0]}><Solid /></group></ThreeCanvas></Sequence>' : ''}
 </>;
 registerRoot(() => <Composition id="Video" component={Still} width={frame.width} height={frame.height} fps={30} durationInFrames={${solid ? 2 : 1}} />);
 `;
 
-// JPEG stills of a piece's forms (a store pieceTree, drawn with its parts), rendered in the cut audit's
+// PNG stills of a piece's forms (a store pieceTree, drawn with its parts), rendered in the cut audit's
 // sandbox by its snapshot path.
 export async function renderPieceStills(piece, { dir, snapshot, signal }) {
     const { source, source3d, roles, trueColors } = withParts(piece);
@@ -56,7 +57,7 @@ export async function renderPieceStills(piece, { dir, snapshot, signal }) {
         await writeFile(join(work, 'index.tsx'), entry(piece.name, !!source3d));
         const stills = (source3d ? [0, 1] : [0]).map((frame) => ({
             frame,
-            file: join(work, 'out', `${frame}.jpg`),
+            file: join(work, 'out', `${frame}.png`),
         }));
         await snapshot(work, stills, signal);
         const [still, still3d = null] = await Promise.all(
