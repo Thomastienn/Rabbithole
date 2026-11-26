@@ -6,7 +6,6 @@ import { IconButton } from '@astryxdesign/core/IconButton';
 import { Button } from '@astryxdesign/core/Button';
 import ArrowUpIcon from '@heroicons/react/24/outline/ArrowUpIcon';
 import ChevronRightIcon from '@heroicons/react/24/outline/ChevronRightIcon';
-import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
 import type { Anchor, BranchState } from './branch';
 import type { PartNode } from '../media/artifacts';
 import { renderInline } from '../markdown/inlineMarkdown';
@@ -129,40 +128,30 @@ export default function BranchForm({
             }}
         >
             <VStack padding={2} gap={2}>
-                {/* Passage box (mockup States): a picked part's trail beside Close; the passage itself is already highlighted, so its quote is for screen readers only. */}
-                <HStack gap={2} vAlign="start">
-                    {/* A picked visual part: its trail, the same crumbs as the conversation path; an earlier part widens the question. */}
-                    {part ? (
-                        <nav className="crumbs branch-trail" aria-label="Part of the visual">
-                            {part.trail!.slice(0, -1).map((name, i) => (
-                                <Fragment key={i}>
-                                    <Button
-                                        className="crumb"
-                                        label={name}
-                                        variant="ghost"
-                                        size="sm"
-                                        isDisabled={branching || !widen}
-                                        onClick={() => widen?.(i + 1)}
-                                    />
-                                    <ChevronRightIcon className="crumb-sep" aria-hidden />
-                                </Fragment>
-                            ))}
-                            <strong aria-current="location">{part.label}</strong>
-                        </nav>
-                    ) : (
-                        <Text id="branch-passage" className="branch-passage sr-only">
-                            {branch.anchor.text}
-                        </Text>
-                    )}
-                    <IconButton
-                        className="branch-close"
-                        label="Close"
-                        icon={<XMarkIcon />}
-                        variant="ghost"
-                        isDisabled={branching}
-                        clickAction={() => close(true)}
-                    />
-                </HStack>
+                {/* Passage box (mockup States): a picked part's trail; the passage itself is already highlighted, so its quote is for screen readers only. Escape or an outside click closes it. */}
+                {/* A picked visual part: its trail, the same crumbs as the conversation path; an earlier part widens the question. */}
+                {part ? (
+                    <nav className="crumbs branch-trail" aria-label="Part of the visual">
+                        {part.trail!.slice(0, -1).map((name, i) => (
+                            <Fragment key={i}>
+                                <Button
+                                    className="crumb"
+                                    label={name}
+                                    variant="ghost"
+                                    size="sm"
+                                    isDisabled={branching || !widen}
+                                    onClick={() => widen?.(i + 1)}
+                                />
+                                <ChevronRightIcon className="crumb-sep" aria-hidden />
+                            </Fragment>
+                        ))}
+                        <strong aria-current="location">{part.label}</strong>
+                    </nav>
+                ) : (
+                    <Text id="branch-passage" className="branch-passage sr-only">
+                        {branch.anchor.text}
+                    </Text>
+                )}
                 {/* The focused part is the source; the frame outlines it, and its name and trail are announced. */}
                 {picker && level.length > 0 && (
                     <div

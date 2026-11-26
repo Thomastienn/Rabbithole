@@ -250,10 +250,7 @@ dialog.tree-search-window::backdrop {
     min-height: 36px;
     padding-inline: 12px;
 }
-.branch-close {
-    margin-left: auto;
-}
-.branch-form:not(.free-branch-form) :is(.branch-send, .branch-close) {
+.branch-form:not(.free-branch-form) .branch-send {
     width: 36px;
     height: 36px;
     flex: none;
