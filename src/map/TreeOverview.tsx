@@ -126,7 +126,10 @@ export default function TreeOverview({
     marked = noMarks,
     from,
     ghosts,
+    column,
 }: {
+    // Distance between map columns, matching the card width the view shows.
+    column?: number;
     vim?: boolean;
     // Conversations marked after arriving from the ghost tree of map `from`.
     marked?: string[];
@@ -311,6 +314,7 @@ export default function TreeOverview({
                         parent: n.data.conversation.parent,
                         height: n.measured!.height!,
                     })),
+                column,
             );
             for (let i = 0; i < next.length; i++) {
                 const node = next[i];

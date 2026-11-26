@@ -51,12 +51,15 @@ export function placeBox(
 
 // One map column: a full-map card (260px) and its gutter (mockup Map: cards 320px apart).
 export const COLUMN = 320;
+// The dock and narrow screens keep 160px cards (mockups Read and Narrow: cards 248px apart).
+export const DOCK_COLUMN = 248;
 
 // Tidy layout (mockup Map): every card is centred on the stack of its children's subtrees, which never overlap,
 // one column per depth. Boxes come in sibling order; slots are relative to the root at 0, 0.
 export function tidySlots(
     root: string,
     boxes: { id: string; parent: string | null; height: number }[],
+    column = COLUMN,
     gap = 48,
 ) {
     const children = new Map<string, typeof boxes>();
@@ -79,7 +82,7 @@ export function tidySlots(
             top +
             (size - list.reduce((sum, c) => sum + extents.get(c.id)!, gap * (list.length - 1))) / 2;
         for (const child of list) {
-            place(child, x + COLUMN, y);
+            place(child, x + column, y);
             y += extents.get(child.id)! + gap;
         }
     };

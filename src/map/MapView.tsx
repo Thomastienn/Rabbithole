@@ -5,6 +5,7 @@ import { Kbd } from '@astryxdesign/core/Kbd';
 import { Switch } from '@astryxdesign/core/Switch';
 import { ChatBubbleLeftRightIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import TreeOverview, { type MapActions } from './TreeOverview';
+import { COLUMN, DOCK_COLUMN } from './canvas';
 import MapDivider from './MapDivider';
 import type { ChatState } from '../chat/useChatState';
 import type { LayoutSaving } from './useLayoutSaving';
@@ -91,6 +92,8 @@ export default function MapView({
                 >
                     <TreeOverview
                         vim={vim}
+                        // 260px cards on the wide full map (map.css), 160px in the dock and on narrow screens.
+                        column={overview && !mobile ? COLUMN : DOCK_COLUMN}
                         lead={
                             // Labelled because the rail and the hidden narrow header leave no named way in.
                             // The dock and narrow screens keep one row of controls, so Search is an icon there.

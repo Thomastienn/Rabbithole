@@ -9,6 +9,7 @@ import {
     placeBox,
     tidySlots,
     COLUMN,
+    DOCK_COLUMN,
     offsetCoveredBoxes,
     clearParents,
     vimAction,
@@ -104,6 +105,18 @@ test('tidy layout centres every card on its children, keeps sibling subtrees apa
         x: taken.x,
         y: taken.y + 100 + 48,
     });
+});
+
+test('tidy columns are 320px apart on the full map and 248px in the dock (mockups Map, Read, Narrow)', () => {
+    const cards = [
+        { id: '1', parent: null, height: 100 },
+        { id: '1.1', parent: '1', height: 100 },
+        { id: '1.1.1', parent: '1.1', height: 100 },
+    ];
+    const xs = (column) => [...tidySlots('1', cards, column).values()].map((slot) => slot.x);
+    assert.deepEqual(xs(), [0, 320, 640]);
+    assert.deepEqual(xs(DOCK_COLUMN), [0, 248, 496]);
+    assert.equal(COLUMN, 320);
 });
 
 const box = (id, x, y, height = 100, parent = null, extra = {}) => ({
