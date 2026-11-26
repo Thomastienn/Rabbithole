@@ -154,6 +154,7 @@ export function useLearningTrees(c: View) {
         ...(state?.videos ?? []),
         ...(state?.suggesting ?? []),
         ...(state?.titling ?? []),
+        ...(state?.briefing ?? []),
     ].join(',');
     useEffect(() => {
         let cancelled = false;

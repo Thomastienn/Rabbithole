@@ -351,6 +351,8 @@ test('a brief batch saves each brief as its marker text streams, retries missed 
     while (!saved(mutex)) await new Promise((resolve) => setTimeout(resolve, 5));
     assert.equal(saved(mutex), 'Ahead mutex.');
     assert.equal(saved(counter), undefined, 'an open brief waits for the next marker');
+    // The open tree polls while the batch runs, so each saved brief shows as it lands.
+    assert.deepEqual((await (await fetch(`${origin}/api/state`)).json()).briefing, [id]);
     const open = (p, message = reply.id) =>
         post(`/${id}/brief`, {
             messageId: message,

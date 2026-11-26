@@ -34,6 +34,8 @@ export async function stateRoutes(req, res, url, ctx) {
             ],
             suggesting: [...new Set(ctx.jobs.list('suggestion').map((s) => s.conversation))],
             titling: ctx.jobs.list('title').map((t) => t.conversation),
+            // Batch briefs save one by one, so the open tree polls to show each as it lands.
+            briefing: [...new Set(ctx.jobs.list('brief').map((b) => b.conversation))],
             // A failed compaction stays for retry; only running ones are compacting.
             compacting: ctx.jobs
                 .list('compaction')
