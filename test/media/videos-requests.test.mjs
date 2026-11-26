@@ -316,7 +316,7 @@ test('Try a new version plans from the current video as the learner asks; the ch
         assert.equal((await env.post(url)).status, 404, 'the previous id is no longer in the chat');
         // The previous video stays in the library while the new one is made.
         assert.deepEqual(
-            (await (await env.get('/api/videos')).json()).map((v) => [v.id, v.exported]),
+            (await (await env.get('/api/videos')).json()).videos.map((v) => [v.id, v.exported]),
             [[first.id, true]],
         );
         assert.deepEqual(await bytes(`/api/videos/${first.id}/media`), mp4);
@@ -332,7 +332,7 @@ test('Try a new version plans from the current video as the learner asks; the ch
             'the chat shows only the newest',
         );
         assert.deepEqual(
-            (await (await env.get('/api/videos')).json()).map((v) => v.id).sort(),
+            (await (await env.get('/api/videos')).json()).videos.map((v) => v.id).sort(),
             [first.id, next.id].sort(),
         );
         assert.deepEqual(audits, [1], 'a new version started in Saving skips the audit');
@@ -381,7 +381,7 @@ test('Try a new version plans from the current video as the learner asks; the ch
         );
         assert.equal(workers.length, 2, 'switching redraws nothing');
         assert.deepEqual(
-            (await (await env.get('/api/videos')).json()).map((v) => v.id).sort(),
+            (await (await env.get('/api/videos')).json()).videos.map((v) => v.id).sort(),
             [first.id, next.id].sort(),
         );
         // Generating again after a switch builds on the video the learner chose.

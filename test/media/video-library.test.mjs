@@ -110,7 +110,7 @@ test('existing ready videos migrate into a global library that survives source d
     let env = await serve(path, dir);
     try {
         const usage = env.store.usageEvents();
-        const list = await (await env.get('/api/videos')).json();
+        const list = (await (await env.get('/api/videos')).json()).videos;
         assert.deepEqual(
             list.map((v) => v.id).sort(),
             [ids.kept, ids.missing, ids.other].sort(),
@@ -134,7 +134,7 @@ test('existing ready videos migrate into a global library that survives source d
         assert.equal(env.store.tree(root.id), undefined);
         assert.ok(existsSync(join(dir, 'video-work', ids.kept)));
         assert.ok(existsSync(mediaPath(dir, ids.kept)));
-        const after = await (await env.get('/api/videos')).json();
+        const after = (await (await env.get('/api/videos')).json()).videos;
         assert.deepEqual(after.map((v) => v.id).sort(), [ids.kept, ids.missing, ids.other].sort());
         // Each row names the conversation still holding it; a deleted source leaves null.
         assert.equal(after.find((v) => v.id === ids.kept).origin, null);
@@ -159,7 +159,7 @@ test('existing ready videos migrate into a global library that survives source d
         // Reopen: same library, still playable; a file removed while stopped reads as unavailable.
         unlinkSync(mediaPath(dir, ids.other));
         env = await serve(path, dir);
-        const reopened = await (await env.get('/api/videos')).json();
+        const reopened = (await (await env.get('/api/videos')).json()).videos;
         assert.equal(reopened.length, 3);
         assert.equal(reopened.find((v) => v.id === ids.other).available, false);
         const whole = await env.get(`/api/videos/${ids.kept}/media`);
@@ -323,7 +323,7 @@ test('library reveal and trash act only on server-owned media, keep failed entri
             missing: true,
         });
         assert.equal(calls.length, 0);
-        const list = (await (await env.get('/api/videos')).json()).map((v) => v.id).sort();
+        const list = (await (await env.get('/api/videos')).json()).videos.map((v) => v.id).sort();
         assert.deepEqual(list, [ids.kept, ids.linked].sort());
         assert.deepEqual(env.store.usageEvents(), usage, 'usage history survives trash');
         assert.deepEqual(readFileSync(mediaPath(dir, ids.kept)), media);

@@ -130,36 +130,39 @@ test('library cards lead with the frame; missing files offer only removal; trash
     let failTrash = true;
     const api = async (path, body) => {
         requests.push(path);
-        if (path === '/api/videos')
-            return [
-                {
-                    id: 'kept',
-                    title: 'Kept',
-                    description: 'A saved video.',
-                    duration: 3,
-                    created: 1,
-                    origin: 'Fungi',
-                    exported: true,
-                },
-                {
-                    id: 'fresh',
-                    title: 'Fresh',
-                    description: 'Saved, never exported.',
-                    duration: 3,
-                    created: 3,
-                    origin: null,
-                    exported: false,
-                },
-                {
-                    id: 'gone',
-                    title: 'Gone',
-                    description: 'Its file is missing.',
-                    duration: 3,
-                    created: 2,
-                    origin: 'Fungi',
-                    available: false,
-                },
-            ];
+        if (path.startsWith('/api/videos?'))
+            return {
+                total: 3,
+                videos: [
+                    {
+                        id: 'kept',
+                        title: 'Kept',
+                        description: 'A saved video.',
+                        duration: 3,
+                        created: 1,
+                        origin: 'Fungi',
+                        exported: true,
+                    },
+                    {
+                        id: 'fresh',
+                        title: 'Fresh',
+                        description: 'Saved, never exported.',
+                        duration: 3,
+                        created: 3,
+                        origin: null,
+                        exported: false,
+                    },
+                    {
+                        id: 'gone',
+                        title: 'Gone',
+                        description: 'Its file is missing.',
+                        duration: 3,
+                        created: 2,
+                        origin: 'Fungi',
+                        available: false,
+                    },
+                ],
+            };
         if (path.endsWith('/reveal')) return {};
         if (path.endsWith('/trash')) {
             if (failTrash) throw new Error('Nothing was deleted.');
@@ -232,15 +235,45 @@ test('library cards lead with the frame; missing files offer only removal; trash
     assert.equal(card('kept'), null);
     assert.match(container.textContent, /Moved “Kept” to the system trash\./);
     assert.deepEqual(requests, [
-        '/api/videos',
+        '/api/videos?offset=0&limit=24',
         '/api/videos/kept/reveal',
         '/api/videos/kept/trash',
         '/api/videos/kept/trash',
     ]);
 });
 
+test('the library loads one page of videos and steps to the next', async (t) => {
+    const requests = fakeServer(t, (path) => {
+        const offset = Number(new URL(path, 'http://x').searchParams.get('offset'));
+        return {
+            total: 30,
+            videos: Array.from({ length: Math.min(24, 30 - offset) }, (_, i) => ({
+                id: `v${offset + i}`,
+                title: `Video ${offset + i}`,
+                description: '',
+                duration: 3,
+                created: 1,
+                origin: null,
+                exported: true,
+            })),
+        };
+    });
+    const { container, act, cleanup } = await render(h(VideoLibrary, { activity: '' }), ui);
+    t.after(cleanup);
+    await act(async () => {});
+    const pages = container.querySelector('nav[aria-label="Video pages"]');
+    assert.match(pages.textContent, /1–24 of 30/);
+    assert.equal(container.querySelectorAll('.video-library [data-artifact]').length, 24);
+    assert.equal(button(pages, 'Previous page').disabled, true);
+    await act(async () => button(pages, 'Next page').click());
+    assert.equal(requests.at(-1).path, '/api/videos?offset=24&limit=24');
+    assert.equal(container.querySelectorAll('.video-library [data-artifact]').length, 6);
+    assert.match(pages.textContent, /25–30 of 30/);
+    assert.equal(button(pages, 'Next page').disabled, true);
+});
+
 test('an empty library says how videos get there', async (t) => {
-    fakeServer(t, () => []);
+    fakeServer(t, () => ({ total: 0, videos: [] }));
     const { container, act, cleanup } = await render(h(VideoLibrary, { activity: '' }), ui);
     t.after(cleanup);
     await act(async () => {});

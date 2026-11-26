@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { VStack, HStack } from '@astryxdesign/core/Layout';
 import { Heading, Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
+import { IconButton } from '@astryxdesign/core/IconButton';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
-import { ArrowPathIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import VideoCard from './VideoCard';
 import { request as api } from '../serverAccess';
 
@@ -23,8 +24,12 @@ export type LibraryVideo = {
     live?: string;
 };
 
+// Each card holds a player, so the library loads one page of videos at a time.
+const PAGE = 24;
+
 export default function VideoLibrary({ activity }: { activity: string }) {
-    const [videos, setVideos] = useState<LibraryVideo[]>();
+    const [list, setList] = useState<{ videos: LibraryVideo[]; total: number }>();
+    const [offset, setOffset] = useState(0);
     const [error, setError] = useState('');
     const [notice, setNotice] = useState('');
     const [trashing, setTrashing] = useState<LibraryVideo>(),
@@ -47,7 +52,11 @@ export default function VideoLibrary({ activity }: { activity: string }) {
         try {
             const result: { missing: boolean } = await api(`/api/videos/${v.id}/trash`, {});
             // Remove locally only after the server confirms; a failure keeps the entry and the dialog open.
-            setVideos((list) => list?.filter((x) => x.id !== v.id));
+            setList(
+                (l) => l && { videos: l.videos.filter((x) => x.id !== v.id), total: l.total - 1 },
+            );
+            // Emptying a later page steps back to the one before.
+            if (list?.videos.length === 1 && offset > 0) setOffset(offset - PAGE);
             setTrashing(undefined);
             setNotice(
                 v.exported === false
@@ -67,8 +76,8 @@ export default function VideoLibrary({ activity }: { activity: string }) {
         const current = ++version.current;
         setError('');
         try {
-            const data = await api('/api/videos');
-            if (current === version.current) setVideos(data);
+            const data = await api(`/api/videos?offset=${offset}&limit=${PAGE}`);
+            if (current === version.current) setList(data);
         } catch (e) {
             if (current === version.current) setError((e as Error).message);
         }
@@ -78,7 +87,13 @@ export default function VideoLibrary({ activity }: { activity: string }) {
         return () => {
             version.current++;
         };
-    }, [activity]);
+    }, [activity, offset]);
+    const videos = list?.videos,
+        total = list?.total ?? 0;
+    const page = (to: number) => {
+        setOffset(to);
+        requestAnimationFrame(() => document.getElementById('refresh-videos')?.focus());
+    };
     return (
         <VStack gap={6} className="knowledge-content video-page">
             <HStack gap={4} vAlign="end" wrap="wrap" className="library-head">
@@ -130,10 +145,14 @@ export default function VideoLibrary({ activity }: { activity: string }) {
                             origin={v.origin}
                             duration={v.duration}
                             onExported={() =>
-                                setVideos((list) =>
-                                    list?.map((x) =>
-                                        x.id === v.id ? { ...x, exported: true } : x,
-                                    ),
+                                setList(
+                                    (l) =>
+                                        l && {
+                                            ...l,
+                                            videos: l.videos.map((x) =>
+                                                x.id === v.id ? { ...x, exported: true } : x,
+                                            ),
+                                        },
                                 )
                             }
                             actions={
@@ -164,6 +183,29 @@ export default function VideoLibrary({ activity }: { activity: string }) {
                         />
                     ))}
                 </section>
+            )}
+            {total > PAGE && (
+                <nav aria-label="Video pages">
+                    <HStack gap={1} vAlign="center" hAlign="end">
+                        <Text type="supporting" color="secondary">
+                            {offset + 1}–{Math.min(offset + PAGE, total)} of {total}
+                        </Text>
+                        <IconButton
+                            label="Previous page"
+                            icon={<ChevronLeftIcon />}
+                            variant="ghost"
+                            isDisabled={offset === 0}
+                            clickAction={() => page(Math.max(0, offset - PAGE))}
+                        />
+                        <IconButton
+                            label="Next page"
+                            icon={<ChevronRightIcon />}
+                            variant="ghost"
+                            isDisabled={offset + PAGE >= total}
+                            clickAction={() => page(offset + PAGE)}
+                        />
+                    </HStack>
+                </nav>
             )}
             <AlertDialog
                 isOpen={!!trashing}

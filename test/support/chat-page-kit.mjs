@@ -48,8 +48,8 @@ export async function mount(
                     ? { provider: 'claude', model: null, effort: null }
                     : path === '/api/graph'
                       ? { concepts: [], links: [], topics: [] }
-                      : path === '/api/videos'
-                        ? []
+                      : path.startsWith('/api/videos?')
+                        ? { total: 0, videos: [] }
                         : path === '/api/trees/t1'
                           ? { ...tree, artifacts }
                           : path.startsWith('/api/previews?') && artifacts.length

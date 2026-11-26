@@ -118,7 +118,7 @@ test('export renders each cut from saved code with progress, shares one job, the
         // A second export downloads at once with no render, and the library now offers Show in folder.
         assert.deepEqual(await press(), { exported: true });
         assert.equal(renders.length, 3);
-        const [row] = await (await env.get('/api/videos')).json();
+        const [row] = (await (await env.get('/api/videos')).json()).videos;
         assert.equal(row.exported, true);
         const artifact = (await (await env.get(`/api/trees/${tree.id}`)).json()).artifacts[0];
         assert.equal(artifact.exported, true);

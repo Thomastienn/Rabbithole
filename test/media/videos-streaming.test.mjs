@@ -114,7 +114,7 @@ test('Stop during the reply cancels its video and rejects late worker output', a
     finishVideo.resolve();
     await env.app.settled();
     assert.deepEqual(await (await env.get(`/api/trees/${tree.id}`)).json(), saved);
-    assert.equal((await (await env.get('/api/videos')).json()).length, 0);
+    assert.equal((await (await env.get('/api/videos')).json()).videos.length, 0);
     assert.equal(calls, 1);
 });
 
@@ -186,7 +186,7 @@ test('a later conflicting media block fails the pending video without publishing
     );
     finishVideo.resolve();
     await env.app.settled();
-    assert.equal((await (await env.get('/api/videos')).json()).length, 0);
+    assert.equal((await (await env.get('/api/videos')).json()).videos.length, 0);
     assert.deepEqual(await (await env.get(`/api/trees/${tree.id}`)).json(), saved);
 });
 

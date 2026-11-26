@@ -262,16 +262,19 @@ test('a playable video plays live in the isolated frame, gets cut data as blobs,
 
 test('the library shows a pending video live, with no file actions until its MP4 is saved', async (t) => {
     const { default: VideoLibrary } = await import('../../src/media/VideoLibrary.tsx');
-    fakeServer(t, () => [
-        {
-            id: 'v1',
-            title: 'Winners',
-            description: 'Two winners meet.',
-            duration: null,
-            created: 2,
-            live: 'root',
-        },
-    ]);
+    fakeServer(t, () => ({
+        total: 1,
+        videos: [
+            {
+                id: 'v1',
+                title: 'Winners',
+                description: 'Two winners meet.',
+                duration: null,
+                created: 2,
+                live: 'root',
+            },
+        ],
+    }));
     const { container, act, cleanup } = await render(h(VideoLibrary, { activity: '' }), ui);
     t.after(cleanup);
     await act(async () => {});

@@ -35,6 +35,16 @@ const exportState = (ctx, id) => {
     return { exported: readable(mediaPath(ctx.dir, id)) };
 };
 
+// `offset` and `limit` of a paged list; at most 100 rows a page.
+const page = (url) => {
+    const number = (name, fallback, max) =>
+        Math.min(max, Math.max(0, Math.floor(Number(url.searchParams.get(name)) || fallback)));
+    return {
+        offset: number('offset', 0, Number.MAX_SAFE_INTEGER),
+        limit: Math.max(1, number('limit', 24, 100)),
+    };
+};
+
 // The video library, media playback, artifact reads and artifact job actions.
 export async function mediaRoutes(req, res, url, ctx, body) {
     const { store, json, dir, live, jobs } = ctx;
@@ -43,7 +53,8 @@ export async function mediaRoutes(req, res, url, ctx, body) {
         // A playable video joins the library live until its MP4 is saved; `live` names its conversation for the cut routes.
         if (url.pathname === '/api/videos') {
             const origin = store.videoOrigins();
-            return json(res, 200, [
+            const { offset, limit } = page(url);
+            const rows = [
                 ...jobs
                     .list('video')
                     .filter((job) => ['playable', 'saving'].includes(job.phase))
@@ -58,30 +69,31 @@ export async function mediaRoutes(req, res, url, ctx, body) {
                         origin: origin(conversation),
                         live: conversation,
                     })),
+                ...store.library(),
+            ];
+            return json(res, 200, {
+                total: rows.length,
                 // A video is exported once its MP4 exists; an unexported one plays live from its own saved cuts.
-                ...store
-                    .library()
+                // Only the page is checked on disk.
+                videos: rows
+                    .slice(offset, offset + limit)
                     .map((v) =>
-                        readable(mediaPath(dir, v.id))
-                            ? { ...v, exported: true }
-                            : readSaved(store.libraryCuts(v.id).source) &&
-                                existsSync(videoWork(dir, v.id))
-                              ? { ...v, exported: false }
-                              : { ...v, exported: false, available: false },
+                        v.live
+                            ? v
+                            : readable(mediaPath(dir, v.id))
+                              ? { ...v, exported: true }
+                              : readSaved(store.libraryCuts(v.id).source) &&
+                                  existsSync(videoWork(dir, v.id))
+                                ? { ...v, exported: false }
+                                : { ...v, exported: false, available: false },
                     ),
-            ]);
+            });
         }
         // The read-only piece library; the source compiles for the player frame like live cut code.
         // Paged and searchable; the query is embedded with any pieces saved while no embedder was usable.
         if (url.pathname === '/api/pieces') {
             const query = (url.searchParams.get('q') ?? '').trim().slice(0, 200),
-                number = (name, fallback, max) =>
-                    Math.min(
-                        max,
-                        Math.max(0, Math.floor(Number(url.searchParams.get(name)) || fallback)),
-                    ),
-                offset = number('offset', 0, Number.MAX_SAFE_INTEGER),
-                limit = Math.max(1, number('limit', 24, 100));
+                { offset, limit } = page(url);
             let vector = null;
             if (query && ctx.videoEmbed)
                 try {

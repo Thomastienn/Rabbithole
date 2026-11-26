@@ -138,7 +138,11 @@ test('a video plays live once cuts 1 and 2 are ready while later cuts are pendin
         assert.equal((await env.get(`/api/trees/other/artifacts/${id}/cuts`)).status, 404);
         // The library plays the live version while the video is generating.
         assert.deepEqual(
-            (await (await env.get('/api/videos')).json()).map((v) => [v.id, v.live, v.origin]),
+            (await (await env.get('/api/videos')).json()).videos.map((v) => [
+                v.id,
+                v.live,
+                v.origin,
+            ]),
             [[id, tree.id, 'Video']],
         );
         await release('third');
@@ -155,7 +159,7 @@ test('a video plays live once cuts 1 and 2 are ready while later cuts are pendin
         assert.equal((await artifact()).exported, false);
         assert.ok((await (await env.get(cuts)).json()).cuts.every((c) => c.playable));
         assert.deepEqual(
-            (await (await env.get('/api/videos')).json()).map((v) => [
+            (await (await env.get('/api/videos')).json()).videos.map((v) => [
                 v.id,
                 v.live,
                 v.exported,
@@ -182,7 +186,7 @@ test('a video plays live once cuts 1 and 2 are ready while later cuts are pendin
         const trashed = await env.post(`/api/videos/${id}/trash`);
         assert.deepEqual(await trashed.json(), { trashed: false, missing: true });
         assert.equal(existsSync(join(env.dir, 'video-work', id)), false);
-        assert.deepEqual(await (await env.get('/api/videos')).json(), []);
+        assert.deepEqual((await (await env.get('/api/videos')).json()).videos, []);
         assert.equal((await env.get(library)).status, 404);
     } finally {
         env.close();
