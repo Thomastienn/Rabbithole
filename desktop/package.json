@@ -18,6 +18,7 @@
         "files": [
             "main.mjs",
             "shell.mjs",
+            "discord.mjs",
             "preload.cjs",
             "starting.html",
             "icons/icon.png"

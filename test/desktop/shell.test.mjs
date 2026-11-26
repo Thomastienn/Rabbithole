@@ -12,6 +12,9 @@ import { join, resolve } from 'node:path';
 import test from 'node:test';
 import { dataDir } from '../../server/desktop.mjs';
 import {
+    discordActivity,
+    discordFrame,
+    discordSockets,
     firstLaunch,
     installedDataDir,
     moveOldData,
@@ -226,4 +229,28 @@ test('a failed update download gives a short reason and Install retries it', () 
     const retried = updateState(offline, { type: 'install' });
     assert.equal(retried.stage, 'downloading');
     assert.equal(retried.percent, 0);
+});
+
+test('the Discord status names the open tree, and only the app with no tree open', () => {
+    assert.deepEqual(discordActivity(null, 5), {
+        timestamps: { start: 5 },
+        assets: { large_image: 'logo', large_text: 'Rabbithole' },
+    });
+    assert.equal(discordActivity('Black holes', 5).details, 'Learning about Black holes');
+    assert.equal(discordActivity('x'.repeat(200), 5).details.length, 128);
+});
+
+test('Discord IPC frames carry a little-endian opcode and length before the JSON', () => {
+    const frame = discordFrame(1, { a: 1 });
+    assert.equal(frame.readInt32LE(0), 1);
+    assert.equal(frame.readInt32LE(4), 7);
+    assert.equal(frame.subarray(8).toString(), '{"a":1}');
+});
+
+test('Discord sockets are named pipes on Windows and include the Flatpak and Snap folders elsewhere', () => {
+    assert.equal(discordSockets('win32', {})[0], '\\\\?\\pipe\\discord-ipc-0');
+    const linux = discordSockets('linux', { XDG_RUNTIME_DIR: '/run/user/1000' });
+    assert.equal(linux[0], '/run/user/1000/discord-ipc-0');
+    assert.ok(linux.includes('/run/user/1000/app/com.discordapp.Discord/discord-ipc-0'));
+    assert.ok(linux.includes('/run/user/1000/snap.discord/discord-ipc-9'));
 });

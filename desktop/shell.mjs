@@ -134,3 +134,30 @@ function updateFailure(message = '') {
         ? 'The connection dropped. Check it, then retry.'
         : 'Something went wrong while downloading. Try again.';
 }
+
+// Discord Rich Presence: the local client listens on discord-ipc-0..9, under the runtime folder on Linux and macOS,
+// including the Flatpak and Snap Discord sandboxes, and as a named pipe on Windows.
+export function discordSockets(platform, env) {
+    const ids = [...Array(10).keys()];
+    if (platform === 'win32') return ids.map((i) => `\\\\?\\pipe\\discord-ipc-${i}`);
+    const roots = [env.XDG_RUNTIME_DIR, env.TMPDIR, env.TMP, env.TEMP, '/tmp'].filter(Boolean);
+    const boxes = ['', 'app/com.discordapp.Discord', 'snap.discord'];
+    return [...new Set(roots.flatMap((root) => boxes.flatMap((box) => ids.map((i) => join(root, box, `discord-ipc-${i}`)))))];
+}
+
+// Each IPC frame is a little-endian opcode and byte length, then the JSON payload.
+export function discordFrame(op, payload) {
+    const body = Buffer.from(JSON.stringify(payload));
+    const head = Buffer.alloc(8);
+    head.writeInt32LE(op, 0);
+    head.writeInt32LE(body.length, 4);
+    return Buffer.concat([head, body]);
+}
+
+// Discord caps the details line at 128 characters; with no open tree only the app and its timer show.
+export function discordActivity(title, start) {
+    const base = { timestamps: { start }, assets: { large_image: 'logo', large_text: 'Rabbithole' } };
+    if (!title) return base;
+    const details = `Learning about ${title}`;
+    return { ...base, details: details.length > 128 ? `${details.slice(0, 127)}…` : details };
+}

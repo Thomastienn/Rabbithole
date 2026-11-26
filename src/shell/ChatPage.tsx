@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Text, Heading } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
@@ -72,6 +72,13 @@ export default function ChatPage({
     const { cancelDelete } = actions;
     const { newChat, askDelete } = actions;
     const active = !!tree && !!state?.active.includes(tree.id);
+    // The desktop app shows the open tree as the Discord status (desktop/discord.mjs); a browser has no bridge.
+    const treeTitle = tree?.title ?? null;
+    useEffect(() => {
+        (
+            window as { rabbitholeDesktop?: { activity?: (t: string | null) => void } }
+        ).rabbitholeDesktop?.activity?.(treeTitle);
+    }, [treeTitle]);
     function openSettings(
         section?: SettingsTab,
         focus?: string,

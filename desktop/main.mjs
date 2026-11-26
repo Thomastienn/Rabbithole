@@ -5,6 +5,7 @@ import { createInterface } from 'node:readline';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { app, BrowserWindow, ipcMain, nativeTheme, shell } from 'electron';
 import electronUpdater from 'electron-updater';
+import { discordPresence } from './discord.mjs';
 import {
     firstLaunch,
     installedDataDir,
@@ -207,6 +208,10 @@ app.whenReady().then(() => {
     // Loading the server's address aborts this page's load; the error only matters for showError's wait.
     const loaded = window.loadFile(join(here, 'starting.html')).catch(() => {});
     startServer(window, loaded);
+    const presence = discordPresence();
+    ipcMain.on('activity', (event, title) => {
+        if (event.senderFrame?.url.startsWith(`${origin}/`)) presence(title);
+    });
     // Restart saves the layout and stops the server first, so the new version finds the data folder free.
     offerUpdates(window, async () => {
         await saveLayout((code) => window.webContents.executeJavaScript(code));
