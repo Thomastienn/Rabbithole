@@ -194,6 +194,15 @@
     overflow-wrap: anywhere;
     text-align: start;
 }
+/* Filled chips with an accent edge instead of an outline, so they read as follow-ups, not toolbar buttons. */
+.next-questions .astryx-button {
+    background: var(--color-background-muted);
+    box-shadow: inset 3px 0 0 var(--color-accent);
+    color: var(--color-text-primary);
+}
+.next-questions .astryx-button:hover:not(:disabled) {
+    background: var(--color-accent-muted);
+}
 /* Free-branch row (mockup .side-row): wraps when full; a long title truncates, the address chip never does. */
 .free-branches .astryx-button {
     max-width: 100%;

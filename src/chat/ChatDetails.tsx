@@ -307,7 +307,7 @@ export function NextQuestions({
                 <Button
                     key={question}
                     label={question}
-                    variant="secondary"
+                    variant="ghost"
                     size="sm"
                     isDisabled={active}
                     onClick={() => ask(question)}
