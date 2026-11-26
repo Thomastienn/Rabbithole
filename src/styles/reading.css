@@ -194,14 +194,14 @@
     overflow-wrap: anywhere;
     text-align: start;
 }
-/* Filled chips with an accent edge instead of an outline, so they read as follow-ups, not toolbar buttons. */
+/* Raised-enamel tiles like the question bubble they would become; no outline, no coloured edge (DESIGN.md). */
 .next-questions .astryx-button {
-    background: var(--color-background-muted);
-    box-shadow: inset 3px 0 0 var(--color-accent);
+    background: var(--color-background-surface);
     color: var(--color-text-primary);
+    padding-inline: var(--spacing-3);
 }
 .next-questions .astryx-button:hover:not(:disabled) {
-    background: var(--color-accent-muted);
+    background: var(--color-neutral);
 }
 /* Free-branch row (mockup .side-row): wraps when full; a long title truncates, the address chip never does. */
 .free-branches .astryx-button {
