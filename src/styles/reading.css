@@ -181,6 +181,10 @@
     height: 16px;
     color: var(--color-text-error);
 }
+/* Room above the reply text and below, before the copy and usage row. */
+.next-questions {
+    margin-block: var(--spacing-3);
+}
 /* Next questions wrap instead of the one-line button truncating or widening a narrow chat column. */
 .next-questions .astryx-button {
     height: auto;

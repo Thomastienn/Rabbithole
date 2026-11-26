@@ -297,7 +297,7 @@ export function NextQuestions({
         return null;
     return (
         <VStack
-            gap={1}
+            gap={2}
             hAlign="start"
             className="next-questions"
             role="group"
