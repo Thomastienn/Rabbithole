@@ -113,13 +113,18 @@ export default function Passage({
         if (!box) return;
         const position = () => {
             box.style.transform = '';
-            const top = wrapper
-                .current!.closest('.focused-chat')!
-                .querySelector('.chat-header')!
-                .getBoundingClientRect().bottom;
+            const chat = wrapper.current!.closest('.focused-chat')!;
+            const top = chat.querySelector('.chat-header')!.getBoundingClientRect().bottom;
+            // The reading area ends at the composer, or at the viewport without one.
+            const bottom =
+                chat.querySelector('.astryx-chat-composer')?.getBoundingClientRect().top ??
+                window.innerHeight;
             const at = form?.at;
-            if (at && box.getBoundingClientRect().top < top)
-                box.style.transform = `translateY(calc(${(at.below ?? at.y) - at.y}px + 2 * var(--spacing-1)))`;
+            const rect = box.getBoundingClientRect();
+            const lines = at ? (at.below ?? at.y) - at.y : 0;
+            // No room under the selection: sit above its first line instead, when that fits under the header.
+            if (at && rect.bottom > bottom && rect.top - lines - rect.height >= top)
+                box.style.transform = `translateY(calc(${-lines}px - 100% - 2 * var(--spacing-1)))`;
         };
         position();
         const observer = new ResizeObserver(position);
@@ -522,7 +527,11 @@ export default function Passage({
                 ))}
             {form &&
                 (form.at ? (
-                    <VStack ref={floating} className="passage-box" style={{ top: form.at.y }}>
+                    <VStack
+                        ref={floating}
+                        className="passage-box"
+                        style={{ top: form.at.below ?? form.at.y }}
+                    >
                         {form.node}
                     </VStack>
                 ) : (

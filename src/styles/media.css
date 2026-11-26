@@ -517,14 +517,12 @@
         transform: translate(-50%, var(--spacing-1));
     }
 }
-/* Passage box (mockup States): opens under the selection, up to 400px wide. Its top is the passage's first line,
-   so it drops one reply line. shortcut: a selection over several lines is partly covered; place it at the anchor's
-   `below` in Passage.tsx to sit under any selection. */
+/* Passage box (mockup States): opens under the selection's last line, up to 400px wide, so it never covers it. */
 .passage-box {
     position: absolute;
     z-index: 3;
     width: min(100%, 400px);
-    margin-top: calc(1lh + var(--spacing-1));
+    margin-top: var(--spacing-1);
 }
 /* Origin line under the title (mockup .origin): a porcelain ring, then From <parent> at “passage”. */
 .origin-line {

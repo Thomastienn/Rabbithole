@@ -75,3 +75,25 @@ test('a drag inside a formula shows and asks about the widened term, which retur
     });
     assert.deepEqual(opened, ['child']);
 });
+test('the passage box opens under the selection, and above it when the reading area has no room below', async (t) => {
+    const { container, act, update } = await passage(t);
+    const at = { x: 0, y: 10, below: 40 };
+    await act(async () => update((v) => ({ ...v, form: { node: 'Ask', at } })));
+    const box = container.querySelector('.passage-box');
+    assert.equal(box.style.top, '40px', 'top at the last line, not the first');
+    assert.equal(box.style.transform, '');
+    box.getBoundingClientRect = () => ({
+        top: window.innerHeight - 50,
+        bottom: window.innerHeight + 150,
+        height: 200,
+    });
+    await act(async () => window.dispatchEvent(new Event('resize')));
+    assert.match(box.style.transform, /-30px - 100%/, 'flipped above the first line');
+    box.getBoundingClientRect = () => ({
+        top: 100,
+        bottom: window.innerHeight + 150,
+        height: window.innerHeight + 50,
+    });
+    await act(async () => window.dispatchEvent(new Event('resize')));
+    assert.equal(box.style.transform, '', 'stays below when above would run under the header');
+});
