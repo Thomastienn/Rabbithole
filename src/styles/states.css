@@ -35,10 +35,7 @@ dialog.tree-search-window::backdrop {
     gap: 10px;
     height: 56px;
     padding: 0 12px 0 18px;
-    border-bottom: 1.5px solid var(--color-border-emphasized);
-}
-.tree-search-window .astryx-command-palette-input:has(:focus-visible) {
-    border-bottom-color: var(--rabbithole-paper);
+    border-bottom: 1px solid var(--color-border);
 }
 .tree-search-window .astryx-command-palette-input > span:first-child .astryx-icon {
     --_icon-width: 20px;
