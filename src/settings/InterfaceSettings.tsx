@@ -123,6 +123,8 @@ export default function InterfaceSettings({
     setTheme,
     vim,
     setVim,
+    discord,
+    setDiscord,
 }: {
     appearance: Appearance;
     setAppearance: (next: Appearance) => void;
@@ -130,7 +132,12 @@ export default function InterfaceSettings({
     setTheme: (next: ThemeChoice) => void;
     vim: boolean;
     setVim: (on: boolean) => void;
+    discord: boolean;
+    setDiscord: (on: boolean) => void;
 }) {
+    // Only the desktop app's preload (desktop/preload.cjs) can reach Discord.
+    const desktop = !!(window as { rabbitholeDesktop?: { activity?: unknown } }).rabbitholeDesktop
+        ?.activity;
     return (
         <>
             <Section title="Appearance">
@@ -237,6 +244,16 @@ export default function InterfaceSettings({
                     ))}
                 </dl>
             </Section>
+            {desktop && (
+                <Section title="Discord">
+                    <Switch
+                        label="Show the open tree on Discord"
+                        description="Your Discord status reads “Learning about” and the title of the learning tree you have open. Friends who can see your activity see that title."
+                        value={discord}
+                        onChange={setDiscord}
+                    />
+                </Section>
+            )}
         </>
     );
 }

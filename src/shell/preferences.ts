@@ -24,6 +24,15 @@ export function savedGhostTrees() {
     }
 }
 
+// The desktop app shows the open tree as the Discord status unless it was switched off.
+export function savedDiscordStatus() {
+    try {
+        return localStorage.getItem('rabbithole.discord-status') !== 'off';
+    } catch {
+        return true;
+    }
+}
+
 // Library opens as a shelf unless List was chosen.
 export function savedLibraryLayout(): 'shelf' | 'list' {
     try {
@@ -41,6 +50,7 @@ export function savePreference(
         | 'library-layout'
         | 'focus-mode'
         | 'ghost-trees'
+        | 'discord-status'
         | 'reading-font'
         | 'interface-font',
     value: string,

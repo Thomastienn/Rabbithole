@@ -149,6 +149,8 @@ export default function SettingsWindow({
     signIn,
     vim,
     setVim,
+    discord,
+    setDiscord,
     appearance,
     setAppearance,
     theme,
@@ -166,6 +168,8 @@ export default function SettingsWindow({
     signIn: () => Promise<void>;
     vim: boolean;
     setVim: (on: boolean) => void;
+    discord: boolean;
+    setDiscord: (on: boolean) => void;
     appearance: Appearance;
     setAppearance: (next: Appearance) => void;
     theme: ThemeChoice;
@@ -253,6 +257,8 @@ export default function SettingsWindow({
                         setTheme={setTheme}
                         vim={vim}
                         setVim={setVim}
+                        discord={discord}
+                        setDiscord={setDiscord}
                     />,
                 )}
             {tab === 'models' &&

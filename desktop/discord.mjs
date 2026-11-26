@@ -10,13 +10,15 @@ export function discordPresence() {
     const start = Date.now();
     let socket = null,
         ready = false,
-        title = null;
+        title = null,
+        // Nothing shows until the page reports, so a switched-off status never flashes at launch.
+        shown = false;
     const send = () =>
         ready &&
         socket.write(
             discordFrame(1, {
                 cmd: 'SET_ACTIVITY',
-                args: { pid: process.pid, activity: discordActivity(title, start) },
+                args: { pid: process.pid, activity: shown ? discordActivity(title, start) : undefined },
                 nonce: String(Date.now()),
             }),
         );
@@ -44,6 +46,8 @@ export function discordPresence() {
     const open = () => CLIENT_ID && tryPaths(discordSockets(process.platform, process.env));
     open();
     return (next) => {
+        // false clears the status (switched off in Settings); null shows the app without a tree.
+        shown = next !== false;
         title = typeof next === 'string' ? next : null;
         send();
     };

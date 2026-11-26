@@ -6,7 +6,7 @@ import { ShareIcon, FilmIcon, BookOpenIcon, MapIcon, CubeIcon } from '@heroicons
 import { useTheme } from '@astryxdesign/core/theme';
 import TreeSearch from './TreeSearch';
 import ShellBand, { SaveAlert, viewTab } from './ShellBand';
-import { savedVim, savePreference } from './preferences';
+import { savedDiscordStatus, savedVim, savePreference } from './preferences';
 import LibraryPanel from './LibraryPanel';
 import ReturnPanel from './ReturnPanel';
 import FirstRunSetup from './FirstRunSetup';
@@ -53,6 +53,7 @@ export default function ChatPage({
     const searchFromDrawer = useRef(false);
     // Only this boolean is stored, per browser and app origin; unreadable storage means off.
     const [vim, setVim] = useState(savedVim);
+    const [discord, setDiscord] = useState(savedDiscordStatus);
     const trees = useLearningTrees(c);
     const { state, tree, loading, layout, changeView, returnToTree } = trees;
     const model = useChatModel(c, trees);
@@ -72,13 +73,14 @@ export default function ChatPage({
     const { cancelDelete } = actions;
     const { newChat, askDelete } = actions;
     const active = !!tree && !!state?.active.includes(tree.id);
-    // The desktop app shows the open tree as the Discord status (desktop/discord.mjs); a browser has no bridge.
+    // The desktop app shows the open tree as the Discord status (desktop/discord.mjs); false clears it, and a browser
+    // has no bridge.
     const treeTitle = tree?.title ?? null;
     useEffect(() => {
         (
-            window as { rabbitholeDesktop?: { activity?: (t: string | null) => void } }
-        ).rabbitholeDesktop?.activity?.(treeTitle);
-    }, [treeTitle]);
+            window as { rabbitholeDesktop?: { activity?: (t: string | null | false) => void } }
+        ).rabbitholeDesktop?.activity?.(discord && treeTitle);
+    }, [discord, treeTitle]);
     function openSettings(
         section?: SettingsTab,
         focus?: string,
@@ -531,6 +533,11 @@ export default function ChatPage({
                         setVim={(on) => {
                             setVim(on);
                             savePreference('vim', on ? 'on' : 'off');
+                        }}
+                        discord={discord}
+                        setDiscord={(on) => {
+                            setDiscord(on);
+                            savePreference('discord-status', on ? 'on' : 'off');
                         }}
                         appearance={appearance}
                         setAppearance={setAppearance}

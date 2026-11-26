@@ -194,3 +194,38 @@ test('Connections lists each provider by name then status, and Check again re-re
     await page.act(async () => button(row('Codex'), 'Check Codex again').click());
     assert.equal(checks, 1);
 });
+
+test('a browser has no Discord status switch', async (t) => {
+    fakeServer(t, () => ({ first: null, events: [] }));
+    const { container, cleanup } = await render(settings(), ui);
+    t.after(cleanup);
+    assert.doesNotMatch(container.textContent, /Show the open tree on Discord/);
+});
+
+test('the desktop app shows the Discord status switch and reports its choice', async (t) => {
+    fakeServer(t, () => ({ first: null, events: [] }));
+    const choices = [];
+    const page = await render(
+        h(SettingsWindow, {
+            ...settings().props,
+            discord: true,
+            setDiscord: (on) => choices.push(on),
+        }),
+        (w) => {
+            ui(w);
+            w.rabbitholeDesktop = {
+                activity() {},
+                update: async () => null,
+                onUpdate: () => () => {},
+            };
+        },
+    );
+    t.after(page.cleanup);
+    const discord = [...page.container.querySelectorAll('[role=switch]')].find((s) =>
+        /Show the open tree on Discord/.test(s.labels[0]?.textContent),
+    );
+    assert.ok(discord, 'the switch shows');
+    assert.equal(discord.checked, true);
+    await page.act(async () => discord.click());
+    assert.deepEqual(choices, [false]);
+});
