@@ -13,6 +13,7 @@ test('branch form names its passage, controls submit/locking, and distinguishes 
     t.mock.timers.enable({ apis: ['setTimeout'] });
     let update, dom;
     const sent = [],
+        asked = [],
         closed = [];
     function Fixture() {
         const [value, set] = useState({ question: '', branching: false, active: false });
@@ -24,6 +25,7 @@ test('branch form names its passage, controls submit/locking, and distinguishes 
                 e.preventDefault();
                 sent.push(value.question);
             },
+            askHere: () => asked.push(value.question),
             close: (refocus) => closed.push(refocus),
             setQuestion: (question) => set((v) => ({ ...v, question })),
         });
@@ -40,7 +42,8 @@ test('branch form names its passage, controls submit/locking, and distinguishes 
         document.getElementById(input.getAttribute('aria-describedby')).textContent,
         'mutex',
     );
-    assert.equal(button(container, 'Create focused chat').disabled, true);
+    assert.equal(button(container, 'Send').disabled, true);
+    assert.equal(button(container, 'Ask here').disabled, true);
     assert.equal(button(container, 'Cancel branch'), undefined);
     assert.equal(
         container.querySelector('[aria-label^="Corrections"]'),
@@ -48,10 +51,13 @@ test('branch form names its passage, controls submit/locking, and distinguishes 
         'no correction menu',
     );
     await act(async () => inputValue(input, '  '));
-    assert.equal(button(container, 'Create focused chat').disabled, true);
+    assert.equal(button(container, 'Send').disabled, true);
+    assert.equal(button(container, 'Ask here').disabled, true);
     await act(async () => inputValue(input, 'Why?'));
-    await act(async () => button(container, 'Create focused chat').click());
+    await act(async () => button(container, 'Send').click());
     assert.deepEqual(sent, ['Why?']);
+    await act(async () => button(container, 'Ask here').click());
+    assert.deepEqual([sent, asked], [['Why?'], ['Why?']], 'Ask here does not submit a branch');
     await act(async () => key(input, 'Escape'));
     assert.deepEqual(closed, [true]);
     await act(async () => input.dispatchEvent(new Event('pointerdown', { bubbles: true })));
@@ -67,7 +73,8 @@ test('branch form names its passage, controls submit/locking, and distinguishes 
     });
     assert.deepEqual(closed, [true, false]);
     await act(async () => update((v) => ({ ...v, branching: false, active: true })));
-    assert.equal(button(container, 'Create focused chat').disabled, true);
+    assert.equal(button(container, 'Send').disabled, true);
+    assert.equal(button(container, 'Ask here').disabled, true);
     assert.equal(input.value, 'Why?');
 });
 
@@ -310,4 +317,40 @@ test('a question sent while the reply streams shows as waiting and survives outs
     assert.deepEqual(closed, [], 'an outside click keeps the waiting question');
     await act(async () => key(input, 'Escape'));
     assert.deepEqual(closed, [true], 'Escape still closes the box');
+});
+
+test('Ask here sends the question as a turn in this conversation, quoting the passage, and opens no branch', async (t) => {
+    const { default: ChatThread } = await import('../../src/chat/ChatThread.tsx');
+    const { threadProps } = await import('../support/thread-props.mjs');
+    const sent = [],
+        closed = [];
+    const tree = {
+        id: 'root',
+        artifacts: [],
+        messages: [
+            { id: 'q', role: 'user', status: 'completed', text: 'Locks?' },
+            { id: 'reply', role: 'assistant', status: 'completed', text: 'A mutex guards.' },
+        ],
+    };
+    const { container, act, cleanup } = await render(
+        h(
+            ChatThread,
+            threadProps({
+                tree,
+                branch: {
+                    parent: 'root',
+                    anchor: { ...anchor, suggestion: undefined },
+                    question: 'Why?',
+                },
+                send: (text, target) => sent.push([text, target.id]),
+                submitBranch: () => assert.fail('Ask here must not branch'),
+                closeBranch: (refocus) => closed.push(refocus),
+            }),
+        ),
+        ui,
+    );
+    t.after(cleanup);
+    await act(async () => button(container, 'Ask here').click());
+    assert.deepEqual(sent, [['> mutex\n\nWhy?', 'root']]);
+    assert.deepEqual(closed, [false], 'the box closes');
 });

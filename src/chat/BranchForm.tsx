@@ -6,7 +6,6 @@ import { IconButton } from '@astryxdesign/core/IconButton';
 import { Button } from '@astryxdesign/core/Button';
 import ArrowUpIcon from '@heroicons/react/24/outline/ArrowUpIcon';
 import ChevronRightIcon from '@heroicons/react/24/outline/ChevronRightIcon';
-import PlusIcon from '@heroicons/react/24/outline/PlusIcon';
 import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
 import type { Anchor, BranchState } from './branch';
 import type { PartNode } from '../media/artifacts';
@@ -17,6 +16,7 @@ export default function BranchForm({
     branching,
     active,
     submit,
+    askHere,
     close,
     setQuestion,
     explain,
@@ -28,6 +28,8 @@ export default function BranchForm({
     branching: boolean;
     active: boolean;
     submit: (e: React.FormEvent) => void;
+    // Sends the question as a turn in this conversation; absent while a reply streams, as the composer then only stops.
+    askHere?: () => void;
     close: (refocus: boolean) => void;
     setQuestion: (question: string) => void;
     explain?: (anchor: Anchor) => Promise<string>;
@@ -270,14 +272,15 @@ export default function BranchForm({
                                 ? 'Preparing context…'
                                 : pending
                                   ? 'Waiting for the reply…'
-                                  : 'Create focused chat'
+                                  : 'Ask here'
                         }
-                        type="submit"
-                        icon={<PlusIcon />}
                         size="sm"
                         variant="secondary"
                         isLoading={branching || pending}
-                        isDisabled={branching || pending || !branch.question.trim() || active}
+                        isDisabled={
+                            branching || pending || !branch.question.trim() || active || !askHere
+                        }
+                        onClick={askHere}
                     />
                 </HStack>
                 {pending && (

@@ -228,6 +228,18 @@ export default function ChatThread({
                                               // A question about the streaming reply itself waits for it instead.
                                               active={active && message.status !== 'streaming'}
                                               submit={submitBranch}
+                                              // Ask here: a normal turn in this conversation, the passage quoted above the question.
+                                              askHere={
+                                                  active
+                                                      ? undefined
+                                                      : () => {
+                                                            closeBranch(false);
+                                                            void send(
+                                                                `${branch.anchor.text.replace(/^/gm, '> ')}\n\n${branch.question}`,
+                                                                tree,
+                                                            );
+                                                        }
+                                              }
                                               close={closeBranch}
                                               setQuestion={setQuestion}
                                               explain={(anchor) =>
