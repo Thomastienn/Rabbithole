@@ -507,7 +507,7 @@ export default function ChatPage({
                         overview={overview}
                         back={() => setTab('learning')}
                     >
-                        <PieceLibrary />
+                        <PieceLibrary theme={theme} />
                     </ReturnPanel>
                     <SettingsWindow
                         request={tab === 'settings' ? settings : undefined}

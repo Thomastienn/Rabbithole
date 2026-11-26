@@ -25,7 +25,7 @@ test('the Pieces view searches and pages, with a no-results message', async (t) 
         };
     };
     fakeServer(t, api);
-    const { container, act, cleanup } = await render(h(PieceLibrary), ui);
+    const { container, act, cleanup } = await render(h(PieceLibrary, { theme: 'platform' }), ui);
     t.after(cleanup);
     await settle(act);
     assert.equal(calls[0], '/api/pieces?offset=0&limit=24');
@@ -83,7 +83,7 @@ test('the Pieces view searches and pages, with a no-results message', async (t) 
 test('an empty Pieces view says how pieces get there', async (t) => {
     const api = async () => ({ total: 0, pieces: [] });
     fakeServer(t, api);
-    const { container, act, cleanup } = await render(h(PieceLibrary), ui);
+    const { container, act, cleanup } = await render(h(PieceLibrary, { theme: 'platform' }), ui);
     t.after(cleanup);
     await settle(act);
     assert.equal(container.querySelector('h2').textContent, 'No saved pieces yet');
@@ -104,7 +104,7 @@ test('the Pieces view lists pieces and opens a read-only source with a preview i
         calls.push([path, body]);
         if (list(path))
             return { total: 2, pieces: [piece, { ...piece, id: 'p2', name: 'Loser', videos: [] }] };
-        if (path === '/api/pieces/p1')
+        if (path === '/api/pieces/p1?theme=platform&mode=light')
             return {
                 ...piece,
                 roles: ['winner', 'loser'],
@@ -112,11 +112,12 @@ test('the Pieces view lists pieces and opens a read-only source with a preview i
                 code: 'exports.Winner = 1',
                 source3d: null,
                 code3d: null,
+                palette: { ground: '#14171d' },
             };
         assert.fail(path);
     };
     fakeServer(t, api);
-    const { container, act, cleanup } = await render(h(PieceLibrary), ui);
+    const { container, act, cleanup } = await render(h(PieceLibrary, { theme: 'platform' }), ui);
     t.after(cleanup);
     await settle(act);
     const cards = [...container.querySelectorAll('.piece-library h3')].map((e) =>
@@ -147,6 +148,7 @@ test('the Pieces view lists pieces and opens a read-only source with a preview i
             code: 'exports.Winner = 1',
             code3d: null,
             name: 'Winner',
+            palette: { ground: '#14171d' },
             paletteRoles: { winner: 'amber', loser: 'leaf' },
         },
     ]);
@@ -170,7 +172,7 @@ test('opening a piece with a 3D form sends both forms to the isolated player fra
     const api = async (path, body) => {
         assert.equal(body, undefined, 'only reads, no writes');
         if (list(path)) return { total: 1, pieces: [row] };
-        if (path === '/api/pieces/p1')
+        if (path === '/api/pieces/p1?theme=platform&mode=light')
             return {
                 ...row,
                 roles: ['winner'],
@@ -178,11 +180,12 @@ test('opening a piece with a 3D form sends both forms to the isolated player fra
                 code: 'exports.Winner = 1',
                 source3d: 'export function Winner3D() { return <group />; }',
                 code3d: 'exports.Winner3D = 1',
+                palette: { ground: '#14171d' },
             };
         assert.fail(path);
     };
     fakeServer(t, api);
-    const { container, act, cleanup } = await render(h(PieceLibrary), ui);
+    const { container, act, cleanup } = await render(h(PieceLibrary, { theme: 'platform' }), ui);
     t.after(cleanup);
     await settle(act);
     await act(async () => container.querySelector('[aria-label="Open Winner"]').click());
@@ -203,6 +206,7 @@ test('opening a piece with a 3D form sends both forms to the isolated player fra
             code: 'exports.Winner = 1',
             code3d: 'exports.Winner3D = 1',
             name: 'Winner',
+            palette: { ground: '#14171d' },
             paletteRoles: { winner: 'amber' },
         },
     ]);
@@ -239,7 +243,7 @@ test('cards show one 2D still as an image, or a pending still, without a live pl
               }
             : assert.fail(path);
     fakeServer(t, api);
-    const { container, act, cleanup } = await render(h(PieceLibrary), ui);
+    const { container, act, cleanup } = await render(h(PieceLibrary, { theme: 'platform' }), ui);
     t.after(cleanup);
     await settle(act);
     const card = (name) =>

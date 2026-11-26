@@ -5,7 +5,7 @@ import ts from 'typescript';
 import { mediaPath } from '../../media/videos.mjs';
 import { playable } from '../../media/cut-state.mjs';
 import { withParts } from '../../media/video-pieces.mjs';
-import { briefPalette } from '../../media/video-colors.mjs';
+import { briefPalette, videoPalette } from '../../media/video-colors.mjs';
 import { readable } from '../jobs/media.mjs';
 import {
     videoWork,
@@ -147,6 +147,11 @@ export async function mediaRoutes(req, res, url, ctx, body) {
                 improved,
                 code: compileCut(whole.source),
                 code3d: whole.source3d ? compileCut(whole.source3d) : null,
+                // A piece keeps no palette; the preview paints the app theme it is viewed in.
+                palette: videoPalette({
+                    name: url.searchParams.get('theme'),
+                    mode: url.searchParams.get('mode'),
+                }),
             });
         }
         // Export state of one saved video, polled by its Export MP4 button.

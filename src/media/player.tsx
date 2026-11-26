@@ -94,8 +94,15 @@ const inks = (colors: Record<string, string>, trueColors: Record<string, string>
 
 // A library piece previewed alone and still (pieces never animate themselves), centred on the ground;
 // its 3D form, when sent, turns beside it.
-function showPiece(code: string, name: string, colors: Record<string, string>, code3d?: string) {
+function showPiece(
+    code: string,
+    name: string,
+    colors: Record<string, string>,
+    palette?: typeof kit.palette,
+    code3d?: string,
+) {
     pieces = {};
+    if (palette) kit.setPalette(palette);
     const Piece = load(code, inks(colors))?.[name] as
         React.ComponentType<{ x: number; y: number; scale: number }> | undefined;
     const Solid = code3d
@@ -140,6 +147,7 @@ addEventListener('message', (event) => {
             event.data.code,
             event.data.name,
             event.data.paletteRoles ?? {},
+            event.data.palette,
             typeof event.data.code3d === 'string' ? event.data.code3d : undefined,
         );
     if (event.data?.type !== 'cuts' || !Array.isArray(event.data.cuts)) return;

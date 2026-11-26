@@ -13,6 +13,7 @@ import {
     ChevronRightIcon,
     MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
+import { useTheme } from '@astryxdesign/core/theme';
 import { request as api } from '../serverAccess';
 
 type PieceRow = {
@@ -32,6 +33,7 @@ type Piece = PieceRow & {
     code: string;
     source3d: string | null;
     code3d: string | null;
+    palette: Record<string, string>;
 };
 
 // Pieces colour only through roles; the preview lends each role a house hue in order.
@@ -40,7 +42,8 @@ const HUES = ['amber', 'leaf', 'rust', 'lichen'];
 const PAGE = 24;
 
 // Read-only: the library is listed and previewed here, never edited or deleted.
-export default function PieceLibrary() {
+export default function PieceLibrary({ theme }: { theme: string }) {
+    const { mode } = useTheme();
     const [list, setList] = useState<{ pieces: PieceRow[]; total: number }>();
     const [query, setQuery] = useState('');
     const [offset, setOffset] = useState(0);
@@ -68,7 +71,7 @@ export default function PieceLibrary() {
     async function show(id: string) {
         setError('');
         try {
-            setOpen(await api(`/api/pieces/${id}`));
+            setOpen(await api(`/api/pieces/${id}?${new URLSearchParams({ theme, mode })}`));
         } catch (e) {
             setError((e as Error).message);
         }
@@ -234,6 +237,7 @@ function PiecePreview({ piece }: { piece: Piece }) {
                 code: piece.code,
                 code3d: piece.code3d,
                 name: piece.name,
+                palette: piece.palette,
                 paletteRoles: Object.fromEntries(
                     piece.roles.map((r, i) => [r, HUES[i % HUES.length]]),
                 ),

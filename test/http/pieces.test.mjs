@@ -75,6 +75,12 @@ test('the piece routes list the library with its saved videos and read one piece
     assert.doesNotMatch(piece.code, /<div/, 'JSX is compiled away');
     assert.equal(piece.source3d, null, 'a 2D-only piece has no 3D source');
     assert.equal(piece.code3d, null);
+    const [, themed] = await get(`/api/pieces/${id}?theme=platform&mode=light`);
+    assert.equal(
+        themed.palette.ground,
+        '#f6f8fa',
+        'the preview takes the app theme it is viewed in',
+    );
     const source3d = 'export function Winner3D() { return <group />; }';
     const solid = store.savePiece({ ...store.piece(id), source3d });
     const [, both] = await get(`/api/pieces/${solid}`);
