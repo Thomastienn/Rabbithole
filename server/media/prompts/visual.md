@@ -33,11 +33,10 @@ final attributes directly without scheduling a transition, so the helper can
 measure the step. Never rebuild the graphic or toggle near-copies of it. Use a
 scene change only when the layout really changes: the helper keeps a still
 copy of the old scene over root, runs show, which redraws root, and crossfades
-to it. Mixing continuing steps and scene changes is allowed. After a continuing
-step the helper briefly outlines each changed part. Show each step's change in
-the picture itself; give a step at most a short label, never a paragraph, since
-the reply carries the explanation. For CSS transitions read the
---step-duration CSS variable it sets on root; duration is 0 under
+to it. Mixing continuing steps and scene changes is allowed. Show each step's
+change in the picture itself; give a step at most a short label, never a
+paragraph, since the reply carries the explanation. For CSS transitions read
+the --step-duration CSS variable it sets on root; duration is 0 under
 prefers-reduced-motion and on first render. The helper places Previous and Next
 on either side of root, Play and "Step n of m" below it, and wires Enter, Space
 and arrow keys; do not add your own step controls, autoplay or indicator.

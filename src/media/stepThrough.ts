@@ -1,14 +1,13 @@
 // Shared step-through helper the visual frame installs before any fragment runs.
 // A fragment calls stepThrough(root, steps); each step moves the visual to that state.
-// A plain function continues the scene, and its changed parts pulse once the motion settles.
+// A plain function continues the scene; its own transitions morph the parts.
 // { scene: true, show } crossfades: a still copy of the old scene fades out over root as show redraws it.
 // Previous and Next sit beside root, not below it, so a step that resizes root does not push them away.
 // Play walks the steps slowly with a hold on each; it starts only on the learner's click.
 type Show = (state: { index: number; duration: number }) => void;
 type Step = Show | { scene: true; show: Show };
 
-const HOLD = 1000,
-    PULSE = 900;
+const HOLD = 1000;
 const PLAY = '<path d="M5 3v10l8-5z" fill="currentColor"/>',
     PAUSE =
         '<path d="M5 3v10M11 3v10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>';
@@ -24,7 +23,7 @@ export function stepThrough(root: HTMLElement, steps: Step[], duration = 600) {
         play = document.createElement('button'),
         indicator = document.createElement('span');
     let index = 0,
-        // A scene fade or a pulse watch still running from the last step.
+        // A scene fade still running from the last step.
         pending: { timer: number; run: () => void } | undefined,
         playing: number | undefined,
         // Play motion per step, 1.5 to 2.5 s by how many nodes the step changes; set by measure.
@@ -82,30 +81,9 @@ export function stepThrough(root: HTMLElement, steps: Step[], duration = 600) {
         }
         const step = steps[index],
             state = { index, duration: ms };
-        if (!ms) (typeof step === 'function' ? step : step.show)(state);
-        else if (typeof step === 'function') {
-            const changed = new Set<Node>(),
-                changes = new view.MutationObserver((records) =>
-                    records.forEach((record) => changed.add(record.target)),
-                );
-            changes.observe(root, {
-                subtree: true,
-                childList: true,
-                attributes: true,
-                characterData: true,
-            });
-            step(state);
-            const run = () => {
-                pending = undefined;
-                changes.disconnect();
-            };
-            const settle = () => {
-                changes.takeRecords().forEach((record) => changed.add(record.target));
-                run();
-                pulse(changed);
-            };
-            pending = { timer: view.setTimeout(settle, ms), run };
-        } else {
+        if (typeof step === 'function') step(state);
+        else if (!ms) step.show(state);
+        else {
             // shortcut: a canvas copies blank, so a canvas scene fades in from empty; draw copies if that shows.
             const still = root.cloneNode(true) as HTMLElement;
             // The copy is never picked, focused or read; it keeps root's id so the visual's styles still apply.
@@ -155,25 +133,6 @@ export function stepThrough(root: HTMLElement, steps: Step[], duration = 600) {
             boxSizing: 'border-box',
             pointerEvents: 'none',
         });
-    };
-    // Outlines the nearest visual part of each changed node, or the changed element when it has none.
-    const pulse = (changed: Set<Node>) => {
-        const shown = new Set<Element>();
-        for (const node of changed) {
-            const e = node instanceof view.Element ? node : node.parentElement,
-                part = e?.closest('[data-part]');
-            const target = part && root.contains(part) ? part : e;
-            if (target && target !== root && root.contains(target)) shown.add(target);
-        }
-        for (const target of shown) {
-            const box = target.getBoundingClientRect();
-            if (!box.width || !box.height) continue;
-            const ring = controls.appendChild(document.createElement('div'));
-            ring.className = 'tt-pulse';
-            ring.setAttribute('aria-hidden', 'true');
-            place(ring, box);
-            view.setTimeout(() => ring.remove(), PULSE);
-        }
     };
     previous.addEventListener('click', () => stepTo(index - 1));
     next.addEventListener('click', () => stepTo(index + 1));
