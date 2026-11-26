@@ -220,17 +220,14 @@ export const trees = {
                         'SELECT b.message,b.start,b.end,b.explanation FROM briefs b JOIN messages m ON m.id=b.message WHERE m.tree=?',
                     )
                     .all(id),
-                // Each passage branch's question and the start of its child's first reply, for the branch preview.
+                // Each passage branch's question, its child's model and the start of its child's first reply, for the branch preview.
                 branchPreviews: Object.fromEntries(
                     this.db
                         .prepare(
-                            'SELECT child,question FROM branches WHERE parent=? AND artifactId IS NULL',
+                            'SELECT b.child,b.question,t.provider,t.model FROM branches b LEFT JOIN trees t ON t.id=b.child WHERE b.parent=? AND b.artifactId IS NULL',
                         )
                         .all(id)
-                        .map(({ child, question }) => [
-                            child,
-                            { question, ...this.firstReply(child) },
-                        ]),
+                        .map(({ child, ...p }) => [child, { ...p, ...this.firstReply(child) }]),
                 ),
             }
         );

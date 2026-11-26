@@ -27,8 +27,11 @@ export type Tree = {
     resources?: Resource[];
     suggestions?: Suggestions[];
     briefs?: Brief[];
-    // Keyed by child: the branch's question and the start of the child's first reply.
-    branchPreviews?: Record<string, { question: string; preview?: string }>;
+    // Keyed by child: the branch's question, the child's model and the start of its first reply.
+    branchPreviews?: Record<
+        string,
+        { question: string; provider: string; model: string | null; preview?: string }
+    >;
     compaction?: { status: 'compacting' | 'failed'; error?: string };
 };
 export type ModelSelection = Pick<Tree, 'provider' | 'model' | 'effort'>;

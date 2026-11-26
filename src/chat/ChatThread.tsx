@@ -99,6 +99,13 @@ export default function ChatThread({
         previews,
         tree,
     ).map((f) => f.id);
+    // A branch tip names the child's model as its reply heading does.
+    const previewOf = (p?: NonNullable<Tree['branchPreviews']>[string]) =>
+        p && {
+            question: p.question,
+            preview: p.preview,
+            model: modelLabel({ ...p, effort: null }),
+        };
     return tree.messages.map((message) => {
         const suggestions = tree.suggestions?.find((s) => s.message === message.id),
             index =
@@ -208,7 +215,7 @@ export default function ChatThread({
                                           text: t.passage,
                                           child: t.id,
                                           title: t.title,
-                                          ...tree.branchPreviews?.[t.id],
+                                          ...previewOf(tree.branchPreviews?.[t.id]),
                                       },
                                   ]
                                 : [],

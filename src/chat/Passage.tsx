@@ -64,6 +64,7 @@ export default function Passage({
         title?: string;
         question?: string;
         preview?: string;
+        model?: string;
     }[];
     onBranch: (anchor: Anchor, origin: React.RefObject<HTMLElement | null>) => void;
     onOpenChild: (id: string) => void;
@@ -80,7 +81,7 @@ export default function Passage({
     const [tip, setTip] = useState<{
         start: number;
         text: string;
-        brief: boolean;
+        model?: string;
         question?: string;
         at: React.CSSProperties;
         piece?: HTMLElement;
@@ -264,20 +265,21 @@ export default function Passage({
         const { piece, u } = (focused || !several(under)) && under[0] ? under[0] : {};
         const b = u?.child ? branched.find((x) => x.child === u.child) : undefined;
         const saved = u && briefs?.find((x) => x.start === u.start && x.end === u.end)?.explanation;
-        const brief = b?.preview ? undefined : saved;
-        const text = b?.preview ?? brief ?? '';
+        const text = b?.preview ?? saved ?? '';
+        const model = b?.preview && b.model;
         const question = b?.question;
         if ((!text && !question) || !piece || !u) return setTip(undefined);
         setTip((t) =>
             t?.start === u.start &&
             t.text === text &&
+            t.model === model &&
             t.question === question &&
             !!t.piece === focused
                 ? t
                 : {
                       start: u.start,
                       text,
-                      brief: !!brief,
+                      model,
                       question,
                       at: below(piece),
                       piece: focused ? piece : undefined,
@@ -449,8 +451,9 @@ export default function Passage({
                     style={tip.at}
                     onPointerLeave={() => setTip(undefined)}
                 >
-                    {tip.question && <span className="tip-question">{tip.question}</span>}
-                    {tip.brief ? renderInline(tip.text) : tip.text}
+                    {tip.question && <span className="tip-question">You: {tip.question}</span>}
+                    {tip.model && <strong>{tip.model}: </strong>}
+                    {renderInline(tip.text)}
                 </Text>
             )}
             {picker && (

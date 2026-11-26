@@ -201,10 +201,32 @@ export function previewText(text: string, role: string) {
     return chars.slice(0, 512).join('') + (chars.length > 512 ? '…' : '');
 }
 
-// A reply's first paragraph as plain text, cut at a word boundary with an ellipsis.
+// A reply's first paragraph as markdown, cut by its shown length at a word boundary, never inside math, code or emphasis, with an ellipsis.
 export function excerpt(raw: string, max = 280) {
-    const at = parse(raw).children?.find((n) => n.type === 'paragraph')?.position;
-    const text = plainText(at ? raw.slice(at.start.offset, at.end.offset) : raw);
+    const para = parse(raw).children?.find((n) => n.type === 'paragraph');
+    if (para?.position) {
+        const from = para.position.start.offset!;
+        let used = 0;
+        for (const n of para.children ?? []) {
+            const start = n.position!.start.offset!,
+                end = n.position!.end.offset!;
+            const length =
+                n.type === 'text' ? n.value!.length : plainText(raw.slice(start, end)).length;
+            if (used + length <= max) {
+                used += length;
+                continue;
+            }
+            let cut = start;
+            if (n.type === 'text') {
+                const head = raw.slice(start, start + max - used + 1),
+                    space = head.search(/\s\S*$/);
+                cut = space > 0 ? start + space : used ? start : start + max;
+            }
+            return raw.slice(from, cut).trimEnd() + '…';
+        }
+        return raw.slice(from, para.position.end.offset);
+    }
+    const text = plainText(raw);
     if (text.length <= max) return text;
     const head = text.slice(0, max + 1),
         space = head.search(/\s\S*$/);

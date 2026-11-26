@@ -43,21 +43,24 @@ test('pointing at or focusing a suggestion shows its saved brief explanation, a 
         update((v) => ({ ...v, suggestions: ready({ child: 'child' }), branched: [child] })),
     );
     await repoint();
-    assert.equal(question(), 'Why?');
-    assert.equal(tip().textContent, 'Why?Do it again.');
+    assert.equal(question(), 'You: Why?');
+    assert.equal(tip().textContent, 'You: Why?Do it again.');
     await act(async () =>
-        update((v) => ({ ...v, branched: [{ ...child, preview: 'Repeating means…' }] })),
+        update((v) => ({
+            ...v,
+            branched: [{ ...child, preview: 'Repeating means…', model: 'Claude · Opus' }],
+        })),
     );
     await repoint();
-    assert.equal(tip().textContent, 'Why?Repeating means…');
+    assert.equal(tip().textContent, 'You: Why?Claude · Opus: Repeating means…');
     await act(async () => update((v) => ({ ...v, briefs: [], branched: [child] })));
     await repoint();
-    assert.equal(tip().textContent, 'Why?');
+    assert.equal(tip().textContent, 'You: Why?');
     await act(async () => underline().click());
     assert.deepEqual(opened, ['child'], 'clicking an explored one still opens its child');
 });
 
-test("pointing at a passage branched from a selection shows its question and the child's reply start", async (t) => {
+test("pointing at a passage branched from a selection shows its question and the child's model and reply start as markdown", async (t) => {
     const { container, act, update, opened, underline } = await passage(t);
     await act(async () =>
         update((v) => ({
@@ -69,17 +72,22 @@ test("pointing at a passage branched from a selection shows its question and the
                     text: 'repeat 😀',
                     child: 'mine',
                     question: 'What does repeat mean here?',
-                    preview: 'It means running the same step again…',
+                    preview: 'It means running the *same* step again…',
+                    model: 'Codex · GPT-5',
                 },
             ],
         })),
     );
     await act(async () => point(underline()));
     const tip = container.querySelector('[role="tooltip"]');
-    assert.equal(tip.querySelector('.tip-question').textContent, 'What does repeat mean here?');
+    assert.equal(
+        tip.querySelector('.tip-question').textContent,
+        'You: What does repeat mean here?',
+    );
+    assert.equal(tip.querySelector('em').textContent, 'same');
     assert.equal(
         tip.textContent,
-        'What does repeat mean here?It means running the same step again…',
+        'You: What does repeat mean here?Codex · GPT-5: It means running the same step again…',
     );
     await act(async () => underline().click());
     assert.deepEqual(opened, ['mine']);

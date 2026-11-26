@@ -7,14 +7,16 @@ import { join } from 'node:path';
 import { Store } from '../../server/store.mjs';
 const { excerpt } = await import('../../src/markdown/markdownText.ts');
 
-test('excerpt keeps a short first paragraph and cuts a long one at a word boundary with an ellipsis', () => {
-    assert.equal(excerpt('A **heap** is a tree.'), 'A heap is a tree.');
+test('excerpt keeps a short first paragraph as markdown and cuts a long one at a word boundary with an ellipsis', () => {
+    assert.equal(excerpt('A **heap** is a tree.'), 'A **heap** is a tree.');
     assert.equal(excerpt('## Heaps\n\nA heap is a tree.\n\nIt sorts.'), 'A heap is a tree.');
     const long = excerpt(`${'word '.repeat(80)}end`);
     assert.ok(long.length <= 281 && long.length > 270, 'cut at about 280 characters');
     assert.match(long, /^word( word)*…$/);
     assert.equal(excerpt('one two three four', 9), 'one two…');
     assert.equal(excerpt('abcdefghijkl', 5), 'abcde…');
+    assert.equal(excerpt('Take $F=\\{A\\to B\\}$ now', 8), 'Take…', 'never cuts inside math');
+    assert.equal(excerpt('Use **two words** here', 10), 'Use…', 'never cuts inside emphasis');
 });
 
 test("a conversation carries its saved brief explanations and each passage branch's question and child reply start", () => {
@@ -64,11 +66,13 @@ test("a conversation carries its saved brief explanations and each passage branc
         [{ message: reply, start: 0, end: 8, explanation: 'Sorting with a heap.' }],
     );
     assert.deepEqual(tree.branchPreviews[child.id].question, 'Why?');
+    assert.equal(tree.branchPreviews[child.id].provider, store.tree(child.id).provider);
+    assert.equal(tree.branchPreviews[child.id].model, store.tree(child.id).model);
     assert.match(
         tree.branchPreviews[child.id].preview,
-        /^A heap keeps the largest item on top .* the…$/,
+        /^A \*\*heap\*\* keeps the largest item on top .* the…$/,
     );
-    assert.ok(tree.branchPreviews[child.id].preview.length <= 281);
+    assert.ok(tree.branchPreviews[child.id].preview.length <= 285);
     assert.equal(tree.branchPreviews[mine.id].question, 'And this?');
     assert.equal(
         tree.branchPreviews[mine.id].preview,
