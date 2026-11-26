@@ -49,7 +49,7 @@ export function placeBox(
     }
 }
 
-// One map column: a full-map card (220px) and its gutter (mockup Map: cards 320px apart).
+// One map column: a full-map card (260px) and its gutter (mockup Map: cards 320px apart).
 export const COLUMN = 320;
 
 // Tidy layout (mockup Map): every card is centred on the stack of its children's subtrees, which never overlap,
@@ -86,6 +86,35 @@ export function tidySlots(
     const start = boxes.find((box) => box.id === root);
     if (start) place(start, 0, -(extent(start) - start.height) / 2);
     return slots;
+}
+
+// Saved positions from narrower cards, or a card widening as the chat dock closes, can leave a child under its parent's right edge: push that subtree right, parents first.
+// Callers hand the moved ids to the reveal rule, which pushes down any card a moved subtree now covers.
+export function clearParents(boxes: PlacedBox[], gap = 48) {
+    const next = new Map(boxes.map((box) => [box.id, { ...box }]));
+    const children = new Map<string, string[]>();
+    for (const box of boxes)
+        if (box.parent) children.set(box.parent, [...(children.get(box.parent) ?? []), box.id]);
+    const moved: Record<string, Point> = {};
+    const queue = boxes.filter((box) => !box.parent || !next.has(box.parent)).map((b) => b.id);
+    for (const id of queue) {
+        queue.push(...(children.get(id) ?? []));
+        const box = next.get(id)!,
+            parent = box.parent ? next.get(box.parent) : undefined;
+        if (!parent || box.hidden || parent.hidden || box.dragging) continue;
+        const right = parent.x + parent.width + gap;
+        const covers = box.y < parent.y + parent.height && box.y + box.height > parent.y;
+        if (!covers || box.x <= parent.x || box.x >= right) continue;
+        const dx = right - box.x;
+        const subtree = [id];
+        for (const child of subtree) {
+            subtree.push(...(children.get(child) ?? []));
+            const b = next.get(child)!;
+            b.x += dx;
+            moved[child] = { x: b.x, y: b.y };
+        }
+    }
+    return moved;
 }
 
 // Only collisions connected to growth/reveal can move a subtree; manual layout stays intact.

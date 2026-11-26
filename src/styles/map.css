@@ -10,10 +10,14 @@
     overflow-wrap: anywhere;
     transition: border-color var(--duration-fast) ease-out;
 }
-/* Full-map cards are 220px (mockup Map); the dock and narrow screens keep the theme's 160px. */
+/* Full-map cards are 260px; the dock and narrow screens keep the theme's 160px. */
 @media (min-width: 48.0625rem) {
     .overview[data-chat-open='false'] {
-        --rabbithole-map-node-width: 220px;
+        --rabbithole-map-node-width: 260px;
+    }
+    /* The wider full-map card has room to keep reveal and + beside the title instead of over it. */
+    .overview[data-chat-open='false'] .node-extra {
+        position: static;
     }
 }
 .react-flow__node:hover .conversation-box {

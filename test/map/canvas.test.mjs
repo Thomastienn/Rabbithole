@@ -10,6 +10,7 @@ import {
     tidySlots,
     COLUMN,
     offsetCoveredBoxes,
+    clearParents,
     vimAction,
     zoomLabel,
 } from '../../src/map/canvas.ts';
@@ -447,4 +448,27 @@ test('zoom reads as a whole percent, with one decimal below 1%', () => {
         '1%',
         '0.4%',
     ]);
+});
+
+test('saved children under a wider parent move right with their subtree', () => {
+    const box = (id, parent, x, y) => ({ id, parent, x, y, width: 260, height: 200 });
+    const boxes = [
+        box('root', null, 0, 0),
+        box('child', 'root', 260, 100),
+        box('grand', 'child', 520, 150),
+        box('below', 'root', 100, 400),
+        box('right', 'root', 400, 0),
+    ];
+    assert.deepEqual(clearParents(boxes), {
+        child: { x: 308, y: 100 },
+        grand: { x: 616, y: 150 },
+    });
+    assert.deepEqual(
+        clearParents([
+            box('root', null, 0, 0),
+            { ...box('child', 'root', 260, 100), dragging: true },
+        ]),
+        {},
+        'a card being dragged is left alone',
+    );
 });

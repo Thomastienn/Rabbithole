@@ -7,6 +7,7 @@ import type { ReactNode, SetStateAction } from 'react';
 import {
     MIN_ZOOM,
     tidySlots,
+    clearParents,
     foldHierarchy,
     offsetCoveredBoxes,
     placeBox,
@@ -351,6 +352,18 @@ export default function TreeOverview({
                 next[i] = { ...node, position };
                 positions[node.id] = position;
             }
+            const boxes = () =>
+                next.map((n) => ({
+                    id: n.id,
+                    parent: n.data.conversation.parent,
+                    ...(positions[n.id] ?? n.position),
+                    width: n.measured?.width ?? 0,
+                    height: n.measured?.height ?? 0,
+                    hidden: n.hidden,
+                    dragging: n.dragging,
+                }));
+            const cleared = clearParents(boxes());
+            Object.assign(positions, cleared);
             const growing = next
                 .filter(
                     (n) =>
@@ -364,19 +377,11 @@ export default function TreeOverview({
                 .filter((n) => !n.hidden && measured.current.get(n.id)?.hidden)
                 .map((n) => n.id);
             for (const id of growing) deferredGrowth.current.add(id);
-            for (const id of revealed) deferredReveal.current.add(id);
+            for (const id of [...revealed, ...Object.keys(cleared)]) deferredReveal.current.add(id);
             Object.assign(
                 positions,
                 offsetCoveredBoxes(
-                    next.map((n) => ({
-                        id: n.id,
-                        parent: n.data.conversation.parent,
-                        ...n.position,
-                        width: n.measured?.width ?? 0,
-                        height: n.measured?.height ?? 0,
-                        hidden: n.hidden,
-                        dragging: n.dragging,
-                    })),
+                    boxes(),
                     [...deferredGrowth.current],
                     [...deferredReveal.current],
                 ),
