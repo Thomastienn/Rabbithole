@@ -223,7 +223,7 @@ dialog.tree-search-window::backdrop {
 .branch-form {
     margin-top: var(--spacing-2);
 }
-/* Passage box (mockup States): the quoted passage in the reading face beside Close, then the 36px field and Send. */
+/* Passage box (mockup States): Close (the quote is screen-reader only), then the 36px field and Send. */
 .branch-passage {
     flex: 1;
     min-width: 0;
@@ -249,6 +249,9 @@ dialog.tree-search-window::backdrop {
 .branch-form:not(.free-branch-form) .branch-question .astryx-text-input {
     min-height: 36px;
     padding-inline: 12px;
+}
+.branch-close {
+    margin-left: auto;
 }
 .branch-form:not(.free-branch-form) :is(.branch-send, .branch-close) {
     width: 36px;

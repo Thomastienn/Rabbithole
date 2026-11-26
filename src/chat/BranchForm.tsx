@@ -129,7 +129,7 @@ export default function BranchForm({
             }}
         >
             <VStack padding={2} gap={2}>
-                {/* Passage box (mockup States): the quoted passage, or a picked part's trail, beside Close. */}
+                {/* Passage box (mockup States): a picked part's trail beside Close; the passage itself is already highlighted, so its quote is for screen readers only. */}
                 <HStack gap={2} vAlign="start">
                     {/* A picked visual part: its trail, the same crumbs as the conversation path; an earlier part widens the question. */}
                     {part ? (
@@ -150,7 +150,7 @@ export default function BranchForm({
                             <strong aria-current="location">{part.label}</strong>
                         </nav>
                     ) : (
-                        <Text id="branch-passage" className="branch-passage">
+                        <Text id="branch-passage" className="branch-passage sr-only">
                             {branch.anchor.text}
                         </Text>
                     )}
