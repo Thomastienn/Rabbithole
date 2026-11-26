@@ -43,6 +43,7 @@ export default function MapMenu({
                 },
                 { label: 'Expand all', isDisabled: !actions, onClick: actions?.expand },
                 { label: 'Collapse all', isDisabled: !actions, onClick: actions?.collapse },
+                { label: 'Tidy layout', isDisabled: !actions, onClick: actions?.tidy },
                 {
                     label: 'Keep current branch',
                     isDisabled: !actions?.canKeep,

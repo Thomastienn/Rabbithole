@@ -12,6 +12,7 @@ import {
     DOCK_COLUMN,
     offsetCoveredBoxes,
     clearParents,
+    tidyPositions,
     vimAction,
     zoomLabel,
 } from '../../src/map/canvas.ts';
@@ -484,4 +485,29 @@ test('saved children under a wider parent move right with their subtree', () => 
         {},
         'a card being dragged is left alone',
     );
+});
+
+test('tidy layout puts every shown card back in its column around the root, in address order', () => {
+    const card = (id, parent, address, x, y, hidden) => ({
+        id,
+        parent,
+        address,
+        x,
+        y,
+        width: 240,
+        height: 100,
+        hidden,
+    });
+    const cards = [
+        card('b', 'root', '1.2', 50, 50),
+        card('root', null, '1', 500, 300),
+        card('a', 'root', '1.1', 900, -400),
+        card('folded', 'a', '1.1.1', 7, 7, true),
+    ];
+    assert.deepEqual(tidyPositions('root', cards, 320), {
+        root: { x: 500, y: 300 },
+        a: { x: 820, y: 226 },
+        b: { x: 820, y: 374 },
+    });
+    assert.deepEqual(tidyPositions('missing', cards), {}, 'no root, no move');
 });

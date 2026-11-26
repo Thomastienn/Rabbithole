@@ -49,9 +49,9 @@ export function placeBox(
     }
 }
 
-// One map column: a full-map card (260px) and its gutter (mockup Map: cards 320px apart).
+// One map column: a 240px card and its gutter, beside the chat and on the full map (mockup Map: cards 320px apart).
 export const COLUMN = 320;
-// The dock and narrow screens keep 160px cards (mockups Read and Narrow: cards 248px apart).
+// Narrow screens keep 160px cards (mockup Narrow: cards 248px apart).
 export const DOCK_COLUMN = 248;
 
 // Tidy layout (mockup Map): every card is centred on the stack of its children's subtrees, which never overlap,
@@ -118,6 +118,33 @@ export function clearParents(boxes: PlacedBox[], gap = 48) {
         }
     }
     return moved;
+}
+
+// Address order, so 1.10 sorts after 1.9.
+const byAddress = (a: string, b: string) => {
+    const x = a.split('.').map(Number),
+        y = b.split('.').map(Number);
+    for (let i = 0; i < Math.min(x.length, y.length); i++) if (x[i] !== y[i]) return x[i] - y[i];
+    return x.length - y.length;
+};
+type Card = PlacedBox & { address: string };
+// Tidy slots for the shown cards, in address order, relative to the root at 0, 0.
+export const shownSlots = (root: string, cards: Card[], column?: number) =>
+    tidySlots(
+        root,
+        cards.filter((c) => !c.hidden).sort((a, b) => byAddress(a.address, b.address)),
+        column,
+    );
+// Tidy layout: every shown card moves to its tidy slot around the root's current place.
+export function tidyPositions(root: string, cards: Card[], column?: number) {
+    const anchor = cards.find((c) => c.id === root);
+    if (!anchor) return {};
+    return Object.fromEntries(
+        [...shownSlots(root, cards, column)].map(([id, s]) => [
+            id,
+            { x: anchor.x + s.x, y: anchor.y + s.y },
+        ]),
+    ) as Record<string, Point>;
 }
 
 // Only collisions connected to growth/reveal can move a subtree; manual layout stays intact.

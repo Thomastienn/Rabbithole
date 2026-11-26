@@ -92,8 +92,8 @@ export default function MapView({
                 >
                     <TreeOverview
                         vim={vim}
-                        // 260px cards on the wide full map (map.css), 160px in the dock and on narrow screens.
-                        column={overview && !mobile ? COLUMN : DOCK_COLUMN}
+                        // 240px cards beside the chat and on the full map (map.css), 160px on narrow screens.
+                        column={mobile ? DOCK_COLUMN : COLUMN}
                         lead={
                             // Labelled because the rail and the hidden narrow header leave no named way in.
                             // The dock and narrow screens keep one row of controls, so Search is an icon there.

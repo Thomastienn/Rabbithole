@@ -6,7 +6,8 @@ import { Text } from '@astryxdesign/core/Text';
 import type { ReactNode, SetStateAction } from 'react';
 import {
     MIN_ZOOM,
-    tidySlots,
+    shownSlots,
+    tidyPositions,
     clearParents,
     foldHierarchy,
     offsetCoveredBoxes,
@@ -88,15 +89,19 @@ export type MapActions = {
     collapse: () => void;
     keep: () => void;
     canKeep: boolean;
+    tidy: () => void;
 };
 const noStubs: ConversationNode['data']['stubs'] = [];
-// Address order, so 1.10 sorts after 1.9.
-const byAddress = (a: string, b: string) => {
-    const x = a.split('.').map(Number),
-        y = b.split('.').map(Number);
-    for (let i = 0; i < Math.min(x.length, y.length); i++) if (x[i] !== y[i]) return x[i] - y[i];
-    return x.length - y.length;
-};
+const boxOf = (n: ConversationNode) => ({
+    id: n.id,
+    parent: n.data.conversation.parent,
+    address: n.data.address,
+    ...n.position,
+    width: n.measured?.width ?? 0,
+    height: n.measured?.height ?? 0,
+    hidden: n.hidden,
+    dragging: n.dragging,
+});
 const noMarks: string[] = [];
 const nodeTypes = { conversation: Conversation, ghost: GhostTree };
 const edgeTypes = { branch: Branch };
@@ -304,18 +309,7 @@ export default function TreeOverview({
                 setCanCull(true);
             let next = [...nodes];
             const positions: Record<string, Point> = {};
-            const slots = tidySlots(
-                root,
-                next
-                    .filter((n) => !n.hidden)
-                    .sort((a, b) => byAddress(a.data.address, b.data.address))
-                    .map((n) => ({
-                        id: n.id,
-                        parent: n.data.conversation.parent,
-                        height: n.measured!.height!,
-                    })),
-                column,
-            );
+            const slots = shownSlots(root, next.map(boxOf), column);
             for (let i = 0; i < next.length; i++) {
                 const node = next[i];
                 if (node.hidden || node.dragging) continue;
@@ -357,15 +351,7 @@ export default function TreeOverview({
                 positions[node.id] = position;
             }
             const boxes = () =>
-                next.map((n) => ({
-                    id: n.id,
-                    parent: n.data.conversation.parent,
-                    ...(positions[n.id] ?? n.position),
-                    width: n.measured?.width ?? 0,
-                    height: n.measured?.height ?? 0,
-                    hidden: n.hidden,
-                    dragging: n.dragging,
-                }));
+                next.map((n) => boxOf({ ...n, position: positions[n.id] ?? n.position }));
             const cleared = clearParents(boxes());
             Object.assign(positions, cleared);
             const growing = next
@@ -406,6 +392,12 @@ export default function TreeOverview({
         });
         return () => cancelAnimationFrame(frame);
     }, [nodes]);
+    // Tidy layout: every shown card returns to its tidy slot around the root's current place.
+    function tidy() {
+        const positions = tidyPositions(root, nodes.map(boxOf), column);
+        setNodes(nodes.map((n) => (positions[n.id] ? { ...n, position: positions[n.id] } : n)));
+        callbacks.current.save(positions);
+    }
     const edges = useMemo(
         () => branchEdges(hierarchy, folded, focusedPath, addresses, createdBranches.current),
         [hierarchy, folded, focusedPath, addresses],
@@ -422,6 +414,7 @@ export default function TreeOverview({
                     collapse: () => setFolded(new Set([root])),
                     keep: keepCurrent,
                     canKeep: !!current && trees.some((t) => t.id === current),
+                    tidy,
                 })}
                 {toolbar}
             </MapToolbar>
