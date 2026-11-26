@@ -3,10 +3,17 @@
 import { join } from 'node:path';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { setPriority, constants } from 'node:os';
 import { bundle } from '@remotion/bundler';
 import { selectComposition, renderMedia, renderStill, RenderInternals } from '@remotion/renderer';
 
 const [workspace, output, modules, browserExecutable, stills] = process.argv.slice(2);
+// Below-normal priority, inherited by Chrome and ffmpeg, so a render never starves the learner's other apps.
+try {
+    setPriority(constants.priority.PRIORITY_BELOW_NORMAL);
+} catch {
+    // A sandbox that refuses the change still renders, at normal priority.
+}
 if (existsSync(join(workspace, 'cuts.json'))) {
     const cuts = JSON.parse(readFileSync(join(workspace, 'cuts.json'), 'utf8'));
     const durationInFrames = cuts.reduce((n, c) => n + c.durationInFrames, 0);
@@ -99,7 +106,6 @@ await renderMedia({
     browserExecutable,
     codec: 'h264',
     outputLocation: output,
-    concurrency: 2,
     logLevel: 'error',
     onProgress: ({ progress }) => {
         const step = Math.floor(progress * 100) / 100;
