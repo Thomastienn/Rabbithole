@@ -211,8 +211,6 @@
     background: var(--color-text-secondary);
 }
 .knowledge-detail {
-    position: sticky;
-    top: 0;
     padding: 18px;
     border-radius: var(--radius-container);
     background: var(--color-background-surface);
