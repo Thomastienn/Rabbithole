@@ -511,3 +511,19 @@ test('tidy layout puts every shown card back in its column around the root, in a
     });
     assert.deepEqual(tidyPositions('missing', cards), {}, 'no root, no move');
 });
+
+test('a parent with many children gets a gutter wide enough for their lanes', () => {
+    const kids = Array.from({ length: 13 }, (_, i) => ({
+        id: `k${i}`,
+        parent: 'root',
+        height: 50,
+    }));
+    const slots = tidySlots('root', [{ id: 'root', parent: null, height: 50 }, ...kids], 320);
+    assert.equal(slots.get('k0').x, 320 + 9 * 12);
+    const few = tidySlots(
+        'root',
+        [{ id: 'root', parent: null, height: 50 }, ...kids.slice(0, 4)],
+        320,
+    );
+    assert.equal(few.get('k0').x, 320, 'four lanes still fit the plain gutter');
+});

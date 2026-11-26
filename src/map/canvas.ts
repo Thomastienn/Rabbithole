@@ -82,7 +82,8 @@ export function tidySlots(
             top +
             (size - list.reduce((sum, c) => sum + extents.get(c.id)!, gap * (list.length - 1))) / 2;
         for (const child of list) {
-            place(child, x + column, y);
+            // A gutter holds about four sibling lanes; more children push their column right so lanes clear the cards.
+            place(child, x + column + Math.max(0, list.length - 4) * LANE, y);
             y += extents.get(child.id)! + gap;
         }
     };
@@ -335,7 +336,7 @@ export const LANE = 12;
 // Sibling lines whose vertical runs (routed with lane 0) lie in each other's gutter and overlap in height spread
 // into lanes LANE apart around their mean run. Lanes follow child ring height so lines never cross: the run to the farther child lies farther from
 // the child cards, clear of the nearer child's way in.
-// shortcut: lanes are not squeezed to fit, so many siblings in a narrow gutter can reach the cards; fit them if that shows up.
+// shortcut: lanes are not squeezed to fit; tidy layout widens a crowded gutter, but a hand-placed one can still reach the cards.
 export function branchLanes(lines: { id: string; parent: string; points: Point[] }[]) {
     const runs = lines.flatMap(({ id, parent, points }) => {
         const i = points.findIndex(
