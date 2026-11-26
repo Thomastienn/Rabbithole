@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import sharp from 'sharp';
 import { Store } from '../../server/store.mjs';
 import { createApp } from '../../server/app.mjs';
 
@@ -61,6 +62,7 @@ test('the piece routes list the library with its saved videos and read one piece
                 solid: false,
                 still: false,
                 still3d: false,
+                stillVersion: null,
                 videos: [{ id: 'v1', title: 'Elections' }],
             },
         ],
@@ -163,7 +165,7 @@ test('the piece list route pages and searches, embedding the query with pending 
     assert.doesNotMatch(logs.join('\n'), /rocket/, 'the query stays out of the log');
 });
 
-test('the piece list backfills stills through the snapshot path and serves them as transparent PNG', async (t) => {
+test('the piece list backfills stills through the snapshot path and serves them as transparent PNG cropped to the piece', async (t) => {
     const dir = mkdtempSync(join(tmpdir(), 'tt-pieces-http-')),
         store = new Store(join(dir, 'trees.sqlite')),
         logs = [],
@@ -175,7 +177,8 @@ test('the piece list backfills stills through the snapshot path and serves them 
         dir,
         auth: { status: () => ({ connected: true }) },
         log: (line) => logs.push(line),
-        // Stands in for the sandboxed Remotion still render: reads the staged entry, writes each PNG.
+        // Stands in for the sandboxed Remotion still render: reads the staged entry, writes each PNG as a small
+        // opaque piece (10 px tall in frame 0, 30 in frame 1) inside an empty transparent frame.
         pieceSnapshot: async (workspace, stills) => {
             shots.push({
                 entry: readFileSync(join(workspace, 'index.tsx'), 'utf8'),
@@ -185,7 +188,26 @@ test('the piece list backfills stills through the snapshot path and serves them 
                 frames: stills.map((s) => s.frame),
             });
             if (broken) throw new Error('renderer missing');
-            for (const { frame, file } of stills) writeFileSync(file, `png ${frame}`);
+            for (const { frame, file } of stills)
+                await sharp({
+                    create: { width: 400, height: 200, channels: 4, background: '#0000' },
+                })
+                    .composite([
+                        {
+                            input: {
+                                create: {
+                                    width: 20,
+                                    height: frame ? 30 : 10,
+                                    channels: 4,
+                                    background: '#f00',
+                                },
+                            },
+                            left: 100,
+                            top: 50,
+                        },
+                    ])
+                    .png()
+                    .toFile(file);
             return { stills: stills.length };
         },
     });
@@ -237,8 +259,13 @@ test('the piece list backfills stills through the snapshot path and serves them 
     );
     const res = await fetch(`${base}/api/pieces/${solid}/still3d`);
     assert.equal(res.headers.get('content-type'), 'image/png');
-    assert.equal(await res.text(), 'png 1');
-    assert.equal(await (await fetch(`${base}/api/pieces/${solid}/still`)).text(), 'png 0');
+    const size = async (r) => {
+        const { width, height } = await sharp(Buffer.from(await r.arrayBuffer())).metadata();
+        return [width, height];
+    };
+    // The piece plus a 24 px margin on each side.
+    assert.deepEqual(await size(res), [68, 78], 'the empty frame is cropped away');
+    assert.deepEqual(await size(await fetch(`${base}/api/pieces/${solid}/still`)), [68, 58]);
     assert.equal((await fetch(`${base}/api/pieces/${flat}/still3d`)).status, 404);
 
     broken = true;

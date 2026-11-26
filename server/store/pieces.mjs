@@ -3,6 +3,8 @@ import { blob, vector, cosine } from './embeddings.mjs';
 
 // shortcut: a fixed cosine floor tuned by eye for all-MiniLM-L6-v2; revisit if the embedder changes.
 const MIN_SCORE = 0.25;
+// Bump to redraw every card still in the background (1: cropped transparent PNGs); cards keep the old ones meanwhile.
+const STILL_VERSION = 1;
 
 export const pieces = {
     // Saves one piece used by a video; returns its id. Parts ([{name, id}]) refer to saved pieces, never copies.
@@ -122,18 +124,23 @@ export const pieces = {
                     .run(JSON.stringify(parts), r.rowid);
             }
     },
-    // Pieces whose stills are missing, saved earlier or just saved or improved, oldest first.
+    // Pieces whose stills are missing (saved earlier or just saved or improved), oldest first, then those drawn by an
+    // older renderer, so a new piece never waits behind a redraw.
     unstilledPieces() {
         return this.db
-            .prepare('SELECT id, improved FROM pieces WHERE still IS NULL ORDER BY rowid')
-            .all()
+            .prepare(
+                'SELECT id, improved FROM pieces WHERE still IS NULL OR still_version IS NOT ? ORDER BY still IS NOT NULL, rowid',
+            )
+            .all(STILL_VERSION)
             .map((r) => ({ ...r }));
     },
     // Stores stills rendered from the forms of that improvement; a newer improvement drops them.
     stillPiece(id, improved, { still, still3d = null }) {
         this.db
-            .prepare('UPDATE pieces SET still=?, still3d=? WHERE id=? AND improved=?')
-            .run(still, still3d, id, improved);
+            .prepare(
+                'UPDATE pieces SET still=?, still3d=?, still_version=? WHERE id=? AND improved=?',
+            )
+            .run(still, still3d, STILL_VERSION, id, improved);
     },
     pieceStill(id, form) {
         const row = this.db
@@ -187,7 +194,7 @@ export const pieces = {
             matches = (p) => `${p.name}\n${p.look}`.toLocaleLowerCase().includes(q);
         let rows = this.db
             .prepare(
-                'SELECT id, name, look, improved, source3d IS NOT NULL AS solid, still IS NOT NULL AS still, still3d IS NOT NULL AS still3d FROM pieces ORDER BY improved DESC, rowid DESC',
+                'SELECT id, name, look, improved, source3d IS NOT NULL AS solid, still IS NOT NULL AS still, still3d IS NOT NULL AS still3d, still_version AS stillVersion FROM pieces ORDER BY improved DESC, rowid DESC',
             )
             .all()
             .map((p) => ({ ...p, solid: !!p.solid, still: !!p.still, still3d: !!p.still3d }));

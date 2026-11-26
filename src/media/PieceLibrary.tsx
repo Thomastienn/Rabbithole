@@ -25,6 +25,8 @@ type PieceRow = {
     solid: boolean;
     still: boolean;
     still3d: boolean;
+    // Which renderer drew the stills; null for stills drawn before versions.
+    stillVersion: number | null;
     videos: { id: string; title: string }[];
 };
 type Piece = PieceRow & {
@@ -209,12 +211,12 @@ export default function PieceLibrary({ theme }: { theme: string }) {
 }
 
 // One server-rendered 2D still per tile (mockup Pieces), never a live player; the 3D form shows in the piece's
-// preview. The improvement time keeps the URL fresh; png skips the year-cached JPEGs of older builds.
+// preview. The improvement time and still version keep the URL fresh.
 function PieceStill({ piece }: { piece: PieceRow }) {
     return piece.still ? (
         <img
             className="piece-still"
-            src={`/api/pieces/${piece.id}/still?v=${piece.improved}&f=png`}
+            src={`/api/pieces/${piece.id}/still?v=${piece.improved}-${piece.stillVersion ?? 0}`}
             alt="2D form"
             loading="lazy"
         />

@@ -329,6 +329,9 @@ export function open(path) {
             this.db.exec(
                 'ALTER TABLE pieces ADD COLUMN still BLOB; ALTER TABLE pieces ADD COLUMN still3d BLOB',
             );
+        // Which still renderer drew a piece's stills (STILL_VERSION); older stills stay on their cards until redrawn.
+        if (!hasColumn('pieces', 'still_version'))
+            this.db.exec('ALTER TABLE pieces ADD COLUMN still_version INTEGER');
         // The library pieces a piece is built from, as [{name, id}]; pieces saved before parts have none.
         if (!hasColumn('pieces', 'parts')) this.db.exec('ALTER TABLE pieces ADD COLUMN parts TEXT');
         // The true colours a piece keeps on reuse, as {role or name: hex}; older pieces have none (ADR 0009).
@@ -350,12 +353,6 @@ export function open(path) {
                 this.finishCleanup('fold-duplicate-pieces');
             });
         }
-        // One-time cleanup: JPEG stills baked the kit's default ground in; dropped so they backfill as transparent PNGs.
-        if (!this.cleanupRan('transparent-piece-stills'))
-            this.transaction(() => {
-                this.db.exec('UPDATE pieces SET still=NULL, still3d=NULL');
-                this.finishCleanup('transparent-piece-stills');
-            });
         // Discussion kind and reply positions migrate in place; existing rows keep their content and positions.
         this.transaction(() => this.rebuildArtifacts("'discussion'"));
         // Visual passages keep their source artifact and part instead of inventing reply offsets.

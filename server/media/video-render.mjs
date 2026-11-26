@@ -85,7 +85,8 @@ if (stills) {
             frame,
             // A .png still (piece cards) keeps its transparent ground.
             imageFormat: file.endsWith('.png') ? 'png' : 'jpeg',
-            scale: 0.5,
+            // Piece cards crop to the piece, so they render at full size to stay sharp when scaled up.
+            scale: file.endsWith('.png') ? 1 : 0.5,
             logLevel: 'error',
         });
     console.log(JSON.stringify({ stills: list.length }));

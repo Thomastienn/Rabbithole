@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { mkdir, writeFile, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
+import sharp from 'sharp';
 import { FONTS } from './video-cut.mjs';
 import { stageCut } from './video-stage.mjs';
 import { withParts } from './video-pieces.mjs';
@@ -65,7 +66,7 @@ export async function renderPieceStills(piece, { dir, snapshot, signal }) {
                 const stat = await sandboxOutput(work, file);
                 if (!stat?.size || stat.size > 2 * 1024 * 1024)
                     throw new Error('Piece still is unreadable.');
-                return readFile(file);
+                return cropStill(await readFile(file));
             }),
         );
         return { still, still3d };
@@ -74,7 +75,17 @@ export async function renderPieceStills(piece, { dir, snapshot, signal }) {
     }
 }
 
-// Fills missing stills one piece at a time in the background. A piece whose stills fail is skipped until it is
+// Cuts a still's transparent edges, keeping a thin margin, so the piece fills its card instead of sitting small in
+// an empty video frame. An image sharp cannot read keeps its bytes.
+export const cropStill = (png) =>
+    sharp(png)
+        .trim()
+        .extend({ top: 24, bottom: 24, left: 24, right: 24, background: '#0000' })
+        .png()
+        .toBuffer()
+        .catch(() => png);
+
+// Fills missing or outdated stills one piece at a time in the background. A piece whose stills fail is skipped until it is
 // improved or the app restarts, so a broken piece is not rendered again on every list request.
 export function pieceStills({ store, dir, snapshot, onWarning }) {
     const controller = new AbortController(),

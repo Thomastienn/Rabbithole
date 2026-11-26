@@ -144,6 +144,20 @@ test('a piece keeps stills of both forms until it is improved; the list says whi
         store.unstilledPieces().map((p) => p.id),
         [solid],
     );
+    // Stills from an older renderer stay on their cards, and are redrawn after the missing ones.
+    store.db.prepare('UPDATE pieces SET still_version=NULL WHERE id=?').run(flat);
+    assert.deepEqual(
+        store.unstilledPieces().map((p) => p.id),
+        [solid, flat],
+    );
+    assert.equal(Buffer.from(store.pieceStill(flat, '2d')).toString(), '2d');
+    assert.deepEqual(
+        store.pieceList().pieces.map((p) => [p.name, p.stillVersion]),
+        [
+            ['Solid', 1],
+            ['Flat', null],
+        ],
+    );
 });
 
 test('a piece records the saved parts it is built from; its tree carries their current versions; older pieces have none', (t) => {

@@ -229,6 +229,7 @@ test('cards show one 2D still as an image, or a pending still, without a live pl
         solid: false,
         still: true,
         still3d: false,
+        stillVersion: 1,
         ...flags,
     });
     const api = async (path) =>
@@ -237,7 +238,7 @@ test('cards show one 2D still as an image, or a pending still, without a live pl
                   total: 3,
                   pieces: [
                       row('Both', { solid: true, still3d: true }),
-                      row('Flat'),
+                      row('Flat', { stillVersion: null }),
                       row('Fresh', { solid: true, still: false }),
                   ],
               }
@@ -253,8 +254,9 @@ test('cards show one 2D still as an image, or a pending still, without a live pl
     const images = (name) =>
         [...card(name).querySelectorAll('img')].map((i) => [i.getAttribute('src'), i.alt]);
     // The 3D form shows in the piece's preview, not on its tile.
-    assert.deepEqual(images('Both'), [['/api/pieces/Both/still?v=7&f=png', '2D form']]);
-    assert.deepEqual(images('Flat'), [['/api/pieces/Flat/still?v=7&f=png', '2D form']]);
+    assert.deepEqual(images('Both'), [['/api/pieces/Both/still?v=7-1', '2D form']]);
+    // A still from before versions keeps its own URL, so its redraw is not hidden by the cache.
+    assert.deepEqual(images('Flat'), [['/api/pieces/Flat/still?v=7-0', '2D form']]);
     assert.deepEqual(images('Fresh'), []);
     assert.match(card('Fresh').textContent, /Still pending/);
     assert.equal(container.querySelector('iframe'), null, 'no live player per card');
