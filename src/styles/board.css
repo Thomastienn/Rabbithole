@@ -156,6 +156,13 @@
 .board-steps button {
     width: 30px;
     height: 30px;
+    color: var(--color-text-secondary);
+}
+.board-steps button svg {
+    flex: none;
+    color: var(--color-text-secondary);
+    width: 16px;
+    height: 16px;
 }
 .board-steps button:disabled {
     opacity: 0.45;
