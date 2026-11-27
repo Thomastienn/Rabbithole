@@ -11,6 +11,7 @@ export const threadProps = (props) => ({
     send: noop,
     replyDiscussion: noop,
     videoAction: noop,
+    expandSketch: noop,
     branch: undefined,
     setQuestion: noop,
     selectingMessage: undefined,

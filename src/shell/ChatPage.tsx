@@ -59,7 +59,7 @@ export default function ChatPage({
     const model = useChatModel(c, trees);
     const stream = useReplyStream(c, trees, model, { name: theme, mode });
     const branchForm = useBranchForm(c, trees, model, stream);
-    const actions = useTreeActions(c, trees, stream, branchForm);
+    const actions = useTreeActions(c, trees, stream, branchForm, { name: theme, mode });
     const { visibleIds, addresses, previews } = trees;
     const { workspace } = c;
     const { shownMapWidth } = trees.map;
@@ -213,6 +213,7 @@ export default function ChatPage({
         send: stream.send,
         replyDiscussion: stream.replyDiscussion,
         videoAction: actions.videoAction,
+        expandSketch: actions.expandSketch,
         branch,
         setQuestion: branchForm.setQuestion,
         selectingMessage: branchForm.selectingMessage,

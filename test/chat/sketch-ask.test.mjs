@@ -68,7 +68,7 @@ test("a sketch's items are asked about by pointer or keyboard, and a branched it
     const { container, act, cleanup } = await render(h(Fixture), ui);
     t.after(cleanup);
     const [plain, freeze, speed] = container.querySelectorAll('figure.sketch');
-    assert.equal(plain.querySelectorAll('button').length, 0);
+    assert.equal(plain.querySelectorAll('.sr-only button').length, 0);
     assert.equal(plain.querySelectorAll('li').length, 2);
     const items = (figure) => [...figure.querySelectorAll('.sr-only button')];
     // One Tab stop per sketch; the arrows, Home and End move through its items in reading order.
