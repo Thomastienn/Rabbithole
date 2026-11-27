@@ -19,6 +19,7 @@ import {
     installedDataDir,
     moveOldData,
     navigation,
+    permitted,
     saveLayout,
     serverUrl,
     startError,
@@ -50,6 +51,14 @@ test('the shell reads the server address only from its Rabbithole line', () => {
         'Note: Rabbithole: http://127.0.0.1:43117',
     ])
         assert.equal(serverUrl(line), null, line);
+});
+
+test('the app page gets the mic with no prompt; other pages and the camera do not', () => {
+    const origin = 'http://127.0.0.1:43117';
+    assert.equal(permitted('media', `${origin}/trees/5`, origin, ['audio']), true);
+    assert.equal(permitted('media', `${origin}/trees/5`, origin, ['audio', 'video']), false);
+    assert.equal(permitted('media', 'https://example.com/', origin, ['audio']), false);
+    assert.equal(permitted('media', `${origin}/`, null, ['audio']), false);
 });
 
 test('the window stays on the server origin and sends other web links outside', () => {

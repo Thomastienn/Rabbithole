@@ -78,6 +78,8 @@ export function createApp({
     speech = null,
     // The board's filler clips, a promise of audio buffers (server/board/fillers.mjs); off in tests like speech.
     fillers = null,
+    // Loads the board's speech models for voice questions (server/board/hearing.mjs); tests pass a fake one.
+    hearing = null,
     // Times the board's filler; tests pass a fake one.
     boardClock = { setTimeout, clearTimeout },
     // Renders library piece stills; off unless the server passes the sandbox snapshot, like suggestions in tests.
@@ -122,6 +124,7 @@ export function createApp({
         videoEmbed,
         speech,
         fillers,
+        hearing,
         boardClock,
         neighbourhood: (text, signal) => retrieveNeighbourhood(store, videoEmbed, text, signal),
         log,

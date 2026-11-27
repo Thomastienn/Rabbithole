@@ -12,6 +12,7 @@ import { dataDir } from './desktop.mjs';
 import { OpenAI } from './providers/openai.mjs';
 import { createApp } from './app.mjs';
 import { localEmbedder } from './media/embedder.mjs';
+import { localHearing } from './board/hearing.mjs';
 import { sandboxSnapshot } from './media/videos.mjs';
 import { searxngDownload } from './searxng.mjs';
 import { pythonTool } from './tools/python.mjs';
@@ -85,6 +86,7 @@ try {
         videoEmbed: embed,
         speech: () => edgeSpeech(),
         fillers: () => boardFillers(dir, VOICES.en, () => edgeSpeech()),
+        hearing: localHearing(dir),
         pieceSnapshot: sandboxSnapshot,
         downloads,
     });

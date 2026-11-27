@@ -11,6 +11,7 @@ import {
     installedDataDir,
     moveOldData,
     navigation,
+    permitted,
     saveLayout,
     serverUrl,
     startError,
@@ -197,6 +198,9 @@ app.whenReady().then(() => {
             if (!window.isDestroyed()) window.close();
         });
     });
+    window.webContents.session.setPermissionRequestHandler((_, permission, grant, details) =>
+        grant(permitted(permission, details.requestingUrl, origin, details.mediaTypes)),
+    );
     window.webContents.on('will-navigate', guard);
     window.webContents.on('will-redirect', guard);
     // New windows, such as sign-in pages, are refused; with no origin allowed, their http(s) links go to the default browser.

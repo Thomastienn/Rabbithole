@@ -155,6 +155,13 @@
     flex: none;
     color: var(--color-text-error);
 }
+/* A notice that is news, not a failure (the speech models downloading): the plain overlay, its icon in ink. */
+.board-notice.info {
+    background: var(--color-background-popover);
+}
+.board-notice.info svg {
+    color: inherit;
+}
 
 /* Caption line: the session state at the left, the one-line caption centred. */
 .board-line {
@@ -271,6 +278,65 @@
     height: 4px;
     border-radius: var(--radius-full);
     background: var(--ink);
+}
+/* The mic (mockup Rabbithole-brd.11): off, a muted icon; on, porcelain with its icon in the porcelain text colour. */
+.board-composer .board-mic {
+    color: var(--color-text-secondary);
+}
+.board-composer .board-mic:hover {
+    color: var(--color-text-primary);
+}
+.board-composer .board-mic[aria-pressed='true'] {
+    background: var(--rabbithole-paper);
+    color: var(--rabbithole-paper-ink);
+}
+/* Downloading and hearing widen it to the right of its icon. */
+.board-composer .board-mic:is(.load, .hear) {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: auto;
+    padding: 0 10px 0 8px;
+}
+/* Downloading: the percentage in 13px tabular figures on the hover tone, a 3px porcelain bar along its foot. */
+.board-composer .board-mic.load {
+    position: relative;
+    background: var(--color-overlay-hover);
+    color: var(--color-text-primary);
+    font-size: 13px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+.board-mic-bar {
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    bottom: 3px;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--color-border);
+}
+.board-mic-bar b {
+    display: block;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--rabbithole-paper);
+}
+/* Hearing: four 3px level bars, 2px apart, 16px tall at most, centred in the button's 20px label line. */
+.board-level {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    height: 16px;
+    margin-block: 2px;
+}
+.board-level s {
+    width: 3px;
+    border-radius: 2px;
+    background: currentColor;
+}
+.board-state.listening::before {
+    background: var(--rabbithole-paper);
 }
 /* Speed: the composer's 30px pill, showing the speed in tabular figures. */
 .board-composer .board-speed {

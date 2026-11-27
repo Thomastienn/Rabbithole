@@ -6,9 +6,13 @@ import { validUsage } from '../store/usage.mjs';
 import { scriptReader } from './script.mjs';
 import { boardOps } from './ops.mjs';
 import { boardSystem } from './prompt.mjs';
+import { FRAME, utterances } from './hearing.mjs';
 import { conversationHistory } from '../providers/conversationHistory.mjs';
 
 const STOPPED = 'The tutor stopped. Ask again to carry on.';
+const SPEECH_FAILED =
+    "The speech model didn't download. Check your connection, then press the mic to try again.";
+const SPEECH_UNAVAILABLE = 'Voice questions are unavailable here, so type your question.';
 const VOICE_UNAVAILABLE = 'The voice is unavailable, so the tutor carries on in captions.';
 // A free-space stroke goes to the tutor as this much of the board around it, in board pixels.
 const MARGIN = 40;
@@ -30,13 +34,15 @@ function strokeImage(points) {
 }
 
 // One board session per open board: the conversation's own model process, its turns and their saving.
-// Up: { type: 'ask', text }, { type: 'stroke', points } as the learner finishes a pen stroke, { type: 'progress', sentence, phase: 'start' | 'end' } as each caption shows and ends, { type: 'leave' }.
+// Up: { type: 'ask', text }, { type: 'mic', on } and, while on, mic audio as binary frames of 16 kHz mono float32 samples, { type: 'stroke', points } as the learner finishes a pen stroke, { type: 'progress', sentence, phase: 'start' | 'end' } as each caption shows and ends, { type: 'leave' }.
 // Down: { type: 'state', state: 'idle' | 'thinking' | 'speaking' }, { type: 'notice', notice },
 // { type: 'sentence', id, text, ops, voiced } with the drawable ops written under it (server/board/ops.mjs),
 // then, when voiced, its speech as binary frames (one byte of id length, the id, the audio) and { type: 'audio-end', id },
 // a filler clip the same way under the id `filler` when a turn's first audio hasn't started after 1 s,
 // { type: 'stroke', item, mark } back for each pen stroke, with what it marks or null,
-// { type: 'board', items } once on open: the saved board, replayed from the op lines of every board message.
+// { type: 'board', items } once on open: the saved board, replayed from the op lines of every board message,
+// { type: 'mic', status: 'loading' | 'on' | 'off', loaded, total } as the speech models download and the mic turns on or off,
+// { type: 'hearing', on } as the learner starts and stops speaking, and { type: 'heard', text } as a spoken question is sent.
 export function boardSession(ctx, id, socket) {
     const { store, log } = ctx;
     const send = (event) => {
@@ -503,8 +509,94 @@ export function boardSession(ctx, id, socket) {
         Array.isArray(p) &&
         p.length === 2 &&
         p.every((v) => Number.isFinite(v) && Math.abs(v) < 1e5);
+    // The mic: off as the board opens; on once the learner asks for it and the speech models are ready.
+    // While the tutor thinks or speaks it does not listen (cutting in by voice is a later ticket).
+    let ears = null,
+        mic = null,
+        scoring = Promise.resolve(),
+        recognizing = false,
+        rest = new Float32Array(0);
+    const micOn = async () => {
+        if (mic) return send({ type: 'mic', status: 'on' });
+        if (!ctx.hearing) {
+            send({ type: 'notice', notice: SPEECH_UNAVAILABLE });
+            return send({ type: 'mic', status: 'off' });
+        }
+        const asked = (ears = {});
+        try {
+            const models = await ctx.hearing((loaded, total) => {
+                if (ears === asked) send({ type: 'mic', status: 'loading', loaded, total });
+            });
+            if (ears !== asked || closed) return;
+            mic = { models, score: models.detector(), cut: utterances() };
+            send({ type: 'mic', status: 'on' });
+        } catch (error) {
+            if (ears !== asked) return;
+            ears = null;
+            log(formatLog('warn', 'board', 'speech model failed', { cause: errorCause(error) }));
+            send({ type: 'notice', notice: SPEECH_FAILED });
+            send({ type: 'mic', status: 'off' });
+        }
+    };
+    const micOff = () => {
+        ears = mic = null;
+        rest = new Float32Array(0);
+        send({ type: 'mic', status: 'off' });
+    };
+    // Mic audio: 16 kHz mono float32 samples, cut into Silero frames and scored one at a time.
+    const listen = (samples) => {
+        const current = mic;
+        if (!current || turn || recognizing) {
+            // A typed question cut the learner's speech short.
+            if (current?.cut.reset()) send({ type: 'hearing', on: false });
+            return;
+        }
+        const all = new Float32Array(rest.length + samples.length);
+        all.set(rest);
+        all.set(samples, rest.length);
+        let at = 0;
+        for (; at + FRAME <= all.length; at += FRAME) {
+            const frame = all.slice(at, at + FRAME);
+            scoring = scoring
+                .then(async () => {
+                    if (mic !== current || turn || recognizing) return;
+                    const said = current.cut.push(frame, (await current.score(frame)) > 0.5);
+                    if (said === 'start') return send({ type: 'hearing', on: true });
+                    if (!said) return;
+                    send({ type: 'hearing', on: false });
+                    if (said === 'end') return;
+                    recognizing = true;
+                    const text = await current.models.recognize(said).catch((error) => {
+                        log(
+                            formatLog('warn', 'board', 'recognition failed', {
+                                cause: errorCause(error),
+                            }),
+                        );
+                        return '';
+                    });
+                    recognizing = false;
+                    if (!text || mic !== current || closed) return;
+                    send({ type: 'heard', text });
+                    ask(text);
+                })
+                .catch((error) => {
+                    recognizing = false;
+                    log(
+                        formatLog('warn', 'board', 'voice detection failed', {
+                            cause: errorCause(error),
+                        }),
+                    );
+                });
+        }
+        rest = all.slice(at);
+    };
     socket.on('message', (data, binary) => {
-        if (binary) return;
+        // Only whole float32 samples, at most a second at a time.
+        if (binary) {
+            if (data.length % 4 || data.length > 16000 * 4) return;
+            const bytes = new Uint8Array(data);
+            return listen(new Float32Array(bytes.buffer, bytes.byteOffset, bytes.length / 4));
+        }
         let m;
         try {
             m = JSON.parse(data);
@@ -522,6 +614,7 @@ export function boardSession(ctx, id, socket) {
         )
             stroke(m.points.map((p) => p.map(Math.round)));
         if (m?.type === 'progress' && typeof m.sentence === 'string') progress(m.sentence, m.phase);
+        if (m?.type === 'mic') m.on ? micOn() : micOff();
         if (m?.type === 'leave') close();
     });
     socket.on('close', close);

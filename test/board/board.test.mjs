@@ -17,7 +17,7 @@ class FakeSocket {
         FakeSocket.last = this;
     }
     send(data) {
-        this.sent.push(JSON.parse(data));
+        this.sent.push(typeof data === 'string' ? JSON.parse(data) : { audio: data.byteLength });
     }
     close() {
         this.readyState = 3;
@@ -38,7 +38,39 @@ class FakeSocket {
     }
 }
 
-async function mount(t, messages = [], speed) {
+// The browser's mic: getUserMedia records its constraints (or refuses), and frame() plays a worklet frame.
+function fakeMic(t, { refuse } = {}) {
+    const mic = { asked: [], stopped: 0, frame: null };
+    const saved = [globalThis.AudioContext, globalThis.AudioWorkletNode];
+    globalThis.AudioContext = class {
+        audioWorklet = { addModule: async (url) => (mic.module = url) };
+        destination = {};
+        createMediaStreamSource = () => ({ connect: () => {} });
+        resume = async () => {};
+        close = async () => {};
+    };
+    globalThis.AudioWorkletNode = class {
+        port = {};
+        constructor() {
+            mic.frame = (samples) => this.port.onmessage({ data: samples });
+        }
+        connect() {}
+    };
+    t.after(() => ([globalThis.AudioContext, globalThis.AudioWorkletNode] = saved));
+    mic.install = (w) =>
+        Object.defineProperty(w.navigator, 'mediaDevices', {
+            value: {
+                async getUserMedia(constraints) {
+                    mic.asked.push(constraints);
+                    if (refuse) throw Object.assign(new Error('denied'), { name: refuse });
+                    return { getTracks: () => [{ stop: () => mic.stopped++ }] };
+                },
+            },
+        });
+    return mic;
+}
+
+async function mount(t, messages = [], speed, mic) {
     const reloads = [];
     let dom;
     const saved = globalThis.WebSocket;
@@ -49,6 +81,7 @@ async function mount(t, messages = [], speed) {
         (w) => {
             dom = ui(w);
             if (speed) w.localStorage.setItem('rabbithole.board-speed', speed);
+            mic?.install(w);
         },
     );
     t.after(view.cleanup);
@@ -71,7 +104,7 @@ test('board: an empty board waits for a typed question with the mic off, then sh
     assert.match(board.socket.url, /\/api\/trees\/c1\/board\?csrf=/);
     assert.ok(board.q('.board-empty'), 'the hint shows before the first board question');
     const mic = button(board.container, 'Turn mic on');
-    assert.ok(mic.disabled);
+    assert.ok(!mic.disabled);
     assert.equal(mic.getAttribute('aria-pressed'), 'false');
     await board.type('How does a hypha grow?');
     await board.act(async () => button(board.container, 'Send').click());
@@ -86,6 +119,83 @@ test('board: an empty board waits for a typed question with the mic off, then sh
     assert.ok(board.q('[role=status]').textContent, 'the learner hears a busy status');
     assert.ok(button(board.container, 'Send').disabled, 'Send waits for the tutor');
     assert.equal(board.q('[contenteditable=true]').textContent, '', 'the composer clears');
+});
+
+test('board: the first mic press downloads with progress while typing works, then the mic listens for a spoken question', async (t) => {
+    const mic = fakeMic(t);
+    const board = await mount(t, [], undefined, mic);
+    const press = () => board.act(async () => board.q('.board-mic').click());
+    await press();
+    assert.deepEqual(mic.asked, [
+        {
+            audio: {
+                channelCount: 1,
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+            },
+        },
+    ]);
+    assert.equal(mic.module, '/mic-worklet.js');
+    assert.deepEqual(board.socket.sent, [{ type: 'mic', on: true }]);
+
+    await board.act(async () =>
+        board.socket.server({ type: 'mic', status: 'loading', loaded: 26e6, total: 64e6 }),
+    );
+    const loading = board.q('.board-mic');
+    assert.equal(loading.getAttribute('aria-label'), 'Turn mic on, downloading 40%');
+    assert.equal(loading.getAttribute('aria-busy'), 'true');
+    assert.equal(loading.getAttribute('aria-pressed'), 'false');
+    assert.match(loading.textContent, /40%/);
+    assert.equal(
+        board.q('.board-notice[role=status]').textContent,
+        'Getting voice ready: 26 of 64 MB. Your voice stays on this computer.',
+    );
+    mic.frame(new Float32Array(512));
+    assert.deepEqual(board.socket.sent.length, 1, 'no audio goes up until the mic is on');
+    // Typing and sending work while the models download.
+    await board.type('Why is the Moon lit?');
+    await board.act(async () => button(board.container, 'Send').click());
+    assert.deepEqual(board.socket.sent.at(-1), { type: 'ask', text: 'Why is the Moon lit?' });
+    await board.act(async () => board.socket.server({ type: 'state', state: 'idle' }));
+
+    await board.act(async () => board.socket.server({ type: 'mic', status: 'on' }));
+    assert.equal(board.q('.board-mic').getAttribute('aria-pressed'), 'true');
+    assert.equal(board.q('.board-mic').getAttribute('aria-label'), 'Turn mic on');
+    assert.equal(board.q('.board-notice'), null);
+    assert.equal(board.q('.board-state').textContent, 'Listening');
+    await board.act(async () => mic.frame(new Float32Array(512)));
+    assert.deepEqual(board.socket.sent.at(-1), { audio: 2048 });
+
+    await board.act(async () => board.socket.server({ type: 'hearing', on: true }));
+    await board.act(async () => mic.frame(new Float32Array(512).fill(0.1)));
+    assert.equal(board.q('.board-mic.hear .board-level').children.length, 4);
+    await board.act(async () => board.socket.server({ type: 'hearing', on: false }));
+    assert.equal(board.q('.board-mic.hear'), null);
+    await board.act(async () => {
+        board.socket.server({ type: 'heard', text: 'Why no eclipse every month?' });
+        board.socket.server({ type: 'state', state: 'thinking' });
+    });
+    assert.equal(board.q('.board-caption.muted').textContent, 'Why no eclipse every month?');
+    assert.equal(board.q('.board-state').textContent, 'Thinking');
+
+    // A second press turns it off and lets the mic go.
+    await press();
+    assert.deepEqual(board.socket.sent.at(-1), { type: 'mic', on: false });
+    assert.equal(board.q('.board-mic').getAttribute('aria-pressed'), 'false');
+    assert.equal(mic.stopped, 1);
+});
+
+test('board: a blocked microphone leaves the mic off with a notice saying where to allow it', async (t) => {
+    const mic = fakeMic(t, { refuse: 'NotAllowedError' });
+    const board = await mount(t, [], undefined, mic);
+    await board.act(async () => board.q('.board-mic').click());
+    assert.equal(
+        board.q('.board-notice[role=alert]').textContent,
+        'The browser blocked the microphone. Allow it for this page, then press the mic again.',
+    );
+    assert.equal(board.q('.board-mic').getAttribute('aria-pressed'), 'false');
+    assert.deepEqual(board.socket.sent, [], 'the server is not asked for the speech models');
 });
 
 test('board: each sentence becomes the caption, reported as it shows, and leaving asks the server to save', async (t) => {

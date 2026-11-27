@@ -20,6 +20,13 @@ export function navigation(url, origin) {
     return target.protocol === 'http:' || target.protocol === 'https:' ? 'external' : 'refuse';
 }
 
+// The app's own page gets the mic for the board's voice questions with no prompt; other pages, and the camera, never.
+// Other permissions keep Electron's default grant.
+export function permitted(permission, url, origin, mediaTypes = []) {
+    if (permission !== 'media') return true;
+    return navigation(url, origin) === 'allow' && mediaTypes.every((type) => type === 'audio');
+}
+
 // Shown in the window when the server exits before printing its address.
 export function startError(output, code, signal) {
     return (
