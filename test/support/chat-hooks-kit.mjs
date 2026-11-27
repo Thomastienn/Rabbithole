@@ -88,7 +88,10 @@ export async function mount(t, intercept = () => {}) {
         const model = useChatModel(c, trees);
         const stream = useReplyStream(c, trees, model, { name: 'paperback', mode: 'light' });
         const branch = useBranchForm(c, trees, model, stream);
-        const actions = useTreeActions(c, trees, stream, branch);
+        const actions = useTreeActions(c, trees, stream, branch, {
+            name: 'paperback',
+            mode: 'light',
+        });
         current = { c, layout, trees, model, stream, actions, branch };
         return h('section', { ref: c.workspace });
     }
