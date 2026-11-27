@@ -43,6 +43,8 @@ export function sequence(lines: Line[], p: Palette): Drawing {
     const head = /^actors\s*:(.*)$/i.exec(lines[0].text);
     const actors = head ? head[1].split('|').map(plain).filter(Boolean) : [];
     if (actors.length < 2) return { error: `${quoted(lines[0])} is not actors: A | B` };
+    if (new Set(actors).size < actors.length)
+        return { error: `${quoted(lines[0])} names an actor twice` };
     const col = 640 / actors.length,
         X = (a: string) => r1(col * (actors.indexOf(a) + 0.5)),
         strong = (pieces: Piece[]) =>
@@ -215,6 +217,8 @@ export function equation(lines: Line[], p: Palette): Drawing {
     const symbol = (key: string | undefined, html: string) => {
         const m = key === undefined ? undefined : meanings.get(key);
         if (!m) return html;
+        // A symbol the equation repeats is linked once, where it first appears.
+        meanings.delete(key!);
         const mark = m.focus ? p.focus : p.seam;
         return (
             `<span class="an"${m.focus ? ` style="color:${p.focus}"` : ''}>${html}` +

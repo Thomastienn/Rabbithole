@@ -173,8 +173,11 @@ export function plot(lines: Line[], p: Palette): Drawing {
         high = Math.max(...finite) > low ? Math.max(...finite) : low + 1,
         ys = step((high - low) / 4),
         [bottom, top] = [Math.floor(low / ys) * ys, Math.ceil(high / ys) * ys],
-        names = curves.map((c) => `y = ${c.ex.say}`),
-        right = 628 - Math.max(...names.map((n) => n.length * NAME_CHAR)),
+        names = curves.map((c) => `y = ${c.ex.say}`);
+    // Axes too large or too fine to step through would never finish their ticks.
+    if (!Number.isFinite(top - bottom) || lo + (hi - lo) / 200 === lo)
+        return { error: `values from ${lo} to ${hi} are out of range` };
+    const right = 628 - Math.max(...names.map((n) => n.length * NAME_CHAR)),
         X = (v: number) => r1(40 + ((v - lo) / (hi - lo)) * (right - 40)),
         Y = (v: number) => r1(184 - ((v - bottom) / (top - bottom)) * 176);
     const xstep = step((hi - lo) / 5),

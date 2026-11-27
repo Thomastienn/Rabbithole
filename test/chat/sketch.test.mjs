@@ -182,6 +182,8 @@ test('a sequence draws each actor once and each message in order, and an equatio
         ['the shared key, 2', 'public base, 5', '6 × 15 = 90, never sent', 'public prime, 23'],
     );
     assert.equal(eq.querySelectorAll('.tk').length, 5);
+    const twice = drawSketch('equation', 'eq: sin^2 x + cos^2 x = 1\nx: the angle', dark);
+    assert.equal(new JSDOM(twice.markup).window.document.querySelectorAll('.ld').length, 1);
 });
 
 test('a grid draws joined grids with their join signs, captions and focus cells', () => {
@@ -222,6 +224,9 @@ test('a sketch it cannot draw names the reason', () => {
         ['plot', 'y = x\nx: 3..1', /line 2 "x: 3..1" is out of range/],
         ['plot', 'y = x\ny = 2\ny = 3\nx: 0..1', /more than two curves/],
         ['plot', 'y = sqrt(x - 9)\nx: 0..1', /has no value/],
+        ['plot', 'y = exp(x)\nx: 0..709.7', /out of range/],
+        ['plot', 'y = x\nx: 9007199254740992..9007199254740996', /out of range/],
+        ['sequence', 'actors: Alice | Bob | Alice\nAlice -> Bob: hi', /names an actor twice/],
         ['sequence', 'Alice -> Bob: hi', /line 1 .* is not actors/],
         [
             'sequence',
