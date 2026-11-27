@@ -49,6 +49,8 @@ export function boardSession(ctx, id, socket, guided = false) {
         count = 0,
         // The timer of the wait after a question, until an answer or the next no-answer turn.
         waiting = null,
+        // The learner started typing an answer: no wait starts until they send it.
+        drafting = false,
         // The filler played last, so the next turn's filler differs.
         lastFiller = -1;
     // Filler clips load as the board opens, so the first slow turn has them ready.
@@ -207,7 +209,7 @@ export function boardSession(ctx, id, socket, guided = false) {
         ctx.jobs.remove(current.job);
         current.ended.resolve();
         // A question waits for its answer; the hint turn always waits once more, then the tutor carries on.
-        if (status === 'completed' && !closed && turn === null) {
+        if (status === 'completed' && !closed && turn === null && !current.cut && !drafting) {
             const next = current.noAnswer === 1 ? 2 : current.sentences.at(-1)?.question ? 1 : 0;
             if (next) waiting = clock.setTimeout(() => ask(NO_ANSWER[next - 1], next), WAIT_MS);
         }
@@ -334,6 +336,7 @@ export function boardSession(ctx, id, socket, guided = false) {
         // Sending mid-reply cuts in: the reply stops, saved up to the sentence heard, and the question starts a new turn.
         if (turn) stop(turn);
         answering();
+        drafting = false;
         const tree = store.tree(id);
         const supported = providerFor(tree)?.board;
         if (!supported || ctx.jobs.get('reply', id)) {
@@ -458,6 +461,8 @@ export function boardSession(ctx, id, socket, guided = false) {
     };
     // A reply the learner has seen in full completes; any other stops at once.
     const stop = (current) => {
+        // Only the learner cuts in or leaves, so a stopped question waits for no answer.
+        current.cut = true;
         if (current.generated && current.shown === current.sentences.length)
             finish(current, 'completed');
         else current.job.controller.abort();
@@ -514,7 +519,10 @@ export function boardSession(ctx, id, socket, guided = false) {
             if (m.on) answering();
             mic.hold(!!m.on);
         }
-        if (m?.type === 'typing') answering();
+        if (m?.type === 'typing') {
+            drafting = true;
+            answering();
+        }
         if (m?.type === 'leave') close();
     });
     socket.on('close', close);

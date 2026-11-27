@@ -129,3 +129,42 @@ test('board: an answer within the wait cancels the hint, and typing holds the wa
     assert.equal(clock.timers.length, 0, 'typing holds the wait open');
     assert.deepEqual(provider.boards[0].asked, ['Why?', 'Zero?', 'Go on.']);
 });
+
+test('board: answering by voice while the question is still spoken brings no hint', async (t) => {
+    const provider = boardProvider([['> Here it climbs.\n?> What is the slope at the top?\n']]);
+    const clock = fakeClock();
+    const hearing = () =>
+        Promise.resolve({ detector: () => async () => 0, recognize: async () => '' });
+    const { env, id, connect } = await setup(t, provider, { app: { boardClock: clock, hearing } });
+    const board = connect();
+    await opened(board.ws);
+    board.send({ type: 'mic', on: true });
+    await board.next('mic', (m) => m.status === 'on');
+    board.send({ type: 'ask', text: 'Why?' });
+    const first = await board.next('sentence');
+    for (const phase of ['start', 'end'])
+        board.send({ type: 'progress', sentence: first.id, phase });
+    board.send({ type: 'progress', sentence: (await board.next('sentence')).id, phase: 'start' });
+    await until(() => messages(env, id).at(-1).text.includes('slope'));
+    board.send({ type: 'hold', on: true });
+    const idle = await board.next('state', (e) => e.state === 'idle');
+    assert.equal(messages(env, id).at(-1).status, 'completed', 'the question was heard in full');
+    assert.equal(idle.waiting, undefined);
+    assert.equal(clock.timers.length, 0, 'the answer being spoken holds the wait open');
+});
+
+test('board: typing that starts while the question is spoken holds the wait open', async (t) => {
+    const provider = boardProvider([['?> What is the slope at the top?\n']]);
+    const clock = fakeClock();
+    const { connect } = await setup(t, provider, { app: { boardClock: clock } });
+    const board = connect();
+    await opened(board.ws);
+    board.send({ type: 'ask', text: 'Why?' });
+    const question = await board.next('sentence');
+    board.send({ type: 'progress', sentence: question.id, phase: 'start' });
+    board.send({ type: 'typing' });
+    board.send({ type: 'progress', sentence: question.id, phase: 'end' });
+    const idle = await board.next('state', (e) => e.state === 'idle');
+    assert.equal(idle.waiting, undefined);
+    assert.equal(clock.timers.length, 0, 'no hint while the answer is typed');
+});
