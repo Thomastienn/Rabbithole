@@ -10,7 +10,8 @@ const STOPPED = 'The tutor stopped. Ask again to carry on.';
 // One board session per open board: the conversation's own model process, its turns and their saving.
 // Up: { type: 'ask', text }, { type: 'stroke', points } as the learner finishes a pen stroke, { type: 'progress', sentence, phase: 'start' | 'end' } as each caption shows and ends, { type: 'leave' }.
 // Down: { type: 'state', state: 'idle' | 'thinking' | 'speaking' }, { type: 'notice', notice },
-// { type: 'sentence', id, text, ops } with the drawable ops written under it (server/board/ops.mjs),
+// { type: 'sentence', id, text, ops, voiced } with the drawable ops written under it (server/board/ops.mjs),
+// then, when voiced, its speech as binary frames (one byte of id length, the id, the audio) and { type: 'audio-end', id },
 // { type: 'stroke', item, mark } back for each pen stroke, with what it marks or null,
 // { type: 'board', replies: [{ caption, items }] } once on open: the saved board, each reply's items replayed
 // from its op lines with the reply's last sentence as its caption.
@@ -18,6 +19,12 @@ export function boardSession(ctx, id, socket) {
     const { store, log } = ctx;
     const send = (event) => {
         if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(event));
+    };
+    // ctx.speech makes the session's edge-tts client (server/board/speech.mjs); off in tests.
+    const speech = ctx.speech?.() ?? null;
+    const sendAudio = (id, chunk) => {
+        if (socket.readyState === socket.OPEN)
+            socket.send(Buffer.concat([Buffer.from([id.length]), Buffer.from(id), chunk]));
     };
     let process = null,
         model,
@@ -119,6 +126,7 @@ export function boardSession(ctx, id, socket) {
     const finish = (current, status) => {
         if (current.done) return;
         current.done = true;
+        if (status === 'failed') current.job.controller.abort();
         const stopped = status === 'interrupted' ? (ctx.stopping ? 'shutdown' : 'learner') : null;
         save(current, status, stopped);
         if (status === 'completed' && current.usage && validUsage(current.usage))
@@ -132,6 +140,11 @@ export function boardSession(ctx, id, socket) {
             store.thread(id, process.thread, model);
             store.finishModel(id, true);
             warmedFor = version(store.tree(id));
+            // As after a chat reply: familiarity from the learner's question and concepts from the reply,
+            // but no suggestion marks or next questions (docs/board-spec.md).
+            const answer = shownText(current);
+            ctx.startVerdicts(id, current.user, current.question, answer);
+            ctx.boardSuggestions(id, current.reply, current.question, answer);
         } else if (current.sentences.length) {
             // Claude may have stored text the learner never saw. Replay the saved discussion next time.
             store.forgetThread(id);
@@ -151,8 +164,9 @@ export function boardSession(ctx, id, socket) {
             current.sentences.push(writing);
             if (current.sentences.length === 1) send({ type: 'state', state: 'speaking' });
             const { lines, ...sentence } = writing;
-            send({ type: 'sentence', ...sentence });
+            send({ type: 'sentence', ...sentence, ...(speech && { voiced: true }) });
             writing = null;
+            speak(current);
         };
         const add = (lines, ended = false) => {
             if (current.done) return;
@@ -182,18 +196,28 @@ export function boardSession(ctx, id, socket) {
             }
             if (ended || reader.nextSentence()) flush();
         };
-        let result;
+        let result, selection;
         try {
             await ready;
             if (!signal.aborted) await warm(tree, signal);
-            result = signal.aborted
-                ? { status: 'interrupted' }
-                : await process.ask(text, (e) => add(reader.feed(e.text)), signal);
+            if (signal.aborted) result = { status: 'interrupted' };
+            else {
+                selection = { provider: tree.provider, model };
+                result = await process.ask(text, (e) => add(reader.feed(e.text)), signal);
+            }
         } catch (error) {
             result = { status: 'failed', cause: error };
         }
         if (result.status === 'completed') add(reader.end(), true);
         const usage = result.usage;
+        // Account for the call even if playback stopped before the provider reported its totals.
+        if (selection)
+            store.record(
+                `chat:${current.reply}`,
+                'chat',
+                selection,
+                usage && { ...usage, reasoning: usage.thinking },
+            );
         const status = signal.aborted ? 'interrupted' : result.status;
         const failed = status === 'failed' || (status === 'completed' && !current.sentences.length);
         // Thinking above 0 is a latency regression to investigate (docs/board-spec.md).
@@ -267,8 +291,18 @@ export function boardSession(ctx, id, socket) {
             ? `${text}\n\npen: ${[...marks, `strokes ${strokes.join(', ')}`].join(' · ')}`
             : text;
         pending = [];
-        const current = { reply, sentences: [], shown: 0, over: 0, ended: Promise.withResolvers() };
+        const current = {
+            reply,
+            user,
+            question: text,
+            sentences: [],
+            shown: 0,
+            over: 0,
+            voiced: 0,
+            ended: Promise.withResolvers(),
+        };
         turn = current;
+        speech?.warm();
         send({ type: 'state', state: 'thinking' });
         current.job = ctx.jobs.start(
             'reply',
@@ -284,6 +318,31 @@ export function boardSession(ctx, id, socket) {
             { settle: false },
         );
     };
+    // Speech runs one sentence ahead of playback: a sentence synthesizes once the one before it starts playing.
+    const speak = (current) => {
+        const sentence = current.sentences[current.voiced];
+        if (!speech || current.speaking || !sentence || current.voiced > current.shown) return;
+        current.voiced++;
+        current.speaking = true;
+        const signal = current.job.controller.signal;
+        speech
+            .speak(sentence.text, (chunk) => !current.done && sendAudio(sentence.id, chunk), signal)
+            .catch((error) => {
+                if (!signal.aborted)
+                    log(
+                        formatLog('warn', 'board', 'speech failed', {
+                            id: current.reply,
+                            cause: errorCause(error, [sentence.text]),
+                        }),
+                    );
+            })
+            .finally(() => {
+                current.speaking = false;
+                if (current.done) return;
+                send({ type: 'audio-end', id: sentence.id });
+                speak(current);
+            });
+    };
     // The reply is complete once the model has finished and its last sentence has been shown in full.
     const settle = (current) => {
         if (current.generated && current.over === current.sentences.length)
@@ -296,6 +355,7 @@ export function boardSession(ctx, id, socket) {
         if (phase === 'start' && index >= current.shown) {
             current.shown = index + 1;
             save(current, 'streaming');
+            speak(current);
         }
         if (phase === 'end' && index < current.shown) {
             current.over = Math.max(current.over, index + 1);
@@ -313,6 +373,7 @@ export function boardSession(ctx, id, socket) {
             else current.job.controller.abort();
         }
         process?.close();
+        speech?.close();
         ctx.jobs.remove(session);
         ended.resolve();
         if (ctx.stopping) socket.terminate();

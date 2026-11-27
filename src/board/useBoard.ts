@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { boardSocket } from '../serverAccess';
 import type { Message } from '../chat/turn';
 import { boardPlayer, type Op } from './player';
+import { streamedVoice } from './voice';
 
 export type BoardState = 'idle' | 'thinking' | 'speaking';
 type Caption = { text: string; muted: boolean };
@@ -44,9 +45,18 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
                 setCaption({ text: s.text, muted: false });
                 onLast((r) => ({ ...r, caption: s.text }));
             },
-            (op, ms) => onLast((r) => ({ ...r, items: [...r.items, { op, ms }] })),
+            // A retimed op comes again with its new entry time and replaces its first draw.
+            (op, ms) =>
+                onLast((r) => ({
+                    ...r,
+                    items: r.items.some((item) => item.op.id === op.id)
+                        ? r.items.map((item) => (item.op.id === op.id ? { op, ms } : item))
+                        : [...r.items, { op, ms }],
+                })),
             (s, phase) => send({ type: 'progress', sentence: s.id, phase }),
+            streamedVoice(),
         );
+        ws.binaryType = 'arraybuffer';
         ws.onopen = () => setReady(true);
         ws.onclose = () => {
             player.stop();
@@ -57,6 +67,12 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
             setNotice('The board disconnected. Turn Board off and on to reconnect.');
         };
         ws.onmessage = (event) => {
+            // A speech chunk: one byte of sentence id length, the id, then the audio.
+            if (event.data instanceof ArrayBuffer) {
+                const bytes = new Uint8Array(event.data);
+                const id = new TextDecoder().decode(bytes.subarray(1, 1 + bytes[0]));
+                return player.chunk(id, bytes.subarray(1 + bytes[0]));
+            }
             const m = JSON.parse(event.data);
             if (m.type === 'state') {
                 setState(m.state);
@@ -76,6 +92,7 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
                     })),
                 );
             if (m.type === 'sentence') player.add(m);
+            if (m.type === 'audio-end') player.audioEnd(m.id);
             // A stroke joins the board it was drawn on, as the server replays it.
             if (m.type === 'stroke') {
                 onLast((r) => ({ ...r, items: [...r.items, { op: m.item, ms: 0 }] }));

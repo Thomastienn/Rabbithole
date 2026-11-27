@@ -58,11 +58,11 @@ test('the Windows build also uploads the sandbox zip that npm start downloads', 
     assert.match(steps, /path: rabbithole-sandbox-windows-x64\.zip/);
 });
 
-test('each build job stamps the version 1.0.<run_number> before building', () => {
+test('each build job stamps the version 1.1.<run_number> before building', () => {
     for (const name of ['linux', 'windows']) {
         const steps = job(name);
         const stamp = steps.search(
-            /working-directory: desktop\n\s+run: npm version "1\.0\.\$\{\{ github\.run_number \}\}" --no-git-tag-version/,
+            /working-directory: desktop\n\s+run: npm version "1\.1\.\$\{\{ github\.run_number \}\}" --no-git-tag-version/,
         );
         assert.ok(stamp >= 0 && stamp < steps.indexOf('npm run desktop:build'), name);
     }

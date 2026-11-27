@@ -230,8 +230,10 @@ test('rejects foreign origins, Host rebinding, missing CSRF, malformed JSON and 
         // The app may frame only the sandbox page; the sandbox page forbids network and frames, and its opaque origin cannot reach the API.
         const policy = (path) =>
             fetch(env.origin + path).then((r) => r.headers.get('Content-Security-Policy'));
+        const appPolicy = await policy('/');
+        assert.match(appPolicy, /media-src 'self' blob:;/, 'board speech uses MediaSource blobs');
         assert.match(
-            await policy('/'),
+            appPolicy,
             new RegExp(
                 `frame-src ${env.origin}/sandbox.html ${env.origin}/player.html;.*frame-ancestors 'none'`,
             ),

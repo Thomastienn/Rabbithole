@@ -362,6 +362,12 @@ export function boardOps() {
             return guarded === built.item ? { item } : { item, moved: true };
         },
         has: (id) => items.has(id),
+        // The board as it stands, for a still snapshot: no erased items, erases or passed pointers, highlights
+        // under the rest, and the clears that say which area it shows.
+        items: () =>
+            [...items.values()]
+                .filter((i) => !erased.has(i.id) && i.kind !== 'erase' && i.kind !== 'pointer')
+                .sort((a, b) => +(b.kind === 'highlight') - +(a.kind === 'highlight')),
         // What a learner stroke marks (docs/board-spec.md, Learner pen): a closed loop circles the items whose
         // centres it encloses; otherwise it points at the item nearest its end, within 40 board pixels.
         mark(points) {

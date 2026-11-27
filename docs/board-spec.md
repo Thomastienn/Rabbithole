@@ -343,7 +343,8 @@ Good tests here check what the learner gets: what is said, drawn, saved and sent
   - edge-tts on an open socket, about 80 ms
 
   A typed question skips the first two. The margin is thin: about 0.6 s of it is the model's first token. Codex boards will usually miss 1 s, which the waiting cue and the filler cover.
-- **Untested:** playing streamed MP3 chunks in each browser, and how long Microsoft keeps an idle socket open. The first speech ticket should prove chunked playback in Chrome, Firefox and Safari before building on it.
+- **Streamed audio format:** Rabbithole-brd.7 tested chunked playback through MediaSource. Firefox 160's MediaSource refuses MP3 (`audio/mpeg`), so the board asks edge-tts for WebM Opus (`webm-24khz-16bit-mono-opus`). Chrome 158 and Firefox 160 play it in about 120-byte frames, starting 30–75 ms after the first chunk. Videos keep MP3. Safari is untested.
+- **Untested:** how long Microsoft keeps an idle socket open.
 - **edge-tts reliability:** it failed in bursts on a flaky network, with DNS and connect timeouts and sockets that opened but sent nothing. The timeout, retry and captions fallback exist for this.
 - **Prototype caveats:** one or two runs per topic, Sonnet only, sizes estimated, and screenshots from headless Chromium.
 - **Release order:** this follows the PRD release scope. The board ships for Claude first. Codex works but is slower.
