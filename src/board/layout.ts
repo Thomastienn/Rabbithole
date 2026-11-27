@@ -2,7 +2,7 @@ import type { Op } from './player';
 
 // The drawn parts of flows, trees, tables and Venn diagrams (mockup Rabbithole-brd.6), in board pixels. A child is
 // laid out from its component's box and every sibling drawn so far, so a later one reflows the earlier ones; each
-// part keeps its key, and the board slides it to its new place (src/styles/board.css). `t` is the share of the
+// part keeps its key, and the board slides it to its new place (src/styles/board-items.css). `t` is the share of the
 // item's entry the part draws in, as [from, to].
 export type Part = { key: string; t: [number, number] } & (
     | { kind: 'box'; x: number; y: number; w: number; h: number }

@@ -1,4 +1,5 @@
 import { once } from 'node:events';
+import net from 'node:net';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import WebSocket, { WebSocketServer } from 'ws';
@@ -79,6 +80,60 @@ test('board speech warms one socket, streams before the clip ends, and closes on
     idle.close();
     await closed;
     await fresh();
+});
+
+test('board speech gives up on a sentence whose first audio is late, and drops its socket', async (t) => {
+    const server = new WebSocketServer({ host: '127.0.0.1', port: 0 });
+    t.after(() => {
+        for (const socket of server.clients) socket.terminate();
+        return new Promise((resolve) => server.close(resolve));
+    });
+    await once(server, 'listening');
+    const client = edgeSpeech(
+        undefined,
+        () => new WebSocket(`ws://127.0.0.1:${server.address().port}`),
+        50,
+    );
+    // Warmed first, so the timer runs only while the open socket sends nothing.
+    const connected = once(server, 'connection');
+    await client.warm();
+    const [peer] = await connected;
+    const dropped = once(peer, 'close');
+    await assert.rejects(
+        client.speak('Silent.', () => {}),
+        /no audio within 50 ms/,
+    );
+    await dropped;
+});
+
+test('board speech keeps the retry socket when a connect it gave up on fails later', async (t) => {
+    // The first socket hangs its handshake, then drops; the next one is a real server.
+    const hung = net.createServer((s) => setTimeout(() => s.destroy(), 200));
+    const server = new WebSocketServer({ host: '127.0.0.1', port: 0 });
+    t.after(() => {
+        hung.close();
+        for (const socket of server.clients) socket.terminate();
+        return new Promise((resolve) => server.close(resolve));
+    });
+    hung.listen(0, '127.0.0.1');
+    await Promise.all([once(hung, 'listening'), once(server, 'listening')]);
+    const ports = [hung.address().port, server.address().port];
+    const client = edgeSpeech(
+        undefined,
+        () => new WebSocket(`ws://127.0.0.1:${ports.shift()}`),
+        50,
+    );
+    await assert.rejects(
+        client.speak('Hung.', () => {}),
+        /no audio within 50 ms/,
+    );
+    const connected = once(server, 'connection');
+    await client.warm();
+    const [peer] = await connected;
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const dropped = once(peer, 'close');
+    client.close();
+    await dropped;
 });
 
 test('board fillers are synthesized once per voice and read back from disk after', async (t) => {
