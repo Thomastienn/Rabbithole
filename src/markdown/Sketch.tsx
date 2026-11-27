@@ -111,7 +111,9 @@ function SketchDrawing({
     const [build] = useState(
         () => live && !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
     );
-    const context = useContext(SketchAsk),
+    const asking = useContext(SketchAsk),
+        // shortcut: only kinds that draw hit areas (flow, bars) can be asked about; give a kind hit areas in sketch.ts to switch it on.
+        context = drawn.markup.includes('data-item=') ? asking : null,
         drawing = useRef<HTMLDivElement>(null),
         buttons = useRef<(HTMLButtonElement | null)[]>([]),
         hint = useId(),
@@ -176,7 +178,9 @@ function SketchDrawing({
                       } as CSSProperties)
                     : undefined
             }
-            aria-label={drawn.title ? `Sketch: ${drawn.title}` : 'Sketch'}
+            aria-label={[drawn.title ? `Sketch: ${drawn.title}` : 'Sketch', drawn.about]
+                .filter(Boolean)
+                .join(', ')}
         >
             {drawn.title && <figcaption aria-hidden="true">{drawn.title}</figcaption>}
             {/* The module escapes every label the tutor wrote. A click on an item's hit area asks about it. */}

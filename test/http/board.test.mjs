@@ -96,8 +96,9 @@ const messages = (env, id) => env.store.tree(id).messages;
 test('board: a typed question gets its sentences one at a time and saves as a learner message and a reply', async (t) => {
     const provider = boardProvider([
         [
-            '> A hypha grows only at its tip.\nt1 text "tip" at 800,450\n> Tiny sacs',
-            ' carry new wall forward.\n',
+            '> A hypha grows only at its tip.\nt1 text "tip" at 800,450 look=focus\nt2 text "x" at 9\n',
+            'h1 arrow from t1 to nowhere\n> Tiny sacs',
+            ' carry new wall forward.\nv1 dot at 900,450',
         ],
     ]);
     const { env, id, logs, connect } = await setup(t, provider);
@@ -123,6 +124,15 @@ test('board: a typed question gets its sentences one at a time and saves as a le
         ['A hypha grows only at its tip.', 'Tiny sacs carry new wall forward.'],
         'only spoken lines, in order; op lines stay off the caption',
     );
+    // Each sentence carries the ops written under it; broken ones are skipped and logged, never shown.
+    assert.deepEqual(
+        [first.ops, second.ops],
+        [
+            [{ id: 't1', kind: 'text', look: 'focus', at: [800, 450], size: 'm', text: 'tip' }],
+            [{ id: 'v1', kind: 'dot', at: [900, 450] }],
+        ],
+    );
+    assert.equal(logs.filter((l) => /WARN board op skipped/.test(l)).length, 2);
     assert.notEqual(first.id, second.id);
     assert.deepEqual(process.asked, ['How does a hypha grow at its tip?']);
 
