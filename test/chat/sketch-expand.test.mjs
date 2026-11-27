@@ -72,4 +72,10 @@ test('Expand into visual asks for a visual at the sketch, which then draws in it
     assert.equal(reply().querySelector('figure.visual'), null);
     await act(async () => button(reply(), 'Show visual').click());
     assert.deepEqual(calls.shift(), ['root', 'v', 'sketch', undefined]);
+    // A failed expanded visual still leads back to its sketch.
+    await act(async () =>
+        update([{ ...visual('hidden'), status: 'failed', source: null, error: 'No model.' }]),
+    );
+    await act(async () => button(reply(), 'Show sketch').click());
+    assert.deepEqual(calls.shift(), ['root', 'v', 'sketch', undefined]);
 });

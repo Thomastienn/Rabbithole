@@ -536,6 +536,14 @@ export default function VisualFrame({
                         clickAction={() => run(onRetry)}
                     />
                 )}
+            {onShowSketch && artifact.status === 'failed' && (
+                <Button
+                    label="Show sketch"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void onShowSketch()}
+                />
+            )}
         </figure>
     );
 }
