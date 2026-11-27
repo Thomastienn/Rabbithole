@@ -164,7 +164,7 @@ export function localHearing(dir, download) {
 }
 
 // Cuts a stream of scored frames into utterances: push(frame, speech) returns 'start' as speech begins,
-// then 'end' for a click or the utterance's audio once END_FRAMES of silence follow it, else nothing.
+// 'speech' once MIN_FRAMES of it are heard, then 'end' for a click or the utterance's audio once END_FRAMES of silence follow it, else nothing.
 export function utterances() {
     let frames = [],
         voiced = 0,
@@ -180,9 +180,8 @@ export function utterances() {
             }
             frames.push(frame);
             if (speech) {
-                voiced++;
                 silent = 0;
-                return;
+                return ++voiced === MIN_FRAMES ? 'speech' : undefined;
             }
             if (++silent < END_FRAMES) return;
             const heard = voiced >= MIN_FRAMES ? frames : null;
@@ -192,13 +191,6 @@ export function utterances() {
             const audio = new Float32Array(heard.length * FRAME);
             heard.forEach((f, i) => audio.set(f, i * FRAME));
             return audio;
-        },
-        // Drops what was heard; true when it was mid-utterance.
-        reset() {
-            const was = voiced > 0;
-            frames = [];
-            voiced = 0;
-            return was;
         },
     };
 }

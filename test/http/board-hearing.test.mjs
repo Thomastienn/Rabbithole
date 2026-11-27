@@ -35,8 +35,11 @@ function speak(board, speech, silence) {
         board.ws.send(Buffer.from(samples.slice(at, at + 700).buffer));
 }
 
-test('board: the mic is off until pressed, the first press downloads, and a pause after speech asks the question', async (t) => {
-    const provider = boardProvider([['> The orbit is tilted.\n']]);
+test('board: the mic is off until pressed, the first press downloads, a pause after speech asks the question, and speech cuts in on the tutor', async (t) => {
+    const provider = boardProvider([
+        ['> The orbit is tilted.\n', '> So the shadow misses.\n'],
+        ['> It is tilted by five degrees.\n'],
+    ]);
     const hearing = fakeHearing();
     const { env, id, connect } = await setup(t, provider, { app: { hearing } });
     const board = connect();
@@ -74,18 +77,30 @@ test('board: the mic is off until pressed, the first press downloads, and a paus
     await until(() => provider.boards[0].asked.length);
     assert.deepEqual(provider.boards[0].asked, ['Why is there no eclipse every month?']);
 
-    // While the tutor speaks, the mic does not listen.
+    // While the tutor speaks, a short sound does not stop it; about 150 ms of speech does at once,
+    // and the pause after it asks the question.
     const sentence = await board.next('sentence');
     board.send({ type: 'progress', sentence: sentence.id, phase: 'start' });
-    speak(board, 8, 12);
-    board.send({ type: 'progress', sentence: sentence.id, phase: 'end' });
+    speak(board, 4, 14);
+    await board.next('hearing', (m) => !m.on);
+    assert.ok(!board.events.some((e) => e.state === 'idle'), 'a click does not cut in');
+    speak(board, 5, 0);
     assert.equal((await board.next('state')).state, 'idle');
-    assert.ok(!board.events.some((e) => e.type === 'hearing'));
+    assert.ok(!board.events.some((e) => e.type === 'heard'), 'stopped before the pause ends');
+    speak(board, 0, 10);
+    assert.equal((await board.next('heard')).text, 'Why is there no eclipse every month?');
+    assert.equal((await board.next('state')).state, 'thinking');
+    const next = await board.next('sentence');
+    board.send({ type: 'progress', sentence: next.id, phase: 'start' });
+    board.send({ type: 'progress', sentence: next.id, phase: 'end' });
+    await board.next('state', (m) => m.state === 'idle');
     assert.deepEqual(
-        messages(env, id).map((m) => [m.role, m.text]),
+        messages(env, id).map((m) => [m.role, m.text, m.status]),
         [
-            ['user', 'Why is there no eclipse every month?'],
-            ['assistant', 'The orbit is tilted.'],
+            ['user', 'Why is there no eclipse every month?', 'completed'],
+            ['assistant', 'The orbit is tilted.', 'interrupted'],
+            ['user', 'Why is there no eclipse every month?', 'completed'],
+            ['assistant', 'It is tilted by five degrees.', 'completed'],
         ],
     );
 
