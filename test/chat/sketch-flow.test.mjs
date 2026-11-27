@@ -77,15 +77,15 @@ test('a flow sketch fits its box at scale 1: across while each rank has room, do
     assert.equal(lines.join(''), 'StartSupercalifragilisticexpialidocious');
 });
 
-test('a vertical flow keeps the label of an arrow back to an earlier step', () => {
-    const texts = (width) =>
-        [
-            ...new JSDOM(
-                drawSketch('flow', 'A -> B\nB -> C\nC -> A: repeats', dark, width).markup,
-            ).window.document.querySelectorAll('text'),
-        ].map((t) => t.textContent);
-    assert.ok(texts(640).includes('repeats'));
-    assert.ok(texts(224).includes('repeats'));
+test('a vertical flow keeps the label of an arrow back to an earlier step, and every item askable', () => {
+    const svg = (width) =>
+        new JSDOM(drawSketch('flow', 'A -> B\nB -> C\nC -> A: repeats', dark, width).markup).window
+            .document;
+    for (const width of [640, 224]) {
+        const d = svg(width);
+        assert.ok([...d.querySelectorAll('text')].some((t) => t.textContent === 'repeats'));
+        assert.equal(d.querySelectorAll('[data-item] .sketch-hit').length, 3);
+    }
 });
 
 test('a sketch draws at the width of the box it sits in', async (t) => {

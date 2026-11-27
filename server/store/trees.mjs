@@ -21,8 +21,11 @@ export const trees = {
             )
             .all()
             .map(({ artifactId, label, explanation, trail, step, line, ...t }) => {
+                // A sketch item branch keeps its item's label, with no artifact.
                 const visual = !artifactId
-                    ? {}
+                    ? label === null
+                        ? {}
+                        : { label }
                     : line !== null
                       ? { artifactId, line }
                       : { artifactId, label, explanation, ...picked(trail, step) };
@@ -162,10 +165,11 @@ export const trees = {
         return savedBranch
             ? {
                   ...branch,
-                  ...(artifactId &&
-                      (line !== null
+                  ...(artifactId
+                      ? line !== null
                           ? { artifactId, line, speaker, discussion }
-                          : { artifactId, label, explanation, ...picked(trail, step) })),
+                          : { artifactId, label, explanation, ...picked(trail, step) }
+                      : label !== null && { label }),
               }
             : null;
     },
@@ -455,6 +459,16 @@ export const trees = {
     // Marks a message as asked or said on the board.
     onBoard(id) {
         this.db.prepare('UPDATE messages SET board=1 WHERE id=?').run(id);
+    },
+    saveBoardOps(id, lines) {
+        this.db.prepare('UPDATE messages SET ops=? WHERE id=?').run(JSON.stringify(lines), id);
+    },
+    // Every op line said on this conversation's board, in order; replaying them rebuilds the board.
+    boardOpLines(tree) {
+        return this.db
+            .prepare('SELECT ops FROM messages WHERE tree=? AND ops IS NOT NULL ORDER BY seq')
+            .all(tree)
+            .flatMap((m) => JSON.parse(m.ops));
     },
     nextQuestions(id, questions) {
         this.db

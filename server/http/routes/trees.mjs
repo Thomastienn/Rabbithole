@@ -292,12 +292,13 @@ export async function treeRoutes(req, res, url, ctx, body) {
             if (concept) store.observeBrief({ message, start, end, concept });
             const added =
                 !anchor.artifactId &&
+                !anchor.sketch &&
                 store.suggestBriefed(id, { message, start, end, text }) &&
                 store.tree(id).suggestions.find((s) => s.message === message);
             return json(res, 200, { explanation, ...(added && { suggestions: added }) });
         };
-        // Briefs are saved by reply offsets, which a visual part has none of.
-        const saved = !anchor.artifactId && store.brief(message, start, end);
+        // Briefs are saved by reply offsets, which a visual part has none of and a sketch item shares with its sketch.
+        const saved = !anchor.artifactId && !anchor.sketch && store.brief(message, start, end);
         if (saved) return answer(saved);
         const reply = tree.messages.find((m) => m.id === message).text;
         try {

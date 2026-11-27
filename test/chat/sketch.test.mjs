@@ -478,8 +478,8 @@ test('a broken sketch shows nothing from its source and is logged with its kind 
 
 test('streamed sketches schedule their items over half a second', async () => {
     for (const [kind, body, items, expectedOrder] of [
-        ['bars', speeds, '.sketch-bars > *', [0, 0, 1, 1, 2, 2]],
-        ['flow', freezing, 'svg > g', [0, 1, 2, 3, 4]],
+        ['bars', speeds, '.sketch-bars > :not(.sketch-hit)', [0, 0, 1, 1, 2, 2]],
+        ['flow', freezing, 'svg > g:not([data-item])', [0, 1, 2, 3, 4]],
         ['line', voltage, 'svg > g', [0, 1, 2]],
         ['quadrant', week, 'svg > g', [0, 1, 2, 3, 4, 5]],
         ['spectrum', cooling, 'svg > g', [0, 1, 2]],

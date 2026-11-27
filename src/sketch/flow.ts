@@ -127,6 +127,7 @@ export function flow(lines: Line[], p: Palette, _heads: Line[], width: number): 
         chevrons.add(`M${tip - 5 * way} ${y(n) - 5}L${tip} ${y(n)}L${tip - 5 * way} ${y(n) + 5}`);
     }
     let bottom = 0;
+    const rowBottom = new Map<number, number>();
     // One group per item, in the items' order; `--i` is its place in the sketch's build.
     const groups = names.map((n, k) => {
         const notes = runs
@@ -146,14 +147,22 @@ export function flow(lines: Line[], p: Palette, _heads: Line[], width: number): 
         const labels = wrap(n, column - 24).map((l, i) => {
             const baseline = y(n) + (notesAbove ? 28 : 26) + LINE * i;
             bottom = Math.max(bottom, baseline);
+            rowBottom.set(row.get(n)!, Math.max(rowBottom.get(row.get(n)!) ?? 0, baseline));
             return write(x(n), baseline, l, tone(p, focus.has(n)));
         });
         return group(k, notes.join('') + ring(x(n), y(n), focus.has(n), p) + labels.join(''));
+    });
+    // Each station's hit area (mockup Rabbithole-skt.6): its column less 8px, from 12px above the
+    // station to 8px under its row's last label line.
+    const hits = names.map((n, i) => {
+        const w = column - 8;
+        return hit(i, x(n) - w / 2, y(n) - 12, w, rowBottom.get(row.get(n)!)! + 20 - y(n));
     });
     const markup =
         `<svg class="sketch-flow" viewBox="0 0 ${width} ${bottom + (notesAbove ? 10 : 8)}">` +
         paths(runs.map((r) => r.d).join(''), [...chevrons].join(''), p) +
         groups.join('') +
+        hits.join('') +
         '</svg>';
     return { items, markup };
 }
@@ -168,6 +177,11 @@ type Graph = {
     rows: number;
     focus: Set<string>;
 };
+// An item's hit area; the outline sits inside it, the focus ring 2px outside.
+const hit = (i: number, x: number, y: number, w: number, h: number) =>
+    `<g data-item="${i}"><rect class="sketch-hit" x="${x}" y="${y}" width="${w}" height="${h}"/>` +
+    `<rect class="sketch-outline" x="${x + 1}" y="${y + 1}" width="${w - 2}" height="${h - 2}" rx="3"/>` +
+    `<rect class="sketch-ring" x="${x - 3}" y="${y - 3}" width="${w + 6}" height="${h + 6}" rx="7"/></g>`;
 const paths = (lines: string, chevrons: string, p: Palette) =>
     `<path class="sketch-line" style="stroke:${p.seam}" d="${lines}"/>` +
     `<path class="sketch-arrow" style="stroke:${p.muted}" d="${chevrons}"/>`;
@@ -211,7 +225,8 @@ function down({ names, edges, forward, rank, row, rows, focus }: Graph, width: n
     });
     let bottom = 0,
         right = 0;
-    const chevrons: string[] = [],
+    const ends = new Map<string, number>(),
+        chevrons: string[] = [],
         groups = names.map((n, k) => {
             const cx = lane(n),
                 cy = y.get(n)!,
@@ -227,15 +242,16 @@ function down({ names, edges, forward, rank, row, rows, focus }: Graph, width: n
                         write(left, tip + 2 + 16 * i, l!, `fill:${p.muted}`, 'sketch-note'),
                     ),
                 ...labels.get(n)!.map((l, i) => {
-                    bottom = Math.max(bottom, cy + 5 + LINE * i);
+                    ends.set(n, cy + 5 + LINE * i);
                     return write(left, cy + 5 + LINE * i, l, tone(p, focus.has(n)));
                 }),
                 ...loops(n).map((l, i) => {
                     const at = cy + 5 + LINE * (labels.get(n)!.length - 1) + 16 * (i + 1);
-                    bottom = Math.max(bottom, at);
+                    ends.set(n, at);
                     return write(left, at, l, `fill:${p.muted}`, 'sketch-note');
                 }),
             ];
+            bottom = Math.max(bottom, ends.get(n)!);
             right = Math.max(
                 right,
                 ...[...labels.get(n)!, ...into.flatMap((r) => notes.get(r.e)!), ...loops(n)].map(
@@ -247,10 +263,17 @@ function down({ names, edges, forward, rank, row, rows, focus }: Graph, width: n
     // Every station has a label, so the last baseline sets the height.
     const w = Math.min(width, left + right),
         tall = bottom + 7;
+    // Each station's hit area spans the drawing's width, from just above the station to under its last line,
+    // kept 4px inside the drawing so the focus ring is not clipped.
+    const hits = names.map((n, i) => {
+        const top = y.get(n)! - 9;
+        return hit(i, 4, top, w - 8, ends.get(n)! + 4 - top);
+    });
     return (
         `<svg class="sketch-flow sketch-down" width="${w}" height="${tall}" viewBox="0 0 ${w} ${tall}">` +
         paths(runs.map((r) => r.d).join(''), chevrons.join(''), p) +
         groups.join('') +
+        hits.join('') +
         '</svg>'
     );
 }
