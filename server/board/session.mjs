@@ -227,7 +227,8 @@ export function boardSession(ctx, id, socket) {
         } catch (error) {
             result = { status: 'failed', cause: error };
         } finally {
-            if (current.files) rm(current.files, { recursive: true, force: true }).catch(() => {});
+            if (current.files)
+                await rm(current.files, { recursive: true, force: true }).catch(() => {});
         }
         if (result.status === 'completed') add(reader.end(), true);
         const usage = result.usage;
