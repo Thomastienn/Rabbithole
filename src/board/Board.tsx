@@ -135,7 +135,6 @@ export default function Board({
         return slide(scroller.current, top, VIEW_MS);
     }, [board.view]);
     const rows = labelRows(board.items.map((drawn) => drawn.op));
-    const parts = componentParts(scene.shown.map((drawn) => drawn.op));
     const { mic } = board;
     const percent = mic.total ? Math.floor(((mic.loaded ?? 0) * 100) / mic.total) : 0;
     const loading = mic.status === 'loading';
@@ -271,7 +270,7 @@ export default function Board({
                                         ms={ms}
                                         gone={scene.erased.get(op.id)}
                                         row={rows.get(op.id)}
-                                        parts={parts.get(op.id)}
+                                        parts={scene.parts.get(op.id)}
                                         dim={dimmed(op, lit)}
                                     />
                                 ))}
@@ -546,5 +545,6 @@ function sceneOf(items: Drawn[]) {
         })
         .sort((a, b) => +(b.op.kind === 'highlight') - +(a.op.kind === 'highlight'));
     const areas = 1 + Math.max(0, ...items.map(({ op }) => (op.top ?? 0) / 900));
-    return { shown, erased, areas };
+    const ops = shown.map(({ op }) => op);
+    return { shown, erased, areas, parts: componentParts(ops, erased) };
 }

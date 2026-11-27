@@ -1,7 +1,8 @@
 // Board op lines (docs/board-spec.md, Op language): `<id> <kind> <args> [key=value]` on a fixed
 // 1600×900 board (ADR 0028). Tokens follow prototype/board-placement.
 import katex from 'katex';
-import { COMPONENTS, PARENTS, component, child, layout } from './components.mjs';
+import { COMPONENTS, PARENTS, SKETCHES, component, child, layout } from './components.mjs';
+import { componentParts, partsBox } from '../../src/board/layout.ts';
 
 const KINDS = new Set([
     'circle',
@@ -257,13 +258,19 @@ export function boardOps() {
     const erased = new Set();
     // The page each item was drawn on.
     const where = new Map();
-    // An item still on the board that ops can name; erase can also name a highlight or a component's child.
-    // Only erase reaches other pages, since the view shows the open one, and into a component, since the rest
-    // join top-level items only.
+    // The space an item takes. A flow, tree, table, Venn or sketch child has no place of its own: it takes the space
+    // its parts take in its component's layout over the children still on the board, as the learner sees it.
+    const span = (item) =>
+        item.on && !item.at
+            ? partsBox(componentParts([...items.values()], erased).get(item.id))
+            : bounds(item);
+    // An item still on the board that ops can name; erase can also name a highlight. Only erase reaches other
+    // pages, since the view shows the open one, and children on axes or a number line, which have no laid-out space.
     const target = (id, kind) => {
         const item = items.get(id);
         const named = !MARKS.has(item?.kind) || (kind === 'erase' && item.kind === 'highlight');
-        const here = () => kind === 'erase' || (!item.on && where.get(id) === open);
+        const here = () =>
+            kind === 'erase' || ((!item.on || (!item.at && span(item))) && where.get(id) === open);
         return item && named && !erased.has(id) && here() ? item : undefined;
     };
     const positive = (value, fallback) =>
@@ -305,7 +312,7 @@ export function boardOps() {
                 return { item: { ...item, ids: [...gone] } };
             }
             if (op.refs.length > 1) return { error: `${op.kind} takes one id` };
-            const b = bounds(items.get(op.refs[0]));
+            const b = span(items.get(op.refs[0]));
             const [w, h] = b.round ? [2 * b.r, 2 * b.r] : [b.w, b.h];
             // `names` keeps the item a highlight or pointer names, for the spotlight (docs/board-sketches-spec.md).
             item.names = [op.refs[0]];
@@ -326,7 +333,7 @@ export function boardOps() {
             if (op.from || op.to) {
                 const [a, b] = [target(op.from), target(op.to)];
                 if (!a || !b) return { error: `unknown id ${a ? op.to : op.from}` };
-                const [ba, bb] = [bounds(a), bounds(b)];
+                const [ba, bb] = [span(a), span(b)];
                 item.points = [edge(ba, bb.c), edge(bb, ba.c)];
                 item.names = [op.from, op.to];
                 connectors.add(op.id);
@@ -400,16 +407,24 @@ export function boardOps() {
         has: (id) => items.has(id),
         open: () => open,
         // The page index each model turn starts with (ADR 0029): every page with its parent, `from` item and the
-        // ids and texts of what is still on it; kinds and coordinates are left out to keep it short.
+        // ids and texts of what is still on it; kinds and coordinates are left out to keep it short, except that a
+        // sketch shows its kind with its children's ids and labels.
         index() {
             const lines = [...pages].map(([id, page]) => {
-                const on = [...items.values()]
-                    .filter(
-                        (i) => where.get(i.id) === id && !MARKS.has(i.kind) && !erased.has(i.id),
-                    )
+                const live = [...items.values()].filter(
+                    (i) => where.get(i.id) === id && !MARKS.has(i.kind) && !erased.has(i.id),
+                );
+                const name = (i) => {
+                    const text = i.text ?? i.whole ?? (i.cells ?? i.cols ?? i.sets)?.join('|');
+                    return text ? `${i.id} "${text}"` : i.id;
+                };
+                const sketch = new Set(live.filter((i) => SKETCHES.has(i.kind)).map((i) => i.id));
+                const on = live
+                    .filter((i) => !sketch.has(i.on))
                     .map((i) => {
-                        const text = i.text ?? (i.cells ?? i.cols ?? i.sets)?.join('|');
-                        return text ? `${i.id} "${text}"` : i.id;
+                        if (!sketch.has(i.id)) return name(i);
+                        const kids = live.filter((c) => c.on === i.id).map(name);
+                        return `${name(i)} ${i.kind}${kids.length ? ` (${kids.join(', ')})` : ''}`;
                     });
                 const head = [
                     `${id === open ? '* ' : ''}${id} "${page.title}"`,
@@ -437,7 +452,7 @@ export function boardOps() {
                     i.kind !== 'stroke' &&
                     !MARKS.has(i.kind) &&
                     !erased.has(i.id) &&
-                    (i.at || i.points),
+                    (i.at || i.points || (i.on && span(i))),
             );
             const [start, end] = [points[0], points.at(-1)];
             const box = bounds({ points });
@@ -446,11 +461,13 @@ export function boardOps() {
                 Math.hypot(end[0] - start[0], end[1] - start[1]) <=
                     Math.max(60, 0.3 * Math.hypot(box.w, box.h));
             const circled = closed
-                ? targets.filter((i) => inside(bounds(i).c, points)).map((i) => i.id)
+                ? targets.filter((i) => inside(span(i).c, points)).map((i) => i.id)
                 : [];
-            if (circled.length) return { verb: 'circled', ids: circled };
+            // A circled component stands for its children inside the loop.
+            const whole = circled.filter((id) => !circled.includes(items.get(id).on));
+            if (circled.length) return { verb: 'circled', ids: whole };
             const [near] = targets
-                .map((i) => ({ id: i.id, d: gap(bounds(i), end) }))
+                .map((i) => ({ id: i.id, d: gap(span(i), end) }))
                 .filter(({ d }) => d <= 40)
                 .sort((a, b) => a.d - b.d);
             return near ? { verb: 'pointed at', ids: [near.id] } : null;

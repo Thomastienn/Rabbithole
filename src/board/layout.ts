@@ -1,20 +1,24 @@
 import type { Op } from './player';
+import { sketchParts } from './sketchLayout.ts';
 
-// The drawn parts of flows, trees, tables and Venn diagrams (mockup Rabbithole-brd.6), in board pixels. A child is
+// The drawn parts of flows, trees, tables and Venn diagrams (mockup Rabbithole-brd.6), and of sketches
+// (src/board/sketchLayout.ts), in board pixels. A child is
 // laid out from its component's box and every sibling drawn so far, so a later one reflows the earlier ones; each
 // part keeps its key, and the board slides it to its new place (src/styles/board-items.css). `t` is the share of the
 // item's entry the part draws in, as [from, to].
 export type Part = { key: string; t: [number, number] } & (
     | { kind: 'box'; x: number; y: number; w: number; h: number }
     | { kind: 'line'; d: string; look: 'edge' | 'rule' | 'seam' }
-    | { kind: 'circle'; x: number; y: number; r: number }
+    | { kind: 'circle'; x: number; y: number; r: number; look?: 'station' }
     | {
           kind: 'text';
           x: number;
           y: number;
           text: string;
-          look?: 'head' | 'set' | 'sm';
+          look?: 'head' | 'set' | 'sm' | 'note';
           anchor?: 'start' | 'end';
+          // Font size in board pixels, when the look's own size does not apply.
+          size?: number;
       }
 );
 
@@ -28,8 +32,17 @@ const arrow = (x0: number, y0: number, x1: number, y1: number) =>
         : `M${x0} ${y0}V${y1}M${x1 - 14} ${y1 - 14}L${x1} ${y1}L${x1 + 14} ${y1 - 14}`;
 const r1 = (v: number) => Math.round(v * 10) / 10;
 
-// Every flow, tree, table and Venn component's parts and its children's, by item id.
-export function componentParts(ops: Op[]) {
+// Every flow, tree, table, Venn and sketch component's parts and its children's, by item id.
+// Children in `gone` (erased, still fading) keep their place; the rest reflow without them.
+export function componentParts(
+    ops: Op[],
+    gone: { has(id: string): boolean; size: number } = new Set(),
+) {
+    const parts = lay(ops);
+    return gone.size ? new Map([...parts, ...lay(ops.filter((op) => !gone.has(op.id)))]) : parts;
+}
+
+function lay(ops: Op[]) {
     const parts = new Map<string, Part[]>();
     for (const parent of ops) {
         const children = ops.filter((op) => op.on === parent.id);
@@ -40,8 +53,31 @@ export function componentParts(ops: Op[]) {
         if (parent.kind === 'tree') tree(children, left, top, w, h, parts);
         if (parent.kind === 'table') table(parent, children, left, top, w, h, parts);
         if (parent.kind === 'venn') venn(parent, children, cx, cy, w, h, parts);
+        sketchParts(parent, children, { left, top, w, h }, parts);
     }
     return parts;
+}
+
+// The space a child's boxes, circles and text take, for highlights, the pointer and the pen; lines are left out.
+// Text is measured at about 0.52 of its size per character, from 0.75 of its size above its baseline to 0.25 below.
+export function partsBox(parts: Part[] = []) {
+    const boxes = parts.flatMap((p): [number, number, number, number][] => {
+        if (p.kind === 'box') return [[p.x, p.y, p.x + p.w, p.y + p.h]];
+        if (p.kind === 'circle') return [[p.x - p.r, p.y - p.r, p.x + p.r, p.y + p.r]];
+        if (p.kind === 'line') return [];
+        const size = p.size ?? (p.look === 'head' ? 28 : p.look === 'sm' ? 30 : 32);
+        const w = p.text.length * 0.52 * size;
+        const x = p.anchor === 'start' ? p.x : p.anchor === 'end' ? p.x - w : p.x - w / 2;
+        return [[x, p.y - 0.75 * size, x + w, p.y + 0.25 * size]];
+    });
+    if (!boxes.length) return undefined;
+    const [x0, y0] = [0, 1].map((i) => Math.min(...boxes.map((b) => b[i])));
+    const [x1, y1] = [2, 3].map((i) => Math.max(...boxes.map((b) => b[i])));
+    return {
+        c: [r1((x0 + x1) / 2), r1((y0 + y1) / 2)] as [number, number],
+        w: r1(x1 - x0),
+        h: r1(y1 - y0),
+    };
 }
 
 // Steps share the box in equal columns (or rows, down), each box at most 260 wide; an arrow joins each step to

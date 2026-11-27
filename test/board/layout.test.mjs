@@ -128,3 +128,120 @@ test('board layout: a Venn diagram draws one circle at a time, then items in the
         'Penguin@668,540',
     ]);
 });
+
+// Sketches (mockup Rabbithole-bsk.4): the numbers are the mockup's.
+const sketch = (parent, kind, children) => [
+    parent,
+    ...children.map((fields, i) => ({ id: `${kind}${i + 1}`, kind, on: parent.id, ...fields })),
+];
+
+test('board layout: a cycle shares its loop between two runs and moves stages as new ones arrive', () => {
+    const box = { id: 'w1', kind: 'cycle', at: [800, 450], w: 1200, h: 560 };
+    const stages = ['Evaporation', 'Condensation', 'Precipitation', 'Collection'].map((text) => ({
+        text,
+    }));
+    const one = sketch(box, 'stage', stages.slice(0, 1));
+    assert.equal(componentParts(one).get('w1'), undefined, 'no loop for one stage');
+    assert.deepEqual(draw(one, 'stage1'), ['station 800,220,14', 'Evaporation@800,275']);
+    const three = sketch(box, 'stage', stages.slice(0, 3));
+    assert.deepEqual(draw(three, 'stage2'), [
+        'chevron M792 236L808 220L792 204',
+        'station 1080,220,14',
+        'Condensation@1080,275',
+    ]);
+    const four = sketch(box, 'stage', stages);
+    assert.deepEqual(draw(four, 'stage1'), ['station 520,220,14', 'Evaporation@520,275']);
+    assert.deepEqual(draw(four, 'stage3')[0], 'chevron M1344 422L1360 438L1376 422');
+    assert.deepEqual(draw(four, 'stage4'), [
+        'chevron M808 624L792 640L808 656',
+        'station 520,640,14',
+        'Collection@520,695',
+        'close M256 438L240 422L224 438',
+    ]);
+    assert.ok(!draw(four, 'stage3').some((p) => p.startsWith('close')), 'only the last closes');
+    const ten = sketch(
+        box,
+        'stage',
+        Array.from({ length: 10 }, (_, i) => ({ text: `S${i}` })),
+    );
+    assert.deepEqual(draw(ten, 'stage1'), ['station 352,220,11.4', 'S0@352,265']);
+    assert.deepEqual(draw(ten, 'stage10')[1], 'station 352,640,11.4');
+});
+
+test('board layout: a stack centres its layers, lining notes up past the widest name', () => {
+    const box = { id: 'n1', kind: 'stack', at: [800, 450], w: 1100, h: 600 };
+    const layers = [
+        { text: 'HTTP', note: 'the page you asked for' },
+        { text: 'TLS', note: 'keeps it secret' },
+    ];
+    assert.deepEqual(draw(sketch(box, 'layer', layers.slice(0, 1)), 'layer1'), [
+        'HTTP@250,457',
+        'the page you asked for@364.6,456',
+        'shelf M250 494H1350',
+    ]);
+    const two = sketch(box, 'layer', layers);
+    assert.deepEqual(draw(two, 'layer1')[0], 'HTTP@250,407', 'lifted by half a row');
+    layers.push({ text: 'Ethernet', note: 'the wire' });
+    assert.equal(draw(sketch(box, 'layer', layers), 'layer2')[1], 'keeps it secret@431.1,456');
+    const ten = sketch(
+        box,
+        'layer',
+        Array.from({ length: 10 }, (_, i) => ({ text: `L${i}` })),
+    );
+    assert.deepEqual(draw(ten, 'layer1'), ['L0@250,185', 'shelf M250 204H1350']);
+    assert.deepEqual(draw(ten, 'layer10')[1], 'shelf M250 744H1350', 'still inside the box');
+});
+
+test('board layout: a timeline runs its events down one line, each drawing the line from the last', () => {
+    const box = { id: 'y1', kind: 'timeline', at: [800, 450], w: 1000, h: 640 };
+    const events = [
+        { text: 'Anglo-Saxons arrive', when: '450' },
+        { text: 'Normans conquer', when: '1066' },
+    ];
+    assert.deepEqual(draw(sketch(box, 'event', events.slice(0, 1)), 'event1'), [
+        'station 389.9,450,14',
+        '450@351.9,461',
+        'Anglo-Saxons arrive@427.9,461',
+    ]);
+    const two = sketch(box, 'event', events);
+    assert.deepEqual(draw(two, 'event1')[0], 'station 406.6,395,14', 'reflowed');
+    assert.deepEqual(draw(two, 'event2').slice(0, 2), [
+        'line M406.6 409V491',
+        'station 406.6,505,14',
+    ]);
+});
+
+test('board layout: parts hang off a bus from the whole, the bus growing with each part', () => {
+    const box = { id: 'r1', kind: 'parts', at: [800, 450], w: 1300, h: 560, whole: 'A neuron' };
+    assert.deepEqual(draw([box], 'r1'), ['station 323.1,450,14', 'A neuron@285.1,461']);
+    const list = [
+        { text: 'Dendrites', note: 'take signals in' },
+        { text: 'Cell body', note: 'keeps it alive' },
+    ];
+    assert.deepEqual(draw(sketch(box, 'part', list.slice(0, 1)), 'part1'), [
+        'bus M337.1 450H403.1M403.1 450V450',
+        'branch M403.1 450H469.1',
+        'station 483.1,450,14',
+        'Dendrites@521.1,461',
+        'take signals in@710.9,460',
+    ]);
+    const two = sketch(box, 'part', list);
+    assert.equal(draw(two, 'part1')[0], 'bus M337.1 450H403.1M403.1 395V505');
+    assert.deepEqual(draw(two, 'part2'), [
+        'branch M403.1 505H469.1',
+        'station 483.1,505,14',
+        'Cell body@521.1,516',
+        'keeps it alive@710.9,515',
+    ]);
+});
+
+test('board layout: an erased child keeps its place while the rest reflow without it', () => {
+    const box = { id: 'y1', kind: 'timeline', at: [800, 450], w: 1000, h: 640 };
+    const ops = sketch(box, 'event', [
+        { text: 'A', when: '1' },
+        { text: 'B', when: '2' },
+    ]);
+    const parts = componentParts(ops, new Set(['event2']));
+    assert.equal(parts.get('event1')[0].y, 450, 'alone again, centred');
+    assert.equal(parts.get('event2')[1].y, 505, 'fading where it was');
+});
