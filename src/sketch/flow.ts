@@ -181,10 +181,13 @@ function down({ names, edges, forward, rank, row, rows, focus }: Graph, width: n
         order = [...names].sort((a, b) => rank.get(a)! - rank.get(b)! || row.get(a)! - row.get(b)!),
         labels = new Map(names.map((n) => [n, wrap(n, room)])),
         notes = new Map(edges.map((e) => [e, e.label ? wrap(e.label, room, noteWidth) : []])),
-        y = new Map<string, number>();
+        y = new Map<string, number>(),
+        // An arrow back up to an earlier step (a loop) has its label under its source's label.
+        loops = (n: string) =>
+            edges.filter((e) => e.a === n && !forward.includes(e)).flatMap((e) => notes.get(e)!);
     // 44px a step, 72px before a rejoin, plus room for the previous label's extra lines and an arrow label.
     order.forEach((n, k) => {
-        const into = edges.filter((e) => e.b === n),
+        const into = forward.filter((e) => e.b === n),
             prev = order[k - 1],
             note = Math.max(0, ...into.map((e) => notes.get(e)!.length));
         y.set(
@@ -194,6 +197,7 @@ function down({ names, edges, forward, rank, row, rows, focus }: Graph, width: n
                 : y.get(prev)! +
                       (into.some((e) => lane(e.a) > lane(n)) ? 72 : 44) +
                       LINE * (labels.get(prev)!.length - 1) +
+                      16 * loops(prev).length +
                       (note ? 20 + 16 * (note - 1) : 0),
         );
     });
@@ -226,10 +230,15 @@ function down({ names, edges, forward, rank, row, rows, focus }: Graph, width: n
                     bottom = Math.max(bottom, cy + 5 + LINE * i);
                     return write(left, cy + 5 + LINE * i, l, tone(p, focus.has(n)));
                 }),
+                ...loops(n).map((l, i) => {
+                    const at = cy + 5 + LINE * (labels.get(n)!.length - 1) + 16 * (i + 1);
+                    bottom = Math.max(bottom, at);
+                    return write(left, at, l, `fill:${p.muted}`, 'sketch-note');
+                }),
             ];
             right = Math.max(
                 right,
-                ...[...labels.get(n)!, ...into.flatMap((r) => notes.get(r.e)!)].map(
+                ...[...labels.get(n)!, ...into.flatMap((r) => notes.get(r.e)!), ...loops(n)].map(
                     (l) => l.length * CHAR,
                 ),
             );

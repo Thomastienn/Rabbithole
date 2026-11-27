@@ -429,46 +429,53 @@ for (const options of ['', '{side=right ratio=wide}'])
         assert.equal(figure.dataset.side, options.includes('right') ? 'right' : undefined);
     });
 
-test('a stacked figure counts its sketch at full height, not as reflowing text', async (t) => {
-    let observers = [];
-    const { container, act, cleanup } = await render(
-        h(
-            'div',
-            null,
-            renderMarkdown(
-                `:::figure\n![A cat](${cat})\n\nShort.\n\n\`\`\`sketch bars\nA: 1\n\`\`\`\n:::`,
+// A sketch can be taller side by side (a flow turns vertical, bars stack), so it counts at its side-by-side height.
+for (const [side, back] of [
+    [200, true],
+    [300, false],
+])
+    test(`a stacked figure counts its ${side}px side-by-side sketch at that height, not as reflowing text`, async (t) => {
+        let observers = [];
+        const { container, act, cleanup } = await render(
+            h(
+                'div',
+                null,
+                renderMarkdown(
+                    `:::figure\n![A cat](${cat})\n\nShort.\n\n\`\`\`sketch bars\nA: 1\n\`\`\`\n:::`,
+                ),
             ),
-        ),
-        (w) => {
-            ui(w);
-            w.ResizeObserver = class {
-                constructor(fn) {
-                    observers.push(fn);
-                }
-                observe() {}
-                disconnect() {}
-            };
-            // Side by side each column is 300px wide; stacked, 600px. The sketch is 200px tall at both.
-            w.HTMLElement.prototype.getBoundingClientRect = function () {
-                const stacked = this.closest('.layout-figure')?.hasAttribute('data-stacked'),
-                    width = stacked ? 600 : 300;
-                if (this.classList.contains('sketch')) return { width, height: 200 };
-                if (this.className === 'layout-text') return { width, height: stacked ? 220 : 400 };
-                if (this.className === 'layout-media')
-                    return { width, height: stacked ? 400 : 200 };
-                return { width: 0, height: 0 };
-            };
-        },
-    );
-    t.after(cleanup);
-    const figure = container.querySelector('.layout-figure'),
-        measure = () => act(async () => observers.forEach((fn) => fn()));
-    await measure();
-    assert.equal(figure.hasAttribute('data-stacked'), true);
-    // Side by side the 20px of prose doubles but the 200px sketch does not: 240px is under 1.5x the media.
-    await measure();
-    assert.equal(figure.hasAttribute('data-stacked'), false);
-});
+            (w) => {
+                ui(w);
+                w.ResizeObserver = class {
+                    constructor(fn) {
+                        observers.push(fn);
+                    }
+                    observe() {}
+                    disconnect() {}
+                };
+                // Side by side each column is 300px wide; stacked, 600px, where the sketch is 200px tall.
+                w.HTMLElement.prototype.getBoundingClientRect = function () {
+                    const stacked = this.closest('.layout-figure')?.hasAttribute('data-stacked'),
+                        width = stacked ? 600 : 300;
+                    if (this.classList.contains('sketch'))
+                        return { width, height: stacked ? 200 : side };
+                    if (this.className === 'layout-text')
+                        return { width, height: stacked ? 220 : 400 };
+                    if (this.className === 'layout-media')
+                        return { width, height: stacked ? 400 : 200 };
+                    return { width: 0, height: 0 };
+                };
+            },
+        );
+        t.after(cleanup);
+        const figure = container.querySelector('.layout-figure'),
+            measure = () => act(async () => observers.forEach((fn) => fn()));
+        await measure();
+        assert.equal(figure.hasAttribute('data-stacked'), true);
+        // Side by side the 20px of prose doubles: 40px plus the sketch is under 1.5x the 200px media only at 200px.
+        await measure();
+        assert.equal(figure.hasAttribute('data-stacked'), !back);
+    });
 
 test('a sided visual sits beside the section after it; without side or on a narrow reply it stays in flow', () => {
     const source = 'Intro.\n\n## Halving\n\nCut the list.\n\nKeep one half.\n\n## Next\n\nAfter.',

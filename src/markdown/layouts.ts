@@ -38,7 +38,7 @@ export const stacks = (text: number, media: number, stacked: boolean) =>
 type FigureProps = HTMLAttributes<HTMLDivElement> & { 'data-side'?: string; 'data-ratio'?: string };
 function Figure(props: FigureProps) {
     const root = useRef<HTMLDivElement>(null),
-        columns = useRef({ text: 0, media: 0 }),
+        columns = useRef({ text: 0, media: 0, sketches: 0 }),
         [stacked, setStacked] = useState(false);
     useLayoutEffect(() => {
         const el = root.current!,
@@ -47,19 +47,19 @@ function Figure(props: FigureProps) {
         const measure = () => {
             const t = text.getBoundingClientRect(),
                 m = media.getBoundingClientRect(),
-                now = el.hasAttribute('data-stacked');
-            if (!now) columns.current = { text: t.width, media: m.width };
-            // Stacked columns are wider, so estimate the side-by-side heights: text reflows shorter, media scales taller.
-            // A sketch keeps its height at any width, so only the rest of the text reflows.
-            const c = columns.current,
+                now = el.hasAttribute('data-stacked'),
                 sketches = [...text.querySelectorAll('.sketch')].reduce(
                     (sum, s) => sum + s.getBoundingClientRect().height,
                     0,
                 );
+            if (!now) columns.current = { text: t.width, media: m.width, sketches };
+            // Stacked columns are wider, so estimate the side-by-side heights: text reflows shorter, media scales taller.
+            // A sketch does not reflow like text, so it counts at the height it last had side by side.
+            const c = columns.current;
             setStacked(
                 now
                     ? stacks(
-                          ((t.height - sketches) * t.width) / c.text + sketches,
+                          ((t.height - sketches) * t.width) / c.text + c.sketches,
                           (m.height * c.media) / m.width,
                           true,
                       )
