@@ -135,6 +135,20 @@ function pacedClock(real: Clock) {
     };
 }
 
+// Pauses between sentences, in board time (docs/board-sketches-spec.md, Pacing): a beat after each sentence, and a
+// longer one before a sentence that opens a page or starts a component; the longer applies, never the sum.
+const BEAT_MS = 300;
+const CHANGE_MS = 900;
+// The board's component kinds; test/board/player.test.mjs keeps it equal to COMPONENTS in server/board/components.mjs.
+export const COMPONENT_KINDS = new Set(['axes', 'numberline', 'flow', 'tree', 'table', 'venn']);
+const pauseBefore = (sentence: Sentence) =>
+    sentence.ops?.some(
+        (op) =>
+            op.kind === 'page' || op.kind === 'open' || (COMPONENT_KINDS.has(op.kind) && !op.on),
+    )
+        ? CHANGE_MS
+        : BEAT_MS;
+
 // An estimated ten characters per second at 1× plays at fifteen at the default 1.5×.
 const CHARS_PER_SECOND = 15;
 
@@ -155,6 +169,9 @@ export function boardPlayer(
         current: Sentence | undefined,
         timers: unknown[] = [],
         ending: unknown,
+        // When the last sentence ended, and the timer holding the next one for its pause.
+        ended: number | undefined,
+        gap: unknown,
         playing: string | undefined,
         // The sentence on show: its ops and when each entered and ends, so a stop can finish the one mid-entry.
         drawing: { ops: Op[]; entries: { start: number; end: number }[] } | undefined;
@@ -163,7 +180,15 @@ export function boardPlayer(
         const sentence = queue[0];
         if (current || !sentence || paused) return;
         const audio = pending.get(sentence.id);
-        if (audio === 'waiting') return;
+        if (audio === 'waiting' || gap) return;
+        const due = ended === undefined ? 0 : ended + pauseBefore(sentence) - clock.now();
+        if (due > 0) {
+            gap = clock.setTimeout(() => {
+                gap = undefined;
+                next();
+            }, due);
+            return;
+        }
         queue.shift();
         pending.delete(sentence.id);
         current = sentence;
@@ -205,6 +230,7 @@ export function boardPlayer(
             clock.clearTimeout(ending);
             current = undefined;
             playing = undefined;
+            ended = clock.now();
             report(sentence, 'end');
             next();
         };
@@ -291,6 +317,8 @@ export function boardPlayer(
             clock.pause(false);
             timers.forEach(clock.clearTimeout);
             clock.clearTimeout(ending);
+            clock.clearTimeout(gap);
+            gap = ended = undefined;
             voice?.stop();
             queue = [];
             current = undefined;
