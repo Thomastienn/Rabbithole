@@ -68,6 +68,7 @@ const RX = 160,
     ITEM_GAP = 6,
     // shortcut: wraps at 8px per character as the mockup does, fits the rings at flow's 7px; measure text if labels clip.
     VENN_CHAR = 8;
+const vennWidth = (s: string) => s.length * VENN_CHAR;
 
 export function venn(lines: Line[], p: Palette): Drawing {
     const sets: { name: string; focus: boolean; items: string[] }[] = [],
@@ -95,7 +96,7 @@ export function venn(lines: Line[], p: Palette): Drawing {
     // Each stack is centred on the rings' middle; a line's top is measured from it.
     let ry = 80;
     const laid = stacks.map((s) => {
-        const blocks = s.items.map((raw) => wrap(plain(raw), s.at, VENN_CHAR));
+        const blocks = s.items.map((raw) => wrap(plain(raw), s.at, vennWidth));
         let top =
             -(blocks.flat().length * ITEM_LINE + Math.max(blocks.length - 1, 0) * ITEM_GAP) / 2;
         const tops = blocks.map((block) => {
@@ -117,7 +118,7 @@ export function venn(lines: Line[], p: Palette): Drawing {
         return { ...s, blocks, tops };
     });
     ry = Math.round(ry);
-    const names = [left, right].map((s) => wrap(s.name, 224, VENN_CHAR)),
+    const names = [left, right].map((s) => wrap(s.name, 224, vennWidth)),
         cy = 16 + 18 * (Math.max(...names.map((n) => n.length)) - 1) + 22 + ry;
     const text = (x: number, y: number, words: string, focus: boolean, note = false) =>
         `<text${note && !focus ? ' class="sketch-note"' : ''} x="${x}" y="${y}" style="fill:${focus ? p.focus : note ? p.muted : p.ink}${focus ? ';font-weight:600' : ''}">${esc(words)}</text>`;
