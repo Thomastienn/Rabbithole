@@ -197,6 +197,88 @@
     color: var(--color-text-secondary);
 }
 
+/* Transcript rail (mockup Rabbithole-brd.15): 300px right of the board, spanning the field, caption line and composer.
+   Roles: --seam border, --up popover, --mut text-secondary, --w rabbithole-paper. */
+.board-column {
+    grid-template-columns: minmax(0, 1fr) 300px;
+}
+.board-column.rail-shut {
+    grid-template-columns: minmax(0, 1fr) 44px;
+}
+.board-column > :not(.board-rail) {
+    grid-column: 1;
+}
+.board-rail {
+    grid-column: 2;
+    grid-row: 1 / 4;
+    position: relative;
+    min-height: 0;
+    overflow: hidden;
+    border-left: 1px solid var(--color-border);
+}
+.board-rail-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 44px;
+    padding: 0 4px 0 16px;
+    border-bottom: 1px solid var(--color-border);
+    font: 12px/1.2 var(--font-family-body);
+    color: var(--color-text-secondary);
+}
+.board-rail-title {
+    flex: 1;
+    font: 600 12px/1.2 var(--font-family-heading);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+}
+.board-rail-list {
+    position: absolute;
+    inset: 44px 0 0;
+    overflow: auto;
+    padding: 16px 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+/* Short transcripts sit at the bottom, by the newest line, and still scroll when long. */
+.board-rail-list > :first-child {
+    margin-top: auto;
+}
+.board-rail-question {
+    align-self: flex-end;
+    max-width: 236px;
+    padding: 8px 12px;
+    border-radius: var(--radius-element);
+    background: var(--color-background-popover);
+    font: 14px/1.4 var(--font-family-body);
+    color: var(--color-text-primary);
+    overflow-wrap: anywhere;
+}
+.board-rail-reply .reply-md {
+    font: 15px/1.55 var(--rabbithole-font-reading);
+    color: var(--color-text-secondary);
+}
+::highlight(board-now) {
+    color: var(--rabbithole-paper);
+}
+.board-rail.shut {
+    display: flex;
+    justify-content: center;
+    padding-top: 4px;
+}
+/* The chat's Ask about selection and passage box, inline at the rail's width. */
+.board-rail .selection-action {
+    position: static;
+    margin-top: 0;
+    transform: none;
+    animation: none;
+}
+.board-rail .passage-box,
+.board-rail form {
+    width: 100%;
+}
+
 /* The chat composer, centred, without model, effort or attach controls; its tools hold the mic. */
 .board-foot {
     padding: 8px 24px 20px;

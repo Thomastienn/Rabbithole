@@ -33,12 +33,15 @@ export const compactionPrompt = (parent, passage) =>
 
 // The branch anchor from a request: a completed tutor passage or a tagged part of a ready visual; null when invalid.
 // live also takes a passage of the streaming reply, in its text saved so far.
+// A board reply left halfway counts as completed: its saved text is exactly what was said.
 export const anchorOf = (tree, body, live = false) => {
     const source = tree.messages.find(
         (m) =>
             m.id === body?.messageId &&
             m.role === 'assistant' &&
-            (m.status === 'completed' || (live && m.status === 'streaming')),
+            (m.status === 'completed' ||
+                (m.board && m.status === 'interrupted') ||
+                (live && m.status === 'streaming')),
     );
     let anchor = body;
     if (body && 'line' in body) {

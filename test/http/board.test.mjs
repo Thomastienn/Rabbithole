@@ -183,6 +183,7 @@ test('board: chat cannot start before the queued board captions finish or are st
     const board = connect();
     await opened(board.ws);
     board.send({ type: 'ask', text: 'Why?' });
+    const thinking = await board.next('state');
     const first = await board.next('sentence');
     await board.next('sentence');
     board.send({ type: 'progress', sentence: first.id, phase: 'start' });
@@ -335,6 +336,7 @@ test('board: leaving mid-reply saves only shown sentences and keeps any usage th
     process.hold = new Promise(() => {}); // still generating when the learner leaves
     process.interruptedUsage = { input: 10, output: 14, cacheRead: 5, thinking: 3 };
     board.send({ type: 'ask', text: 'Why?' });
+    const thinking = await board.next('state');
     const first = await board.next('sentence');
     const second = await board.next('sentence');
     board.send({ type: 'progress', sentence: first.id, phase: 'start' });
@@ -353,6 +355,19 @@ test('board: leaving mid-reply saves only shown sentences and keeps any usage th
         { text: 'First idea.\nSecond idea.', status: 'interrupted', stopped: 'learner' },
     );
     assert.deepEqual(reply.snapshot, [...first.ops, ...second.ops]);
+    // The transcript rail branches from what was said, by the ids the thinking state carried.
+    assert.deepEqual(
+        [thinking.user, thinking.reply],
+        messages(env, id).map((m) => m.id),
+    );
+    const branched = await env.post(`/api/trees/${id}/branches`, {
+        messageId: thinking.reply,
+        start: 12,
+        end: 18,
+        text: 'Second',
+        question: 'Why second?',
+    });
+    assert.equal(branched.status, 201);
     const calls = env.store.usageEvents().events.filter((event) => event.task === 'chat');
     assert.deepEqual(
         calls.map(({ tree, output, reasoning }) => [tree, output, reasoning]),
@@ -392,6 +407,7 @@ test('board: a process that ends on its own leaves a notice and the reply up to 
     const dies = Promise.withResolvers();
     provider.boards[0].hold = dies.promise; // the process dies while the first caption shows
     board.send({ type: 'ask', text: 'Why?' });
+    const thinking = await board.next('state');
     const first = await board.next('sentence');
     await board.next('audio');
     const { signal, chunk } = await speech.promise;

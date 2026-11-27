@@ -30,7 +30,7 @@ function strokeImage(points) {
 
 // One board session per open board: the conversation's own model process, its turns and their saving.
 // Up: { type: 'ask', text }, { type: 'stroke', points } as the learner finishes a pen stroke, { type: 'progress', sentence, phase: 'start' | 'end' } as each caption shows and ends, { type: 'leave' }.
-// Down: { type: 'state', state: 'idle' | 'thinking' | 'speaking' }, { type: 'notice', notice },
+// Down: { type: 'state', state: 'idle' | 'thinking' | 'speaking' }, thinking with the turn's user and reply message ids, { type: 'notice', notice },
 // { type: 'sentence', id, text, ops, voiced } with the drawable ops written under it (server/board/ops.mjs),
 // then, when voiced, its speech as binary frames (one byte of id length, the id, the audio) and { type: 'audio-end', id },
 // { type: 'stroke', item, mark } back for each pen stroke, with what it marks or null,
@@ -342,7 +342,8 @@ export function boardSession(ctx, id, socket) {
         };
         turn = current;
         speech?.warm();
-        send({ type: 'state', state: 'thinking' });
+        // The ids let the transcript rail branch from this turn's reply.
+        send({ type: 'state', state: 'thinking', user, reply });
         current.job = ctx.jobs.start(
             'reply',
             id,

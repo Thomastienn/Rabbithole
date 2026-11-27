@@ -9,6 +9,8 @@ export type BoardState = 'idle' | 'thinking' | 'speaking';
 type Caption = { text: string; muted: boolean };
 // A drawn board item, how long its entry takes and, once erased, how long its fade takes.
 export type Drawn = { op: Op; ms: number; erased?: number };
+// A question asked on this board and the sentences of its reply shown so far, under their saved message ids.
+export type Turn = { user: string; reply: string; question: string; said: string[] };
 
 // One open board: its socket to the board session, the caption line and the session state.
 export function useBoard(conversation: string, messages: Message[], reload: () => void) {
@@ -26,6 +28,8 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
     const restored = latest && { text: latest.text.trim().split('\n').at(-1) ?? '', muted: true };
     const [speed, setSpeed] = useState(savedBoardSpeed);
     const [paused, setPaused] = useState(false);
+    const [turns, setTurns] = useState<Turn[]>([]);
+    const question = useRef('');
     const socket = useRef<WebSocket>(undefined);
     const playing = useRef<ReturnType<typeof boardPlayer>>(undefined);
     useEffect(() => {
@@ -48,7 +52,14 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
             );
         };
         const player = boardPlayer(
-            (s) => setCaption({ text: s.text, muted: false }),
+            (s) => {
+                setCaption({ text: s.text, muted: false });
+                setTurns((all) =>
+                    all.map((t, i) =>
+                        i === all.length - 1 ? { ...t, said: [...t.said, s.text] } : t,
+                    ),
+                );
+            },
             (op, ms) =>
                 op.kind === 'erase'
                     ? erase(op.ids ?? [], ms)
@@ -82,6 +93,11 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
             const m = JSON.parse(event.data);
             if (m.type === 'state') {
                 setState(m.state);
+                if (m.reply)
+                    setTurns((all) => [
+                        ...all,
+                        { user: m.user, reply: m.reply, question: question.current, said: [] },
+                    ]);
                 // Idle ends the reply: anything not yet shown is dropped and the last caption is held, muted.
                 if (m.state === 'idle') {
                     player.stop();
@@ -122,6 +138,7 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         const ws = socket.current;
         if (ws?.readyState !== WebSocket.OPEN) return false;
         ws.send(JSON.stringify({ type: 'ask', text }));
+        question.current = text;
         setAsked(true);
         setMarks(0);
         setNotice(undefined);
@@ -144,8 +161,24 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         setPaused(on);
         playing.current?.pause(on);
     };
+    // Ends the session now; resolves once the server has saved the reply up to the sentence shown and freed the conversation.
+    const leave = () =>
+        new Promise<void>((done) => {
+            const ws = socket.current;
+            if (ws?.readyState !== WebSocket.OPEN) return done();
+            const closed = ws.onclose;
+            const timeout = setTimeout(() => ws.close(), 2000);
+            ws.onclose = (e) => {
+                clearTimeout(timeout);
+                closed?.call(ws, e);
+                done();
+            };
+            ws.send(JSON.stringify({ type: 'leave' }));
+        });
     return {
         state,
+        turns,
+        leave,
         speed,
         paused,
         changeSpeed,
