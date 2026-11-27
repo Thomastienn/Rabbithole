@@ -29,6 +29,7 @@ const THEME: Palette = {
     ink: 'var(--color-text-primary)',
     muted: 'var(--color-text-secondary)',
     seam: 'var(--color-border-emphasized)',
+    hairline: 'var(--color-border)',
     focus: 'var(--rabbithole-paper)',
 };
 
