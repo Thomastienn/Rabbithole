@@ -4,39 +4,28 @@ import {
     DEFAULT_TUTOR_STYLE,
     LOOKUP_RULE,
     MEMORY_RULE,
-    TUTOR_RULES,
-    VERDICT_RULE,
     TUTOR_SKILLS,
-    SKETCH_RULE,
-    VISUAL_FREQUENCY,
     tutorSystem,
 } from '../../server/media/tutor-instructions.mjs';
 import { diagramReply } from '../../server/media/reply-parser.mjs';
 import { TEACHING_SKILL, HUMANIZER_SKILL, ADHD_SKILL } from '../../server/media/skills.mjs';
 import { DISCUSSION_RULE } from '../../server/media/discussions.mjs';
-import { NOTES_RULE } from '../../server/suggestions.mjs';
 
 test('tutor prompt puts the fixed rules, then the skills, then the tutor style, and keeps the per-tree override', () => {
-    const rules =
-        TUTOR_RULES +
-        SKETCH_RULE +
-        VISUAL_FREQUENCY.often +
-        VERDICT_RULE +
-        DISCUSSION_RULE +
-        NOTES_RULE +
-        TUTOR_SKILLS;
+    const prompt = tutorSystem({ tutorStyle: 'Mine.' });
+    assert.ok(prompt.endsWith('Mine.'));
+    const rules = prompt.slice(0, -'Mine.'.length);
     for (const tutorStyle of [undefined, null, '', '  \n '])
         assert.equal(tutorSystem({ tutorStyle }), rules + DEFAULT_TUTOR_STYLE, `${tutorStyle}`);
     assert.equal(
         tutorSystem({ tutorStyle: '  Teach with sports analogies. ' }),
         rules + 'Teach with sports analogies.',
     );
-    const prompt = tutorSystem({ tutorStyle: 'Mine.' });
-    const at = [TEACHING_SKILL, HUMANIZER_SKILL, ADHD_SKILL, 'Mine.'].map((part) =>
-        prompt.indexOf(part),
+    const at = ['\n\nVisual frequency:', TEACHING_SKILL, HUMANIZER_SKILL, ADHD_SKILL, 'Mine.'].map(
+        (part) => prompt.indexOf(part),
     );
     assert.ok(
-        at[0] > TUTOR_RULES.length && at[0] < at[1] && at[1] < at[2] && at[2] < at[3],
+        at.every((position, index) => position > (at[index - 1] ?? -1)),
         `${at}`,
     );
     const branch = { snapshot: 'Frozen fact', text: 'Passage' };
@@ -60,42 +49,37 @@ test('every chat prompt carries the i-have-adhd skill once: app tools, text tool
         );
 });
 
-test('the visual frequency sentence follows the setting after the unchanged visual and video rules', () => {
-    for (const [visualFrequency, sentence] of Object.entries(VISUAL_FREQUENCY))
-        assert.ok(
-            tutorSystem({ visualFrequency }).startsWith(TUTOR_RULES + SKETCH_RULE + sentence),
-        );
-});
-
-test('the sketch rule with its 17 kinds sits before the visual frequency sentence, which governs sketches too', async () => {
+test('each chat path puts the sketch syntax between visual guidance and the selected frequency', async () => {
     const { APP_TOOLS } = await import('../../server/http/app-calls.mjs');
     const kinds =
-        'flow cycle stack tree timeline bars compare parts line venn plot sequence quadrant pie equation grid spectrum';
-    for (const kind of kinds.split(' ')) assert.ok(SKETCH_RULE.includes(`\n- ${kind}: `), kind);
-    assert.ok(SKETCH_RULE.includes('```sketch bars\ntitle: Why ice floats\n'));
-    const prompt = tutorSystem({ tools: APP_TOOLS });
-    assert.ok(prompt.includes(SKETCH_RULE + VISUAL_FREQUENCY.often));
-    assert.ok(
-        prompt.includes(
-            'Draw a sketch in a ```sketch <kind> block; request a visual with a visual marker, a video with make_video and a discussion with a discussion marker.',
-        ),
-    );
-    assert.ok(!prompt.includes('never write a fenced media block'));
-    assert.ok(
-        VISUAL_FREQUENCY.often.includes(
-            'Sketches sit alongside these visuals, so draw visuals as you normally would and add sketches wherever a section has a shape.',
-        ),
-    );
-    assert.ok(
-        VISUAL_FREQUENCY.sparing.includes('draw a visual or a sketch only where it clearly helps'),
-    );
-    assert.ok(
-        VISUAL_FREQUENCY['only-asked'].includes(
-            'draw no visual or sketch unless the learner asked for one',
-        ),
-    );
-    for (const sentence of Object.values(VISUAL_FREQUENCY))
-        assert.ok(sentence.includes('Whenever the learner asks for a sketch, draw one.'));
+        'flow cycle stack tree timeline bars compare parts line venn plot sequence quadrant pie equation grid spectrum'.split(
+            ' ',
+        );
+    for (const tree of [{ tools: APP_TOOLS }, { textTools: APP_TOOLS }, {}]) {
+        const settings = ['often', 'sparing', 'only-asked'];
+        const frequencies = settings.map((visualFrequency) => {
+            const prompt = tutorSystem({ ...tree, visualFrequency });
+            if (visualFrequency === 'often') assert.equal(prompt, tutorSystem(tree));
+            const [guidance, sketches, frequency] = prompt.split(
+                /\n\n(?:Sketches|Visual frequency): /,
+            );
+            if (tree.tools || tree.textTools) {
+                assert.ok(guidance.includes('[[visual:'));
+                assert.ok(guidance.includes('```sketch <kind>'));
+            } else {
+                assert.ok(guidance.includes('rabbithole-visual'));
+            }
+            assert.match(sketches, /^```sketch bars\n[\s\S]+?\n```$/m);
+            assert.deepEqual(
+                [...sketches.matchAll(/^- (\w+): /gm)].map(([, kind]) => kind),
+                kinds,
+            );
+            const sentence = frequency?.split('\n', 1)[0];
+            assert.match(sentence, /\bsketch\w*\b/i);
+            return sentence;
+        });
+        assert.equal(new Set(frequencies).size, settings.length);
+    }
 });
 
 test('the chat prompt carries the whole-graph neighbourhood as data and omits an empty set', () => {
@@ -182,7 +166,7 @@ test('the tool-path tutor prompt stays within the budget before learner data', a
     const text = tutorSystem({ textTools: APP_TOOLS }).replace(definitions, '');
     // The visual and discussion marker rules replaced show_visual and start_discussion (ADR 0018), so they count against the
     // tool-path total at 3b6b9d0: that prompt plus its app tool definitions.
-    // The bold-term suggestion sentence (docs/reply-reading-polish-spec.md) and the visual frequency sentence are allowed on top.
+    // The bold-term suggestion sentence (docs/reply-reading-polish-spec.md) is allowed on top.
     const BOLD =
         'When you would bold a term because it matters, the learner may not fully understand it yet, so mark it as a suggestion instead of only bolding it. ';
     // The familiarity-first teaching guidance and the now-and-then analogy wording (docs/plainer-teaching-concept-marks-and-return-to-passage-spec.md)
@@ -190,16 +174,8 @@ test('the tool-path tutor prompt stays within the budget before learner data', a
     const TEACHING = 474 + 51;
     // The concept mark sentences (ADR 0023) are allowed on top: 239 characters.
     // The i-have-adhd skill (Rabbithole-adh.1) is allowed on top, as written.
-    const MARKER_BEFORE =
-        9987 +
-        6121 +
-        BOLD.length +
-        TEACHING +
-        239 +
-        SKETCH_RULE.length +
-        VISUAL_FREQUENCY.often.length +
-        ADHD_SKILL.length +
-        2;
+    // The accepted sketch rule and Often guidance add 3,083 characters.
+    const MARKER_BEFORE = 9987 + 6121 + BOLD.length + TEACHING + 239 + 3083 + ADHD_SKILL.length + 2;
     for (const prompt of [native, text])
         assert.ok(prompt.length + definitions.length <= MARKER_BEFORE, `${prompt.length}`);
     assert.ok(native.includes(MEMORY_RULE));
