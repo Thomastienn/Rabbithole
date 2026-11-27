@@ -115,7 +115,7 @@ jobs:
       # The updater compares versions, so every build gets a newer one without a hand bump.
       - name: Stamp the version
         working-directory: desktop
-        run: npm version "1.0.${{ github.run_number }}" --no-git-tag-version
+        run: npm version "1.1.${{ github.run_number }}" --no-git-tag-version
       - run: npm run desktop:build
       # Opens the AppImage's own output without FUSE or a display; bubblewrap is the sandbox the learner installs.
       - name: Smoke-test the AppImage
@@ -165,7 +165,7 @@ jobs:
       # The updater compares versions, so every build gets a newer one without a hand bump.
       - name: Stamp the version
         working-directory: desktop
-        run: npm version "1.0.${{ github.run_number }}" --no-git-tag-version
+        run: npm version "1.1.${{ github.run_number }}" --no-git-tag-version
       - run: npm run desktop:build
       # Installs per user as a learner would; runners have admin rights, so the sandbox setup's UAC prompt passes.
       - name: Smoke-test the installer
@@ -229,7 +229,7 @@ jobs:
       contents: write
     env:
       GH_TOKEN: ${{ github.token }}
-      TAG: v1.0.${{ github.run_number }}
+      TAG: v1.1.${{ github.run_number }}
     steps:
       # The commit the other jobs built, with history and tags to compare the sandbox against its pinned release.
       - uses: actions/checkout@v4
@@ -267,7 +267,7 @@ jobs:
           git push origin "refs/tags/$TAG"
           # A draft first: if any later step fails, nothing is published.
           gh release create "$TAG" "$RUNNER_TEMP"/installers/* --repo "${{ github.repository }}" --verify-tag --draft \
-            --title "Rabbithole 1.0.${{ github.run_number }}" \
+            --title "Rabbithole 1.1.${{ github.run_number }}" \
             --notes "Unsigned AppImage and Windows installer from $built."
           if [ -n "$moved" ]; then
             # If master moved during the run, the same pin change lands on top of it as its own commit.
