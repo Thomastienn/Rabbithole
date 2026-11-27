@@ -7,6 +7,7 @@ import {
     TUTOR_RULES,
     VERDICT_RULE,
     TUTOR_SKILLS,
+    SKETCH_RULE,
     VISUAL_FREQUENCY,
     tutorSystem,
 } from '../../server/media/tutor-instructions.mjs';
@@ -18,6 +19,7 @@ import { NOTES_RULE } from '../../server/suggestions.mjs';
 test('tutor prompt puts the fixed rules, then the skills, then the tutor style, and keeps the per-tree override', () => {
     const rules =
         TUTOR_RULES +
+        SKETCH_RULE +
         VISUAL_FREQUENCY.often +
         VERDICT_RULE +
         DISCUSSION_RULE +
@@ -60,7 +62,40 @@ test('every chat prompt carries the i-have-adhd skill once: app tools, text tool
 
 test('the visual frequency sentence follows the setting after the unchanged visual and video rules', () => {
     for (const [visualFrequency, sentence] of Object.entries(VISUAL_FREQUENCY))
-        assert.ok(tutorSystem({ visualFrequency }).startsWith(TUTOR_RULES + sentence));
+        assert.ok(
+            tutorSystem({ visualFrequency }).startsWith(TUTOR_RULES + SKETCH_RULE + sentence),
+        );
+});
+
+test('the sketch rule with its 17 kinds sits before the visual frequency sentence, which governs sketches too', async () => {
+    const { APP_TOOLS } = await import('../../server/http/app-calls.mjs');
+    const kinds =
+        'flow cycle stack tree timeline bars compare parts line venn plot sequence quadrant pie equation grid spectrum';
+    for (const kind of kinds.split(' ')) assert.ok(SKETCH_RULE.includes(`\n- ${kind}: `), kind);
+    assert.ok(SKETCH_RULE.includes('```sketch bars\ntitle: Why ice floats\n'));
+    const prompt = tutorSystem({ tools: APP_TOOLS });
+    assert.ok(prompt.includes(SKETCH_RULE + VISUAL_FREQUENCY.often));
+    assert.ok(
+        prompt.includes(
+            'Draw a sketch in a ```sketch <kind> block; request a visual with a visual marker, a video with make_video and a discussion with a discussion marker.',
+        ),
+    );
+    assert.ok(!prompt.includes('never write a fenced media block'));
+    assert.ok(
+        VISUAL_FREQUENCY.often.includes(
+            'Sketches sit alongside these visuals, so draw visuals as you normally would and add sketches wherever a section has a shape.',
+        ),
+    );
+    assert.ok(
+        VISUAL_FREQUENCY.sparing.includes('draw a visual or a sketch only where it clearly helps'),
+    );
+    assert.ok(
+        VISUAL_FREQUENCY['only-asked'].includes(
+            'draw no visual or sketch unless the learner asked for one',
+        ),
+    );
+    for (const sentence of Object.values(VISUAL_FREQUENCY))
+        assert.ok(sentence.includes('Whenever the learner asks for a sketch, draw one.'));
 });
 
 test('the chat prompt carries the whole-graph neighbourhood as data and omits an empty set', () => {
@@ -161,6 +196,7 @@ test('the tool-path tutor prompt stays within the budget before learner data', a
         BOLD.length +
         TEACHING +
         239 +
+        SKETCH_RULE.length +
         VISUAL_FREQUENCY.often.length +
         ADHD_SKILL.length +
         2;
