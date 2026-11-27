@@ -131,6 +131,41 @@
         margin-bottom: 0;
     }
 }
+/* Stack (mockup Rabbithole-skt.2): one layer per row, each on a 3px shelf as wide as the widest layer. */
+.sketch .sketch-stack {
+    display: grid;
+    grid-template-columns: fit-content(288px) auto;
+    column-gap: 16px;
+    width: fit-content;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font: 14px/20px var(--rabbithole-font-reading);
+}
+.sketch .sketch-stack li {
+    position: relative;
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+    align-items: baseline;
+    margin: 0;
+    padding: 5px 0 9px;
+}
+.sketch .sketch-stack li::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0;
+    height: 3px;
+    border-radius: var(--radius-full);
+    background: var(--shelf);
+}
+.sketch .sketch-stack b {
+    font-weight: 400;
+}
+.sketch .sketch-stack span {
+    font-size: 13px;
+}
 .sketch .sketch-start {
     text-anchor: start;
 }
@@ -268,7 +303,7 @@
     opacity: 0.6;
 }
 @media (prefers-reduced-motion: no-preference) {
-    .sketch-build :is(svg > *, .sketch-bars > *) {
+    .sketch-build :is(svg > *, .sketch-bars > *, .sketch-stack > *) {
         animation: sketch-in var(--fade) ease-out both;
         animation-delay: calc(var(--i, 0) * var(--step));
     }

@@ -3,15 +3,17 @@
 
 import { equation, grid, sequence } from './maths.ts';
 import { plot } from './plot.ts';
+import { cycle, parts, stack, timeline, tree } from './structure.ts';
 
 // The theme colours by role; the app passes CSS variables, tests pass hex values.
 export type Palette = { ground: string; ink: string; muted: string; seam: string; focus: string };
 // One per drawn element. `text` is what a screen reader hears for it.
-export type SketchItem = { label: string; focus: boolean; text: string };
+// `level` nests a tree's items for a screen reader; other kinds leave it out.
+export type SketchItem = { label: string; focus: boolean; text: string; level?: number };
 // `about` is the frame of reference a screen reader hears after the title, such as a line's range.
 export type Sketch = { title: string; about: string; items: SketchItem[]; markup: string };
 export type Drawing = { items: SketchItem[]; markup: string; about?: string } | { error: string };
-export type Line = { text: string; at: number };
+export type Line = { text: string; at: number; indent: number };
 // A kind's drawing gets its item lines and, in the order its KINDS entry names them, its head lines.
 type Draw = (lines: Line[], palette: Palette, heads: Line[], width: number) => Drawing;
 
@@ -34,7 +36,11 @@ export function drawSketch(
     const [draw, syntaxes = []] = entry;
     const lines = body
         .split(/\r\n?|\n/)
-        .map((text, i) => ({ text: text.trim(), at: i + 1 }))
+        .map((text, i) => ({
+            text: text.trim(),
+            at: i + 1,
+            indent: /^\s*/.exec(text)![0].replace(/\t/g, '  ').length,
+        }))
         .filter((l) => l.text);
     const title = lines[0] && /^title\s*:/i.test(lines[0].text) ? lines.shift()! : undefined;
     if (!lines.length) return { error: 'empty body' };
@@ -60,22 +66,27 @@ export function drawSketch(
 
 // Flow: a small line diagram. Each rank is a column; a second child forks onto the next row down.
 // A box too narrow for its columns turns it vertical: ranks run down, rows become lanes.
-const ROW = 84,
+export const WIDTH = 640,
+    ROW = 84,
     LINE = 18,
     // shortcut: label width is estimated at 7px per character of the 14px reading face and 6.4px of the
     // 13px arrow labels; measure text if labels clip.
     CHAR = 7,
-    NOTE = 6.4;
+    noteWidth = (s: string) => s.length * 6.4;
 
-function wrap(label: string, width: number, char = CHAR) {
-    const lines: string[] = [],
-        most = Math.max(Math.floor(width / char), 1);
+export function wrap(label: string, width: number, measure = (s: string) => s.length * CHAR) {
+    const lines: string[] = [];
     // A word longer than its line breaks inside the word.
-    for (const word of label
-        .split(/\s+/)
-        .flatMap((w) => w.match(new RegExp(`.{1,${most}}`, 'gu'))!)) {
+    const words = label.split(/\s+/).flatMap((word) => {
+        const parts = [''];
+        for (const c of word)
+            if (parts.at(-1) && measure(parts.at(-1) + c) > width) parts.push(c);
+            else parts[parts.length - 1] += c;
+        return parts;
+    });
+    for (const word of words) {
         const last = lines.at(-1);
-        if (last !== undefined && (last.length + 1 + word.length) * char <= width)
+        if (last !== undefined && measure(`${last} ${word}`) <= width)
             lines[lines.length - 1] = `${last} ${word}`;
         else lines.push(word);
     }
@@ -151,7 +162,7 @@ function flow(lines: Line[], p: Palette, _heads: Line[], width: number): Drawing
             0,
             ...edges
                 .filter((e) => e.label && row.get(e.b) === 0)
-                .map((e) => wrap(e.label, column - 24, NOTE).length),
+                .map((e) => wrap(e.label, column - 24, noteWidth).length),
         ),
         notesAbove = noteLines > 0,
         top = 24 + 16 * noteLines,
@@ -193,7 +204,7 @@ function flow(lines: Line[], p: Palette, _heads: Line[], width: number): Drawing
         const notes = runs
             .filter((r) => r.e.label && r.e.b === n)
             .flatMap((r) => {
-                const words = wrap(r.e.label, column - 24, NOTE);
+                const words = wrap(r.e.label, column - 24, noteWidth);
                 return words.map((l, i) =>
                     write(
                         (r.from + x(r.e.b)) / 2,
@@ -209,7 +220,7 @@ function flow(lines: Line[], p: Palette, _heads: Line[], width: number): Drawing
             bottom = Math.max(bottom, baseline);
             return write(x(n), baseline, l, tone(p, focus.has(n)));
         });
-        return group(k, notes.join('') + station(x(n), y(n), focus.has(n), p) + labels.join(''));
+        return group(k, notes.join('') + ring(x(n), y(n), focus.has(n), p) + labels.join(''));
     });
     const markup =
         `<svg class="sketch-flow" viewBox="0 0 ${width} ${bottom + (notesAbove ? 10 : 8)}">` +
@@ -241,7 +252,7 @@ function down({ names, edges, forward, rank, row, rows, focus }: Graph, width: n
         room = width - left,
         order = [...names].sort((a, b) => rank.get(a)! - rank.get(b)! || row.get(a)! - row.get(b)!),
         labels = new Map(names.map((n) => [n, wrap(n, room)])),
-        notes = new Map(edges.map((e) => [e, e.label ? wrap(e.label, room, NOTE) : []])),
+        notes = new Map(edges.map((e) => [e, e.label ? wrap(e.label, room, noteWidth) : []])),
         y = new Map<string, number>();
     // 44px a step, 72px before a rejoin, plus room for the previous label's extra lines and an arrow label.
     order.forEach((n, k) => {
@@ -294,7 +305,7 @@ function down({ names, edges, forward, rank, row, rows, focus }: Graph, width: n
                     (l) => l.length * CHAR,
                 ),
             );
-            return group(k, station(cx, cy, focus.has(n), p) + lines.join(''));
+            return group(k, ring(cx, cy, focus.has(n), p) + lines.join(''));
         });
     // Every station has a label, so the last baseline sets the height.
     const w = Math.min(width, left + right),
@@ -366,14 +377,14 @@ const write = (x: number, y: number, words: string, style: string, cls = '') =>
     `<text${cls ? ` class="${cls}"` : ''} x="${at(x)}" y="${at(y)}" style="${style}">${esc(words)}</text>`;
 const tone = (p: Palette, focus: boolean) =>
     focus ? `fill:${p.focus};font-weight:600` : `fill:${p.ink}`;
-const station = (x: number, y: number, focus: boolean, p: Palette) =>
+export const ring = (x: number, y: number, focus: boolean, p: Palette) =>
     focus
         ? `<circle cx="${at(x)}" cy="${at(y)}" r="7" style="fill:${p.focus};stroke:${p.focus}"/>`
         : `<circle cx="${at(x)}" cy="${at(y)}" r="6" style="fill:${p.ground};stroke:${p.muted}"/>`;
 const leader = (x: number, from: number, to: number, p: Palette) =>
     `<path class="sketch-leader" style="stroke:${p.seam}" d="M${at(x)} ${at(from)}V${at(to)}"/>`;
 // One group per item, in the items' order; `--i` is its place in the sketch's build.
-const group = (k: number, parts: string) => `<g style="--i:${k}">${parts}</g>`;
+export const group = (k: number, parts: string) => `<g style="--i:${k}">${parts}</g>`;
 const withFocus = (parts: string[], focus: boolean) =>
     [...parts, ...(focus ? ['focus'] : [])].join(', ');
 
@@ -429,7 +440,7 @@ function line(lines: Line[], p: Palette, [range]: Line[]): Drawing {
         return group(
             i,
             (o.row ? leader(o.x, top + 6, axis - 9, p) : '') +
-                station(o.x, axis, v.focus, p) +
+                ring(o.x, axis, v.focus, p) +
                 write(o.c, top, v.label, tone(p, v.focus)) +
                 write(span(o.x, v.value).c, under, v.value, `fill:${p.muted}`, 'sketch-note'),
         );
@@ -512,7 +523,7 @@ function quadrant(lines: Line[], p: Palette, heads: Line[]): Drawing {
                     n.k,
                     (j
                         ? ''
-                        : station(
+                        : ring(
                               X(s.x),
                               Y(s.y),
                               s.names.some((m) => m.focus),
@@ -594,9 +605,7 @@ function spectrum(lines: Line[], p: Palette, [head]: Line[]): Drawing {
         sideRows[1]
             .map((w, j) => write(LEFT + RUN, 16 + 16 * j, w, note, 'sketch-note sketch-end'))
             .join('') +
-        rows
-            .map((r, i) => group(i, lower[i] + station(x(i), axis, r.focus, p) + upper[i]))
-            .join('') +
+        rows.map((r, i) => group(i, lower[i] + ring(x(i), axis, r.focus, p) + upper[i])).join('') +
         '</svg>';
     const items = rows.map((r) => ({
         label: r.name,
@@ -609,6 +618,11 @@ function spectrum(lines: Line[], p: Palette, [head]: Line[]): Drawing {
 const KINDS = new Map<string, [Draw, string[]?]>([
     ['flow', [flow]],
     ['bars', [bars]],
+    ['cycle', [cycle]],
+    ['stack', [stack]],
+    ['tree', [tree]],
+    ['timeline', [timeline]],
+    ['parts', [parts]],
     ['line', [line, ['range: min..max']]],
     ['quadrant', [quadrant, ['x: low .. high', 'y: low .. high']]],
     ['spectrum', [spectrum, ['ends: low .. high']]],
