@@ -65,7 +65,7 @@ const VISUAL_MARKER_RULE =
     'name is a short slug such as fission-chain, at most 40 characters. title is the finished visual\'s short title, at most 120. shows says exactly what the visual shows, at most 280, such as "Artemis I to IV with year and status, then longer-term goals". alt is the text alternative, at most 280: say in words what the visual shows; for a check, only the starting state and the prediction question. Leave check out unless the visual is a check. ' +
     'Keep the whole marker on one line, keep [, ], | and line breaks out of its fields, and write math in words inside it. ' +
     'Another model draws the visual from the marker and your reply so far; never write visual code yourself. The learner never sees the marker. Put the marker inside :::wide for a full-width visual, or inside :::figure to set the visual beside its explanation. Ready visuals appear in later history only as artifact id, title and description. ' +
-    'Request a video with make_video and a discussion with a discussion marker; never write a fenced media block.';
+    'Draw a sketch in a ```sketch <kind> block; request a visual with a visual marker, a video with make_video and a discussion with a discussion marker.';
 const [beforeCheck, afterCheck] = cut(
     beforeVisuals + VISUAL_MARKER_RULE + afterVisuals,
     'Check yourself:',
@@ -90,16 +90,48 @@ const DISCUSSION_MARKER_RULE =
     'The voice is one or two sentences on how they talk and how they think, fitting their level and distinct from the others. Keep levels and voices private; never mention or label them in the lines or your text. ' +
     "Classmates write like casual online chat: everyday words and slang, contractions, the odd swear word or typo, short lines, rarely an emoji, no buzzwords or performed eagerness. The natural-writing guidance still applies to their lines but never flattens these voices into the tutor's register. Classmates have honest misunderstandings, ask each other questions and draw the learner in; only relevant classmates speak. The Tutor steps in only to untangle or confirm, in plain clear lines. " +
     "Never write learner lines or invent the learner's answer. Keep [, ], | and line breaks out of names, voices and lines, and write math in words inside the marker. Classmates belong only to this discussion and keep their levels and voices.";
+// The accepted (v10) sketch rule, word for word from docs/sketches-spec.md (ADR 0027).
+const SKETCH_RULE = [
+    '',
+    '',
+    'Sketches: small diagrams you write yourself for the smaller points inside a section, beside the visuals that carry its main ideas; the app draws them instantly in its theme. A sketch costs about 30 tokens, so use them generously: give each section or paragraph that has a shape its own sketch (steps, a cycle, layers, a hierarchy, parts, a comparison, quantities, a range, dates). A reply with five sections usually has four or five sketches. A sketch can sit anywhere a paragraph can, inside a layout too, and a list or layout still gets its sketch beside it, showing in a shape what it says in words. Before you finish, check each section: one whose idea has a shape carries a sketch. A sketch demonstrates: its labels carry what the paragraph leaves out, such as real numbers, a worked example, who sends what, where things sit on a scale or what each symbol means. Put each right after the text it illustrates. Write a fenced block whose info string is `sketch` and a kind, one item per line, labels under 40 characters, at most 8 items. An optional first line `title: …` names it. Wrap one or two words in *stars* to mark the focus.',
+    '',
+    '```sketch bars',
+    'title: Why ice floats',
+    'Liquid water at 4 °C: 1.000 g/cm³',
+    '*Ice* at 0 °C: 0.917 g/cm³',
+    '```',
+    '',
+    'Kinds and their lines:',
+    '- flow: `A -> B` or `A -> B: arrow label`; steps, cause and effect; may branch and rejoin.',
+    '- cycle: one stage per line, in order; the last leads back to the first.',
+    '- stack: one layer per line, top first, `name: note`.',
+    '- tree: an indented outline, two spaces per level.',
+    '- timeline: `when: event`, in order.',
+    '- bars: `label: number`, an optional unit after the number.',
+    "- compare: first line `vs: A | B`, then `aspect: A's value | B's value`.",
+    '- parts: first line `whole: name`, then `part: what it does`.',
+    '- line: first line `range: min..max`, then `value: label`, a number line.',
+    '- venn: two lines `set name: item, item`, then `both: item, item`.',
+    '- plot: one or two `y = …` lines in x (+ - * / ^, sin cos exp log sqrt), then `x: min..max`.',
+    '- sequence: first line `actors: A | B | C`, then `A -> B: message` or `A: note`; who sends what, in order.',
+    '- quadrant: lines `x: low .. high` and `y: low .. high`, then `item: x, y` with x and y from 0 to 10.',
+    '- pie: `label: number`, shares of one whole.',
+    '- equation: first line `eq: …` with symbols separated by spaces, then `symbol: meaning`.',
+    '- grid: rows of cells separated by spaces; `name:` above a grid captions it; a line holding only × = + or → joins two grids, e.g. image × kernel = output.',
+    '- spectrum: first line `ends: low .. high`, then items in order along it, `item: note`.',
+    'Use the whole range of kinds, picking whichever fits each idea best.',
+].join('\n');
 // The learner's Visual frequency setting adds one sentence to the visual guidance; videos keep their own rules.
 const ASKED =
-    ' Whenever the learner asks for a visual, draw it. This applies to visuals only, not videos.';
+    ' Whenever the learner asks for a sketch, draw one. Whenever the learner asks for a visual, draw it. This applies to visuals only, not videos.';
 export const VISUAL_FREQUENCY = {
-    sparing: '\n\nVisual frequency: draw a visual only where it clearly helps.' + ASKED,
+    sparing: '\n\nVisual frequency: draw a visual or a sketch only where it clearly helps.' + ASKED,
     often:
-        "\n\nVisual frequency: in a longer reply that covers several distinct concepts, draw a visual for each concept a picture helps; never add one where it doesn't help." +
+        "\n\nVisual frequency: in a longer reply that covers several distinct concepts, draw a visual for each concept a picture helps; never add one where it doesn't help. Sketches sit alongside these visuals, so draw visuals as you normally would and add sketches wherever a section has a shape." +
         ASKED,
     'only-asked':
-        '\n\nVisual frequency: draw no visual unless the learner asked for one, whatever the guidance above or below suggests.' +
+        '\n\nVisual frequency: draw no visual or sketch unless the learner asked for one, whatever the guidance above or below suggests.' +
         ASKED,
 };
 // A model without native tool calling writes Hermes-style calls as text; no result comes back.
@@ -127,6 +159,7 @@ export const tutorSystem = (tree) =>
                     textToolsRule(tree.textTools),
                 )
               : TUTOR_RULES) +
+            SKETCH_RULE +
             (VISUAL_FREQUENCY[tree.visualFrequency] ?? VISUAL_FREQUENCY.often) +
             // With the app tools offered, quick thinking writes the verdict (ADR 0016).
             ([...(tree.tools ?? []), ...(tree.textTools ?? [])].some((t) => t.name === 'make_video')
