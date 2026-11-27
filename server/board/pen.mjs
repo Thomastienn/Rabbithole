@@ -7,7 +7,7 @@ const MARGIN = 40;
 
 // The PNG of a free-space stroke: its area of its 1600×900 board page, dark ink on white; null when it lies off the board.
 // shortcut: draws only the learner's ink, not board items reaching into the crop; draw those too if tutors misread sketches.
-function strokeImage(points) {
+export function strokeImage(points) {
     const [xs, ys] = [points.map((p) => p[0]), points.map((p) => p[1])];
     // Each board page is 900 pixels below the one before it (server/board/ops.mjs).
     const top = Math.floor(Math.min(...ys) / 900) * 900;

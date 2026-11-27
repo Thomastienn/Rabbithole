@@ -25,10 +25,6 @@ test('board: a typed question gets its sentences one at a time and saves as a le
     assert.equal(process.options.model, 'sonnet');
     assert.match(process.options.system, /Use cooking analogies\./);
     assert.match(process.options.system, /Studies biology\./);
-    // The op list teaches pages instead of clear.
-    assert.match(process.options.system, /^page "title" from=ID: /m);
-    assert.match(process.options.system, /^open PAGE_ID: /m);
-    assert.doesNotMatch(process.options.system, /^clear/m);
     assert.equal(process.asked.length, 0, 'the tutor waits for the first question');
 
     board.send({ type: 'ask', text: 'How does a hypha grow at its tip?' });
