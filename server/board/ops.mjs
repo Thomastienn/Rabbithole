@@ -1,7 +1,7 @@
 // Board op lines (docs/board-spec.md, Op language): `<id> <kind> <args> [key=value]` on a fixed
 // 1600×900 board (ADR 0028). Tokens follow prototype/board-placement. Kinds so far: shapes, text, components,
 // erase and the learner's pen strokes.
-import { COMPONENTS, component, child, layout } from './components.mjs';
+import { COMPONENTS, PARENTS, component, child, layout } from './components.mjs';
 
 const KINDS = new Set([
     'circle',
@@ -10,10 +10,8 @@ const KINDS = new Set([
     'line',
     'arrow',
     'text',
-    'axes',
-    'plot',
-    'numberline',
-    'point',
+    ...COMPONENTS,
+    ...Object.keys(PARENTS),
     'erase',
     'stroke',
 ]);
@@ -48,7 +46,7 @@ function tokens(line) {
         else if (w === 'at') {
             op.at = point(rest[++i]?.w);
             if (!op.at) return { error: 'at needs X,Y' };
-        } else if (w === 'from' || w === 'to' || w === 'on' || w === 'in') {
+        } else if (w === 'from' || w === 'to' || w === 'on' || w === 'in' || w === 'under') {
             const key = w === 'in' ? 'on' : w;
             op[key] = rest[++i]?.w;
             if (!op[key]) return { error: `${w} needs an id` };
@@ -230,10 +228,11 @@ export function boardOps() {
             if (!op.ids.length) return { error: 'erase needs an id' };
             const unknown = op.ids.find((name) => !items.has(name));
             if (unknown) return { error: `unknown id ${unknown}` };
-            // A component's children go with it.
-            const ids = [...items.values()]
-                .filter((i) => op.ids.includes(i.id) || op.ids.includes(i.on))
-                .map((i) => i.id);
+            // A component's children go with it, and a tree node's subtree with the node. Items come in drawing
+            // order, after their parents, so one pass reaches every descendant.
+            const gone = new Set(op.ids);
+            for (const i of items.values()) if (gone.has(i.on) || gone.has(i.under)) gone.add(i.id);
+            const ids = [...items.keys()].filter((name) => gone.has(name));
             ids.forEach((name) => items.delete(name) && connectors.delete(name));
             return { item: { id: op.id, kind: 'erase', ids } };
         }
@@ -254,8 +253,8 @@ export function boardOps() {
             else return { error: `${op.kind} needs two points or from ID to ID` };
             return { item };
         }
-        if (op.on || op.kind === 'plot' || op.kind === 'point') {
-            const error = child(op, item, items.get(op.on));
+        if (op.on || Object.hasOwn(PARENTS, op.kind)) {
+            const error = child(op, item, items.get(op.on), items);
             return error ? { error } : { item };
         }
         if (!op.at) return { error: 'at needs X,Y' };

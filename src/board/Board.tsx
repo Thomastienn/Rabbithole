@@ -7,6 +7,7 @@ import type { Message } from '../chat/turn';
 import { useBoard } from './useBoard';
 import BoardItem, { strokePath } from './BoardItem';
 import { labelRows } from './player';
+import { componentParts } from './layout';
 import { inkStyle } from '../map/treeList';
 
 type Point = [number, number];
@@ -56,7 +57,9 @@ export default function Board({
         setLine(undefined);
     };
     const busy = board.state !== 'idle' || !board.ready;
-    const rows = labelRows(board.items.map((drawn) => drawn.op));
+    const ops = board.items.map((drawn) => drawn.op);
+    const rows = labelRows(ops);
+    const parts = componentParts(ops);
     const submit = (text: string) => {
         if (busy || !text.trim()) return;
         if (board.ask(text.trim())) setDraft('');
@@ -81,6 +84,7 @@ export default function Board({
                                 ms={ms}
                                 erased={erased}
                                 row={rows.get(op.id)}
+                                parts={parts.get(op.id)}
                             />
                         ))}
                         {line && (

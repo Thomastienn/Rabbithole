@@ -1,8 +1,28 @@
-// Board components (docs/board-spec.md, Op language): `axes` + `plot` and `numberline` + `point`. The tutor gives a
-// component's box; the component lays out its children inside it in its own units. Geometry follows mockup
-// Rabbithole-brd.5, in board pixels.
-export const COMPONENTS = new Set(['axes', 'numberline']);
-const PARENTS = { plot: 'axes', point: 'numberline' };
+// Board components (docs/board-spec.md, Op language): `axes` + `plot` and `numberline` + `point`, whose geometry is
+// computed here (mockup Rabbithole-brd.5), and `flow` + `step`, `tree` + `node`, `table` + `row` and `venn` + `item`,
+// which are only checked here: their children reflow on every arrival, so the client lays them out from all the
+// children drawn so far (src/board/layout.ts, mockup Rabbithole-brd.6). The tutor gives a component's box.
+export const COMPONENTS = new Set(['axes', 'numberline', 'flow', 'tree', 'table', 'venn']);
+export const PARENTS = {
+    plot: 'axes',
+    point: 'numberline',
+    step: 'flow',
+    node: 'tree',
+    row: 'table',
+    item: 'venn',
+};
+// Default boxes, in board pixels.
+const SIZES = {
+    axes: [800, 600],
+    numberline: [1000, 240],
+    flow: [1200, 260],
+    // A downward flow stacks its steps, so it needs height: five still get 96-high boxes.
+    'flow down': [400, 800],
+    tree: [1200, 640],
+    table: [1100, 420],
+    venn: [1100, 620],
+};
+const words = (text) => (text ?? '').split('|').map((word) => word.trim());
 const FUNCS = {
     sqrt: Math.sqrt,
     sin: Math.sin,
@@ -123,9 +143,28 @@ function scale(item) {
 
 // A component's own fields, or the reason it is skipped. Its geometry comes later, from `layout`.
 export function component(op, item) {
-    item.w = Number(op.opts.w ?? (op.kind === 'axes' ? 800 : 1000));
-    item.h = Number(op.opts.h ?? (op.kind === 'axes' ? 600 : 240));
+    const [w, h] = SIZES[op.kind === 'flow' && op.opts.dir === 'down' ? 'flow down' : op.kind];
+    item.w = Number(op.opts.w ?? w);
+    item.h = Number(op.opts.h ?? h);
     if (!(item.w > 0 && item.h > 0)) return 'sizes must be positive';
+    if (op.kind === 'flow') {
+        item.dir = op.opts.dir ?? 'right';
+        return item.dir === 'right' || item.dir === 'down' ? null : 'dir is right or down';
+    }
+    if (op.kind === 'tree') return null;
+    if (op.kind === 'table') {
+        item.cols = words(op.opts.cols ?? op.strs[0]);
+        return item.cols.some(Boolean) ? null : 'table needs cols="A|B|C"';
+    }
+    if (op.kind === 'venn') {
+        item.sets = words(op.opts.sets ?? op.strs[0]);
+        const unique = new Set(item.sets.map((set) => set.toLowerCase()));
+        return (item.sets.length === 2 || item.sets.length === 3) &&
+            item.sets.every(Boolean) &&
+            unique.size === item.sets.length
+            ? null
+            : 'venn needs sets="A|B" or "A|B|C"';
+    }
     if (op.kind === 'axes') {
         [item.x, item.y] = [range(op.opts.x), range(op.opts.y)];
         if (!item.x || !item.y) return 'ranges are LO..HI';
@@ -143,6 +182,7 @@ export function component(op, item) {
 
 // A component's lines and numbers, once the guard has placed its box.
 export function layout(item) {
+    if (!item.x) return item;
     const s = scale(item);
     const [x, y] = [
         s.x(Math.min(Math.max(0, item.x[0]), item.x[1])),
@@ -180,13 +220,15 @@ export function layout(item) {
 }
 
 // A child's place in its parent's units, converted to board pixels, or the reason it is skipped.
-export function child(op, item, parent) {
+// `items` are the board's items so far, for a node's parent.
+export function child(op, item, parent, items) {
     if (!op.on) return `${op.kind} needs on ID`;
     if (!parent) return `unknown parent ${op.on}`;
     const kind = PARENTS[op.kind] ?? (op.kind === 'dot' || op.kind === 'text' ? 'axes' : null);
     if (!kind) return `${op.kind} cannot go on a component`;
     if (parent.kind !== kind) return `${op.kind} needs ${kind}, not ${parent.kind} ${parent.id}`;
     item.on = parent.id;
+    if (op.kind in LABELLED) return labelled(op, item, parent, items);
     const s = scale(parent);
     const inside = (v, [lo, hi]) => v >= lo && v <= hi;
     if (op.kind === 'point') {
@@ -210,6 +252,39 @@ export function child(op, item, parent) {
         if (!op.strs[0]?.trim()) return 'text needs a "label"';
         item.text = op.strs[0].trim();
         item.size = op.opts.size ?? 's';
+    }
+    return null;
+}
+
+const LABELLED = { step: 1, node: 1, row: 1, item: 1 };
+// A flow, tree, table or Venn child: its words, and for a node its parent node, for an item its sets.
+function labelled(op, item, parent, items) {
+    const label = op.strs[0]?.trim();
+    if (!label) return `${op.kind} needs a "label"`;
+    if (op.kind === 'row') {
+        item.cells = words(label);
+        if (item.cells.length > parent.cols.length)
+            return `row has more cells than ${parent.id} has cols`;
+        // A short row leaves its last cells empty.
+        while (item.cells.length < parent.cols.length) item.cells.push('');
+        return null;
+    }
+    item.text = label;
+    if (op.kind === 'node') {
+        const nodes = [...items.values()].filter((other) => other.on === parent.id);
+        const under = op.under ?? op.opts.under;
+        if (!under)
+            return nodes.length ? `${parent.id} already has a root; give under NODE_ID` : null;
+        if (!nodes.some((other) => other.id === under))
+            return `unknown node ${under} on ${parent.id}`;
+        item.under = under;
+    }
+    if (op.kind === 'item') {
+        const names = parent.sets.map((set) => set.toLowerCase());
+        const wanted = words((op.opts.set ?? op.opts.sets ?? '').replaceAll('+', '|'));
+        item.region = [...new Set(wanted.map((set) => names.indexOf(set.toLowerCase())))].sort();
+        if (!wanted.some(Boolean) || item.region.includes(-1))
+            return `item needs set=${parent.sets.join('+')} or some of those`;
     }
     return null;
 }
