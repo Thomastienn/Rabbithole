@@ -25,6 +25,10 @@ test('board: a typed question gets its sentences one at a time and saves as a le
     assert.equal(process.options.model, 'sonnet');
     assert.match(process.options.system, /Use cooking analogies\./);
     assert.match(process.options.system, /Studies biology\./);
+    // The op list teaches pages instead of clear.
+    assert.match(process.options.system, /^page "title" from=ID: /m);
+    assert.match(process.options.system, /^open PAGE_ID: /m);
+    assert.doesNotMatch(process.options.system, /^clear/m);
     assert.equal(process.asked.length, 0, 'the tutor waits for the first question');
 
     board.send({ type: 'ask', text: 'How does a hypha grow at its tip?' });
@@ -89,7 +93,11 @@ test('board: a typed question gets its sentences one at a time and saves as a le
     board.send({ type: 'leave' });
     const again = connect();
     assert.deepEqual((await again.next('board')).replies, [
-        { caption: 'Tiny sacs carry new wall forward.', items: [...first.ops, ...second.ops] },
+        {
+            caption: 'Tiny sacs carry new wall forward.',
+            items: [...first.ops, ...second.ops],
+            page: 'first',
+        },
     ]);
     again.send({ type: 'ask', text: 'And then?' });
     const joined = await again.next('sentence');
@@ -103,6 +111,66 @@ test('board: a typed question gets its sentences one at a time and saves as a le
     const [, earlier, , latest] = messages(env, id);
     assert.deepEqual(earlier.snapshot, [...first.ops, ...second.ops]);
     assert.deepEqual(latest.snapshot, [...earlier.snapshot, ...joined.ops]);
+});
+
+test('board: pages and opens are saved as op lines and reopen on the page the latest reply ended on', async (t) => {
+    const provider = boardProvider([
+        [
+            '> Forces push.\nf1 box at 400,450\n> Friction first.\ns1 page "Friction" from=f1\nr1 dot at 800,450\n',
+        ],
+        ['> Back to the forces.\no1 open first\nh1 highlight f1\n'],
+        // A board saved before pages: its clear still opens a fresh untitled page.
+        ['> Fresh space.\nn1 clear\nd1 dot at 800,450\n'],
+    ]);
+    const { env, id, connect } = await setup(t, provider);
+    const board = connect();
+    await opened(board.ws);
+    await until(() => provider.boards[0]?.opened);
+    const answer = async (text, sentences) => {
+        board.send({ type: 'ask', text });
+        const ops = [];
+        for (let i = 0; i < sentences; i++) {
+            const sentence = await board.next('sentence');
+            ops.push(...sentence.ops);
+            for (const phase of ['start', 'end'])
+                board.send({ type: 'progress', sentence: sentence.id, phase });
+        }
+        await board.next('state', (e) => e.state === 'idle');
+        return ops;
+    };
+    const side = await answer('Why does it stop?', 2);
+    assert.deepEqual(side[1], {
+        id: 's1',
+        kind: 'page',
+        top: 900,
+        title: 'Friction',
+        parent: 'first',
+        origin: 'f1',
+    });
+    assert.deepEqual(side[2].at, [800, 1350], 'r1 lands on the side page');
+    const back = await answer('Got it.', 1);
+    assert.deepEqual(back[0], { id: 'o1', kind: 'open', page: 'first', top: 0 });
+    assert.equal(back[1].kind, 'highlight', 'f1 is on the open page again');
+    // The chat snapshot of each reply ends on its page.
+    assert.equal(messages(env, id)[3].snapshot.findLast((i) => i.top !== undefined).top, 0);
+    await answer('More?', 1);
+    board.send({ type: 'leave' });
+    const replies = (await connect().next('board')).replies;
+    assert.deepEqual(
+        replies.map((r) => [r.page, r.items.map((i) => i.id)]),
+        [
+            ['s1', ['f1', 's1', 'r1']],
+            ['first', ['o1', 'h1']],
+            ['n1', ['n1', 'd1']],
+        ],
+    );
+    assert.deepEqual(replies[2].items[0], {
+        id: 'n1',
+        kind: 'clear',
+        top: 1800,
+        title: 'Page 3',
+        parent: 'first',
+    });
 });
 
 test('board: a finished board reply records familiarity and concepts, with no marks or next questions', async (t) => {

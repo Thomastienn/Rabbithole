@@ -1,11 +1,4 @@
-import {
-    useEffect,
-    useLayoutEffect,
-    useRef,
-    useState,
-    type CSSProperties,
-    type PointerEvent,
-} from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from 'react';
 import { Button } from '@astryxdesign/core/Button';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import {
@@ -31,7 +24,7 @@ import type { ThreadProps } from '../chat/ChatThread';
 import TranscriptRail from './TranscriptRail';
 import { useBoard, type Drawn } from './useBoard';
 import BoardItem, { strokePath } from './BoardItem';
-import { follow } from './camera';
+import { follow, openTop } from './camera';
 import { labelRows } from './player';
 import { DEFAULT_SPEED } from './voice';
 import { BOARD_SPEEDS } from '../shell/preferences';
@@ -39,7 +32,7 @@ import { componentParts } from './layout';
 import { inkStyle } from '../map/treeList';
 
 type Point = [number, number];
-// Where the pointer is on the board, 1600 pixels wide with one 900-pixel area per clear, so its box scales evenly.
+// Where the pointer is on the board, 1600 pixels wide with one 900-pixel page below another, so its box scales evenly.
 function boardPoint(e: PointerEvent<SVGSVGElement>): Point {
     const r = e.currentTarget.getBoundingClientRect();
     const scale = 1600 / r.width;
@@ -116,10 +109,9 @@ export default function Board({
     const tutoring = board.state !== 'idle' || !board.ready;
     const scene = sceneOf(board.items);
     const scroller = useRef<HTMLDivElement>(null);
-    const [scrolled, setScrolled] = useState(0);
-    // The view follows the area the tutor draws in (src/board/camera.ts).
+    // The view follows the page the tutor draws on (src/board/camera.ts).
     useLayoutEffect(() => {
-        if (scroller.current) return follow(scroller.current, board.items.at(-1));
+        if (scroller.current) return follow(scroller.current, board.items.at(-1), scene.top);
     }, [board.items.length, board.at]);
     const rows = labelRows(board.items.map((drawn) => drawn.op));
     const parts = componentParts(scene.shown.map((drawn) => drawn.op));
@@ -229,14 +221,7 @@ export default function Board({
         >
             <div className="board-field">
                 <div className={`board${pen ? ' pen-on' : ''}${board.paused ? ' paused' : ''}`}>
-                    <div
-                        className="board-scroller"
-                        ref={scroller}
-                        onScroll={(e) => {
-                            const el = e.currentTarget;
-                            setScrolled(el.scrollTop / (el.scrollHeight - el.clientHeight || 1));
-                        }}
-                    >
+                    <div className="board-scroller" ref={scroller}>
                         <svg
                             ref={svg}
                             viewBox={`0 0 1600 ${scene.areas * 900}`}
@@ -266,12 +251,12 @@ export default function Board({
                                     parts={parts.get(op.id)}
                                 />
                             ))}
-                            {/* The tutor heard: a soft pulse in the corner of the current area, which board items rarely use, until it speaks. */}
+                            {/* The tutor heard: a soft pulse in the corner of the open page, which board items rarely use, until it speaks. */}
                             {board.state === 'thinking' && (
                                 <circle
                                     className="board-waiting"
                                     cx={1544}
-                                    cy={(scene.areas - 1) * 900 + 844}
+                                    cy={scene.top + 844}
                                     r={10}
                                 />
                             )}
@@ -288,14 +273,6 @@ export default function Board({
                             )}
                         </svg>
                     </div>
-                    {scene.areas > 1 && (
-                        <span
-                            className="board-thumb"
-                            style={
-                                { '--areas': scene.areas, '--scrolled': scrolled } as CSSProperties
-                            }
-                        />
-                    )}
                     {board.replies > 1 && (
                         <div className="board-steps" role="group" aria-label="Board at each reply">
                             <IconButton
@@ -527,16 +504,18 @@ export default function Board({
 }
 
 // What the board shows of its items: highlights under the rest, erased items fading out (or gone when replayed),
-// no pointer once its moment has passed, and one 1600×900 area per clear.
+// no pointer once its moment has passed, and one 1600×900 space per page, with the open page's top edge.
 function sceneOf(items: Drawn[]) {
     const erased = new Map(
         items.flatMap(({ op, ms }) => (op.ids ?? []).map((id) => [id, ms] as const)),
     );
     const shown = items
         .filter(({ op, ms }) => {
-            if (op.kind === 'erase' || op.kind === 'clear') return false;
+            if (op.kind === 'erase' || op.top !== undefined) return false;
             return erased.get(op.id) !== 0 && (op.kind !== 'pointer' || ms > 0);
         })
         .sort((a, b) => +(b.op.kind === 'highlight') - +(a.op.kind === 'highlight'));
-    return { shown, erased, areas: 1 + items.filter(({ op }) => op.kind === 'clear').length };
+    const ops = items.map(({ op }) => op);
+    const areas = 1 + Math.max(0, ...ops.map((op) => (op.top ?? 0) / 900));
+    return { shown, erased, areas, top: openTop(ops) };
 }

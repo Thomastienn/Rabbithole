@@ -17,12 +17,16 @@ const KINDS = new Set([
     'pointer',
     'erase',
     'clear',
+    'page',
+    'open',
     'stroke',
 ]);
-// Kinds that name other items instead of placing one; they cannot be named themselves.
-const MARKS = new Set(['highlight', 'pointer', 'erase', 'clear']);
-// Each clear moves on to a fresh 1600×900 area this far below the last (mockup Rabbithole-brd.4).
+// Kinds that name other items instead of placing one; they cannot be named themselves (only `open` names a page).
+const MARKS = new Set(['highlight', 'pointer', 'erase', 'clear', 'page', 'open']);
+// Each board page (ADR 0029) is a 1600×900 space this far below the page made before it; the view shows one.
 const AREA = 900;
+// The page a board starts on when it draws before any `page` op.
+const FIRST = 'first';
 const LOOKS = new Set(['focus', 'muted', 'good', 'wrong', 'new']);
 // Label font sizes in board pixels (mockup Rabbithole-brd.2).
 const TEXT_SIZES = { s: 32, m: 44, l: 64 };
@@ -234,32 +238,56 @@ function guard(item, others, connectors, top) {
 export function boardOps() {
     const items = new Map();
     const connectors = new Set();
-    // Clears so far, and where the pointer last stopped (a fresh area starts it at its centre).
-    let area = 0,
+    // Each page's top edge and title, the open page, and where the pointer last stopped (a page it lands on starts
+    // it at its centre).
+    const pages = new Map();
+    let open,
         pointer = [800, 450];
+    const top = () => pages.get(open)?.top ?? 0;
+    // Opens a new page after the others, its parent the page open now; untitled, it shows as "Page N".
+    const add = (id, title) => {
+        const page = { top: pages.size * AREA, title: title || `Page ${pages.size + 1}` };
+        if (open) page.parent = open;
+        pages.set(id, page);
+        open = id;
+        pointer = [800, page.top + 450];
+        return page;
+    };
     const erased = new Set();
+    // The page each item was drawn on.
+    const where = new Map();
     // An item still on the board that ops can name; erase can also name a highlight or a component's child.
-    // Only erase reaches back into earlier areas, since the camera shows the current one, and into a component,
-    // since the rest join top-level items only.
+    // Only erase reaches other pages, since the view shows the open one, and into a component, since the rest
+    // join top-level items only.
     const target = (id, kind) => {
         const item = items.get(id);
         const named = !MARKS.has(item?.kind) || (kind === 'erase' && item.kind === 'highlight');
-        const here = () => kind === 'erase' || (!item.on && bounds(item).c[1] >= area * AREA);
+        const here = () => kind === 'erase' || (!item.on && where.get(id) === open);
         return item && named && !erased.has(id) && here() ? item : undefined;
     };
     const positive = (value, fallback) =>
         value === undefined ? fallback : Number(value) > 0 ? Number(value) : NaN;
     function build(op) {
-        if (items.has(op.id)) return { error: `id ${op.id} is already on the board` };
+        if (items.has(op.id) || pages.has(op.id))
+            return { error: `id ${op.id} is already on the board` };
         const item = { id: op.id, kind: op.kind };
         if (op.opts.look !== undefined) {
             if (!LOOKS.has(op.opts.look)) return { error: `unknown look "${op.opts.look}"` };
             item.look = op.opts.look;
         }
-        if (op.kind === 'clear') {
-            area += 1;
-            pointer = [800, 450 + area * AREA];
-            return { item };
+        // An old `clear` reads as a new untitled page, so boards saved before pages replay unchanged.
+        if (op.kind === 'page' || op.kind === 'clear') {
+            const from = op.opts.from;
+            if (from !== undefined && !target(from)) return { error: `unknown id ${from}` };
+            const page = add(op.id, op.kind === 'page' && op.strs[0]?.trim());
+            return { item: { ...item, ...page, ...(from && { origin: from }) } };
+        }
+        if (op.kind === 'open') {
+            const [ref, extra] = op.refs;
+            if (!pages.has(ref) || extra) return { error: `open needs one page id` };
+            open = ref;
+            pointer = [800, top() + 450];
+            return { item: { ...item, page: ref, top: top() } };
         }
         if (MARKS.has(op.kind)) {
             if (!op.refs.length) return { error: `${op.kind} needs an id` };
@@ -288,8 +316,8 @@ export function boardOps() {
             if (!op.pts.length) return { error: 'stroke needs a point' };
             return { item: { ...item, points: op.pts } };
         }
-        // Points in a fresh area start at its top left.
-        const placed = ([x, y]) => [x, y + area * AREA];
+        // Points on a page start at its top left.
+        const placed = ([x, y]) => [x, y + top()];
         if (op.kind === 'line' || op.kind === 'arrow') {
             if (op.from || op.to) {
                 const [a, b] = [target(op.from), target(op.to)];
@@ -343,27 +371,31 @@ export function boardOps() {
             if (parsed.error) return parsed;
             const built = build(parsed.op);
             if (!built.item) return built;
+            // The first item drawn on an empty board starts its first page.
+            if (!open) add(FIRST);
+            where.set(built.item.id, open);
             // Marks are not placed, and a component's children stay inside its box, unguarded; the rest keep
-            // clear of what is still on the board, in the current area, with a component as one item at its box.
+            // clear of what is still on the open page, with a component as one item at its box.
             if (built.item.on || MARKS.has(built.item.kind)) {
                 items.set(built.item.id, built.item);
                 return built;
             }
             const others = [...items.values()].filter(
-                (o) => !o.on && !MARKS.has(o.kind) && !erased.has(o.id),
+                (o) => !o.on && !MARKS.has(o.kind) && !erased.has(o.id) && where.get(o.id) === open,
             );
             // The learner's strokes stay where they were drawn.
             const guarded =
                 built.item.kind === 'stroke'
                     ? built.item
-                    : guard(built.item, others, connectors, area * AREA);
+                    : guard(built.item, others, connectors, top());
             const item = COMPONENTS.has(guarded.kind) ? layout(guarded) : guarded;
             items.set(item.id, item);
             return guarded === built.item ? { item } : { item, moved: true };
         },
         has: (id) => items.has(id),
+        open: () => open,
         // The board as it stands, for a still snapshot: no erased items, erases or passed pointers, highlights
-        // under the rest, and the clears that say which area it shows.
+        // under the rest, and the page and open ops that say which page it shows.
         items: () =>
             [...items.values()]
                 .filter((i) => !erased.has(i.id) && i.kind !== 'erase' && i.kind !== 'pointer')
@@ -371,9 +403,10 @@ export function boardOps() {
         // What a learner stroke marks (docs/board-spec.md, Learner pen): a closed loop circles the items whose
         // centres it encloses; otherwise it points at the item nearest its end, within 40 board pixels.
         mark(points) {
-            // Only items still on the board with a place to circle or point at; a plot is a path inside its axes.
+            // Only items still on the open page with a place to circle or point at; a plot is a path inside its axes.
             const targets = [...items.values()].filter(
                 (i) =>
+                    where.get(i.id) === open &&
                     i.kind !== 'stroke' &&
                     !MARKS.has(i.kind) &&
                     !erased.has(i.id) &&

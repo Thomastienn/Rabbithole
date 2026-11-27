@@ -21,6 +21,8 @@ export type Op = {
         | 'pointer'
         | 'erase'
         | 'clear'
+        | 'page'
+        | 'open'
         | 'axes'
         | 'numberline'
         | 'plot'
@@ -58,6 +60,13 @@ export type Op = {
     // A pointer glides from here; an erase names the items it fades out.
     from?: [number, number];
     ids?: string[];
+    // A page, open or clear op: the top edge of the page it opens (ADR 0029), its title, parent page and the item
+    // it explains; an open names its page.
+    top?: number;
+    title?: string;
+    parent?: string;
+    origin?: string;
+    page?: string;
 };
 // Point labels on one number line, in value order: a label that would touch its left neighbour's on the
 // same row goes to the second row, so a crowded run alternates rows (mockup Rabbithole-brd.5).

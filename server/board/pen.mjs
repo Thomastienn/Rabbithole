@@ -5,14 +5,16 @@ import sharp from 'sharp';
 // A free-space stroke goes to the tutor as this much of the board around it, in board pixels.
 const MARGIN = 40;
 
-// The PNG of a free-space stroke: its area of the 1600×900 board, dark ink on white; null when it lies off the board.
+// The PNG of a free-space stroke: its area of its 1600×900 board page, dark ink on white; null when it lies off the board.
 // shortcut: draws only the learner's ink, not board items reaching into the crop; draw those too if tutors misread sketches.
 function strokeImage(points) {
     const [xs, ys] = [points.map((p) => p[0]), points.map((p) => p[1])];
-    const [x, y] = [Math.max(0, Math.min(...xs) - MARGIN), Math.max(0, Math.min(...ys) - MARGIN)];
+    // Each board page is 900 pixels below the one before it (server/board/ops.mjs).
+    const top = Math.floor(Math.min(...ys) / 900) * 900;
+    const [x, y] = [Math.max(0, Math.min(...xs) - MARGIN), Math.max(top, Math.min(...ys) - MARGIN)];
     const [w, h] = [
         Math.min(1600, Math.max(...xs) + MARGIN) - x,
-        Math.min(900, Math.max(...ys) + MARGIN) - y,
+        Math.min(top + 900, Math.max(...ys) + MARGIN) - y,
     ];
     if (w <= 0 || h <= 0) return null;
     // A lone point still draws as a dot under the round cap.
