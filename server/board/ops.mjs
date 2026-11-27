@@ -75,9 +75,111 @@ function edge(b, to) {
     return [Math.round(b.c[0] + dx * t), Math.round(b.c[1] + dy * t)];
 }
 
-// The board's items so far; `read` turns one op line into a drawable item or the reason it was skipped.
+// The guard (docs/board-spec.md, ADR 0028), with the prototype's overlap measure.
+const [W, H] = [1600, 900];
+// Free spots are searched on this grid, in board pixels.
+const STEP = 10;
+const CONTAINERS = new Set(['box', 'circle']);
+const liney = (item) => !!item.points;
+
+function box(item) {
+    const b = bounds(item);
+    const [w, h] = b.round ? [2 * b.r, 2 * b.r] : [b.w, b.h];
+    return { x: b.c[0] - w / 2, y: b.c[1] - h / 2, w, h };
+}
+const pad = (b, p) => ({ x: b.x - p, y: b.y - p, w: b.w + 2 * p, h: b.h + 2 * p });
+const inter = (a, b) => {
+    const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x),
+        h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+    return w > 0 && h > 0 ? { w, h } : null;
+};
+// Inside `o` and smaller, so an item stacked exactly on another still counts.
+const contains = (o, i) =>
+    i.w * i.h < o.w * o.h &&
+    i.x >= o.x - 2 &&
+    i.y >= o.y - 2 &&
+    i.x + i.w <= o.x + o.w + 2 &&
+    i.y + i.h <= o.y + o.h + 2;
+const onBoard = (b) => b.x >= 0 && b.y >= 0 && b.x + b.w <= W && b.y + b.h <= H;
+
+// Whether segment p→q passes through box b (Liang–Barsky clipping).
+function segHits(p, q, b) {
+    let [t0, t1] = [0, 1];
+    const [dx, dy] = [q[0] - p[0], q[1] - p[1]];
+    for (const [pp, qq] of [
+        [-dx, p[0] - b.x],
+        [dx, b.x + b.w - p[0]],
+        [-dy, p[1] - b.y],
+        [dy, b.y + b.h - p[1]],
+    ]) {
+        if (pp === 0) {
+            if (qq < 0) return false;
+            continue;
+        }
+        const r = qq / pp;
+        if (pp < 0) {
+            if (r > t1) return false;
+            t0 = Math.max(t0, r);
+        } else {
+            if (r < t0) return false;
+            t1 = Math.min(t1, r);
+        }
+    }
+    return true;
+}
+
+// `connectors` holds the ids of lines joined `from <id> to <id>`.
+function overlaps(a, b, connectors) {
+    if (a.kind === 'dot' || b.kind === 'dot') return false;
+    if (liney(a) && liney(b)) return false;
+    const [ba, bb] = [box(a), box(b)];
+    if (liney(a) || liney(b)) {
+        const [l, o, bo] = liney(a) ? [a, b, bb] : [b, a, ba];
+        // A drawn line may cross shapes and only collides with text; a connector collides with anything.
+        if (!connectors.has(l.id) && o.kind !== 'text') return false;
+        if (CONTAINERS.has(o.kind) && contains(bo, box(l))) return false;
+        return l.points.slice(1).some((q, i) => segHits(l.points[i], q, pad(bo, -4)));
+    }
+    const i = inter(ba, bb);
+    if (!i || i.w <= 4 || i.h <= 4) return false;
+    return !(
+        (CONTAINERS.has(a.kind) && contains(ba, bb)) ||
+        (CONTAINERS.has(b.kind) && contains(bb, ba))
+    );
+}
+
+const shift = (item, dx, dy) =>
+    item.points
+        ? { ...item, points: item.points.map(([x, y]) => [x + dx, y + dy]) }
+        : { ...item, at: [item.at[0] + dx, item.at[1] + dy] };
+
+// The item itself when it is on the board and free, else a copy at the nearest free spot on the board.
+function guard(item, others, connectors) {
+    const free = (it) => onBoard(box(it)) && !others.some((o) => overlaps(it, o, connectors));
+    // A connector stays joined to its items, so it is never moved.
+    if (connectors.has(item.id) || free(item)) return item;
+    const b = box(item);
+    const [cx, cy] = [b.x + b.w / 2, b.y + b.h / 2];
+    const spots = [];
+    for (let x = b.w / 2; x <= W - b.w / 2; x += STEP)
+        for (let y = b.h / 2; y <= H - b.h / 2; y += STEP)
+            spots.push([Math.round(x - cx), Math.round(y - cy)]);
+    spots.sort((p, q) => Math.hypot(...p) - Math.hypot(...q));
+    let fallback;
+    for (const [dx, dy] of spots) {
+        const moved = shift(item, dx, dy);
+        if (free(moved)) return moved;
+        if (!fallback && onBoard(box(moved))) fallback = moved;
+    }
+    // shortcut: a full board keeps the nearest on-board spot even if it overlaps; upgrade if boards fill up.
+    return fallback ?? item;
+}
+
+// The board's items so far; `read` turns one op line into a drawable item, moved by the guard when it
+// overlaps or leaves the board, or the reason it was skipped.
 export function boardOps() {
     const items = new Map();
+    const connectors = new Set();
     const positive = (value, fallback) =>
         value === undefined ? fallback : Number(value) > 0 ? Number(value) : NaN;
     function build(op) {
@@ -93,6 +195,7 @@ export function boardOps() {
                 if (!a || !b) return { error: `unknown id ${a ? op.to : op.from}` };
                 const [ba, bb] = [bounds(a), bounds(b)];
                 item.points = [edge(ba, bb.c), edge(bb, ba.c)];
+                connectors.add(op.id);
             } else if (op.pts.length >= 2) item.points = op.pts;
             else return { error: `${op.kind} needs two points or from ID to ID` };
             return { item };
@@ -118,8 +221,10 @@ export function boardOps() {
             const parsed = tokens(line);
             if (parsed.error) return parsed;
             const built = build(parsed.op);
-            if (built.item) items.set(built.item.id, built.item);
-            return built;
+            if (!built.item) return built;
+            const item = guard(built.item, [...items.values()], connectors);
+            items.set(item.id, item);
+            return item === built.item ? { item } : { item, moved: true };
         },
     };
 }
