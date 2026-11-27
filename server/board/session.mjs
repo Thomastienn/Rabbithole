@@ -10,7 +10,8 @@ const STOPPED = 'The tutor stopped. Ask again to carry on.';
 // One board session per open board: the conversation's own model process, its turns and their saving.
 // Up: { type: 'ask', text }, { type: 'progress', sentence, phase: 'start' | 'end' } as each caption shows and ends, { type: 'leave' }.
 // Down: { type: 'state', state: 'idle' | 'thinking' | 'speaking' }, { type: 'notice', notice },
-// { type: 'sentence', id, text, ops } with the drawable ops written under it (server/board/ops.mjs).
+// { type: 'sentence', id, text, ops } with the drawable ops written under it (server/board/ops.mjs),
+// { type: 'board', items } once on open: the saved board, replayed from every board reply's op lines.
 export function boardSession(ctx, id, socket) {
     const { store, log } = ctx;
     const send = (event) => {
@@ -24,6 +25,8 @@ export function boardSession(ctx, id, socket) {
         count = 0;
     // The items drawn on this board so far, across its turns.
     const board = boardOps();
+    const items = store.boardOpLines(id).flatMap((line) => board.read(line).item ?? []);
+    if (items.length) send({ type: 'board', items });
     const ended = Promise.withResolvers();
     // A newer board for the same conversation replaces this one; deleting it or stopping the app ends it too.
     ctx.jobs.get('board', id)?.controller.abort();
@@ -91,12 +94,19 @@ export function boardSession(ctx, id, socket) {
             .slice(0, current.shown)
             .map((s) => s.text)
             .join('\n');
-    // Saves the reply with every sentence that started showing; the rest is dropped.
+    const save = (current, status, stopped) => {
+        store.update(current.reply, shownText(current), status, stopped);
+        store.saveBoardOps(
+            current.reply,
+            current.sentences.slice(0, current.shown).flatMap((s) => s.lines),
+        );
+    };
+    // Saves the reply with every sentence that started showing, and their op lines; the rest is dropped.
     const finish = (current, status) => {
         if (current.done) return;
         current.done = true;
         const stopped = status === 'interrupted' ? (ctx.stopping ? 'shutdown' : 'learner') : null;
-        store.update(current.reply, shownText(current), status, stopped);
+        save(current, status, stopped);
         if (status === 'completed' && current.usage && validUsage(current.usage))
             store.usage(current.reply, {
                 input: current.usage.input,
@@ -126,7 +136,8 @@ export function boardSession(ctx, id, socket) {
             if (!writing) return;
             current.sentences.push(writing);
             if (current.sentences.length === 1) send({ type: 'state', state: 'speaking' });
-            send({ type: 'sentence', ...writing });
+            const { lines, ...sentence } = writing;
+            send({ type: 'sentence', ...sentence });
             writing = null;
         };
         const add = (lines, ended = false) => {
@@ -134,7 +145,7 @@ export function boardSession(ctx, id, socket) {
             for (const line of lines) {
                 if (line.sentence !== undefined) {
                     flush();
-                    writing = { id: String(++count), text: line.sentence, ops: [] };
+                    writing = { id: String(++count), text: line.sentence, ops: [], lines: [] };
                     continue;
                 }
                 const { item, moved, error } = writing
@@ -142,7 +153,10 @@ export function boardSession(ctx, id, socket) {
                     : { error: 'op before its sentence' };
                 // Moves show prompt regressions in the log (docs/board-spec.md, the guard).
                 if (moved) log(formatLog('info', 'board', 'item moved', { id: item.id }));
-                if (item) writing.ops.push(item);
+                if (item) {
+                    writing.ops.push(item);
+                    writing.lines.push(line.op);
+                }
                 // The learner never sees a broken op; the log keeps why it was skipped.
                 else
                     log(
@@ -250,7 +264,7 @@ export function boardSession(ctx, id, socket) {
         if (index < 0) return;
         if (phase === 'start' && index >= current.shown) {
             current.shown = index + 1;
-            store.update(current.reply, shownText(current), 'streaming');
+            save(current, 'streaming');
         }
         if (phase === 'end' && index < current.shown) {
             current.over = Math.max(current.over, index + 1);
