@@ -96,8 +96,6 @@ test('board ops: the guard moves an overlapping or off-board item to the nearest
     const label = board.read('t text "speed" at 800,300 size=s');
     assert.equal(label.moved, true, 'a label on a drawn arrow moves');
     assert.notDeepEqual(label.item.at, [800, 300]);
-    board.read('d box at 1100,600 w=60 h=60');
-    assert.ok(board.read('ad arrow from a to d').item, 'a connector is kept');
     assert.equal(board.read('wd text "far" at 1300,800').moved, undefined);
 });
 
@@ -114,4 +112,9 @@ test('board ops: a label in a shape, a line over shapes and a connector at its e
     assert.equal(board.read('ab arrow from a to b').moved, undefined);
     // A label touching the connector, but not its ends, still moves.
     assert.equal(board.read('x text "flow" at 800,450 size=s').moved, true);
+    assert.equal(
+        board.read('lb arrow from al to b').moved,
+        undefined,
+        'a connector across a shape is never moved',
+    );
 });

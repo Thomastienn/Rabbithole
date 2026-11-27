@@ -128,16 +128,15 @@ function segHits(p, q, b) {
     return true;
 }
 
-// `ends` maps a connector's id to the ids it joins; it never collides with them.
-function overlaps(a, b, ends) {
+// `connectors` holds the ids of lines joined `from <id> to <id>`.
+function overlaps(a, b, connectors) {
     if (a.kind === 'dot' || b.kind === 'dot') return false;
-    if (ends.get(a.id)?.includes(b.id) || ends.get(b.id)?.includes(a.id)) return false;
     if (liney(a) && liney(b)) return false;
     const [ba, bb] = [box(a), box(b)];
     if (liney(a) || liney(b)) {
         const [l, o, bo] = liney(a) ? [a, b, bb] : [b, a, ba];
         // A drawn line may cross shapes and only collides with text; a connector collides with anything.
-        if (!ends.has(l.id) && o.kind !== 'text') return false;
+        if (!connectors.has(l.id) && o.kind !== 'text') return false;
         if (CONTAINERS.has(o.kind) && contains(bo, box(l))) return false;
         return l.points.slice(1).some((q, i) => segHits(l.points[i], q, pad(bo, -4)));
     }
@@ -155,10 +154,10 @@ const shift = (item, dx, dy) =>
         : { ...item, at: [item.at[0] + dx, item.at[1] + dy] };
 
 // The item itself when it is on the board and free, else a copy at the nearest free spot on the board.
-function guard(item, others, ends) {
-    const free = (it) => onBoard(box(it)) && !others.some((o) => overlaps(it, o, ends));
+function guard(item, others, connectors) {
+    const free = (it) => onBoard(box(it)) && !others.some((o) => overlaps(it, o, connectors));
     // A connector stays joined to its items, so it is never moved.
-    if (ends.has(item.id) || free(item)) return item;
+    if (connectors.has(item.id) || free(item)) return item;
     const b = box(item);
     const [cx, cy] = [b.x + b.w / 2, b.y + b.h / 2];
     const spots = [];
@@ -180,7 +179,7 @@ function guard(item, others, ends) {
 // overlaps or leaves the board, or the reason it was skipped.
 export function boardOps() {
     const items = new Map();
-    const ends = new Map();
+    const connectors = new Set();
     const positive = (value, fallback) =>
         value === undefined ? fallback : Number(value) > 0 ? Number(value) : NaN;
     function build(op) {
@@ -196,7 +195,7 @@ export function boardOps() {
                 if (!a || !b) return { error: `unknown id ${a ? op.to : op.from}` };
                 const [ba, bb] = [bounds(a), bounds(b)];
                 item.points = [edge(ba, bb.c), edge(bb, ba.c)];
-                ends.set(op.id, [op.from, op.to]);
+                connectors.add(op.id);
             } else if (op.pts.length >= 2) item.points = op.pts;
             else return { error: `${op.kind} needs two points or from ID to ID` };
             return { item };
@@ -223,7 +222,7 @@ export function boardOps() {
             if (parsed.error) return parsed;
             const built = build(parsed.op);
             if (!built.item) return built;
-            const item = guard(built.item, [...items.values()], ends);
+            const item = guard(built.item, [...items.values()], connectors);
             items.set(item.id, item);
             return item === built.item ? { item } : { item, moved: true };
         },
