@@ -10,7 +10,8 @@ const SPEECH_UNAVAILABLE = 'Voice questions are unavailable here, so type your q
 // The tutor's own voice from the speakers is left to the browser's echo cancellation (src/board/mic.ts).
 // Push-to-talk: hold(true) stops the tutor and keeps the audio that follows, without voice detection;
 // hold(false) asks what was said. The browser sends audio only while held then.
-export function boardMic(hearing, { send, log, ask, stop, busy, closed }) {
+// lang is the board's Voice language, which picks the recognizer (server/board/hearing.mjs).
+export function boardMic(hearing, lang, { send, log, ask, stop, busy, closed }) {
     let ears = null,
         mic = null,
         scoring = Promise.resolve(),
@@ -28,7 +29,7 @@ export function boardMic(hearing, { send, log, ask, stop, busy, closed }) {
         try {
             const models = await hearing((loaded, total) => {
                 if (ears === asked) send({ type: 'mic', status: 'loading', loaded, total });
-            });
+            }, lang);
             if (ears !== asked || closed()) return;
             mic = { models, score: models.detector(), cut: utterances() };
             send({ type: 'mic', status: 'on' });

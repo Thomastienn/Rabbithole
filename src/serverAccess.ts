@@ -1,3 +1,4 @@
+import { savedVoiceLanguage } from './shell/preferences';
 import type { Message, Suggestions, ToolCall } from './chat/turn';
 import type { Artifact } from './media/artifacts';
 
@@ -34,7 +35,7 @@ export function serverFetch(
 export function boardSocket(conversation: string) {
     const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
     return new WebSocket(
-        `${scheme}://${window.location.host}/api/trees/${conversation}/board?csrf=${encodeURIComponent(csrf)}`,
+        `${scheme}://${window.location.host}/api/trees/${conversation}/board?csrf=${encodeURIComponent(csrf)}&lang=${savedVoiceLanguage()}`,
     );
 }
 

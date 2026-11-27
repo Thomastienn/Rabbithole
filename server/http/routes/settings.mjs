@@ -30,6 +30,12 @@ export async function settingsRoutes(req, res, url, ctx, body) {
         if (url.pathname === '/api/settings/suggestions')
             return json(res, 200, store.suggestionSettings());
         if (url.pathname === '/api/settings/chat') return json(res, 200, chatDefault());
+        // Whether a Voice language's speech models are on this computer (src/settings/BoardSettings.tsx).
+        if (url.pathname === '/api/settings/voice-models')
+            return json(res, 200, {
+                downloaded:
+                    (await ctx.hearing?.downloaded?.(url.searchParams.get('lang'))) ?? false,
+            });
         if (url.pathname === '/api/setup/system') return json(res, 200, systemPackages() ?? {});
         if (url.pathname === '/api/setup/sandbox') return json(res, 200, ctx.sandbox.status());
         if (url.pathname === '/api/settings/smart') return json(res, 200, smart());
