@@ -155,13 +155,38 @@ test('board: reopened, it holds the latest board reply’s last sentence and its
     );
     const drawn = [...board.container.querySelectorAll('svg .board-item')];
     assert.deepEqual(
-        drawn.map((g) => [g.firstElementChild.getAttribute('cx'), g.style.animationDuration]),
+        drawn.map((g) => [
+            g.firstElementChild.getAttribute('cx'),
+            g.style.getPropertyValue('--board-ms'),
+        ]),
         [
             ['800', '0ms'],
             ['900', '0ms'],
         ],
         'every saved item shows at once, without entry',
     );
+});
+
+test('board: a number line point arriving later moves a crowded label up onto a leader', async (t) => {
+    const board = await mount(t, []);
+    const line = {
+        id: 'n1',
+        kind: 'numberline',
+        at: [800, 500],
+        w: 1300,
+        h: 240,
+        d: 'M200 520H1400',
+    };
+    const point = (id, x, text) => ({ id, kind: 'point', on: 'n1', at: [x, 520], text });
+    const send = (ops) => board.act(async () => board.socket.server({ type: 'board', items: ops }));
+    const label = () => board.q('.board-point-label');
+    await send([line, point('q1', 1040, '0.7')]);
+    assert.equal(label().style.translate, '0 0px');
+    assert.equal(board.q('.board-leader'), null);
+    await send([line, point('q1', 1040, '0.7'), point('q2', 1000, '2/3')]);
+    assert.equal(label().textContent, '0.7');
+    assert.equal(label().style.translate, '0 -60px', 'the same label slides to the second row');
+    assert.equal(board.q('.board-leader').getAttribute('d'), 'M1040 420V500');
 });
 
 test('board: disconnecting holds the last caption and keeps a typed draft', async (t) => {
