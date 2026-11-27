@@ -218,17 +218,20 @@
     padding: 0;
     font-size: 15px;
 }
-.board-composer :is(.astryx-chat-send-button, .board-mic, .board-pen) {
+.board-composer :is(.astryx-chat-send-button, .board-mic, .board-pen, .board-pause) {
     width: 36px;
     height: 36px;
 }
-.board-composer :is(.astryx-chat-send-button, .board-mic, .board-pen) :is(svg, span:has(> svg)) {
+.board-composer
+    :is(.astryx-chat-send-button, .board-mic, .board-pen, .board-pause)
+    :is(svg, span:has(> svg)) {
     width: 20px;
     height: 20px;
 }
-/* The board's tool group: the mic, then the pen (mockup Rabbithole-brd.14). */
+/* The board's tool group: the mic, the pen (mockup Rabbithole-brd.14), then speed and pause (mockup Rabbithole-brd.8). */
 .board-tools {
     display: flex;
+    align-items: center;
     gap: 2px;
     margin-inline-start: -8px;
 }
@@ -268,6 +271,30 @@
     height: 4px;
     border-radius: var(--radius-full);
     background: var(--ink);
+}
+/* Speed: the composer's 30px pill, showing the speed in tabular figures. */
+.board-composer .board-speed {
+    min-width: 56px;
+    justify-content: center;
+    font-variant-numeric: tabular-nums;
+}
+/* Pause: a muted icon; pressed while paused, in the pill's raised fill; off at 45% when nothing plays. */
+.board-composer .board-pause {
+    color: var(--color-text-secondary);
+}
+.board-composer .board-pause:hover,
+.board-composer .board-pause[aria-pressed='true'] {
+    color: var(--color-text-primary);
+}
+.board-composer .board-pause[aria-pressed='true'] {
+    background: var(--color-background-gray);
+}
+.board-composer .board-pause:disabled {
+    opacity: 0.45;
+}
+/* Paused, every entry and fade holds exactly where it stopped. */
+.board.paused :is(.board-item, .board-item *) {
+    animation-play-state: paused;
 }
 .focused-chat .board-composer .board-send-busy:disabled {
     opacity: 0.45;

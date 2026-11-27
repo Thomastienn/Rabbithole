@@ -3,6 +3,7 @@ import { boardSocket } from '../serverAccess';
 import type { Message } from '../chat/turn';
 import { boardPlayer, type Op } from './player';
 import { streamedVoice } from './voice';
+import { savePreference, savedBoardSpeed } from '../shell/preferences';
 
 export type BoardState = 'idle' | 'thinking' | 'speaking';
 type Caption = { text: string; muted: boolean };
@@ -23,7 +24,10 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
     // Pen strokes over board items since the last question; they go with the next one.
     const [marks, setMarks] = useState(0);
     const restored = latest && { text: latest.text.trim().split('\n').at(-1) ?? '', muted: true };
+    const [speed, setSpeed] = useState(savedBoardSpeed);
+    const [paused, setPaused] = useState(false);
     const socket = useRef<WebSocket>(undefined);
+    const playing = useRef<ReturnType<typeof boardPlayer>>(undefined);
     useEffect(() => {
         const ws = boardSocket(conversation);
         socket.current = ws;
@@ -35,7 +39,7 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
             setItems((drawn) =>
                 drawn.map((d) => (ids.includes(d.op.id) ? { ...d, erased: ms } : d)),
             );
-            setTimeout(
+            player.wait(
                 () =>
                     setItems((drawn) =>
                         drawn.filter((d) => d.erased === undefined || !ids.includes(d.op.id)),
@@ -56,10 +60,13 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
             (s, phase) => send({ type: 'progress', sentence: s.id, phase }),
             streamedVoice(),
         );
+        player.speed(speed);
+        playing.current = player;
         ws.binaryType = 'arraybuffer';
         ws.onopen = () => setReady(true);
         ws.onclose = () => {
             player.stop();
+            setPaused(false);
             setReady(false);
             setState('idle');
             setCaption((c) => c && { ...c, muted: true });
@@ -78,6 +85,7 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
                 // Idle ends the reply: anything not yet shown is dropped and the last caption is held, muted.
                 if (m.state === 'idle') {
                     player.stop();
+                    setPaused(false);
                     setCaption((c) => c && { ...c, muted: true });
                 }
             }
@@ -93,6 +101,7 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         };
         return () => {
             player.stop();
+            setPaused(false);
             ws.onopen = ws.onmessage = null;
             ws.onclose = null;
             if (ws.readyState === WebSocket.OPEN) {
@@ -126,8 +135,21 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         const ws = socket.current;
         if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'stroke', points }));
     };
+    const changeSpeed = (rate: number) => {
+        setSpeed(rate);
+        savePreference('board-speed', String(rate));
+        playing.current?.speed(rate);
+    };
+    const pause = (on: boolean) => {
+        setPaused(on);
+        playing.current?.pause(on);
+    };
     return {
         state,
+        speed,
+        paused,
+        changeSpeed,
+        pause,
         ready,
         notice,
         asked: asked || messages.some((m) => m.board),

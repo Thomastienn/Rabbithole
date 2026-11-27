@@ -41,14 +41,18 @@ function fakeMedia(t, { refuse = false } = {}) {
     }
     class Audio extends EventTarget {
         currentTime = 0.3;
+        paused = false;
         constructor() {
             super();
             media.audios.push(this);
         }
         play() {
+            this.paused = false;
             return Promise.resolve();
         }
-        pause() {}
+        pause() {
+            this.paused = true;
+        }
         removeAttribute() {}
     }
     const saved = {
@@ -116,4 +120,21 @@ test('board voice: a browser that refuses the stream falls back to the estimate'
     media.sources[0].open();
     media.audios[0].dispatchEvent(new Event('error'));
     assert.deepEqual(seen, [['failed']], 'it fails once');
+});
+
+test('board voice: speed applies to the sentence playing and the next, and pause holds and resumes it', (t) => {
+    const media = fakeMedia(t);
+    const voice = streamedVoice();
+    voice.play('1', events().on);
+    const [audio] = media.audios;
+    assert.equal(audio.playbackRate, 1.5, 'speech plays at 1.5× by default');
+    assert.equal(audio.preservesPitch, true);
+    voice.speed(1.25);
+    assert.equal(audio.playbackRate, 1.25, 'the playing sentence changes speed at once');
+    voice.pause(true);
+    assert.equal(audio.paused, true);
+    voice.pause(false);
+    assert.equal(audio.paused, false, 'resume plays on from where it stopped');
+    voice.play('2', events().on);
+    assert.equal(media.audios[1].playbackRate, 1.25, 'the next sentence keeps the speed');
 });
