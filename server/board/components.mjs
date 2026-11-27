@@ -97,7 +97,7 @@ function ticks([lo, hi]) {
         [5, 4, 6, 8, 10, 3].find(
             (n) => Number.isInteger(span / n) && Number.isInteger(-lo / (span / n)),
         ) ?? 2;
-    return Array.from({ length: n + 1 }, (_, k) => r1(lo + (k * span) / n)).map((v) => [
+    return Array.from({ length: n + 1 }, (_, k) => +(lo + (k * span) / n).toFixed(10)).map((v) => [
         v,
         String(v),
     ]);
@@ -159,8 +159,13 @@ export function layout(item) {
             labels: marks.map(({ px, word }) => ({ at: [px, ly + 60], text: word })),
         };
     }
-    const xs = ticks(item.x).map(([v, word]) => ({ px: s.x(v), word }));
-    const ys = ticks(item.y).map(([v, word]) => ({ py: s.y(v), word }));
+    // A 0 tick that the other axis runs through would be struck through, so it is left out.
+    const xs = ticks(item.x)
+        .filter(([v]) => v || item.y[0] >= 0)
+        .map(([v, word]) => ({ px: s.x(v), word }));
+    const ys = ticks(item.y)
+        .filter(([v]) => v || item.x[0] >= 0)
+        .map(([v, word]) => ({ py: s.y(v), word }));
     return {
         ...item,
         d:

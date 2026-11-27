@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { boardOps } from '../../server/board/ops.mjs';
+import { expression } from '../../server/board/components.mjs';
 
 test('board ops: each kind becomes an item at its board coordinates, with its look', () => {
     const board = boardOps();
@@ -201,4 +202,33 @@ test('board ops: to the guard a component is one item at its box, and bad childr
         ['a3 axes at 300,300 x=5..1', 'ranges are LO..HI'],
     ])
         assert.equal(board.read(line).error, cause, line);
+});
+
+test('board ops: plot math keeps precedence, unary minus and implicit products', () => {
+    for (const [text, x, y] of [
+        ['-x^2', 3, -9],
+        ['2x^2', 3, 18],
+        ['x^2^3', 2, 256],
+        ['2^-1', 0, 0.5],
+        ['sin(x)^2', 1, Math.sin(1) ** 2],
+        ['2(x+1)', 1, 4],
+        ['e^x', 1, Math.E],
+    ])
+        assert.equal(expression(text)(x), y, text);
+});
+
+test('board ops: ticks keep exact values and skip a 0 an axis runs through', () => {
+    const board = boardOps();
+    const labels = (line) => board.read(line).item.labels.map((l) => l.text);
+    assert.deepEqual(labels('n1 numberline at 800,150 range=0..0.5'), ['0', '0.25', '0.5']);
+    assert.deepEqual(labels('a1 axes at 800,550 w=800 h=600 x=-2..2 y=-2..2'), [
+        '-2',
+        '-1',
+        '1',
+        '2',
+        '-2',
+        '-1',
+        '1',
+        '2',
+    ]);
 });
