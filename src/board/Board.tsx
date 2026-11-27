@@ -12,6 +12,7 @@ import {
     ChevronLeftIcon,
     ChevronRightIcon,
     ExclamationTriangleIcon,
+    InformationCircleIcon,
     MicrophoneIcon,
     PauseIcon,
     PencilIcon,
@@ -39,11 +40,13 @@ function boardPoint(e: PointerEvent<SVGSVGElement>): Point {
 }
 
 const STATES = { thinking: 'Thinking', speaking: 'Speaking' } as const;
+const MB = (bytes = 0) => Math.round(bytes / 1e6);
 
 // The board column (mockup Rabbithole-brd.1): the board field, the caption line and the board's composer.
 // The tutor's sentences show one at a time as the caption while their ops draw (mockup Rabbithole-brd.2).
 // With the pen on, the learner draws on the board in the conversation's ink (mockup Rabbithole-brd.14).
 // Speed and pause sit in the board's tools (mockup Rabbithole-brd.8).
+// The mic turns on voice questions, downloading the speech models on its first press (mockup Rabbithole-brd.11).
 // The transcript rail beside it lists what was said; collapsed, the caption line carries the sentence (mockup Rabbithole-brd.15).
 export default function Board({
     conversation,
@@ -99,6 +102,9 @@ export default function Board({
     }, [board.items.length, board.at]);
     const rows = labelRows(board.items.map((drawn) => drawn.op));
     const parts = componentParts(scene.shown.map((drawn) => drawn.op));
+    const { mic } = board;
+    const percent = mic.total ? Math.floor(((mic.loaded ?? 0) * 100) / mic.total) : 0;
+    const loading = mic.status === 'loading';
     const submit = (text: string) => {
         if (busy || !text.trim()) return;
         if (board.ask(text.trim())) setDraft('');
@@ -249,6 +255,13 @@ export default function Board({
                         </div>
                     )}
                     {!board.asked && <p className="board-empty">Ask a question to start.</p>}
+                    {loading && !board.notice && (
+                        <p className="board-notice info" role="status">
+                            <InformationCircleIcon aria-hidden />
+                            Getting voice ready: {MB(mic.loaded)} of {MB(mic.total)} MB. Your voice
+                            stays on this computer.
+                        </p>
+                    )}
                     {board.notice && (
                         <p className="board-notice" role="alert">
                             <ExclamationTriangleIcon aria-hidden />
@@ -261,11 +274,11 @@ export default function Board({
                 <span role="status">
                     {board.paused ? (
                         <span className="board-state paused">Paused</span>
+                    ) : board.state !== 'idle' ? (
+                        <span className={`board-state ${board.state}`}>{STATES[board.state]}</span>
                     ) : (
-                        board.state !== 'idle' && (
-                            <span className={`board-state ${board.state}`}>
-                                {STATES[board.state]}
-                            </span>
+                        mic.status === 'on' && (
+                            <span className="board-state listening">Listening</span>
                         )
                     )}
                 </span>
@@ -289,15 +302,37 @@ export default function Board({
                     }
                     footerActions={
                         <span className="board-tools">
-                            {/* Voice arrives in a later ticket; the mic is off when a board opens. */}
-                            <IconButton
-                                className="board-mic"
-                                label="Turn mic on"
-                                aria-pressed={false}
+                            {/* Off when a board opens; downloading and hearing widen it to the icon's right. */}
+                            <Button
+                                className={`board-mic${loading ? ' load' : mic.hearing ? ' hear' : ''}`}
+                                label={
+                                    loading ? `Turn mic on, downloading ${percent}%` : 'Turn mic on'
+                                }
+                                aria-pressed={mic.status === 'on'}
+                                aria-busy={loading || undefined}
                                 icon={<MicrophoneIcon />}
+                                isIconOnly={!loading && !mic.hearing}
                                 variant="ghost"
-                                isDisabled
-                            />
+                                isDisabled={!board.ready}
+                                onClick={board.toggleMic}
+                            >
+                                {loading ? (
+                                    <>
+                                        {percent}%
+                                        <span className="board-mic-bar">
+                                            <b style={{ width: `${percent}%` }} />
+                                        </span>
+                                    </>
+                                ) : (
+                                    mic.hearing && (
+                                        <span className="board-level" aria-hidden>
+                                            {mic.levels?.map((h, i) => (
+                                                <s key={i} style={{ height: `${h * 16}px` }} />
+                                            ))}
+                                        </span>
+                                    )
+                                )}
+                            </Button>
                             <IconButton
                                 className="board-pen"
                                 label="Pen"

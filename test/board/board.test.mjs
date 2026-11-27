@@ -1,109 +1,15 @@
 import '../support/tsx.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createElement as h, useState } from 'react';
-import { render } from '../support/render.mjs';
-import { ui, button } from '../support/ui.mjs';
-const { default: Board } = await import('../../src/board/Board.tsx');
-
-// The board session's socket, driven by the test: it records what the board sends and plays what the server says.
-class FakeSocket {
-    static OPEN = 1;
-    static last;
-    readyState = 0;
-    sent = [];
-    constructor(url) {
-        this.url = url;
-        FakeSocket.last = this;
-    }
-    send(data) {
-        this.sent.push(JSON.parse(data));
-    }
-    close() {
-        this.readyState = 3;
-        this.onclose?.();
-    }
-    open() {
-        this.readyState = 1;
-        this.onopen?.();
-    }
-    server(message) {
-        this.onmessage?.({ data: JSON.stringify(message) });
-    }
-    // A speech frame as the board session sends it: one byte of id length, the id, then the audio.
-    audio(id, bytes) {
-        this.onmessage?.({
-            data: new Uint8Array([id.length, ...Buffer.from(id), ...bytes]).buffer,
-        });
-    }
-}
-
-// The chat's branching state as the app hands it to the board; submitted keeps each branch sent from the rail.
-function Host({ submitted, ...props }) {
-    const [branch, setBranch] = useState();
-    const [selectingMessage, setSelectingMessage] = useState();
-    const thread = {
-        addresses: new Map(),
-        trees: [],
-        branch,
-        branching: false,
-        selectingMessage,
-        setSelectingMessage,
-        startBranch: (parent, anchor) => setBranch({ parent, anchor, question: 'What is it?' }),
-        setQuestion: (question) => setBranch((b) => ({ ...b, question })),
-        closeBranch: () => setBranch(undefined),
-        submitBranch: () => submitted.push(branch),
-        explainBrief: async () => '',
-        openConversation: () => {},
-    };
-    return h(Board, { ...props, thread });
-}
-
-// The rail starts collapsed here, so the caption line carries each sentence, unless rail is set.
-async function mount(t, messages = [], speed, rail = false) {
-    const reloads = [];
-    const submitted = [];
-    let dom;
-    const saved = globalThis.WebSocket;
-    globalThis.WebSocket = FakeSocket;
-    t.after(() => (globalThis.WebSocket = saved));
-    const view = await render(
-        h(Host, { conversation: 'c1', messages, reload: () => reloads.push('c1'), submitted }),
-        (w) => {
-            dom = ui(w);
-            if (speed) w.localStorage.setItem('rabbithole.board-speed', speed);
-        },
-    );
-    t.after(view.cleanup);
-    const socket = FakeSocket.last;
-    await view.act(async () => socket.open());
-    if (!rail) await view.act(async () => button(view.container, 'Collapse transcript').click());
-    const q = (selector) => view.container.querySelector(selector);
-    // The composer input is contenteditable: typing replaces its text and fires input.
-    const type = async (text) => {
-        const input = q('[contenteditable=true]');
-        await view.act(async () => {
-            input.textContent = text;
-            input.dispatchEvent(new window.Event('input', { bubbles: true }));
-        });
-    };
-    return {
-        ...view,
-        socket,
-        q,
-        type,
-        reloads,
-        submitted,
-        frames: () => view.act(async () => dom.frames()),
-    };
-}
+import { button } from '../support/ui.mjs';
+import { fakeMic, mount } from './mountBoard.mjs';
 
 test('board: an empty board waits for a typed question with the mic off, then shows it was heard', async (t) => {
     const board = await mount(t);
     assert.match(board.socket.url, /\/api\/trees\/c1\/board\?csrf=/);
     assert.ok(board.q('.board-empty'), 'the hint shows before the first board question');
     const mic = button(board.container, 'Turn mic on');
-    assert.ok(mic.disabled);
+    assert.ok(!mic.disabled);
     assert.equal(mic.getAttribute('aria-pressed'), 'false');
     await board.type('How does a hypha grow?');
     await board.act(async () => button(board.container, 'Send').click());
@@ -118,6 +24,76 @@ test('board: an empty board waits for a typed question with the mic off, then sh
     assert.ok(board.q('[role=status]').textContent, 'the learner hears a busy status');
     assert.ok(button(board.container, 'Send').disabled, 'Send waits for the tutor');
     assert.equal(board.q('[contenteditable=true]').textContent, '', 'the composer clears');
+});
+
+test('board: the first mic press downloads with progress while typing works, then the mic listens for a spoken question', async (t) => {
+    const mic = fakeMic(t);
+    const board = await mount(t, [], undefined, false, mic);
+    const press = () => board.act(async () => board.q('.board-mic').click());
+    await press();
+    assert.deepEqual(mic.asked, [
+        {
+            audio: {
+                channelCount: 1,
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+            },
+        },
+    ]);
+    assert.equal(mic.module, '/mic-worklet.js');
+    assert.deepEqual(board.socket.sent, [{ type: 'mic', on: true }]);
+
+    await board.act(async () =>
+        board.socket.server({ type: 'mic', status: 'loading', loaded: 26e6, total: 64e6 }),
+    );
+    const loading = board.q('.board-mic');
+    assert.match(loading.getAttribute('aria-label'), /40%/);
+    assert.equal(loading.getAttribute('aria-busy'), 'true');
+    assert.equal(loading.getAttribute('aria-pressed'), 'false');
+    assert.match(loading.textContent, /40%/);
+    assert.match(board.q('.board-notice[role=status]').textContent, /26 of 64 MB/);
+    mic.frame(new Float32Array(512));
+    assert.deepEqual(board.socket.sent.length, 1, 'no audio goes up until the mic is on');
+    // Typing and sending work while the models download.
+    await board.type('Why is the Moon lit?');
+    await board.act(async () => button(board.container, 'Send').click());
+    assert.deepEqual(board.socket.sent.at(-1), { type: 'ask', text: 'Why is the Moon lit?' });
+    await board.act(async () => board.socket.server({ type: 'state', state: 'idle' }));
+
+    await board.act(async () => board.socket.server({ type: 'mic', status: 'on' }));
+    assert.equal(board.q('.board-mic').getAttribute('aria-pressed'), 'true');
+    assert.equal(board.q('.board-notice'), null);
+    assert.equal(board.q('.board-state').textContent, 'Listening');
+    await board.act(async () => mic.frame(new Float32Array(512)));
+    assert.deepEqual(board.socket.sent.at(-1), { audio: 2048 });
+
+    await board.act(async () => board.socket.server({ type: 'hearing', on: true }));
+    await board.act(async () => mic.frame(new Float32Array(512).fill(0.1)));
+    assert.equal(board.q('.board-mic.hear .board-level').children.length, 4);
+    await board.act(async () => board.socket.server({ type: 'hearing', on: false }));
+    assert.equal(board.q('.board-mic.hear'), null);
+    await board.act(async () => {
+        board.socket.server({ type: 'heard', text: 'Why no eclipse every month?' });
+        board.socket.server({ type: 'state', state: 'thinking' });
+    });
+    assert.equal(board.q('.board-caption.muted').textContent, 'Why no eclipse every month?');
+    assert.equal(board.q('.board-state').textContent, 'Thinking');
+
+    // A second press turns it off and lets the mic go.
+    await press();
+    assert.deepEqual(board.socket.sent.at(-1), { type: 'mic', on: false });
+    assert.equal(board.q('.board-mic').getAttribute('aria-pressed'), 'false');
+    assert.equal(mic.stopped, 1);
+});
+
+test('board: a blocked microphone leaves the mic off with a notice saying where to allow it', async (t) => {
+    const mic = fakeMic(t, { refuse: 'NotAllowedError' });
+    const board = await mount(t, [], undefined, false, mic);
+    await board.act(async () => board.q('.board-mic').click());
+    assert.ok(board.q('.board-notice[role=alert]'));
+    assert.equal(board.q('.board-mic').getAttribute('aria-pressed'), 'false');
+    assert.deepEqual(board.socket.sent, [], 'the server is not asked for the speech models');
 });
 
 test('board: each sentence becomes the caption, reported as it shows, and leaving asks the server to save', async (t) => {

@@ -3,6 +3,7 @@ import { boardSocket } from '../serverAccess';
 import type { Message } from '../chat/turn';
 import { boardPlayer, type Op } from './player';
 import { streamedVoice } from './voice';
+import { levels, openMic } from './mic';
 import { savePreference, savedBoardSpeed } from '../shell/preferences';
 
 export type BoardState = 'idle' | 'thinking' | 'speaking';
@@ -15,6 +16,19 @@ const still = (replies: Reply[]) =>
     replies.map((r) => ({ ...r, items: r.items.map((d) => ({ ...d, ms: 0 })) }));
 // A question asked on this board and the sentences of its reply shown so far, under their saved message ids.
 export type Turn = { user: string; reply: string; question: string; said: string[] };
+// The mic: off, downloading the speech models (bytes), or on; hearing while the learner speaks, with four level bars.
+export type Mic = {
+    status: 'off' | 'loading' | 'on';
+    loaded?: number;
+    total?: number;
+    hearing?: boolean;
+    levels?: number[];
+};
+const MIC_OFF: Mic = { status: 'off' };
+const BLOCKED =
+    'The browser blocked the microphone. Allow it for this page, then press the mic again.';
+const NO_MIC =
+    "The microphone didn't start. Check that one is connected, then press the mic again.";
 
 // One open board: its socket to the board session, the caption line and the session state.
 export function useBoard(conversation: string, messages: Message[], reload: () => void) {
@@ -44,6 +58,27 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
     const playing = useRef<ReturnType<typeof boardPlayer>>(undefined);
     // Set by a cut-in until the server answers it with a state: sentences of the stopped reply still on the wire are dropped.
     const cut = useRef(false);
+    // The mic starts off on every board; while on, its frames go up the socket.
+    const [mic, setMic] = useState<Mic>(MIC_OFF);
+    const closeMic = useRef<() => void>(undefined);
+    const micOn = useRef(false);
+    const stopMic = () => {
+        closeMic.current?.();
+        closeMic.current = undefined;
+        micOn.current = false;
+        setMic(MIC_OFF);
+    };
+    // A question sent, typed or spoken: it shows muted until the tutor speaks, so the learner sees it was heard.
+    const shown = (text: string) => {
+        question.current = text;
+        setAsked(true);
+        setMarks(0);
+        setNotice(undefined);
+        setCaption({ text, muted: true });
+        // Asking returns to the latest board, which the new reply draws on.
+        setStep(undefined);
+        setReplies((rs) => [...rs, { items: [], caption: '' }]);
+    };
     useEffect(() => {
         const ws = boardSocket(conversation);
         socket.current = ws;
@@ -76,6 +111,7 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         ws.binaryType = 'arraybuffer';
         ws.onopen = () => setReady(true);
         ws.onclose = () => {
+            stopMic();
             player.stop();
             setPaused(false);
             setReady(false);
@@ -124,8 +160,24 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
                 if (m.mark) setMarks((n) => n + 1);
             }
             if (m.type === 'notice') setNotice(m.notice);
+            if (m.type === 'mic') {
+                if (m.status === 'off') stopMic();
+                else if (closeMic.current) {
+                    micOn.current = m.status === 'on';
+                    setMic({ status: m.status, loaded: m.loaded, total: m.total });
+                }
+            }
+            if (m.type === 'hearing')
+                setMic((mic) =>
+                    mic.status === 'on'
+                        ? { ...mic, hearing: m.on, levels: [0.2, 0.2, 0.2, 0.2] }
+                        : mic,
+                );
+            // A spoken question was recognized and sent.
+            if (m.type === 'heard') shown(m.text);
         };
         return () => {
+            stopMic();
             player.stop();
             setPaused(false);
             ws.onopen = ws.onmessage = null;
@@ -148,22 +200,14 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         const ws = socket.current;
         if (ws?.readyState !== WebSocket.OPEN) return false;
         ws.send(JSON.stringify({ type: 'ask', text }));
-        question.current = text;
         // Sending mid-reply cuts in: the tutor stops here at once, without waiting on the server.
         if (state === 'speaking') {
             cut.current = true;
             playing.current?.stop();
             setPaused(false);
         }
-        setAsked(true);
-        setMarks(0);
-        setNotice(undefined);
-        // The sent question shows muted until the tutor speaks, so the learner sees it was heard.
-        setCaption({ text, muted: true });
+        shown(text);
         setState('thinking');
-        // Asking returns to the latest board, which the new reply draws on.
-        setStep(undefined);
-        setReplies((rs) => [...rs, { items: [], caption: '' }]);
         return true;
     };
     const at = step ?? replies.length - 1;
@@ -176,6 +220,35 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
     const draw = (points: [number, number][]) => {
         const ws = socket.current;
         if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'stroke', points }));
+    };
+    // One press turns the mic on, asking the browser for it first; another turns it off.
+    const toggleMic = async () => {
+        const ws = socket.current;
+        if (mic.status !== 'off' || closeMic.current) {
+            if (ws?.readyState === WebSocket.OPEN)
+                ws.send(JSON.stringify({ type: 'mic', on: false }));
+            return stopMic();
+        }
+        if (ws?.readyState !== WebSocket.OPEN) return;
+        // A placeholder while the browser asks, so a second press cancels instead of asking twice.
+        closeMic.current = () => {};
+        try {
+            const close = await openMic((samples) => {
+                if (!micOn.current || ws.readyState !== WebSocket.OPEN) return;
+                ws.send(samples.buffer);
+                setMic((mic) =>
+                    mic.hearing ? { ...mic, levels: levels(samples, mic.levels ?? []) } : mic,
+                );
+            });
+            // Off again, or the board closed, while the browser asked.
+            if (!closeMic.current || ws.readyState !== WebSocket.OPEN) return close();
+            closeMic.current = close;
+        } catch (error) {
+            closeMic.current = undefined;
+            return setNotice((error as Error).name === 'NotAllowedError' ? BLOCKED : NO_MIC);
+        }
+        setNotice(undefined);
+        ws.send(JSON.stringify({ type: 'mic', on: true }));
     };
     const changeSpeed = (rate: number) => {
         setSpeed(rate);
@@ -208,6 +281,8 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         paused,
         changeSpeed,
         pause,
+        mic,
+        toggleMic,
         ready,
         notice,
         asked: asked || messages.some((m) => m.board),

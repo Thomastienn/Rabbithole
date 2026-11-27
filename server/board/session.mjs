@@ -6,6 +6,7 @@ import { validUsage } from '../store/usage.mjs';
 import { scriptReader } from './script.mjs';
 import { boardOps } from './ops.mjs';
 import { boardSystem } from './prompt.mjs';
+import { boardMic } from './mic.mjs';
 import { conversationHistory } from '../providers/conversationHistory.mjs';
 
 const STOPPED = 'The tutor stopped. Ask again to carry on.';
@@ -30,14 +31,16 @@ function strokeImage(points) {
 }
 
 // One board session per open board: the conversation's own model process, its turns and their saving.
-// Up: { type: 'ask', text }, { type: 'stroke', points } as the learner finishes a pen stroke, { type: 'progress', sentence, phase: 'start' | 'end' } as each caption shows and ends, { type: 'leave' }.
+// Up: { type: 'ask', text }, { type: 'mic', on } and, while on, mic audio as binary frames of 16 kHz mono float32 samples, { type: 'stroke', points } as the learner finishes a pen stroke, { type: 'progress', sentence, phase: 'start' | 'end' } as each caption shows and ends, { type: 'leave' }.
 // Down: { type: 'state', state: 'idle' | 'thinking' | 'speaking' }, thinking with the turn's user and reply message ids, { type: 'notice', notice },
 // { type: 'sentence', id, text, ops, voiced } with the drawable ops written under it (server/board/ops.mjs),
 // then, when voiced, its speech as binary frames (one byte of id length, the id, the audio) and { type: 'audio-end', id },
 // a filler clip the same way under the id `filler` when a turn's first audio hasn't started after 1 s,
 // { type: 'stroke', item, mark } back for each pen stroke, with what it marks or null,
 // { type: 'board', replies: [{ caption, items }] } once on open: the saved board, each reply's items replayed
-// from its op lines with the reply's last sentence as its caption.
+// from its op lines with the reply's last sentence as its caption,
+// { type: 'mic', status: 'loading' | 'on' | 'off', loaded, total } as the speech models download and the mic turns on or off,
+// { type: 'hearing', on } as the learner starts and stops speaking, and { type: 'heard', text } as a spoken question is sent.
 export function boardSession(ctx, id, socket) {
     const { store, log } = ctx;
     const send = (event) => {
@@ -516,8 +519,9 @@ export function boardSession(ctx, id, socket) {
         Array.isArray(p) &&
         p.length === 2 &&
         p.every((v) => Number.isFinite(v) && Math.abs(v) < 1e5);
+    const mic = boardMic(ctx.hearing, { send, log, ask, busy: () => turn, closed: () => closed });
     socket.on('message', (data, binary) => {
-        if (binary) return;
+        if (binary) return mic.audio(data);
         let m;
         try {
             m = JSON.parse(data);
@@ -535,6 +539,7 @@ export function boardSession(ctx, id, socket) {
         )
             stroke(m.points.map((p) => p.map(Math.round)));
         if (m?.type === 'progress' && typeof m.sentence === 'string') progress(m.sentence, m.phase);
+        if (m?.type === 'mic') m.on ? mic.on() : mic.off();
         if (m?.type === 'leave') close();
     });
     socket.on('close', close);
