@@ -9,6 +9,7 @@ import { boardSystem } from './prompt.mjs';
 import { conversationHistory } from '../providers/conversationHistory.mjs';
 
 const STOPPED = 'The tutor stopped. Ask again to carry on.';
+const VOICE_UNAVAILABLE = 'The voice is unavailable, so the tutor carries on in captions.';
 // A free-space stroke goes to the tutor as this much of the board around it, in board pixels.
 const MARGIN = 40;
 
@@ -390,30 +391,43 @@ export function boardSession(ctx, id, socket) {
         );
     };
     // Speech runs one sentence ahead of playback: a sentence synthesizes once the one before it starts playing.
+    // A sentence with no audio yet is tried twice; when speech still fails, the rest of the turn is captions only.
     const speak = (current) => {
         const sentence = current.sentences[current.voiced];
         if (!speech || current.speaking || !sentence || current.voiced > current.shown) return;
         current.voiced++;
         current.speaking = true;
         const signal = current.job.controller.signal;
-        speech
-            .speak(
+        let spoke = false;
+        const say = () =>
+            speech.speak(
                 sentence.text,
                 (chunk) => {
+                    spoke = true;
                     if (current.done) return;
                     heard(current);
                     sendAudio(sentence.id, chunk);
                 },
                 signal,
-            )
+            );
+        (current.silent
+            ? Promise.resolve()
+            : say().catch((error) => {
+                  if (spoke || signal.aborted) throw error;
+                  return say();
+              })
+        )
             .catch((error) => {
-                if (!signal.aborted)
-                    log(
-                        formatLog('warn', 'board', 'speech failed', {
-                            id: current.reply,
-                            cause: errorCause(error, [sentence.text]),
-                        }),
-                    );
+                if (signal.aborted) return;
+                log(
+                    formatLog('warn', 'board', 'speech failed', {
+                        id: current.reply,
+                        cause: errorCause(error, [sentence.text]),
+                    }),
+                );
+                if (spoke) return;
+                current.silent = true;
+                send({ type: 'notice', notice: VOICE_UNAVAILABLE });
             })
             .finally(() => {
                 current.speaking = false;

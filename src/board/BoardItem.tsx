@@ -53,7 +53,7 @@ export const strokePath = (points: [number, number][]) =>
 
 // One board item in board pixels, coloured by its look, entering by hand over its share of the sentence,
 // and fading out over the share of the erase that names it (`gone`).
-// pathLength 1 lets one dash draw any stroke on (src/styles/board.css). A point's label sits on `row` 0 or 1
+// pathLength 1 lets one dash draw any stroke on (src/styles/board-items.css). A point's label sits on `row` 0 or 1
 // above its line and slides when a later point reflows it (mockup Rabbithole-brd.5). A flow, tree, table
 // or Venn item draws its `parts` (src/board/layout.ts) one after another, each over its share of the entry.
 export default function BoardItem({
@@ -188,7 +188,7 @@ export default function BoardItem({
     );
 }
 
-// One part, placed by CSS geometry so a reflow slides it rather than jumping (src/styles/board.css).
+// One part, placed by CSS geometry so a reflow slides it rather than jumping (src/styles/board-items.css).
 function ComponentPart({ part, ms }: { part: Part; ms: number }) {
     const [from, to] = part.t;
     const timing = { animationDelay: `${ms * from}ms`, animationDuration: `${ms * (to - from)}ms` };
