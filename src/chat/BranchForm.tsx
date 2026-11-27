@@ -260,6 +260,7 @@ export default function BranchForm({
                             label="Explain briefly"
                             size="sm"
                             variant="secondary"
+                            isDisabled={branching}
                             onClick={(e) => {
                                 // The button gives way to the loading state, so focus moves on to the question box.
                                 e.currentTarget.form?.querySelector('input')?.focus();
