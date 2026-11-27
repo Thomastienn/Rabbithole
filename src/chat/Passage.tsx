@@ -37,6 +37,7 @@ export default function Passage({
     resources,
     onArtifactAction,
     onDiscussionReply,
+    onExpandSketch,
     onVisualPart,
     visualBranches,
     discussionBranches,
@@ -51,10 +52,11 @@ export default function Passage({
     discussionBranches?: Record<string, DiscussionBranch[]>;
     onArtifactAction?: (
         id: string,
-        action: 'cancel' | 'retry' | 'regenerate' | 'install' | 'previous',
+        action: 'cancel' | 'retry' | 'regenerate' | 'install' | 'previous' | 'sketch',
         instruction?: string,
     ) => Promise<void>;
     onDiscussionReply?: DiscussionReply;
+    onExpandSketch?: (at: number) => Promise<void>;
     suggestions?: Suggestions;
     briefs?: Brief[];
     branched: {
@@ -409,6 +411,7 @@ export default function Passage({
                     inlineArtifacts={inlineArtifacts}
                     onArtifactAction={onArtifactAction}
                     onDiscussionReply={onDiscussionReply}
+                    onExpandSketch={onExpandSketch}
                     onVisualPart={onVisualPart}
                     visualBranches={visualBranches}
                     discussionBranches={discussionBranches}

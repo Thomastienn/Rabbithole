@@ -262,6 +262,7 @@ export default function VisualFrame({
     onRetry,
     onRegenerate,
     onPrevious,
+    onShowSketch,
 }: {
     artifact: Artifact;
     explored?: VisualBranch[];
@@ -271,6 +272,7 @@ export default function VisualFrame({
     onRetry?: () => Promise<void>;
     onRegenerate?: (instruction: string) => Promise<void>;
     onPrevious?: () => Promise<void>;
+    onShowSketch?: () => Promise<void>;
 }) {
     const [enlarged, setEnlarged] = useState(false);
     const [retried, setRetried] = useState(false);
@@ -418,6 +420,9 @@ export default function VisualFrame({
                             )}
                             items={[
                                 ...versions.items,
+                                ...(onShowSketch
+                                    ? [{ label: 'Show sketch', onClick: () => void onShowSketch() }]
+                                    : []),
                                 { label: 'Enlarge', onClick: () => setEnlarged(true) },
                             ]}
                         />

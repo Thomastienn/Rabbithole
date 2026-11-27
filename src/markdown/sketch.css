@@ -66,6 +66,22 @@
 .sketch-bars .focus {
     font-weight: 600;
 }
+/* Expand into visual: the visual's quiet actions box, shown on hover and keyboard focus inside the sketch. */
+.sketch-actions {
+    top: -6px;
+    display: none;
+}
+.sketch:is(:hover, :focus-within) .sketch-actions {
+    display: flex;
+}
+@media (hover: none) {
+    .sketch-actions {
+        display: flex;
+    }
+}
+.sketch-actions svg {
+    color: var(--color-text-secondary);
+}
 /* Streaming: the size of a small sketch, in the skeleton tone. */
 .sketch-wait {
     height: 96px;

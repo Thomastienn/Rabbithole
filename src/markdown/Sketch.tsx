@@ -1,4 +1,6 @@
 import { useEffect, useMemo } from 'react';
+import { Button } from '@astryxdesign/core/Button';
+import PhotoIcon from '@heroicons/react/24/outline/PhotoIcon';
 import { drawSketch, type Palette } from '../sketch/sketch';
 import './sketch.css';
 
@@ -12,14 +14,19 @@ const THEME: Palette = {
 };
 
 // A sketch block in a reply: a placeholder while its fence is open, nothing (logged) when it cannot draw.
+// A saved reply's sketch offers Expand into visual, or Show visual once its visual exists.
 export default function Sketch({
     kind,
     body,
     fence,
+    visual,
+    onExpand,
 }: {
     kind: string;
     body: string;
     fence: 'open' | 'closed' | 'unfinished';
+    visual?: string;
+    onExpand?: () => void;
 }) {
     const sketch = useMemo(
         () => (fence === 'closed' ? drawSketch(kind, body, THEME) : undefined),
@@ -38,7 +45,11 @@ export default function Sketch({
         return <div className="sketch-wait" role="status" aria-label="Drawing a sketch" />;
     if (!sketch || 'error' in sketch) return null;
     return (
-        <figure className="sketch" aria-label={sketch.title ? `Sketch: ${sketch.title}` : 'Sketch'}>
+        <figure
+            className="sketch"
+            aria-label={sketch.title ? `Sketch: ${sketch.title}` : 'Sketch'}
+            data-artifact={visual}
+        >
             {sketch.title && <figcaption aria-hidden="true">{sketch.title}</figcaption>}
             {/* The module escapes every label the tutor wrote. */}
             <div aria-hidden="true" dangerouslySetInnerHTML={{ __html: sketch.markup }} />
@@ -47,6 +58,17 @@ export default function Sketch({
                     <li key={i}>{item.text}</li>
                 ))}
             </ul>
+            {onExpand && (
+                <div className="visual-actions sketch-actions">
+                    <Button
+                        label={visual ? 'Show visual' : 'Expand into visual'}
+                        icon={<PhotoIcon />}
+                        variant="ghost"
+                        size="sm"
+                        onClick={onExpand}
+                    />
+                </div>
+            )}
         </figure>
     );
 }

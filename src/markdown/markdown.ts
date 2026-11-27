@@ -102,15 +102,23 @@ function sourceLines(raw: string, n: MarkdownNode, code = false): Run[][] {
 // Underlines are drawn on text leaves and formula symbols; the first piece of each is its single Tab stop.
 // shortcut: a passage covering only hidden syntax draws nothing; extend if suggestions target those.
 // Slots (inline visuals) go before the first top-level block starting at or after their offset, else at the end.
+// A slot with `sketch` is a visual expanded from the sketch starting at its offset: it draws in the sketch's place.
 export function renderMarkdown(
     raw: string,
     reveal?: Span,
     underlines: (Span & { child?: string; address?: string; ink?: number })[] = [],
-    slots: { at: number; node: ReactNode; kind?: string; side?: string | null }[] = [],
+    slots: {
+        at: number;
+        node: ReactNode;
+        kind?: string;
+        side?: string | null;
+        sketch?: { id: string; shown: boolean };
+    }[] = [],
     sources: Record<string, ImageSource> = {},
     flow = false,
     resources: Record<string, string> = {},
     sketches: 'off' | 'streaming' | 'saved' = 'saved',
+    onSketch?: (at: number) => void,
 ): ReactNode {
     let revealed = 0;
     let imageLink: string | undefined;
@@ -229,7 +237,7 @@ export function renderMarkdown(
     }
     findDefinitions(tree);
     // Shared so media layouts can claim visuals before the root places the rest.
-    const pending = [...slots].sort((a, b) => a.at - b.at);
+    const pending = slots.filter((slot) => !slot.sketch).sort((a, b) => a.at - b.at);
     function node(n: MarkdownNode, inTable = false): ReactNode {
         const before = revealed,
             result = renderNode(n, inTable),
@@ -383,8 +391,12 @@ export function renderMarkdown(
             case 'code': {
                 if (sketches !== 'off' && isSketch(n)) {
                     if (hit(s, e)) revealed++;
+                    const expanded = slots.find((slot) => slot.sketch && slot.at === s);
+                    if (expanded && !expanded.sketch!.shown) return expanded.node;
                     return h(Sketch, {
                         ...attrs,
+                        visual: expanded?.sketch!.id,
+                        onExpand: onSketch && (() => onSketch(s)),
                         kind: n.meta ?? '',
                         body: n.value ?? '',
                         fence: n.sketchClosed
