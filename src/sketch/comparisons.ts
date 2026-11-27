@@ -1,5 +1,4 @@
 // The kinds that set things side by side: compare, venn and pie.
-import type { Drawing, Palette } from './sketch';
 import {
     CHAR,
     WIDTH,
@@ -9,9 +8,11 @@ import {
     quantity,
     quoted,
     wrap,
+    type Drawing,
     type Line,
+    type Palette,
     type Quantity,
-} from './text';
+} from './sketch.ts';
 
 // Compare: `vs: A | B`, then one row per aspect, `aspect: A's value | B's value` (or `aspect | a | b`).
 export function compare(lines: Line[], p: Palette, [head]: Line[]): Drawing {

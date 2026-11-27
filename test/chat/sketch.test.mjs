@@ -17,7 +17,6 @@ const dark = {
     ink: '#eeeeee',
     muted: '#999999',
     seam: '#666666',
-    hairline: '#333333',
     focus: '#ffffff',
 };
 const light = {
@@ -25,7 +24,6 @@ const light = {
     ink: '#111111',
     muted: '#555555',
     seam: '#888888',
-    hairline: '#cccccc',
     focus: '#000000',
 };
 const freezing = [
@@ -41,25 +39,6 @@ const speeds = [
     'Equator: 465 m/s',
     '*60° latitude*: 233 m/s',
     'North Pole: 0 m/s',
-].join('\n');
-const microbes = [
-    'title: Bacterium or virus',
-    'vs: Bacterium | Virus',
-    'Structure: A living cell | Genes in a protein shell',
-    'Own ribosomes | Yes | No',
-    "Antibiotics: Often work | *Don't work*",
-].join('\n');
-const cells = [
-    'title: Plant and animal cells',
-    'Plant cell: Cell wall, Chloroplasts',
-    'Animal cell: Lysosomes',
-    'both: Nucleus, *Mitochondria*',
-].join('\n');
-const day = [
-    'title: A 2,000 kcal day',
-    'Carbohydrates: 1,000 kcal',
-    '*Fat*: 700 kcal',
-    'Protein: 300 kcal',
 ].join('\n');
 const voltage = [
     'title: Membrane voltage (mV)',
@@ -206,96 +185,133 @@ test('a bars sketch keeps each unit, marks the focus and draws a zero', () => {
     assert.ok(zero.querySelector('s'));
 });
 
-test('a compare sketch draws one row per aspect under its two names, in either line form', () => {
-    const sketch = drawSketch('compare', microbes, dark);
-    assert.equal(sketch.about, 'comparing Bacterium and Virus');
-    assert.deepEqual(
-        sketch.items.map((i) => [i.label, i.focus, i.text]),
-        [
-            [
-                'Structure',
-                false,
-                'Structure: Bacterium, A living cell; Virus, Genes in a protein shell',
-            ],
-            ['Own ribosomes', false, 'Own ribosomes: Bacterium, Yes; Virus, No'],
-            ['Antibiotics', true, "Antibiotics: Bacterium, Often work; Virus, Don't work, focus"],
-        ],
-    );
-    const grid = new JSDOM(sketch.markup).window.document.querySelector('.sketch-compare');
-    assert.deepEqual(
-        [...grid.children].map((cell) => cell.textContent),
-        ['', 'Bacterium', 'Virus', 'Structure', 'A living cell', 'Genes in a protein shell'].concat(
-            ['Own ribosomes', 'Yes', 'No', 'Antibiotics', 'Often work', "Don't work"],
-        ),
-    );
+const maths = {
+    plot: ['title: x² and its tangent at x = 1', 'y = x^2', '*y = 2*x - 1*', 'x: -0.5..2.5'].join(
+        '\n',
+    ),
+    sequence: [
+        'title: What crosses the public channel',
+        'actors: Alice | Eve | Bob',
+        'Alice: keeps a = 6 private',
+        'Alice -> Bob: A = 8',
+        'Bob -> Alice: B = 19',
+        'Bob: 8^15 mod 23 = *2*',
+    ].join('\n'),
+    equation: [
+        'title: With our numbers',
+        'eq: K = g^ab mod p',
+        'K: the shared key, 2',
+        'g: public base, 5',
+        'ab: 6 × 15 = 90, *never sent*',
+        'p: public prime, 23',
+    ].join('\n'),
+    grid: [
+        'title: Slide a 3×3 filter',
+        'image:',
+        '10 10 0',
+        '10 10 0',
+        '×',
+        'filter:',
+        '1 -1',
+        '=',
+        'output:',
+        '0 *30*',
+        'rocks:',
+        'Parent rock | Becomes',
+        'Shale | Slate',
+    ].join('\n'),
+};
+
+test('maths and exchange sketches draw one item per element, with title and focus', () => {
+    const items = (kind) => {
+        const sketch = drawSketch(kind, maths[kind], dark);
+        assert.ok(sketch.title);
+        return sketch.items.map((i) => [i.label, i.focus, i.text]);
+    };
+    assert.deepEqual(items('plot'), [
+        ['y = x^2', false, 'Curve y = x², x from −0.5 to 2.5'],
+        ['y = 2*x - 1', true, 'Curve y = 2x − 1, x from −0.5 to 2.5, focus'],
+    ]);
+    assert.deepEqual(items('sequence'), [
+        ['Alice, Eve, Bob', false, 'Actors: Alice, Eve, Bob'],
+        ['keeps a = 6 private', false, 'Alice, note: keeps a = 6 private'],
+        ['A = 8', false, 'Alice to Bob: A = 8'],
+        ['B = 19', false, 'Bob to Alice: B = 19'],
+        ['8^15 mod 23 = 2', true, 'Bob, note: 8^15 mod 23 = 2, focus'],
+    ]);
+    assert.deepEqual(items('equation'), [
+        ['K = g^ab mod p', false, 'Equation: K = g superscript ab mod p'],
+        ['K', false, 'K: the shared key, 2'],
+        ['g', false, 'g: public base, 5'],
+        ['ab', true, 'ab: 6 × 15 = 90, never sent, focus'],
+        ['p', false, 'p: public prime, 23'],
+    ]);
+    assert.deepEqual(items('grid'), [
+        ['image', false, 'image, table, 2 rows, 3 columns: 10, 10, 0; 10, 10, 0'],
+        ['filter', false, 'times filter, table, 1 row, 2 columns: 1; −1'],
+        ['output', true, 'equals output, table, 1 row, 2 columns: 0; 30, focus'],
+        ['rocks', false, 'rocks, table, 2 rows, 2 columns: Parent rock, Becomes; Shale, Slate'],
+    ]);
 });
 
-test('a venn sketch puts each set in its own part and the both items in the overlap', () => {
-    const sketch = drawSketch('venn', cells, dark);
-    assert.equal(sketch.about, 'sets Plant cell and Animal cell');
+test('a plot draws each curve over its range and parses its formula, never running it', () => {
+    const svg = new JSDOM(drawSketch('plot', maths.plot, dark).markup).window.document;
+    const curves = [...svg.querySelectorAll('path.sketch-line')];
+    assert.equal(curves.length, 2);
+    // 201 samples across x, so every curve spans the whole range.
+    for (const c of curves) assert.equal(c.getAttribute('d').match(/[ML]/g).length, 201);
+    assert.ok(curves[1].getAttribute('style').includes(dark.focus));
     assert.deepEqual(
-        sketch.items.map((i) => i.text),
-        [
-            'Cell wall, Plant cell only',
-            'Chloroplasts, Plant cell only',
-            'Nucleus, both',
-            'Mitochondria, both, focus',
-            'Lysosomes, Animal cell only',
-        ],
+        [...svg.querySelectorAll('.sketch-math math')].map((m) => m.textContent.includes('y')),
+        [true, true],
     );
-    const doc = new JSDOM(sketch.markup).window.document,
-        [left, right] = [...doc.querySelectorAll('ellipse')].map((e) => +e.getAttribute('cx')),
-        x = (label) =>
-            +[...doc.querySelectorAll('text')]
-                .find((t) => t.textContent === label)
-                .getAttribute('x');
-    assert.ok(x('Cell wall') < left && x('Lysosomes') > right);
-    assert.ok(left < x('Nucleus') && x('Nucleus') < right);
-    const empty = drawSketch(
-        'venn',
-        '*Squares*:\nRectangles: Unequal sides\nboth: Four right angles',
-        dark,
-    );
-    assert.deepEqual(
-        empty.items.map((i) => i.text),
-        ['Four right angles, both', 'Unequal sides, Rectangles only'],
-    );
+    // A value that is not a number breaks the curve instead of drawing to it.
+    const broken = drawSketch('plot', 'y = sqrt(x)\nx: -1..1', dark).markup;
+    assert.equal(broken.match(/class="sketch-line"[^>]*d="([^"]*)"/)[1].match(/M/g).length, 1);
+    globalThis.reached = false;
+    for (const formula of ['reached', 'constructor(x)', 'x; reached = true', 'x)(', 'sin x', '2 +'])
+        assert.match(drawSketch('plot', `y = ${formula}\nx: 0..1`, dark).error, /line 1/);
+    assert.equal(globalThis.reached, false);
+    delete globalThis.reached;
 });
 
-test('a pie sketch shows each share as a percentage of the whole', () => {
-    const share = (body) => drawSketch('pie', body, dark).items.map((i) => i.text);
-    assert.equal(drawSketch('pie', day, dark).about, 'shares of a whole');
-    assert.deepEqual(share(day), [
-        'Carbohydrates, 1,000 kcal, 50%',
-        'Fat, 700 kcal, 35%, focus',
-        'Protein, 300 kcal, 15%',
-    ]);
+test('a sequence draws each actor once and each message in order, and an equation links each symbol', () => {
+    const seq = new JSDOM(drawSketch('sequence', maths.sequence, dark).markup).window.document;
+    const words = [...seq.querySelectorAll('text')].map((t) => t.textContent);
+    assert.deepEqual(words.slice(0, 3), ['Alice', 'Eve', 'Bob']);
+    assert.ok(words.indexOf('A = 8') < words.indexOf('B = 19'));
+    // The message from Alice to Bob passes over Eve's lifeline, which breaks under it.
+    assert.ok(seq.querySelector('path.sketch-gap'));
+    const eq = new JSDOM(drawSketch('equation', maths.equation, dark).markup).window.document;
     assert.deepEqual(
-        share(
-            'Students: 412 people\nTeachers: 61 people\nParents: 127 people\nGovernors: 3 people\nNobody: 0 people',
-        ),
-        [
-            'Students, 412 people, 68%',
-            'Teachers, 61 people, 10%',
-            'Parents, 127 people, 21%',
-            'Governors, 3 people, <1%',
-            'Nobody, 0 people, 0%',
-        ],
+        [...eq.querySelectorAll('.an')].map((a) => a.querySelector('.ld span').textContent),
+        ['the shared key, 2', 'public base, 5', '6 × 15 = 90, never sent', 'public prime, 23'],
     );
-    // Unitless values that sum to 100 are the shares, as written.
-    assert.deepEqual(share('Nitrogen: 78.08\nOxygen: 20.95\nArgon: 0.93\nCarbon dioxide: 0.04'), [
-        'Nitrogen, 78.08%',
-        'Oxygen, 20.95%',
-        'Argon, 0.93%',
-        'Carbon dioxide, 0.04%',
-    ]);
-    const slices = new JSDOM(
-        drawSketch('pie', 'Rest: 3\nWork: 0', dark).markup,
-    ).window.document.querySelectorAll('path');
-    assert.equal(slices.length, 1);
-    // A lone share is still a ring: its inner arc has two different ends.
-    const [, start, end] = /L([\d. ]+)A48 48 0 1 0 ([\d. ]+)Z/.exec(slices[0].getAttribute('d'));
-    assert.notEqual(start, end);
+    assert.equal(eq.querySelectorAll('.tk').length, 5);
+    const twice = drawSketch('equation', 'eq: sin^2 x + cos^2 x = 1\nx: the angle', dark);
+    assert.equal(new JSDOM(twice.markup).window.document.querySelectorAll('.ld').length, 1);
+});
+
+test('a grid draws joined grids with their join signs, captions and focus cells', () => {
+    const doc = new JSDOM(drawSketch('grid', maths.grid, dark).markup).window.document;
+    assert.deepEqual(
+        [...doc.querySelectorAll('.op')].map((o) => o.textContent),
+        ['×', '='],
+    );
+    assert.deepEqual(
+        [...doc.querySelectorAll('.gc')].map((c) => c.textContent),
+        ['image', 'filter', 'output', 'rocks'],
+    );
+    assert.deepEqual(
+        [...doc.querySelectorAll('i.f')].map((c) => c.textContent),
+        ['30'],
+    );
+    assert.deepEqual(
+        [...doc.querySelectorAll('i.h')].map((c) => c.textContent),
+        ['Parent rock', 'Becomes'],
+    );
+    const stacked = drawSketch('grid', 'a:\n1 2\nb:\n3 4', dark).markup;
+    assert.match(stacked, /sketch-grids stack/);
 });
 
 test('a sketch it cannot draw names the reason', () => {
@@ -309,22 +325,31 @@ test('a sketch it cannot draw names the reason', () => {
         ['bars', 'Mass: 1.2.3 kg', /has no number/],
         ['bars', 'Mass: 1e999 kg', /out of range/],
         ['bars', 'Row: 1\n'.repeat(9), /more than eight items/],
-        ['compare', 'Cost: Cheap | Expensive\nSpeed: Slow | Fast', /no "vs: A \| B" line/],
-        ['compare', 'vs: Only one\nCost: Cheap | Dear', /line 1 "vs: Only one" is not vs: A \| B/],
-        ['compare', 'vs: A | B\nCost: Cheap', /line 2 "Cost: Cheap" is not aspect/],
-        ['compare', 'vs: A | B', /no items/],
-        ['venn', 'Metals: Iron, Copper\nboth: Conduct heat', /needs two sets, found 1/],
-        ['venn', 'A: x\nB: y\nC: z', /needs two sets, found 3/],
-        ['venn', 'Just words\nB: y', /line 1 "Just words" is not set/],
-        ['venn', 'A:\nB:', /no items/],
-        ['venn', 'A: a, b, c, d, e\nB: f, g\nboth: h, i', /more than eight items/],
+        ['plot', 'y = (x + abs(x)) / 2\nx: -30..30', /line 1 .* uses abs, which is not one of/],
+        ['plot', 'y = x', /no x: min..max/],
+        ['plot', 'y = x\nx: 3..1', /line 2 "x: 3..1" is out of range/],
+        ['plot', 'y = x\ny = 2\ny = 3\nx: 0..1', /more than two curves/],
+        ['plot', 'y = sqrt(x - 9)\nx: 0..1', /has no value/],
+        ['plot', 'y = exp(x)\nx: 0..709.7', /out of range/],
+        ['plot', 'y = x\nx: 9007199254740992..9007199254740996', /out of range/],
+        ['sequence', 'actors: Alice | Bob | Alice\nAlice -> Bob: hi', /names an actor twice/],
+        ['sequence', 'Alice -> Bob: hi', /line 1 .* is not actors/],
         [
-            'pie',
-            'title: Monthly budget\nRent: 900\nFood: 400\nSavings: -150',
-            /line 4 "Savings: -150" is negative/,
+            'sequence',
+            'actors: Alice | Bob\nAlice -> Bob: A = 8\nEve: sees 8',
+            /line 3 "Eve: sees 8" names Eve, who is not in actors/,
         ],
-        ['pie', 'Rent: lots', /has no number/],
-        ['pie', 'Rent: 0\nFood: 0', /no share above zero/],
+        ['sequence', 'actors: Alice | Bob\nJust words', /line 2/],
+        ['equation', 'S = k ln W', /line 1 .* is not eq:/],
+        [
+            'equation',
+            'eq: S = k_B ln W\nS: entropy\nΩ: count',
+            /line 3 "Ω: count" annotates Ω, which is not a symbol/,
+        ],
+        ['grid', 'image:\n0 0 9\n×', /line 3 "×" joins nothing after it/],
+        ['grid', '×\n1 2', /line 1 "×" joins nothing before it/],
+        ['grid', '1 2\n3', /line 2 "3" has 1 cells where its grid has 2/],
+        ['grid', '1\n'.repeat(9), /ninth row/],
         [
             'line',
             'title: Water at sea level (°C)\nrange: 0..100\n0: Freezes\n100: Boils\n120: Steam',
@@ -343,19 +368,17 @@ test('a sketch it cannot draw names the reason', () => {
         ['spectrum', 'ends: Slow\nGranite', /line 1 "ends: Slow" is not ends: low .. high/],
         ['spectrum', `ends: a .. b\n${'Rock\n'.repeat(9)}`, /more than eight items/],
     ])
-        assert.match(drawSketch(kind, body, dark).error, reason, kind);
+        assert.match(drawSketch(kind, body, dark).error, reason);
 });
 
 test('a sketch takes the palette it is given, light or dark', () => {
     const bodies = {
         flow: freezing,
         bars: speeds,
-        compare: microbes,
-        venn: cells,
-        pie: day,
         line: voltage,
         quadrant: week,
         spectrum: cooling,
+        ...maths,
     };
     for (const [kind, body] of Object.entries(bodies)) {
         const [a, b] = [drawSketch(kind, body, dark).markup, drawSketch(kind, body, light).markup];
@@ -365,8 +388,14 @@ test('a sketch takes the palette it is given, light or dark', () => {
 });
 
 test('labels the tutor writes are escaped, never markup', () => {
-    const sketch = drawSketch('flow', '<img src=x onerror=alert(1)> -> B', dark);
-    assert.ok(!sketch.markup.includes('<img'));
+    const img = '<img src=x onerror=alert(1)>';
+    for (const [kind, body] of [
+        ['flow', `${img} -> B`],
+        ['sequence', `actors: ${img} | B\n${img} -> B: ${img}\nB: *${img}*`],
+        ['equation', `eq: ${img} = x\nx: *${img}*`],
+        ['grid', `${img}:\n${img} | *${img}*`],
+    ])
+        assert.ok(!drawSketch(kind, body, dark).markup.includes('<img'), kind);
 });
 
 const page = (raw) =>
@@ -473,9 +502,6 @@ test('streamed sketches schedule their items over half a second', async () => {
     for (const [kind, body, items, expectedOrder] of [
         ['bars', speeds, '.sketch-bars > *', [0, 0, 1, 1, 2, 2]],
         ['flow', freezing, 'svg > g', [0, 1, 2, 3, 4]],
-        ['compare', microbes, '.sketch-compare > :not(:empty)', [0, 0, 0, 0, 0, 1, 1, 1, 2, 2, 2]],
-        ['venn', cells, 'svg > g', [0, 1, 2, 3, 4]],
-        ['pie', day, 'svg > path, dl > *', [0, 1, 2, 0, 0, 0, 1, 1, 1, 2, 2, 2]],
         ['line', voltage, 'svg > g', [0, 1, 2]],
         ['quadrant', week, 'svg > g', [0, 1, 2, 3, 4, 5]],
         ['spectrum', cooling, 'svg > g', [0, 1, 2]],

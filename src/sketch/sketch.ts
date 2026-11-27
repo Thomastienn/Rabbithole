@@ -1,22 +1,11 @@
 // Sketches: small diagrams the tutor writes as ```sketch <kind> blocks (ADR 0027).
 // The only place that knows the kinds. Plain: no React, no DOM, no model call.
 
-// The theme colours by role; the app passes CSS variables, tests pass hex values.
-import { compare, pie, venn } from './comparisons';
-import {
-    CHAR,
-    NUMBER,
-    WIDTH,
-    esc,
-    isFocus,
-    plain,
-    quantity,
-    quoted,
-    wrap,
-    type Line,
-    type Quantity,
-} from './text';
+import { compare, pie, venn } from './comparisons.ts';
+import { equation, grid, sequence } from './maths.ts';
+import { plot } from './plot.ts';
 
+// The theme colours by role; the app passes CSS variables, tests pass hex values.
 export type Palette = {
     ground: string;
     ink: string;
@@ -30,9 +19,14 @@ export type SketchItem = { label: string; focus: boolean; text: string };
 // `about` is the frame of reference a screen reader hears after the title, such as a line's range.
 export type Sketch = { title: string; about: string; items: SketchItem[]; markup: string };
 export type Drawing = { items: SketchItem[]; markup: string; about?: string } | { error: string };
+export type Line = { text: string; at: number };
 // A kind's drawing gets its item lines and, in the order its KINDS entry names them, its head lines.
 type Draw = (lines: Line[], palette: Palette, heads: Line[]) => Drawing;
 
+export const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+export const plain = (s: string) => s.replace(/\*/g, '').trim();
+export const isFocus = (s: string) => /\*[^*]+\*/.test(s);
+export const quoted = (line: Line) => `line ${line.at} "${line.text}"`;
 const list = (parts: string[]) =>
     parts.length < 2 ? parts.join('') : `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}`;
 
@@ -58,7 +52,8 @@ export function drawSketch(
         heads.push(...lines.splice(at, 1));
     }
     if (!lines.length) return { error: 'no items' };
-    if (lines.length > 8) return { error: 'more than eight items' };
+    // A grid's rows are cells of one item, not items.
+    if (lines.length > 8 && draw !== grid) return { error: 'more than eight items' };
     const drawing = draw(lines, palette, heads);
     return 'error' in drawing
         ? drawing
@@ -70,8 +65,22 @@ export function drawSketch(
 }
 
 // Flow: a small line diagram. Each rank is a column; a second child forks onto the next row down.
-const ROW = 84,
-    LINE = 18;
+export const WIDTH = 640,
+    ROW = 84,
+    LINE = 18,
+    // shortcut: label width is estimated at 7px per character of the 14px reading face; measure text if labels clip.
+    CHAR = 7;
+
+export function wrap(label: string, width: number, char = CHAR) {
+    const lines: string[] = [];
+    for (const word of label.split(/\s+/)) {
+        const last = lines.at(-1);
+        if (last !== undefined && (last.length + 1 + word.length) * char <= width)
+            lines[lines.length - 1] = `${last} ${word}`;
+        else lines.push(word);
+    }
+    return lines;
+}
 
 function flow(lines: Line[], p: Palette): Drawing {
     const names: string[] = [],
@@ -205,7 +214,24 @@ function flow(lines: Line[], p: Palette): Drawing {
     return { items, markup };
 }
 
-// Bars: one row per item, `label: number` with an optional unit after the number.
+// A number as written at the start of a value: 1,000 and .5 read, 1.2.3 does not.
+const NUMBER = /^-?(?:(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?(?![\d.,])/i;
+
+// `label: number`, with an optional unit after the number (bars and pie).
+export type Quantity = { label: string; value: string; number: string; n: number; focus: boolean };
+export function quantity(line: Line): Quantity | { error: string } {
+    const colon = line.text.lastIndexOf(':'),
+        label = plain(line.text.slice(0, Math.max(colon, 0))),
+        value = plain(line.text.slice(colon + 1)),
+        number = NUMBER.exec(value)?.[0];
+    if (colon < 1 || !label) return { error: `${quoted(line)} is not label: number` };
+    if (number === undefined) return { error: `${quoted(line)} has no number` };
+    const n = Number(number.replace(/,/g, ''));
+    if (!Number.isFinite(n)) return { error: `${quoted(line)} is out of range` };
+    return { label, value, number, n, focus: isFocus(line.text) };
+}
+
+// Bars: one row per item.
 function bars(lines: Line[], p: Palette): Drawing {
     const rows: Quantity[] = [];
     for (const line of lines) {
@@ -504,4 +530,8 @@ const KINDS = new Map<string, [Draw, string[]?]>([
     ['line', [line, ['range: min..max']]],
     ['quadrant', [quadrant, ['x: low .. high', 'y: low .. high']]],
     ['spectrum', [spectrum, ['ends: low .. high']]],
+    ['plot', [plot]],
+    ['sequence', [sequence]],
+    ['equation', [equation]],
+    ['grid', [grid]],
 ]);
