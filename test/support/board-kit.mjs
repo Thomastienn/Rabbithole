@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import WebSocket from 'ws';
 import { open, until } from './diagram-kit.mjs';
 import { notify } from './events.mjs';
@@ -14,12 +15,15 @@ export function boardProvider(scripts, { status = 'completed' } = {}) {
                 opened: 0,
                 closed: false,
                 asked: [],
+                images: [],
                 signals: [],
                 thread: 'board-session',
                 open: () => (board.opened++, notify()),
                 close: () => ((board.closed = true), notify()),
-                async ask(text, emit, signal) {
+                async ask(text, emit, signal, images = []) {
                     board.asked.push(text);
+                    // The files last only for the turn, so the test keeps their bytes.
+                    board.images.push(images.map((i) => ({ ...i, bytes: readFileSync(i.path) })));
                     board.signals.push(signal);
                     for (const chunk of scripts.shift() ?? []) {
                         if (signal.aborted) return { status: 'interrupted' };
