@@ -1,6 +1,7 @@
 import { mergeArtifact, type Artifact, type ArtifactSummary } from '../media/artifacts.ts';
 import type { Attachment } from './Attachments';
 import type { StreamEvent } from '../serverAccess';
+import type { Op } from '../board/player';
 
 export type Usage = {
     input: number;
@@ -56,6 +57,8 @@ export type Message = {
     memoryUpdated?: boolean;
     // Asked or said on the board.
     board?: boolean;
+    // A board reply: the board as it stood at its end, replayed from every op up to it.
+    snapshot?: Op[];
 };
 export const usageLine = (u: Usage) =>
     `${u.input.toLocaleString()} input · ${u.output.toLocaleString()} output · ${u.cacheRead.toLocaleString()} cache-read tokens`;

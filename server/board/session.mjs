@@ -123,6 +123,11 @@ export function boardSession(ctx, id, socket) {
             store.thread(id, process.thread, model);
             store.finishModel(id, true);
             warmedFor = version(store.tree(id));
+            // As after a chat reply: familiarity from the learner's question and concepts from the reply,
+            // but no suggestion marks or next questions (docs/board-spec.md).
+            const answer = shownText(current);
+            ctx.startVerdicts(id, current.user, current.question, answer);
+            ctx.boardSuggestions(id, current.reply, current.question, answer);
         } else if (current.sentences.length) {
             // Claude may have stored text the learner never saw. Replay the saved discussion next time.
             store.forgetThread(id);
@@ -173,18 +178,28 @@ export function boardSession(ctx, id, socket) {
             }
             if (ended || reader.nextSentence()) flush();
         };
-        let result;
+        let result, selection;
         try {
             await ready;
             if (!signal.aborted) await warm(tree, signal);
-            result = signal.aborted
-                ? { status: 'interrupted' }
-                : await process.ask(text, (e) => add(reader.feed(e.text)), signal);
+            if (signal.aborted) result = { status: 'interrupted' };
+            else {
+                selection = { provider: tree.provider, model };
+                result = await process.ask(text, (e) => add(reader.feed(e.text)), signal);
+            }
         } catch (error) {
             result = { status: 'failed', cause: error };
         }
         if (result.status === 'completed') add(reader.end(), true);
         const usage = result.usage;
+        // Account for the call even if playback stopped before the provider reported its totals.
+        if (selection)
+            store.record(
+                `chat:${current.reply}`,
+                'chat',
+                selection,
+                usage && { ...usage, reasoning: usage.thinking },
+            );
         const status = signal.aborted ? 'interrupted' : result.status;
         const failed = status === 'failed' || (status === 'completed' && !current.sentences.length);
         // Thinking above 0 is a latency regression to investigate (docs/board-spec.md).
@@ -258,7 +273,15 @@ export function boardSession(ctx, id, socket) {
             ? `${text}\n\npen: ${[...marks, `strokes ${strokes.join(', ')}`].join(' · ')}`
             : text;
         pending = [];
-        const current = { reply, sentences: [], shown: 0, over: 0, ended: Promise.withResolvers() };
+        const current = {
+            reply,
+            user,
+            question: text,
+            sentences: [],
+            shown: 0,
+            over: 0,
+            ended: Promise.withResolvers(),
+        };
         turn = current;
         send({ type: 'state', state: 'thinking' });
         current.job = ctx.jobs.start(
