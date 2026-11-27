@@ -26,7 +26,9 @@ export function strokeImage(points) {
 // The learner's pen and view on a board (board() is the session's current board): each finished stroke becomes a
 // board item of its own, `p<n>`, and each page they open an `open` op, waiting for the next question, which carries
 // what they mark and the page it was asked from.
-export function boardPen(ctx, board) {
+// send() takes the open item down to the learner's board when their view opens a page; a view alone tells the
+// model nothing until the next question.
+export function boardPen(ctx, board, send) {
     // The strokes and opens since the last question, as op lines and what each marks.
     let pending = [],
         // The last pen id handed out; never reused in a session, since an erase may be applied but not saved.
@@ -56,24 +58,25 @@ export function boardPen(ctx, board) {
         // The learner opened `page` (none: back to the tutor's page, the open page before their first view since the
         // last question). An `open` op waits with the strokes, so the strokes and the next reply land on that page
         // and replay there; a view straight back drops it. Mid-reply (busy) the view waits for settle(), since the
-        // tutor's ops land on its own page. Returns the open item to show, or null.
+        // tutor's ops land on its own page. A page that is no item id is ignored.
         view(page, busy) {
+            if (page !== undefined && !/^[A-Za-z_][\w-]*$/.test(page)) return;
             viewing = busy ? (page ?? '') : undefined;
-            if (busy) return null;
+            if (busy) return;
             const home = pending.find((s) => s.page)?.home ?? board().open();
             const to = page || home;
-            if (!to || to === board().open()) return null;
+            if (!to || to === board().open()) return;
             const line = `${next()} open ${to}`;
             const { item } = board().read(line);
-            if (!item) return null;
+            if (!item) return;
             while (pending.at(-1)?.page) pending.pop();
             if (to !== (pending.findLast((s) => s.page)?.page ?? home))
                 pending.push({ line, page: to, home });
-            return item;
+            send({ type: 'stroke', item });
         },
         // The reply ended: a view the learner chose during it opens now.
         settle() {
-            return viewing === undefined ? null : this.view(viewing);
+            if (viewing !== undefined) this.view(viewing);
         },
         // Strokes waiting for the next question stay on a rebuilt board.
         replay: () => pending.forEach((s) => board().read(s.line)),
