@@ -117,8 +117,10 @@ test('board player: a sentence’s ops share its time equally, in order', () => 
 
 // A voice driven by the test: it records what the player plays and lets the test end or fail the audio.
 function fakeVoice() {
-    const voice = { chunks: [], ends: [], playing: [], stopped: 0 };
+    const voice = { chunks: [], ends: [], playing: [], stopped: 0, controls: [] };
     return Object.assign(voice, {
+        speed: (rate) => voice.controls.push(['speed', rate]),
+        pause: (on) => voice.controls.push(['pause', on]),
         chunk: (id, bytes) => voice.chunks.push([id, bytes.length]),
         end: (id) => voice.ends.push(id),
         play: (id, on) => voice.playing.push({ id, ...on }),
@@ -245,4 +247,49 @@ test('board player: a later point reflows crowded labels to alternate rows in va
     assert.deepEqual(rows(seven, third, point('q3', 1100, '3/4')), { q2: 0, q1: 1, q3: 0 });
     assert.deepEqual(rows(seven, point('o1', 1000, '2/3', 'n2')), { q1: 0, o1: 0 }, 'per line');
     assert.deepEqual(rows(seven, point('q4', 1400, '1')), { q1: 0, q4: 0 }, 'far apart');
+});
+
+test('board player: a speed change retimes the sentence mid-way, and pause holds it while later ones queue', () => {
+    const clock = fakeClock();
+    const voice = fakeVoice();
+    const shown = [],
+        reports = [],
+        drawn = [];
+    let at = 0;
+    const advance = (ms) => ((at += ms), clock.advance(ms));
+    const player = boardPlayer(
+        (s) => shown.push(s.text),
+        (op) => drawn.push([op.id, at]),
+        (s, phase) => reports.push(`${s.id} ${phase}`),
+        voice,
+        clock,
+    );
+    // 30 characters: 2 s of board time at 1.5×, 1 s for each op.
+    player.add({
+        id: '1',
+        text: 'A hypha grows only at its tip.',
+        ops: [{ id: 'a' }, { id: 'b' }],
+    });
+    advance(500);
+    player.speed(0.75); // half the default: the remaining 1.5 s of board time now takes 3 s
+    assert.deepEqual(voice.controls, [['speed', 0.75]], 'speech changes speed at once');
+    advance(999);
+    assert.deepEqual(drawn, [['a', 0]], 'the sentence carries on, not restarted');
+    advance(1);
+    assert.deepEqual(drawn.at(-1), ['b', 1500]);
+    player.pause(true);
+    player.add({ id: '2', text: 'Then it hardens.', voiced: true });
+    player.chunk('2', new Uint8Array(4));
+    player.audioEnd('2');
+    advance(60000);
+    assert.deepEqual(reports, ['1 start'], 'paused, nothing ends and nothing new starts');
+    assert.deepEqual(voice.chunks, [['2', 4]], 'speech arriving while paused still buffers');
+    assert.deepEqual(voice.controls.at(-1), ['pause', true]);
+    player.pause(false);
+    assert.deepEqual(voice.controls.at(-1), ['pause', false]);
+    advance(1999);
+    assert.deepEqual(reports, ['1 start'], 'resume continues the same sentence where it stopped');
+    advance(1);
+    assert.deepEqual(reports, ['1 start', '1 end', '2 start'], 'the queued sentence plays next');
+    assert.deepEqual(shown.at(-1), 'Then it hardens.');
 });

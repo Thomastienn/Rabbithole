@@ -38,14 +38,18 @@ class FakeSocket {
     }
 }
 
-async function mount(t, messages = []) {
+async function mount(t, messages = [], speed) {
     const reloads = [];
+    let dom;
     const saved = globalThis.WebSocket;
     globalThis.WebSocket = FakeSocket;
     t.after(() => (globalThis.WebSocket = saved));
     const view = await render(
         h(Board, { conversation: 'c1', messages, reload: () => reloads.push('c1') }),
-        (w) => ui(w),
+        (w) => {
+            dom = ui(w);
+            if (speed) w.localStorage.setItem('rabbithole.board-speed', speed);
+        },
     );
     t.after(view.cleanup);
     const socket = FakeSocket.last;
@@ -59,7 +63,7 @@ async function mount(t, messages = []) {
             input.dispatchEvent(new window.Event('input', { bubbles: true }));
         });
     };
-    return { ...view, socket, q, type, reloads };
+    return { ...view, socket, q, type, reloads, frames: () => view.act(async () => dom.frames()) };
 }
 
 test('board: an empty board waits for a typed question with the mic off, then shows it was heard', async (t) => {
@@ -302,4 +306,54 @@ test('board: the pen draws a stroke that waits for the question, and an erase op
     assert.equal(board.container.querySelectorAll('.board-item.erased').length, 1);
     await board.act(() => new Promise((resolve) => setTimeout(resolve, 300)));
     assert.equal(board.container.querySelectorAll('.board-learner').length, 1, 'p1 left the board');
+});
+
+test('board: speed is 1.5× until the learner picks another, which is remembered, and pause holds the reply', async (t) => {
+    const board = await mount(t);
+    const pill = () => board.q('.board-speed');
+    assert.equal(pill().textContent, '1.5×', 'speech plays at 1.5× by default');
+    await board.act(async () => pill().click());
+    await board.frames();
+    const items = [
+        ...document
+            .getElementById(pill().getAttribute('aria-controls'))
+            .querySelectorAll('[role=menuitemradio]'),
+    ];
+    assert.deepEqual(
+        items.map((e) => [e.textContent.trim(), e.getAttribute('aria-checked')]),
+        [
+            ['1×', 'false'],
+            ['1.25×', 'false'],
+            ['1.5×Default', 'true'],
+            ['1.75×', 'false'],
+            ['2×', 'false'],
+        ],
+    );
+    await board.act(async () => items[1].click());
+    assert.equal(pill().textContent, '1.25×');
+    assert.ok(button(board.container, 'Speed, 1.25×'), 'the pill is named with its speed');
+    assert.equal(localStorage.getItem('rabbithole.board-speed'), '1.25');
+
+    const pause = () => board.q('.board-pause');
+    assert.ok(pause().disabled, 'nothing to pause before a reply');
+    await board.type('Why?');
+    await board.act(async () => button(board.container, 'Send').click());
+    await board.act(async () => {
+        board.socket.server({ type: 'state', state: 'speaking' });
+        board.socket.server({ type: 'sentence', id: '1', text: 'A hypha grows at its tip.' });
+    });
+    assert.equal(pause().disabled, false);
+    await board.act(async () => pause().click());
+    assert.equal(pause().getAttribute('aria-label'), 'Resume');
+    assert.equal(pause().getAttribute('aria-pressed'), 'true');
+    assert.equal(board.q('[role=status]').textContent, 'Paused');
+    assert.ok(board.q('.board.paused'), 'drawing holds where it stopped');
+    await board.act(async () => pause().click());
+    assert.equal(pause().getAttribute('aria-label'), 'Pause');
+    assert.equal(board.q('[role=status]').textContent, 'Speaking');
+});
+
+test('board: the chosen speed is still set after a reload', async (t) => {
+    const board = await mount(t, [], '1.75');
+    assert.ok(button(board.container, 'Speed, 1.75×'));
 });

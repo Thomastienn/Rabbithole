@@ -42,6 +42,17 @@ export function savedLibraryLayout(): 'shelf' | 'list' {
     }
 }
 
+// The board's speech speeds; 1.5× unless the learner chose another.
+export const BOARD_SPEEDS = [1, 1.25, 1.5, 1.75, 2];
+export function savedBoardSpeed() {
+    try {
+        const speed = Number(localStorage.getItem('rabbithole.board-speed'));
+        return BOARD_SPEEDS.includes(speed) ? speed : 1.5;
+    } catch {
+        return 1.5;
+    }
+}
+
 export function savePreference(
     key:
         | 'appearance'
@@ -51,6 +62,7 @@ export function savePreference(
         | 'focus-mode'
         | 'ghost-trees'
         | 'discord-status'
+        | 'board-speed'
         | 'reading-font'
         | 'interface-font',
     value: string,
