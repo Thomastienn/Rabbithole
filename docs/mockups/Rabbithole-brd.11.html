@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ask on the board by voice · Rabbithole-brd.11 mockup</title><link rel="stylesheet" href="line-diagram/ld.css">
+<style>
+/* Mockup only. The board's mic: off, downloading the speech models, on, hearing the learner, and its errors.
+   Theme roles used, mockup name then app token: --g background, --deep background-muted (the board surface),
+   --ink text-primary, --mut text-secondary, --seam2 border-emphasized, --seam border, --w porcelain (rabbithole-paper),
+   --on-w text on porcelain, --up popover, --up2 hover, --fail text-error and icon-error, the scarlet wash error-muted. */
+
+/* ===== BOARD FRAME: copy this block verbatim into every board mockup (Rabbithole-brd.2 to brd.16). ===== */
+/* Heroicons 24 outline microphone; icons.css lacks it. */
+.i-microphone { --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z'/%3E%3C/svg%3E"); }
+/* Board toggle: a switch and its word, first among the focused chat header's controls. */
+.chead .end { align-items: center; }
+.bd-toggle { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px; margin-right: 4px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--mut); }
+.bd-toggle:hover, .bd-toggle.hover { background: var(--up2); color: var(--ink); }
+.bd-toggle[aria-checked="true"] { color: var(--ink); }
+/* Board column, map hidden: header, board field, caption line, composer. Fixed rows, so state never moves them. */
+.chat.bd-col { display: grid; grid-template-rows: auto minmax(0, 1fr) 52px auto; }
+.bd-field { container-type: size; display: grid; place-items: center; padding: 16px 24px 0; min-height: 0; }
+.bd { position: relative; width: min(100cqw, 100cqh * 16 / 9); aspect-ratio: 16 / 9; background: var(--deep); border-radius: 8px; overflow: hidden; }
+.bd > svg { position: absolute; inset: 0; width: 100%; height: 100%; } /* board items go here, in 1600x900 board pixels (ADR 0028) */
+.bd-empty { position: absolute; inset: 0; display: grid; place-items: center; font-size: 15px; color: var(--mut); }
+/* Notice: one line at the top centre of the board, in the shared overlay frame. */
+.bd-note { position: absolute; top: 12px; left: 50%; translate: -50% 0; display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1.5px solid var(--seam2); border-radius: 8px; background: var(--up); font-size: 13px; color: var(--ink); white-space: nowrap; }
+.bd-note.fail { background: color-mix(in srgb, var(--fail) 15%, var(--up)); }
+.bd-note.fail .i { color: var(--fail); }
+/* Caption line: session state at the left, the one-line caption centred. */
+.bd-line { display: grid; grid-template-columns: 112px minmax(0, 1fr) 112px; align-items: center; gap: 12px; padding: 0 24px; min-width: 0; }
+.bd-state { display: inline-flex; align-items: center; gap: 8px; font: 600 12px/1.2 var(--cond); text-transform: uppercase; letter-spacing: 0.07em; color: var(--mut); }
+.bd-state::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--mut); }
+.bd-state.speaking::before { background: var(--w); }
+.bd-cap { font: 17px/1.5 var(--read); color: var(--ink); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bd-cap.mut { color: var(--mut); }
+/* Composer: the chat composer, centred, with the board's tool group (mic now; speed, pause, pen later). */
+.cfoot.bd-foot { padding: 8px 24px 20px; }
+.bd-foot .comp { max-width: 720px; margin: 0 auto; }
+.bd-tools { display: flex; gap: 2px; }
+.bd-mic[disabled] { opacity: 0.45; cursor: not-allowed; }
+/* ===== END BOARD FRAME ===== */
+
+/* Board items: clean marker strokes in theme colours, in board pixels. */
+.mk { fill: none; stroke: var(--ink); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+.mk.m { stroke: var(--mut); stroke-width: 4; }
+.mk.d { stroke: var(--mut); stroke-width: 3; stroke-dasharray: 3 16; }
+.mk.f { stroke: var(--w); stroke-width: 6; }
+.mkf { fill: var(--ink); }
+.mkt { font: 30px var(--read); fill: var(--ink); text-anchor: middle; }
+.mkt.m { font-size: 24px; fill: var(--mut); }
+.mkt.s { text-anchor: start; }
+/* The 30px speed pill sits centred among the 36px buttons. */
+.bd-tools { align-items: center; }
+.bd-state.listening::before { background: var(--w); }
+
+/* Speed and pause, from Rabbithole-brd.8. */
+.bd-speedbox { position: relative; display: inline-flex; }
+.bd-speed { min-width: 56px; justify-content: center; }
+.bd-pause[disabled] { opacity: 0.45; cursor: not-allowed; }
+
+/* Mic on: the icon button filled porcelain. Off is the plain icon button. */
+.bd-mic[aria-pressed="true"] { background: var(--w); color: var(--on-w); }
+/* Hearing you, and downloading: the button widens to the right of its icon. */
+.bd-mic.hear, .bd-mic.load { display: inline-flex; align-items: center; gap: 6px; width: auto; padding: 0 10px 0 8px; }
+.lvl { display: inline-flex; align-items: center; gap: 2px; height: 16px; }
+.lvl s { width: 3px; height: calc(var(--h) * 16px); border-radius: 2px; background: currentColor; }
+.bd-mic.load { position: relative; background: var(--up2); color: var(--ink); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.bd-mic.load .bar { position: absolute; left: 8px; right: 8px; bottom: 3px; height: 3px; margin: 0; }
+.bd-mic.load .bar b { height: 3px; background: var(--w); }
+
+/* Mockup framing only: the board column at 760px tall, without the sidebar. */
+.stage > .bd-col { width: 1168px; max-width: 100%; height: 760px; background: var(--g); border: 1px solid var(--seam); border-radius: 8px; overflow: hidden; }
+/* Mockup framing only: a crop that shows just the caption line and the composer. */
+.bd-col.crop { height: auto; grid-template-rows: 52px auto; }
+pre.tag { font: 12px/1.6 var(--mono); color: var(--mut); white-space: pre-wrap; background: var(--deep); border-radius: 8px; padding: 10px 14px; width: 100%; max-width: 760px; }
+</style></head><body>
+<!-- The board drawing, shared by every state on this page. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="moon" viewBox="0 0 1600 900">
+<circle class="mk" cx="200" cy="450" r="80"/>
+<path class="mk" d="M300 450H326M271 379L289 361M200 350V324M129 379L111 361M100 450H74M129 521L111 539M200 550V576M271 521L289 539"/>
+<text class="mkt" x="200" y="660">Sun</text>
+<path class="mk m" d="M380 360H540M524 346L540 360L524 374M380 450H540M524 436L540 450L524 464M380 540H540M524 526L540 540L524 554"/>
+<text class="mkt m" x="460" y="318">sunlight</text>
+<circle class="mk d" cx="900" cy="450" r="250"/>
+<circle class="mk" cx="900" cy="450" r="44"/>
+<text class="mkt" x="900" y="540">Earth</text>
+<circle class="mk" style="fill:var(--deep)" cx="650" cy="450" r="30"/><path class="mkf" d="M650 420A30 30 0 0 0 650 480Z"/>
+<circle class="mk" style="fill:var(--deep)" cx="900" cy="200" r="30"/><path class="mkf" d="M900 170A30 30 0 0 0 900 230Z"/>
+<circle class="mk" style="fill:var(--deep)" cx="1150" cy="450" r="30"/><path class="mkf" d="M1150 420A30 30 0 0 0 1150 480Z"/>
+<circle class="mk" style="fill:var(--deep)" cx="900" cy="700" r="30"/><path class="mkf" d="M900 670A30 30 0 0 0 900 730Z"/>
+<text class="mkt m s" x="724" y="458">new</text><text class="mkt m" style="text-anchor:end" x="1076" y="458">full</text>
+<text class="mkt m" x="1400" y="262">from Earth</text>
+<circle class="mk" style="fill:var(--deep)" cx="1370" cy="330" r="26"/>
+<circle class="mk" style="fill:var(--deep)" cx="1370" cy="450" r="26"/><path class="mkf" d="M1370 424A26 26 0 0 1 1370 476Z"/>
+<circle class="mk" style="fill:var(--ink)" cx="1370" cy="570" r="26"/>
+<text class="mkt m s" x="1414" y="338">new</text><text class="mkt m s" x="1414" y="458">half</text><text class="mkt m s" x="1414" y="578">full</text>
+</symbol></svg>
+<nav class="mock" aria-label="Mockup screens"><b>Board</b><a href="Rabbithole-brd.1.html">brd.1 Board opens</a><a href="Rabbithole-brd.8.html">brd.8 Speed and pause</a><a href="Rabbithole-brd.11.html" aria-current=page>brd.11 Ask by voice</a><a href="Rabbithole-brd.12.html">brd.12 Board settings</a><label><input type="checkbox" id="lt"> Light</label></nav>
+<header class="intro"><h1>Board: ask by voice</h1><p>Rabbithole-brd.11. The mic in the board's tool group turns on hands-free voice questions. The first press downloads the speech models, with progress on the button, while typing still works. Once the mic is on, starting to speak stops the tutor, and a short pause sends the question. Speech recognition runs in the local server, so the learner's voice never leaves the machine. Spec: <code>docs/board-spec.md</code>. Decision: ADR 0028. The spec wins where they differ.</p></header>
+<ul class="rules">
+<li>The mic is the 36px icon button first in the tool group, before speed and pause, with the microphone icon. It is off whenever a board opens, and one press turns it on. Its name stays "Turn mic on", and it is a toggle: pressed while on.</li>
+<li>Off, it is the plain muted icon button. On, it fills porcelain, with the icon in the text-on-porcelain colour. That is all the mic shows while the tutor speaks: the tutor's own voice from the speakers never counts as the learner speaking.</li>
+<li>When the learner speaks, the button widens to show four 3px level bars, 2px apart, 16px tall at most, to the right of the icon, and the state label reads "Listening". The tutor stops at once, and the item it was drawing finishes within about 150 ms.</li>
+<li>About 300 ms of silence ends the question. The button narrows back to on, and the recognised words become the learner's message, shown muted on the caption line while the tutor thinks, as a typed question is. Only those words go to the provider.</li>
+<li>The first press downloads Moonshine base and Silero voice detection, about 64 MB together. While they download, the button widens to show the percentage in 13px tabular figures, on the hover tone, with a 3px porcelain bar along its foot. A notice at the top of the board gives the size and says the voice stays on this computer. Typing and sending work meanwhile. Later presses turn the mic straight on, with no download.</li>
+<li>When the download fails or the microphone is blocked, the mic goes back to off, and a failure notice in the scarlet wash says what to do. The next press tries again.</li>
+<li>In the desktop app, the mic works the same, with no permission prompt: the app grants the mic to its own page.</li>
+</ul>
+<main class="specs wide">
+
+<section class="spec"><h2>1. Mic off, as every board opens</h2><p>The tutor is speaking and the mic is off, so nothing listens. The learner can still type to cut in.</p><div class="stage">
+<main class="chat bd-col"><div class="chead"><span class="chip c0">1</span><b>Why does the Moon have phases?</b><span class="end"><button class="bd-toggle" role="switch" aria-checked="true"><span class="sw on"></span>Board</button><button class="ib" aria-label="Token stats"><i class="i i-chart-bar"></i></button><button class="ib" aria-label="Return to tree"><i class="i i-arrow-uturn-left"></i></button><button class="ib" aria-label="More"><i class="i i-ellipsis-horizontal"></i></button></span></div>
+<div class="bd-field"><div class="bd"><svg viewBox="0 0 1600 900" role="img" aria-label="Board: the Sun, Earth and the Moon's orbit"><use href="#moon"/></svg></div></div>
+<div class="bd-line"><span role="status"><span class="bd-state speaking">Speaking</span></span><p class="bd-cap" aria-live="polite">From Earth, we see a different slice of that lit half each night.</p><span></span></div>
+<div class="cfoot bd-foot"><div class="comp"><div class="ta">Ask a question</div><div class="row"><span class="bd-tools"><button class="ib bd-mic" aria-pressed="false" aria-label="Turn mic on"><i class="i i-microphone"></i></button><span class="bd-speedbox"><button class="pill bd-speed" aria-label="Speed, 1.5×" aria-haspopup="menu" aria-expanded="false">1.5×</button></span><button class="ib bd-pause" aria-pressed="false" aria-label="Pause"><i class="i i-pause"></i></button></span><button class="btn pri sq off" aria-label="Send"><i class="i i-arrow-up"></i></button></div></div></div>
+</main></div></section>
+
+<section class="spec"><h2>2. First press: downloading the speech models</h2><p>The models download once, with progress on the mic: 41%, 26 of 64 MB. The tutor keeps speaking. The learner is typing a question meanwhile, and Send works.</p><div class="stage">
+<main class="chat bd-col"><div class="chead"><span class="chip c0">1</span><b>Why does the Moon have phases?</b><span class="end"><button class="bd-toggle" role="switch" aria-checked="true"><span class="sw on"></span>Board</button><button class="ib" aria-label="Token stats"><i class="i i-chart-bar"></i></button><button class="ib" aria-label="Return to tree"><i class="i i-arrow-uturn-left"></i></button><button class="ib" aria-label="More"><i class="i i-ellipsis-horizontal"></i></button></span></div>
+<div class="bd-field"><div class="bd"><svg viewBox="0 0 1600 900" role="img" aria-label="Board: the Sun, Earth and the Moon's orbit"><use href="#moon"/><circle class="mk f" cx="650" cy="450" r="50" pathLength="1" stroke-dasharray="1" stroke-dashoffset="0.7" transform="rotate(-90 650 450)"/></svg><p class="bd-note" role="status"><i class="i i--sm i-information-circle"></i>Getting voice ready: 26 of 64 MB. Your voice stays on this computer.</p></div></div>
+<div class="bd-line"><span role="status"><span class="bd-state speaking">Speaking</span></span><p class="bd-cap" aria-live="polite">At new moon, the lit half faces away from us.</p><span></span></div>
+<div class="cfoot bd-foot"><div class="comp on"><div class="ta v cursor">Why isn't there an eclipse every</div><div class="row"><span class="bd-tools"><button class="ib bd-mic load" aria-pressed="false" aria-busy="true" aria-label="Turn mic on, downloading 41%"><i class="i i-microphone"></i>41%<span class="bar"><b style="width:41%"></b></span></button><span class="bd-speedbox"><button class="pill bd-speed" aria-label="Speed, 1.5×" aria-haspopup="menu" aria-expanded="false">1.5×</button></span><button class="ib bd-pause" aria-pressed="false" aria-label="Pause"><i class="i i-pause"></i></button></span><button class="btn pri sq" aria-label="Send"><i class="i i-arrow-up"></i></button></div></div></div>
+</main></div></section>
+
+<section class="spec"><h2>3. Mic on while the tutor speaks</h2><p>The download is done and the mic is on. The tutor's voice from the speakers doesn't count as speech, so it carries on. A second press turns the mic off again. On every later board, the first press lands here at once.</p><div class="stage">
+<main class="chat bd-col"><div class="chead"><span class="chip c0">1</span><b>Why does the Moon have phases?</b><span class="end"><button class="bd-toggle" role="switch" aria-checked="true"><span class="sw on"></span>Board</button><button class="ib" aria-label="Token stats"><i class="i i-chart-bar"></i></button><button class="ib" aria-label="Return to tree"><i class="i i-arrow-uturn-left"></i></button><button class="ib" aria-label="More"><i class="i i-ellipsis-horizontal"></i></button></span></div>
+<div class="bd-field"><div class="bd"><svg viewBox="0 0 1600 900" role="img" aria-label="Board: the Sun, Earth and the Moon's orbit"><use href="#moon"/><circle class="mk f" cx="650" cy="450" r="50" pathLength="1" stroke-dasharray="1" stroke-dashoffset="0.4" transform="rotate(-90 650 450)"/></svg></div></div>
+<div class="bd-line"><span role="status"><span class="bd-state speaking">Speaking</span></span><p class="bd-cap" aria-live="polite">At new moon, the lit half faces away from us.</p><span></span></div>
+<div class="cfoot bd-foot"><div class="comp"><div class="ta">Ask a question</div><div class="row"><span class="bd-tools"><button class="ib bd-mic" aria-pressed="true" aria-label="Turn mic on"><i class="i i-microphone"></i></button><span class="bd-speedbox"><button class="pill bd-speed" aria-label="Speed, 1.5×" aria-haspopup="menu" aria-expanded="false">1.5×</button></span><button class="ib bd-pause" aria-pressed="false" aria-label="Pause"><i class="i i-pause"></i></button></span><button class="btn pri sq off" aria-label="Send"><i class="i i-arrow-up"></i></button></div></div></div>
+</main></div></section>
+
+<section class="spec"><h2>4. Hearing the learner</h2><p>The learner started talking. After about 150 ms of speech the tutor stops mid-sentence, the focus ring snaps to finished, and the cut sentence turns muted. The mic shows the learner's level, and the state reads Listening.</p><div class="stage">
+<main class="chat bd-col"><div class="chead"><span class="chip c0">1</span><b>Why does the Moon have phases?</b><span class="end"><button class="bd-toggle" role="switch" aria-checked="true"><span class="sw on"></span>Board</button><button class="ib" aria-label="Token stats"><i class="i i-chart-bar"></i></button><button class="ib" aria-label="Return to tree"><i class="i i-arrow-uturn-left"></i></button><button class="ib" aria-label="More"><i class="i i-ellipsis-horizontal"></i></button></span></div>
+<div class="bd-field"><div class="bd"><svg viewBox="0 0 1600 900" role="img" aria-label="Board: the Sun, Earth and the Moon's orbit"><use href="#moon"/><circle class="mk f" cx="650" cy="450" r="50"/></svg></div></div>
+<div class="bd-line"><span role="status"><span class="bd-state listening">Listening</span></span><p class="bd-cap mut" aria-live="polite">At new moon, the lit half faces away from us.</p><span></span></div>
+<div class="cfoot bd-foot"><div class="comp"><div class="ta">Ask a question</div><div class="row"><span class="bd-tools"><button class="ib bd-mic hear" aria-pressed="true" aria-label="Turn mic on"><i class="i i-microphone"></i><span class="lvl" aria-hidden="true"><s style="--h:.45"></s><s style="--h:1"></s><s style="--h:.7"></s><s style="--h:.3"></s></span></button><span class="bd-speedbox"><button class="pill bd-speed" aria-label="Speed, 1.5×" aria-haspopup="menu" aria-expanded="false">1.5×</button></span><button class="ib bd-pause" aria-pressed="false" aria-label="Pause"><i class="i i-pause"></i></button></span><button class="btn pri sq off" aria-label="Send"><i class="i i-arrow-up"></i></button></div></div></div>
+</main></div></section>
+
+<section class="spec"><h2>5. Question sent</h2><p>About 300 ms of silence ended the question. It was recognised on this computer and sent as the learner's message, shown muted while the tutor thinks. The mic stays on, ready for the next cut-in.</p><div class="stage">
+<main class="chat bd-col crop">
+<div class="bd-line"><span role="status"><span class="bd-state thinking">Thinking</span></span><p class="bd-cap mut" aria-live="polite">Wait, so why isn't there an eclipse every month?</p><span></span></div>
+<div class="cfoot bd-foot"><div class="comp"><div class="ta">Ask a question</div><div class="row"><span class="bd-tools"><button class="ib bd-mic" aria-pressed="true" aria-label="Turn mic on"><i class="i i-microphone"></i></button><span class="bd-speedbox"><button class="pill bd-speed" aria-label="Speed, 1.5×" aria-haspopup="menu" aria-expanded="false">1.5×</button></span><button class="ib bd-pause" aria-pressed="false" aria-label="Pause"><i class="i i-pause"></i></button></span><button class="btn pri sq off" aria-label="Send"><i class="i i-arrow-up"></i></button></div></div></div>
+</main></div></section>
+
+<section class="spec"><h2>6. The tutor answers, mic still on</h2><p>The answer plays on the same board, and speaking again would cut in again.</p><div class="stage">
+<main class="chat bd-col crop">
+<div class="bd-line"><span role="status"><span class="bd-state speaking">Speaking</span></span><p class="bd-cap" aria-live="polite">Good question: the Moon's orbit is tilted by about five degrees.</p><span></span></div>
+<div class="cfoot bd-foot"><div class="comp"><div class="ta">Ask a question</div><div class="row"><span class="bd-tools"><button class="ib bd-mic" aria-pressed="true" aria-label="Turn mic on"><i class="i i-microphone"></i></button><span class="bd-speedbox"><button class="pill bd-speed" aria-label="Speed, 1.5×" aria-haspopup="menu" aria-expanded="false">1.5×</button></span><button class="ib bd-pause" aria-pressed="false" aria-label="Pause"><i class="i i-pause"></i></button></span><button class="btn pri sq off" aria-label="Send"><i class="i i-arrow-up"></i></button></div></div></div>
+</main></div></section>
+
+<section class="spec"><h2>7. Mic on, the tutor done</h2><p>The reply ended, so its last sentence is muted and the state reads Listening. The learner just starts talking to ask the next question.</p><div class="stage">
+<main class="chat bd-col crop">
+<div class="bd-line"><span role="status"><span class="bd-state listening">Listening</span></span><p class="bd-cap mut" aria-live="polite">So the Sun, Earth and Moon only line up twice a year.</p><span></span></div>
+<div class="cfoot bd-foot"><div class="comp"><div class="ta">Ask a question</div><div class="row"><span class="bd-tools"><button class="ib bd-mic" aria-pressed="true" aria-label="Turn mic on"><i class="i i-microphone"></i></button><span class="bd-speedbox"><button class="pill bd-speed" aria-label="Speed, 1.5×" aria-haspopup="menu" aria-expanded="false">1.5×</button></span><button class="ib bd-pause" aria-pressed="false" aria-label="Pause" disabled><i class="i i-pause"></i></button></span><button class="btn pri sq off" aria-label="Send"><i class="i i-arrow-up"></i></button></div></div></div>
+</main></div></section>
+
+<section class="spec"><h2>8. Download failed</h2><p>The connection dropped during the first download. The mic is back to off and the board carries on. The next press tries the download again.</p><div class="stage">
+<main class="chat bd-col"><div class="chead"><span class="chip c0">1</span><b>Why does the Moon have phases?</b><span class="end"><button class="bd-toggle" role="switch" aria-checked="true"><span class="sw on"></span>Board</button><button class="ib" aria-label="Token stats"><i class="i i-chart-bar"></i></button><button class="ib" aria-label="Return to tree"><i class="i i-arrow-uturn-left"></i></button><button class="ib" aria-label="More"><i class="i i-ellipsis-horizontal"></i></button></span></div>
+<div class="bd-field"><div class="bd"><svg viewBox="0 0 1600 900" role="img" aria-label="Board: the Sun, Earth and the Moon's orbit"><use href="#moon"/></svg><p class="bd-note fail" role="alert"><i class="i i--sm i-exclamation-triangle"></i>The speech model didn't download. Check your connection, then press the mic to try again.</p></div></div>
+<div class="bd-line"><span role="status"><span class="bd-state speaking">Speaking</span></span><p class="bd-cap" aria-live="polite">From Earth, we see a different slice of that lit half each night.</p><span></span></div>
+<div class="cfoot bd-foot"><div class="comp"><div class="ta">Ask a question</div><div class="row"><span class="bd-tools"><button class="ib bd-mic" aria-pressed="false" aria-label="Turn mic on"><i class="i i-microphone"></i></button><span class="bd-speedbox"><button class="pill bd-speed" aria-label="Speed, 1.5×" aria-haspopup="menu" aria-expanded="false">1.5×</button></span><button class="ib bd-pause" aria-pressed="false" aria-label="Pause"><i class="i i-pause"></i></button></span><button class="btn pri sq off" aria-label="Send"><i class="i i-arrow-up"></i></button></div></div></div>
+</main></div></section>
+
+<section class="spec"><h2>9. Microphone blocked</h2><p>In a browser, the learner said no to the microphone prompt. The mic stays off, and the notice says where to allow it. The desktop app never shows this, because it grants its own page the mic.</p><div class="stage">
+<main class="chat bd-col"><div class="chead"><span class="chip c0">1</span><b>Why does the Moon have phases?</b><span class="end"><button class="bd-toggle" role="switch" aria-checked="true"><span class="sw on"></span>Board</button><button class="ib" aria-label="Token stats"><i class="i i-chart-bar"></i></button><button class="ib" aria-label="Return to tree"><i class="i i-arrow-uturn-left"></i></button><button class="ib" aria-label="More"><i class="i i-ellipsis-horizontal"></i></button></span></div>
+<div class="bd-field"><div class="bd"><svg viewBox="0 0 1600 900" role="img" aria-label="Board: the Sun, Earth and the Moon's orbit"><use href="#moon"/></svg><p class="bd-note fail" role="alert"><i class="i i--sm i-exclamation-triangle"></i>The browser blocked the microphone. Allow it for this page, then press the mic again.</p></div></div>
+<div class="bd-line"><span role="status"><span class="bd-state speaking">Speaking</span></span><p class="bd-cap" aria-live="polite">From Earth, we see a different slice of that lit half each night.</p><span></span></div>
+<div class="cfoot bd-foot"><div class="comp"><div class="ta">Ask a question</div><div class="row"><span class="bd-tools"><button class="ib bd-mic" aria-pressed="false" aria-label="Turn mic on"><i class="i i-microphone"></i></button><span class="bd-speedbox"><button class="pill bd-speed" aria-label="Speed, 1.5×" aria-haspopup="menu" aria-expanded="false">1.5×</button></span><button class="ib bd-pause" aria-pressed="false" aria-label="Pause"><i class="i i-pause"></i></button></span><button class="btn pri sq off" aria-label="Send"><i class="i i-arrow-up"></i></button></div></div></div>
+</main></div></section>
+
+<section class="spec"><h2>10. What a screen reader hears</h2><p>The mic is one toggle with a constant name; while downloading, its name carries the percentage. Notices are a status, failures an alert.</p><div class="stage">
+<pre class="tag">Turn mic on, toggle button, not pressed
+Status: Getting voice ready: 26 of 64 MB. Your voice stays on this computer.
+Turn mic on, downloading 41%, toggle button, not pressed, busy
+Turn mic on, toggle button, pressed
+Status: Listening
+Status: Thinking
+Alert: The speech model didn't download. Check your connection, then press the mic to try again.</pre>
+</div></section>
+
+</main>
+<script src="line-diagram/ld.js"></script>
+</body></html>

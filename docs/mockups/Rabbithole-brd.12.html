@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Board settings · Rabbithole-brd.12 mockup</title><link rel="stylesheet" href="line-diagram/ld.css"><link rel="stylesheet" href="add-ons.css">
+<style>
+/* Mockup only. A Board page in Settings with Voice language and push-to-talk, and push-to-talk on the board.
+   Theme roles used, mockup name then app token: --g background, --deep background-muted (the board surface, the sidebar),
+   --ink text-primary, --mut text-secondary, --seam2 border-emphasized, --seam border, --w porcelain (rabbithole-paper),
+   --on-w text on porcelain, --up popover, --up2 hover. */
+
+/* ===== BOARD FRAME: copy this block verbatim into every board mockup (Rabbithole-brd.2 to brd.16). ===== */
+/* Heroicons 24 outline microphone; icons.css lacks it. */
+.i-microphone { --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z'/%3E%3C/svg%3E"); }
+/* Board toggle: a switch and its word, first among the focused chat header's controls. */
+.chead .end { align-items: center; }
+.bd-toggle { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px; margin-right: 4px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--mut); }
+.bd-toggle:hover, .bd-toggle.hover { background: var(--up2); color: var(--ink); }
+.bd-toggle[aria-checked="true"] { color: var(--ink); }
+/* Board column, map hidden: header, board field, caption line, composer. Fixed rows, so state never moves them. */
+.chat.bd-col { display: grid; grid-template-rows: auto minmax(0, 1fr) 52px auto; }
+.bd-field { container-type: size; display: grid; place-items: center; padding: 16px 24px 0; min-height: 0; }
+.bd { position: relative; width: min(100cqw, 100cqh * 16 / 9); aspect-ratio: 16 / 9; background: var(--deep); border-radius: 8px; overflow: hidden; }
+.bd > svg { position: absolute; inset: 0; width: 100%; height: 100%; } /* board items go here, in 1600x900 board pixels (ADR 0028) */
+.bd-empty { position: absolute; inset: 0; display: grid; place-items: center; font-size: 15px; color: var(--mut); }
+/* Notice: one line at the top centre of the board, in the shared overlay frame. */
+.bd-note { position: absolute; top: 12px; left: 50%; translate: -50% 0; display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1.5px solid var(--seam2); border-radius: 8px; background: var(--up); font-size: 13px; color: var(--ink); white-space: nowrap; }
+.bd-note.fail { background: color-mix(in srgb, var(--fail) 15%, var(--up)); }
+.bd-note.fail .i { color: var(--fail); }
+/* Caption line: session state at the left, the one-line caption centred. */
+.bd-line { display: grid; grid-template-columns: 112px minmax(0, 1fr) 112px; align-items: center; gap: 12px; padding: 0 24px; min-width: 0; }
+.bd-state { display: inline-flex; align-items: center; gap: 8px; font: 600 12px/1.2 var(--cond); text-transform: uppercase; letter-spacing: 0.07em; color: var(--mut); }
+.bd-state::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--mut); }
+.bd-state.speaking::before { background: var(--w); }
+.bd-cap { font: 17px/1.5 var(--read); color: var(--ink); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bd-cap.mut { color: var(--mut); }
+/* Composer: the chat composer, centred, with the board's tool group (mic now; speed, pause, pen later). */
+.cfoot.bd-foot { padding: 8px 24px 20px; }
+.bd-foot .comp { max-width: 720px; margin: 0 auto; }
+.bd-tools { display: flex; gap: 2px; }
+.bd-mic[disabled] { opacity: 0.45; cursor: not-allowed; }
+/* ===== END BOARD FRAME ===== */
+
+/* Board items: clean marker strokes in theme colours, in board pixels. */
+.mk { fill: none; stroke: var(--ink); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+.mk.m { stroke: var(--mut); stroke-width: 4; }
+.mk.d { stroke: var(--mut); stroke-width: 3; stroke-dasharray: 3 16; }
+.mk.f { stroke: var(--w); stroke-width: 6; }
+.mkf { fill: var(--ink); }
+.mkt { font: 30px var(--read); fill: var(--ink); text-anchor: middle; }
+.mkt.m { font-size: 24px; fill: var(--mut); }
+.mkt.s { text-anchor: start; }
+/* The 30px speed pill sits centred among the 36px buttons. */
+.bd-tools { align-items: center; }
+.bd-state.listening::before { background: var(--w); }
+
+/* Speed and pause, from Rabbithole-brd.8; the mic's on and downloading looks, from Rabbithole-brd.11. */
+.bd-speedbox { position: relative; display: inline-flex; }
+.bd-speed { min-width: 56px; justify-content: center; }
+.bd-pause[disabled] { opacity: 0.45; cursor: not-allowed; }
+.bd-mic[aria-pressed="true"] { background: var(--w); color: var(--on-w); }
+.bd-mic.load, .bd-mic.ptt { display: inline-flex; align-items: center; gap: 6px; width: auto; padding: 0 10px 0 8px; }
+.lvl { display: inline-flex; align-items: center; gap: 2px; height: 16px; }
+.lvl s { width: 3px; height: calc(var(--h) * 16px); border-radius: 2px; background: currentColor; }
+.bd-mic.load { position: relative; background: var(--up2); color: var(--ink); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.bd-mic.load .bar { position: absolute; left: 8px; right: 8px; bottom: 3px; height: 3px; margin: 0; }
+.bd-mic.load .bar b { height: 3px; background: var(--w); }
+/* Push-to-talk: the mic widens to say how to use it, with the Space key; held, it fills porcelain with level bars. */
+.bd-mic.ptt { color: var(--ink); font-size: 13px; font-weight: 600; }
+.bd-mic.ptt[aria-pressed="true"] { color: var(--on-w); }
+.bd-mic.ptt kbd { font-size: 11px; padding: 1px 5px; }
+.bd-mic.ptt[aria-pressed="true"] kbd { background: color-mix(in srgb, var(--on-w) 15%, transparent); color: var(--on-w); }
+
+/* Voice language: a dropdown at most 300px wide, its list open below it. */
+.voice-lang { position: relative; max-width: 300px; }
+.voice-lang .selb { width: 100%; }
+.voice-lang .menu { position: absolute; left: 0; top: calc(100% + 4px); width: 100%; z-index: 1; }
+.voice-lang .mi[aria-selected="false"] .i { visibility: hidden; }
+.sect .opt { margin-top: 20px; }
+
+/* Mockup framing only: the board column at 760px tall, without the sidebar. */
+.stage > .bd-col { width: 1168px; max-width: 100%; height: 760px; background: var(--g); border: 1px solid var(--seam); border-radius: 8px; overflow: hidden; }
+/* Mockup framing only. */
+.stage > .app { width: 100%; height: 760px; min-height: 0; border: 1px solid var(--seam); border-radius: 8px; overflow: hidden; }
+.stage > .sect { width: 640px; max-width: 100%; margin: 0; padding: 0; border: 0; }
+.stage > .sect > h3:first-child { margin-top: 0; }
+.bd-col.crop { height: auto; grid-template-rows: 52px auto; }
+</style></head><body>
+<!-- The board drawing, labelled in German. -->
+<!-- The board drawing, shared by every state on this page. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="moon-de" viewBox="0 0 1600 900">
+<circle class="mk" cx="200" cy="450" r="80"/>
+<path class="mk" d="M300 450H326M271 379L289 361M200 350V324M129 379L111 361M100 450H74M129 521L111 539M200 550V576M271 521L289 539"/>
+<text class="mkt" x="200" y="660">Sonne</text>
+<path class="mk m" d="M380 360H540M524 346L540 360L524 374M380 450H540M524 436L540 450L524 464M380 540H540M524 526L540 540L524 554"/>
+<text class="mkt m" x="460" y="318">Sonnenlicht</text>
+<circle class="mk d" cx="900" cy="450" r="250"/>
+<circle class="mk" cx="900" cy="450" r="44"/>
+<text class="mkt" x="900" y="540">Erde</text>
+<circle class="mk" style="fill:var(--deep)" cx="650" cy="450" r="30"/><path class="mkf" d="M650 420A30 30 0 0 0 650 480Z"/>
+<circle class="mk" style="fill:var(--deep)" cx="900" cy="200" r="30"/><path class="mkf" d="M900 170A30 30 0 0 0 900 230Z"/>
+<circle class="mk" style="fill:var(--deep)" cx="1150" cy="450" r="30"/><path class="mkf" d="M1150 420A30 30 0 0 0 1150 480Z"/>
+<circle class="mk" style="fill:var(--deep)" cx="900" cy="700" r="30"/><path class="mkf" d="M900 670A30 30 0 0 0 900 730Z"/>
+<text class="mkt m s" x="724" y="458">Neumond</text><text class="mkt m" style="text-anchor:end" x="1076" y="458">Vollmond</text>
+<text class="mkt m" x="1400" y="262">von der Erde</text>
+<circle class="mk" style="fill:var(--deep)" cx="1370" cy="330" r="26"/>
+<circle class="mk" style="fill:var(--deep)" cx="1370" cy="450" r="26"/><path class="mkf" d="M1370 424A26 26 0 0 1 1370 476Z"/>
+<circle class="mk" style="fill:var(--ink)" cx="1370" cy="570" r="26"/>
+<text class="mkt m s" x="1414" y="338">neu</text><text class="mkt m s" x="1414" y="458">halb</text><text class="mkt m s" x="1414" y="578">voll</text>
+</symbol></svg>
+<!-- The board drawing, shared by every state on this page. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="moon" viewBox="0 0 1600 900">
+<circle class="mk" cx="200" cy="450" r="80"/>
+<path class="mk" d="M300 450H326M271 379L289 361M200 350V324M129 379L111 361M100 450H74M129 521L111 539M200 550V576M271 521L289 539"/>
+<text class="mkt" x="200" y="660">Sun</text>
+<path class="mk m" d="M380 360H540M524 346L540 360L524 374M380 450H540M524 436L540 450L524 464M380 540H540M524 526L540 540L524 554"/>
+<text class="mkt m" x="460" y="318">sunlight</text>
+<circle class="mk d" cx="900" cy="450" r="250"/>
+<circle class="mk" cx="900" cy="450" r="44"/>
+<text class="mkt" x="900" y="540">Earth</text>
+<circle class="mk" style="fill:var(--deep)" cx="650" cy="450" r="30"/><path class="mkf" d="M650 420A30 30 0 0 0 650 480Z"/>
+<circle class="mk" style="fill:var(--deep)" cx="900" cy="200" r="30"/><path class="mkf" d="M900 170A30 30 0 0 0 900 230Z"/>
+<circle class="mk" style="fill:var(--deep)" cx="1150" cy="450" r="30"/><path class="mkf" d="M1150 420A30 30 0 0 0 1150 480Z"/>
+<circle class="mk" style="fill:var(--deep)" cx="900" cy="700" r="30"/><path class="mkf" d="M900 670A30 30 0 0 0 900 730Z"/>
+<text class="mkt m s" x="724" y="458">new</text><text class="mkt m" style="text-anchor:end" x="1076" y="458">full</text>
+<text class="mkt m" x="1400" y="262">from Earth</text>
+<circle class="mk" style="fill:var(--deep)" cx="1370" cy="330" r="26"/>
+<circle class="mk" style="fill:var(--deep)" cx="1370" cy="450" r="26"/><path class="mkf" d="M1370 424A26 26 0 0 1 1370 476Z"/>
+<circle class="mk" style="fill:var(--ink)" cx="1370" cy="570" r="26"/>
+<text class="mkt m s" x="1414" y="338">new</text><text class="mkt m s" x="1414" y="458">half</text><text class="mkt m s" x="1414" y="578">full</text>
+</symbol></svg>
+<nav class="mock" aria-label="Mockup screens"><b>Board</b><a href="Rabbithole-brd.1.html">brd.1 Board opens</a><a href="Rabbithole-brd.8.html">brd.8 Speed and pause</a><a href="Rabbithole-brd.11.html">brd.11 Ask by voice</a><a href="Rabbithole-brd.12.html" aria-current=page>brd.12 Board settings</a><label><input type="checkbox" id="lt"> Light</label></nav>
+<header class="intro"><h1>Board settings: Voice language and push-to-talk</h1><p>Rabbithole-brd.12. Settings gains a Board page. Voice language sets the language the learner speaks and the tutor speaks back, English by default. Push-to-talk replaces hands-free listening with holding Space or the mic button, off by default. Spec: <code>docs/board-spec.md</code>. Decision: ADR 0028. The spec wins where they differ.</p></header>
+<ul class="rules">
+<li>Board is a new page in the Settings nav, after Models, with the speaker icon. Its heading is "Board", described as "How the tutor talks and listens on a board." It is laid out like every other Settings page.</li>
+<li>The page has one section, Voice, with two controls. Voice language is a dropdown, at most 300px wide, because the voice table has more than five languages. Push-to-talk is a switch with its description. Learner-led or tutor-guided joins the page in Rabbithole-brd.13.</li>
+<li>Voice language lists English first, then the other languages of the voice table by name. Under it, a hint says what the setting does. Picking a language other than English adds one line saying how large its speech model is and that it downloads on the next mic press. Once that model is on this computer, the line goes away.</li>
+<li>There is no voice picker. The tutor speaks the voice language in that language's one voice from the voice table.</li>
+<li>With push-to-talk on, the mic on the board is a hold button, never a toggle, and nothing listens until it is held. It reads "Hold to talk" with the Space key beside it. While Space or the button is held, the tutor stops, the button fills porcelain, and it reads "Release to send" with the level bars. Letting go sends what was said. Voice detection never cuts in.</li>
+<li>Space holds to talk whenever focus is not in a text field. In the composer, Space types a space, and the learner holds the mic button instead.</li>
+<li>The first hold downloads the speech models, with the same progress on the button as Rabbithole-brd.11, and records nothing until they are ready.</li>
+</ul>
+<main class="specs wide">
+
+<section class="spec"><h2>1. The Board page, at its defaults</h2><p>Voice language is English and push-to-talk is off.</p><div class="stage"><div class="app"><nav class="side" aria-label="Sidebar"><div class="top"><button class="ib" aria-label="Shrink sidebar to rail"><i class="i i-rail"></i></button><a class="mark" href="line-diagram/library.html"><svg viewBox="0 0 26 26" aria-hidden="true"><path class="ln" style="stroke-width:3.5" d="M5 13H12L18 7H22M12 13L18 19H22"/><circle class="stn" cx="5" cy="13" r="3.4"/></svg>Rabbithole</a></div><div class="new"><a class="btn pri" href="line-diagram/read.html"><i class="i i--sm i-plus"></i>New chat</a><button class="ib" aria-label="Search learning trees"><i class="i i-magnifying-glass"></i></button></div><div class="views"><a class="view" href="line-diagram/read.html"><i class="i i-book-open"></i>Read</a><a class="view" href="line-diagram/map.html"><i class="i i-map"></i>Map</a><a class="view" href="line-diagram/knowledge.html"><i class="i i-share"></i>Knowledge</a><a class="view" href="line-diagram/videos.html"><i class="i i-film"></i>Videos</a><a class="view" href="line-diagram/pieces.html"><i class="i i-cube"></i>Pieces</a><a class="view" href="line-diagram/library.html"><i class="i i-rectangle-stack"></i>Library</a></div><div class="foot"><a class="view" href="line-diagram/settings.html" aria-current=page><i class="i i-cog-6-tooth"></i>Settings</a><button class="ib" aria-label="Downloads"><i class="i i-tray"></i></button></div></nav><main class="page"><a class="ret" href="line-diagram/read.html"><i class="i i--sm i-arrow-left"></i>Return to learning tree</a>
+<h1 class="sr">Settings</h1><div class="set"><nav class="snav" aria-label="Settings"><a class="view" href="line-diagram/settings.html#interface"><i class="i i-swatch"></i>Interface</a><a class="view" href="line-diagram/settings.html#models"><i class="i i-cpu-chip"></i>Models</a><a class="view" href="#board" aria-current=page><i class="i i-speaker-wave"></i>Board</a><a class="view" href="line-diagram/settings.html#connections"><i class="i i-link"></i>Connections</a><a class="view" href="Rabbithole-aon.2.html"><i class="i i-puzzle-piece"></i>Add-ons</a><a class="view" href="line-diagram/usage.html"><i class="i i-chart-bar"></i>Usage</a></nav><div>
+<section class="sect" id="board"><h2 tabindex="-1">Board</h2><p>How the tutor talks and listens on a board.</p>
+<h3>Voice</h3>
+<div class="voice-lang"><span class="lab" id="vl1">Voice language</span><button class="selb" aria-labelledby="vl1" aria-haspopup="listbox">English<i class="i i--sm i-chevron-down"></i></button></div>
+<p class="hint">The language you speak on a board. The tutor answers in it too, in a voice made for it.</p>
+<div class="opt"><span class="sw" role="switch" aria-checked="false" aria-label="Push-to-talk"></span><div><b>Push-to-talk</b><p>Hold Space or the mic button while you speak, and let go to send. Useful in a noisy room or with speakers. When it's off, the mic listens hands-free once you turn it on.</p></div></div>
+</section></div></div></main></div></div></section>
+
+<section class="spec"><h2>2. Choosing a voice language</h2><p>The dropdown lists the languages of the voice table, English first and the rest by name. The list here is an example; the voice table sets the real one.</p><div class="stage"><div class="sect" style="padding-bottom:230px">
+<h3>Voice</h3>
+<div class="voice-lang"><span class="lab" id="vl2">Voice language</span><button class="selb focus" aria-labelledby="vl2" aria-haspopup="listbox" aria-expanded="true">English<i class="i i--sm i-chevron-up"></i></button>
+<div class="menu" role="listbox" aria-labelledby="vl2">
+<div class="mi" role="option" aria-selected="true"><i class="i i--sm i-check"></i>English</div>
+<div class="mi" role="option" aria-selected="false"><i class="i i--sm i-check"></i>Chinese</div>
+<div class="mi" role="option" aria-selected="false"><i class="i i--sm i-check"></i>Dutch</div>
+<div class="mi" role="option" aria-selected="false"><i class="i i--sm i-check"></i>French</div>
+<div class="mi hover" role="option" aria-selected="false"><i class="i i--sm i-check"></i>German</div>
+<div class="mi" role="option" aria-selected="false"><i class="i i--sm i-check"></i>Italian</div>
+<div class="mi" role="option" aria-selected="false"><i class="i i--sm i-check"></i>Japanese</div>
+<div class="mi" role="option" aria-selected="false"><i class="i i--sm i-check"></i>Portuguese</div>
+<div class="mi" role="option" aria-selected="false"><i class="i i--sm i-check"></i>Spanish</div>
+</div></div>
+<p class="hint">The language you speak on a board. The tutor answers in it too, in a voice made for it.</p>
+<div class="opt"><span class="sw" role="switch" aria-checked="false" aria-label="Push-to-talk"></span><div><b>Push-to-talk</b><p>Hold Space or the mic button while you speak, and let go to send. Useful in a noisy room or with speakers. When it's off, the mic listens hands-free once you turn it on.</p></div></div>
+</div></div></section>
+
+<section class="spec"><h2>3. A language other than English</h2><p>German is picked. Its speech model isn't on this computer yet, so a second line gives its size and when it downloads.</p><div class="stage"><div class="sect">
+<h3>Voice</h3>
+<div class="voice-lang"><span class="lab" id="vl3">Voice language</span><button class="selb" aria-labelledby="vl3" aria-haspopup="listbox">German<i class="i i--sm i-chevron-down"></i></button></div>
+<p class="hint">The language you speak on a board. The tutor answers in it too, in a voice made for it.</p>
+<p class="hint">German needs a larger speech model, about 77 MB. It downloads the next time you press the mic on a board.</p>
+<div class="opt"><span class="sw" role="switch" aria-checked="false" aria-label="Push-to-talk"></span><div><b>Push-to-talk</b><p>Hold Space or the mic button while you speak, and let go to send. Useful in a noisy room or with speakers. When it's off, the mic listens hands-free once you turn it on.</p></div></div>
+</div></div></section>
+
+<section class="spec"><h2>4. On the board, in German</h2><p>The tutor speaks German, in the German voice. The first mic press downloads the German speech model with the same progress as English: 18%, 14 of 77 MB. Typing works meanwhile.</p><div class="stage">
+<main class="chat bd-col"><div class="chead"><span class="chip c0">1</span><b>Warum hat der Mond Phasen?</b><span class="end"><button class="bd-toggle" role="switch" aria-checked="true"><span class="sw on"></span>Board</button><button class="ib" aria-label="Token stats"><i class="i i-chart-bar"></i></button><button class="ib" aria-label="Return to tree"><i class="i i-arrow-uturn-left"></i></button><button class="ib" aria-label="More"><i class="i i-ellipsis-horizontal"></i></button></span></div>
+<div class="bd-field"><div class="bd"><svg viewBox="0 0 1600 900" role="img" aria-label="Board: Sonne, Erde und die Mondbahn"><use href="#moon-de"/></svg><p class="bd-note" role="status"><i class="i i--sm i-information-circle"></i>Getting voice ready: 14 of 77 MB. Your voice stays on this computer.</p></div></div>
+<div class="bd-line"><span role="status"><span class="bd-state speaking">Speaking</span></span><p class="bd-cap" aria-live="polite">Von der Erde aus sehen wir jede Nacht ein anderes Stück dieser hellen Hälfte.</p><span></span></div>
+<div class="cfoot bd-foot"><div class="comp"><div class="ta">Ask a question</div><div class="row"><span class="bd-tools"><button class="ib bd-mic load" aria-pressed="false" aria-busy="true" aria-label="Turn mic on, downloading 18%"><i class="i i-microphone"></i>18%<span class="bar"><b style="width:18%"></b></span></button><span class="bd-speedbox"><button class="pill bd-speed" aria-label="Speed, 1.5×" aria-haspopup="menu" aria-expanded="false">1.5×</button></span><button class="ib bd-pause" aria-pressed="false" aria-label="Pause"><i class="i i-pause"></i></button></span><button class="btn pri sq off" aria-label="Send"><i class="i i-arrow-up"></i></button></div></div></div>
+</main></div></section>
+
+<section class="spec"><h2>5. Push-to-talk on</h2><p>The switch is on. Nothing else on the page changes.</p><div class="stage"><div class="sect">
+<h3>Voice</h3>
+<div class="voice-lang"><span class="lab" id="vl5">Voice language</span><button class="selb" aria-labelledby="vl5" aria-haspopup="listbox">English<i class="i i--sm i-chevron-down"></i></button></div>
+<p class="hint">The language you speak on a board. The tutor answers in it too, in a voice made for it.</p>
+<div class="opt"><span class="sw on" role="switch" aria-checked="true" aria-label="Push-to-talk"></span><div><b>Push-to-talk</b><p>Hold Space or the mic button while you speak, and let go to send. Useful in a noisy room or with speakers. When it's off, the mic listens hands-free once you turn it on.</p></div></div>
+</div></div></section>
+
+<section class="spec"><h2>6. Push-to-talk on the board: ready</h2><p>The tutor is speaking. Sound in the room doesn't cut in, because nothing listens until the learner holds Space or the mic button.</p><div class="stage">
+<main class="chat bd-col"><div class="chead"><span class="chip c0">1</span><b>Why does the Moon have phases?</b><span class="end"><button class="bd-toggle" role="switch" aria-checked="true"><span class="sw on"></span>Board</button><button class="ib" aria-label="Token stats"><i class="i i-chart-bar"></i></button><button class="ib" aria-label="Return to tree"><i class="i i-arrow-uturn-left"></i></button><button class="ib" aria-label="More"><i class="i i-ellipsis-horizontal"></i></button></span></div>
+<div class="bd-field"><div class="bd"><svg viewBox="0 0 1600 900" role="img" aria-label="Board: the Sun, Earth and the Moon's orbit"><use href="#moon"/><circle class="mk f" cx="650" cy="450" r="50" pathLength="1" stroke-dasharray="1" stroke-dashoffset="0.4" transform="rotate(-90 650 450)"/></svg></div></div>
+<div class="bd-line"><span role="status"><span class="bd-state speaking">Speaking</span></span><p class="bd-cap" aria-live="polite">At new moon, the lit half faces away from us.</p><span></span></div>
+<div class="cfoot bd-foot"><div class="comp"><div class="ta">Ask a question</div><div class="row"><span class="bd-tools"><button class="ib bd-mic ptt" aria-pressed="false" aria-label="Hold to talk" aria-keyshortcuts="Space"><i class="i i-microphone"></i>Hold to talk<kbd>Space</kbd></button><span class="bd-speedbox"><button class="pill bd-speed" aria-label="Speed, 1.5×" aria-haspopup="menu" aria-expanded="false">1.5×</button></span><button class="ib bd-pause" aria-pressed="false" aria-label="Pause"><i class="i i-pause"></i></button></span><button class="btn pri sq off" aria-label="Send"><i class="i i-arrow-up"></i></button></div></div></div>
+</main></div></section>
+
+<section class="spec"><h2>7. Held</h2><p>The learner holds Space. The tutor stops at once and the focus ring snaps to finished. The button fills porcelain, shows the learner's level and reads "Release to send". The state reads Listening.</p><div class="stage">
+<main class="chat bd-col"><div class="chead"><span class="chip c0">1</span><b>Why does the Moon have phases?</b><span class="end"><button class="bd-toggle" role="switch" aria-checked="true"><span class="sw on"></span>Board</button><button class="ib" aria-label="Token stats"><i class="i i-chart-bar"></i></button><button class="ib" aria-label="Return to tree"><i class="i i-arrow-uturn-left"></i></button><button class="ib" aria-label="More"><i class="i i-ellipsis-horizontal"></i></button></span></div>
+<div class="bd-field"><div class="bd"><svg viewBox="0 0 1600 900" role="img" aria-label="Board: the Sun, Earth and the Moon's orbit"><use href="#moon"/><circle class="mk f" cx="650" cy="450" r="50"/></svg></div></div>
+<div class="bd-line"><span role="status"><span class="bd-state listening">Listening</span></span><p class="bd-cap mut" aria-live="polite">At new moon, the lit half faces away from us.</p><span></span></div>
+<div class="cfoot bd-foot"><div class="comp"><div class="ta">Ask a question</div><div class="row"><span class="bd-tools"><button class="ib bd-mic ptt" aria-pressed="true" aria-label="Hold to talk" aria-keyshortcuts="Space"><i class="i i-microphone"></i>Release to send<span class="lvl" aria-hidden="true"><s style="--h:.45"></s><s style="--h:1"></s><s style="--h:.7"></s><s style="--h:.3"></s></span></button><span class="bd-speedbox"><button class="pill bd-speed" aria-label="Speed, 1.5×" aria-haspopup="menu" aria-expanded="false">1.5×</button></span><button class="ib bd-pause" aria-pressed="false" aria-label="Pause"><i class="i i-pause"></i></button></span><button class="btn pri sq off" aria-label="Send"><i class="i i-arrow-up"></i></button></div></div></div>
+</main></div></section>
+
+<section class="spec"><h2>8. Released: question sent</h2><p>Letting go sends what was said while held, with no wait for silence. The button goes back to "Hold to talk", and the question shows muted while the tutor thinks.</p><div class="stage">
+<main class="chat bd-col crop">
+<div class="bd-line"><span role="status"><span class="bd-state thinking">Thinking</span></span><p class="bd-cap mut" aria-live="polite">Wait, so why isn't there an eclipse every month?</p><span></span></div>
+<div class="cfoot bd-foot"><div class="comp"><div class="ta">Ask a question</div><div class="row"><span class="bd-tools"><button class="ib bd-mic ptt" aria-pressed="false" aria-label="Hold to talk" aria-keyshortcuts="Space"><i class="i i-microphone"></i>Hold to talk<kbd>Space</kbd></button><span class="bd-speedbox"><button class="pill bd-speed" aria-label="Speed, 1.5×" aria-haspopup="menu" aria-expanded="false">1.5×</button></span><button class="ib bd-pause" aria-pressed="false" aria-label="Pause"><i class="i i-pause"></i></button></span><button class="btn pri sq off" aria-label="Send"><i class="i i-arrow-up"></i></button></div></div></div>
+</main></div></section>
+
+</main>
+<script src="line-diagram/ld.js"></script>
+</body></html>

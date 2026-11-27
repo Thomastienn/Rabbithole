@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Board speed and pause · Rabbithole-brd.8 mockup</title><link rel="stylesheet" href="line-diagram/ld.css">
+<style>
+/* Mockup only. The board's speed control and pause button.
+   Theme roles used, mockup name then app token: --g background, --deep background-muted (the board surface),
+   --ink text-primary, --mut text-secondary, --seam2 border-emphasized, --seam border, --w porcelain (rabbithole-paper),
+   --on-w text on porcelain, --up popover, --up2 hover. */
+
+/* ===== BOARD FRAME: copy this block verbatim into every board mockup (Rabbithole-brd.2 to brd.16). ===== */
+/* Heroicons 24 outline microphone; icons.css lacks it. */
+.i-microphone { --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z'/%3E%3C/svg%3E"); }
+/* Board toggle: a switch and its word, first among the focused chat header's controls. */
+.chead .end { align-items: center; }
+.bd-toggle { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px; margin-right: 4px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--mut); }
+.bd-toggle:hover, .bd-toggle.hover { background: var(--up2); color: var(--ink); }
+.bd-toggle[aria-checked="true"] { color: var(--ink); }
+/* Board column, map hidden: header, board field, caption line, composer. Fixed rows, so state never moves them. */
+.chat.bd-col { display: grid; grid-template-rows: auto minmax(0, 1fr) 52px auto; }
+.bd-field { container-type: size; display: grid; place-items: center; padding: 16px 24px 0; min-height: 0; }
+.bd { position: relative; width: min(100cqw, 100cqh * 16 / 9); aspect-ratio: 16 / 9; background: var(--deep); border-radius: 8px; overflow: hidden; }
+.bd > svg { position: absolute; inset: 0; width: 100%; height: 100%; } /* board items go here, in 1600x900 board pixels (ADR 0028) */
+.bd-empty { position: absolute; inset: 0; display: grid; place-items: center; font-size: 15px; color: var(--mut); }
+/* Notice: one line at the top centre of the board, in the shared overlay frame. */
+.bd-note { position: absolute; top: 12px; left: 50%; translate: -50% 0; display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1.5px solid var(--seam2); border-radius: 8px; background: var(--up); font-size: 13px; color: var(--ink); white-space: nowrap; }
+.bd-note.fail { background: color-mix(in srgb, var(--fail) 15%, var(--up)); }
+.bd-note.fail .i { color: var(--fail); }
+/* Caption line: session state at the left, the one-line caption centred. */
+.bd-line { display: grid; grid-template-columns: 112px minmax(0, 1fr) 112px; align-items: center; gap: 12px; padding: 0 24px; min-width: 0; }
+.bd-state { display: inline-flex; align-items: center; gap: 8px; font: 600 12px/1.2 var(--cond); text-transform: uppercase; letter-spacing: 0.07em; color: var(--mut); }
+.bd-state::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--mut); }
+.bd-state.speaking::before { background: var(--w); }
+.bd-cap { font: 17px/1.5 var(--read); color: var(--ink); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bd-cap.mut { color: var(--mut); }
+/* Composer: the chat composer, centred, with the board's tool group (mic now; speed, pause, pen later). */
+.cfoot.bd-foot { padding: 8px 24px 20px; }
+.bd-foot .comp { max-width: 720px; margin: 0 auto; }
+.bd-tools { display: flex; gap: 2px; }
+.bd-mic[disabled] { opacity: 0.45; cursor: not-allowed; }
+/* ===== END BOARD FRAME ===== */
+
+/* Board items: clean marker strokes in theme colours, in board pixels. */
+.mk { fill: none; stroke: var(--ink); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+.mk.m { stroke: var(--mut); stroke-width: 4; }
+.mk.d { stroke: var(--mut); stroke-width: 3; stroke-dasharray: 3 16; }
+.mk.f { stroke: var(--w); stroke-width: 6; }
+.mkf { fill: var(--ink); }
+.mkt { font: 30px var(--read); fill: var(--ink); text-anchor: middle; }
+.mkt.m { font-size: 24px; fill: var(--mut); }
+.mkt.s { text-anchor: start; }
+/* The 30px speed pill sits centred among the 36px buttons. */
+.bd-tools { align-items: center; }
+
+/* Speed: the composer's effort pill, showing the current speed; its menu opens upward. */
+.bd-speedbox { position: relative; display: inline-flex; }
+.bd-speed { min-width: 56px; justify-content: center; }
+.bd-speedbox .menu { position: absolute; left: 0; bottom: calc(100% + 6px); width: 180px; z-index: 1; }
+.bd-speedbox .mi[aria-checked="false"] .i { visibility: hidden; }
+/* Pause: a 36px icon button; pressed while paused, off when nothing is playing. */
+.bd-pause[aria-pressed="true"] { background: var(--up2); color: var(--ink); }
+.bd-pause[disabled] { opacity: 0.45; cursor: not-allowed; }
+
+/* Mockup framing only: the board column at 760px tall, without the sidebar. */
+.stage > .bd-col { width: 1168px; max-width: 100%; height: 760px; background: var(--g); border: 1px solid var(--seam); border-radius: 8px; overflow: hidden; }
+/* Mockup framing only: a crop that shows just the caption line and the composer. */
+.bd-col.crop { height: auto; grid-template-rows: 52px auto; }
+.bd-col.crop.room { padding-top: 220px; }
+pre.tag { font: 12px/1.6 var(--mono); color: var(--mut); white-space: pre-wrap; background: var(--deep); border-radius: 8px; padding: 10px 14px; width: 100%; max-width: 760px; }
+</style></head><body>
+<!-- The board drawing, shared by every state on this page. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="moon" viewBox="0 0 1600 900">
+<circle class="mk" cx="200" cy="450" r="80"/>
+<path class="mk" d="M300 450H326M271 379L289 361M200 350V324M129 379L111 361M100 450H74M129 521L111 539M200 550V576M271 521L289 539"/>
+<text class="mkt" x="200" y="660">Sun</text>
+<path class="mk m" d="M380 360H540M524 346L540 360L524 374M380 450H540M524 436L540 450L524 464M380 540H540M524 526L540 540L524 554"/>
+<text class="mkt m" x="460" y="318">sunlight</text>
+<circle class="mk d" cx="900" cy="450" r="250"/>
+<circle class="mk" cx="900" cy="450" r="44"/>
+<text class="mkt" x="900" y="540">Earth</text>
+<circle class="mk" style="fill:var(--deep)" cx="650" cy="450" r="30"/><path class="mkf" d="M650 420A30 30 0 0 0 650 480Z"/>
+<circle class="mk" style="fill:var(--deep)" cx="900" cy="200" r="30"/><path class="mkf" d="M900 170A30 30 0 0 0 900 230Z"/>
+<circle class="mk" style="fill:var(--deep)" cx="1150" cy="450" r="30"/><path class="mkf" d="M1150 420A30 30 0 0 0 1150 480Z"/>
+<circle class="mk" style="fill:var(--deep)" cx="900" cy="700" r="30"/><path class="mkf" d="M900 670A30 30 0 0 0 900 730Z"/>
+<text class="mkt m s" x="724" y="458">new</text><text class="mkt m" style="text-anchor:end" x="1076" y="458">full</text>
+<text class="mkt m" x="1400" y="262">from Earth</text>
+<circle class="mk" style="fill:var(--deep)" cx="1370" cy="330" r="26"/>
+<circle class="mk" style="fill:var(--deep)" cx="1370" cy="450" r="26"/><path class="mkf" d="M1370 424A26 26 0 0 1 1370 476Z"/>
+<circle class="mk" style="fill:var(--ink)" cx="1370" cy="570" r="26"/>
+<text class="mkt m s" x="1414" y="338">new</text><text class="mkt m s" x="1414" y="458">half</text><text class="mkt m s" x="1414" y="578">full</text>
+</symbol></svg>
+
+<nav class="mock" aria-label="Mockup screens"><b>Board</b><a href="Rabbithole-brd.1.html">brd.1 Board opens</a><a href="Rabbithole-brd.8.html" aria-current=page>brd.8 Speed and pause</a><a href="Rabbithole-brd.11.html">brd.11 Ask by voice</a><a href="Rabbithole-brd.12.html">brd.12 Board settings</a><label><input type="checkbox" id="lt"> Light</label></nav>
+<header class="intro"><h1>Board: speed and pause</h1><p>Rabbithole-brd.8. The board's tool group gains a speed control and a pause button. Speed applies at once to both speech and drawing, without restarting the sentence. Pause stops both, and resume carries on from the same sentence and item. Spec: <code>docs/board-spec.md</code>. Decision: ADR 0028. The spec wins where they differ.</p></header>
+<ul class="rules">
+<li>The tool group sits at the left of the composer's row, in this order: mic, speed, pause. The pen joins it after the mic in a later ticket. The mic is drawn disabled, as in the Rabbithole-brd.1 frame, because voice arrives in Rabbithole-brd.11.</li>
+<li>Speed is the composer's 30px pill, at least 56px wide, showing the current speed in tabular figures: "1.5×". It is 1.5× until the learner picks another, and the pick is remembered in this browser, so it is still set after a reload.</li>
+<li>The speed menu opens upward from the pill, left-aligned, 180px wide, in the shared menu frame. Under the "Speed" label, it lists 1×, 1.25×, 1.5×, 1.75× and 2×. The current speed has a check, and 1.5× is marked "Default". Picking one closes the menu.</li>
+<li>Pause is a 36px icon button. While playing, it shows the pause icon and is named "Pause". While paused, it shows the play icon, is named "Resume" and stays pressed in the hover tone. With nothing to play, it is disabled at 45% opacity.</li>
+<li>While paused, the state label reads "Paused" with a muted dot. The caption holds the paused sentence in ink, and the item being drawn stays exactly where it stopped. Nothing else on the board changes.</li>
+<li>A reply that is still arriving keeps buffering while paused, with no change on screen. After resume, it plays in full.</li>
+<li>Speed and pause work the same with the keyboard: Tab reaches them in order, Enter or Space presses them, and the arrow keys move through the open speed menu.</li>
+</ul>
+<main class="specs wide">
+
+<section class="spec"><h2>1. Speaking at 1.5×, the default</h2><p>The tutor is on its third sentence and is drawing a focus ring around the new moon, in step with the words. Speed reads 1.5× and Pause is ready.</p><div class="stage">
+<main class="chat bd-col"><div class="chead"><span class="chip c0">1</span><b>Why does the Moon have phases?</b><span class="end"><button class="bd-toggle" role="switch" aria-checked="true"><span class="sw on"></span>Board</button><button class="ib" aria-label="Token stats"><i class="i i-chart-bar"></i></button><button class="ib" aria-label="Return to tree"><i class="i i-arrow-uturn-left"></i></button><button class="ib" aria-label="More"><i class="i i-ellipsis-horizontal"></i></button></span></div>
+<div class="bd-field"><div class="bd"><svg viewBox="0 0 1600 900" role="img" aria-label="Board: the Sun, Earth and the Moon's orbit"><use href="#moon"/><circle class="mk f" cx="650" cy="450" r="50" pathLength="1" stroke-dasharray="1" stroke-dashoffset="0.42" transform="rotate(-90 650 450)"/></svg></div></div>
+<div class="bd-line"><span role="status"><span class="bd-state speaking">Speaking</span></span><p class="bd-cap" aria-live="polite">At new moon, the lit half faces away from us.</p><span></span></div>
+<div class="cfoot bd-foot"><div class="comp"><div class="ta">Ask a question</div><div class="row"><span class="bd-tools"><button class="ib bd-mic" aria-pressed="false" aria-label="Turn mic on" disabled><i class="i i-microphone"></i></button><span class="bd-speedbox"><button class="pill bd-speed" aria-label="Speed, 1.5×" aria-haspopup="menu" aria-expanded="false">1.5×</button></span><button class="ib bd-pause" aria-pressed="false" aria-label="Pause"><i class="i i-pause"></i></button></span><button class="btn pri sq off" aria-label="Send"><i class="i i-arrow-up"></i></button></div></div></div>
+</main></div></section>
+
+<section class="spec"><h2>2. Choosing a speed</h2><p>The menu is open over the caption line, with 1.5× checked and the pointer on 1.25×. Speech and drawing keep going while it is open.</p><div class="stage">
+<main class="chat bd-col crop room">
+<div class="bd-line"><span role="status"><span class="bd-state speaking">Speaking</span></span><p class="bd-cap" aria-live="polite">From Earth, we see a different slice of that lit half each night.</p><span></span></div>
+<div class="cfoot bd-foot"><div class="comp"><div class="ta">Ask a question</div><div class="row"><span class="bd-tools"><button class="ib bd-mic" aria-pressed="false" aria-label="Turn mic on" disabled><i class="i i-microphone"></i></button><span class="bd-speedbox"><button class="pill bd-speed hover" aria-label="Speed, 1.5×" aria-haspopup="menu" aria-expanded="true">1.5×</button>
+<div class="menu" role="menu" aria-label="Speed"><div class="mlab cap">Speed</div>
+<div class="mi" role="menuitemradio" aria-checked="false"><i class="i i--sm i-check"></i>1×</div>
+<div class="mi hover" role="menuitemradio" aria-checked="false"><i class="i i--sm i-check"></i>1.25×</div>
+<div class="mi" role="menuitemradio" aria-checked="true"><i class="i i--sm i-check"></i>1.5×<span class="end">Default</span></div>
+<div class="mi" role="menuitemradio" aria-checked="false"><i class="i i--sm i-check"></i>1.75×</div>
+<div class="mi" role="menuitemradio" aria-checked="false"><i class="i i--sm i-check"></i>2×</div>
+</div></span><button class="ib bd-pause" aria-pressed="false" aria-label="Pause"><i class="i i-pause"></i></button></span><button class="btn pri sq off" aria-label="Send"><i class="i i-arrow-up"></i></button></div></div></div>
+</main></div></section>
+
+<section class="spec"><h2>3. Speed changed to 1.25×</h2><p>The menu closes and the pill reads 1.25×. The same sentence carries on from the word it had reached, now slower, with the same pitch. The item being drawn slows with it. Nothing restarts.</p><div class="stage">
+<main class="chat bd-col crop">
+<div class="bd-line"><span role="status"><span class="bd-state speaking">Speaking</span></span><p class="bd-cap" aria-live="polite">From Earth, we see a different slice of that lit half each night.</p><span></span></div>
+<div class="cfoot bd-foot"><div class="comp"><div class="ta">Ask a question</div><div class="row"><span class="bd-tools"><button class="ib bd-mic" aria-pressed="false" aria-label="Turn mic on" disabled><i class="i i-microphone"></i></button><span class="bd-speedbox"><button class="pill bd-speed" aria-label="Speed, 1.25×" aria-haspopup="menu" aria-expanded="false">1.25×</button></span><button class="ib bd-pause" aria-pressed="false" aria-label="Pause"><i class="i i-pause"></i></button></span><button class="btn pri sq off" aria-label="Send"><i class="i i-arrow-up"></i></button></div></div></div>
+</main></div></section>
+
+<section class="spec"><h2>4. Paused</h2><p>The learner pressed Pause in the middle of sentence three. Speech stops at once and the focus ring stays half drawn, exactly where it stopped. The caption holds the sentence. Pause becomes Resume, pressed. Speed can still be changed, and the reply keeps arriving in the background.</p><div class="stage">
+<main class="chat bd-col"><div class="chead"><span class="chip c0">1</span><b>Why does the Moon have phases?</b><span class="end"><button class="bd-toggle" role="switch" aria-checked="true"><span class="sw on"></span>Board</button><button class="ib" aria-label="Token stats"><i class="i i-chart-bar"></i></button><button class="ib" aria-label="Return to tree"><i class="i i-arrow-uturn-left"></i></button><button class="ib" aria-label="More"><i class="i i-ellipsis-horizontal"></i></button></span></div>
+<div class="bd-field"><div class="bd"><svg viewBox="0 0 1600 900" role="img" aria-label="Board: the Sun, Earth and the Moon's orbit"><use href="#moon"/><circle class="mk f" cx="650" cy="450" r="50" pathLength="1" stroke-dasharray="1" stroke-dashoffset="0.42" transform="rotate(-90 650 450)"/></svg></div></div>
+<div class="bd-line"><span role="status"><span class="bd-state paused">Paused</span></span><p class="bd-cap" aria-live="polite">At new moon, the lit half faces away from us.</p><span></span></div>
+<div class="cfoot bd-foot"><div class="comp"><div class="ta">Ask a question</div><div class="row"><span class="bd-tools"><button class="ib bd-mic" aria-pressed="false" aria-label="Turn mic on" disabled><i class="i i-microphone"></i></button><span class="bd-speedbox"><button class="pill bd-speed" aria-label="Speed, 1.5×" aria-haspopup="menu" aria-expanded="false">1.5×</button></span><button class="ib bd-pause" aria-pressed="true" aria-label="Resume"><i class="i i-play"></i></button></span><button class="btn pri sq off" aria-label="Send"><i class="i i-arrow-up"></i></button></div></div></div>
+</main></div></section>
+
+<section class="spec"><h2>5. Resumed</h2><p>Resume picks up the same sentence and the same item: speech goes on from where it stopped and the ring finishes drawing. Sentences that arrived while paused play next, in full, in order.</p><div class="stage">
+<main class="chat bd-col"><div class="chead"><span class="chip c0">1</span><b>Why does the Moon have phases?</b><span class="end"><button class="bd-toggle" role="switch" aria-checked="true"><span class="sw on"></span>Board</button><button class="ib" aria-label="Token stats"><i class="i i-chart-bar"></i></button><button class="ib" aria-label="Return to tree"><i class="i i-arrow-uturn-left"></i></button><button class="ib" aria-label="More"><i class="i i-ellipsis-horizontal"></i></button></span></div>
+<div class="bd-field"><div class="bd"><svg viewBox="0 0 1600 900" role="img" aria-label="Board: the Sun, Earth and the Moon's orbit"><use href="#moon"/><circle class="mk f" cx="650" cy="450" r="50" pathLength="1" stroke-dasharray="1" stroke-dashoffset="0.12" transform="rotate(-90 650 450)"/></svg></div></div>
+<div class="bd-line"><span role="status"><span class="bd-state speaking">Speaking</span></span><p class="bd-cap" aria-live="polite">At new moon, the lit half faces away from us.</p><span></span></div>
+<div class="cfoot bd-foot"><div class="comp"><div class="ta">Ask a question</div><div class="row"><span class="bd-tools"><button class="ib bd-mic" aria-pressed="false" aria-label="Turn mic on" disabled><i class="i i-microphone"></i></button><span class="bd-speedbox"><button class="pill bd-speed" aria-label="Speed, 1.5×" aria-haspopup="menu" aria-expanded="false">1.5×</button></span><button class="ib bd-pause" aria-pressed="false" aria-label="Pause"><i class="i i-pause"></i></button></span><button class="btn pri sq off" aria-label="Send"><i class="i i-arrow-up"></i></button></div></div></div>
+</main></div></section>
+
+<section class="spec"><h2>6. Nothing to play</h2><p>The reply has ended and the last sentence is held in muted ink. Pause is disabled until the next reply starts. Speed still opens, so the learner can set it before asking.</p><div class="stage">
+<main class="chat bd-col crop">
+<div class="bd-line"><span role="status"><span></span></span><p class="bd-cap mut" aria-live="polite">So from Earth, the Moon looks dark.</p><span></span></div>
+<div class="cfoot bd-foot"><div class="comp"><div class="ta">Ask a question</div><div class="row"><span class="bd-tools"><button class="ib bd-mic" aria-pressed="false" aria-label="Turn mic on" disabled><i class="i i-microphone"></i></button><span class="bd-speedbox"><button class="pill bd-speed" aria-label="Speed, 1.5×" aria-haspopup="menu" aria-expanded="false">1.5×</button></span><button class="ib bd-pause" aria-pressed="false" aria-label="Pause" disabled><i class="i i-pause"></i></button></span><button class="btn pri sq off" aria-label="Send"><i class="i i-arrow-up"></i></button></div></div></div>
+</main></div></section>
+
+<section class="spec"><h2>7. What a screen reader hears</h2><p>The pill and the button keep their names short. The state label is a status, so "Paused" and "Speaking" are announced once each time they change.</p><div class="stage">
+<pre class="tag">Speed, 1.5×, menu button, collapsed
+Pause, toggle button, not pressed
+Speed, menu: 1×; 1.25×; 1.5×, Default, checked; 1.75×; 2×
+Resume, toggle button, pressed
+Status: Paused</pre>
+</div></section>
+
+</main>
+<script src="line-diagram/ld.js"></script>
+</body></html>

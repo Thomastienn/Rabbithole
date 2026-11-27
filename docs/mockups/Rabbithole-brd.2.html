@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Board shapes and labels · Rabbithole-brd.2 mockup</title><link rel="stylesheet" href="line-diagram/ld.css">
+<style>
+/* Mockup only. The board: the tutor draws shapes and labels as it speaks.
+   Theme roles used, mockup name then app token: --g background, --deep background-muted (the board surface),
+   --ink text-primary, --mut text-secondary, --seam border, --seam2 border-emphasized, --w porcelain (rabbithole-paper,
+   also color-accent), --on-w text on porcelain, --up popover, --up2 hover, --fail color-error,
+   --good color-success and --new color-info (mockup stand-ins defined below; ld.css has no success or info role). */
+
+/* ===== BOARD FRAME: copy this block verbatim into every board mockup (Rabbithole-brd.2 to brd.16). ===== */
+/* Heroicons 24 outline microphone; icons.css lacks it. */
+.i-microphone { --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z'/%3E%3C/svg%3E"); }
+/* Board toggle: a switch and its word, first among the focused chat header's controls. */
+.chead .end { align-items: center; }
+.bd-toggle { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px; margin-right: 4px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--mut); }
+.bd-toggle:hover, .bd-toggle.hover { background: var(--up2); color: var(--ink); }
+.bd-toggle[aria-checked="true"] { color: var(--ink); }
+/* Board column, map hidden: header, board field, caption line, composer. Fixed rows, so state never moves them. */
+.chat.bd-col { display: grid; grid-template-rows: auto minmax(0, 1fr) 52px auto; }
+.bd-field { container-type: size; display: grid; place-items: center; padding: 16px 24px 0; min-height: 0; }
+.bd { position: relative; width: min(100cqw, 100cqh * 16 / 9); aspect-ratio: 16 / 9; background: var(--deep); border-radius: 8px; overflow: hidden; }
+.bd > svg { position: absolute; inset: 0; width: 100%; height: 100%; } /* board items go here, in 1600x900 board pixels (ADR 0028) */
+.bd-empty { position: absolute; inset: 0; display: grid; place-items: center; font-size: 15px; color: var(--mut); }
+/* Notice: one line at the top centre of the board, in the shared overlay frame. */
+.bd-note { position: absolute; top: 12px; left: 50%; translate: -50% 0; display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1.5px solid var(--seam2); border-radius: 8px; background: var(--up); font-size: 13px; color: var(--ink); white-space: nowrap; }
+.bd-note.fail { background: color-mix(in srgb, var(--fail) 15%, var(--up)); }
+.bd-note.fail .i { color: var(--fail); }
+/* Caption line: session state at the left, the one-line caption centred. */
+.bd-line { display: grid; grid-template-columns: 112px minmax(0, 1fr) 112px; align-items: center; gap: 12px; padding: 0 24px; min-width: 0; }
+.bd-state { display: inline-flex; align-items: center; gap: 8px; font: 600 12px/1.2 var(--cond); text-transform: uppercase; letter-spacing: 0.07em; color: var(--mut); }
+.bd-state::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--mut); }
+.bd-state.speaking::before { background: var(--w); }
+.bd-cap { font: 17px/1.5 var(--read); color: var(--ink); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bd-cap.mut { color: var(--mut); }
+/* Composer: the chat composer, centred, with the board's tool group (mic now; speed, pause, pen later). */
+.cfoot.bd-foot { padding: 8px 24px 20px; }
+.bd-foot .comp { max-width: 720px; margin: 0 auto; }
+.bd-tools { display: flex; gap: 2px; }
+.bd-mic[disabled] { opacity: 0.45; cursor: not-allowed; }
+/* ===== END BOARD FRAME ===== */
+
+/* Mockup framing only: each state is the app at 760px tall inside the page. */
+.stage > .app { width: 100%; height: 760px; min-height: 0; border: 1px solid var(--seam); border-radius: 8px; overflow: hidden; }
+
+/* Look stand-ins for roles ld.css lacks: success (good) and info (new). */
+:root { --good: light-dark(#157a3a, #3fbf6a); --new: light-dark(#1f4fd8, #6f95ff); }
+
+/* Board items, in board pixels. Marker strokes: 7px, round caps and joins, no fill. */
+.bs { fill: none; stroke: var(--k, var(--ink)); stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; }
+.bdot { fill: var(--k, var(--ink)); }
+.btx { fill: var(--k, var(--ink)); font: 500 32px var(--read); text-anchor: middle; dominant-baseline: central; }
+.btx.m { font-size: 44px; }
+.btx.l { font-size: 64px; }
+/* Looks: the model writes look=, never a colour. No look is ink. */
+.k-focus { --k: var(--w); }
+.k-muted { --k: var(--mut); }
+.k-good { --k: var(--good); }
+.k-wrong { --k: var(--fail); }
+.k-new { --k: var(--new); }
+/* A partly drawn stroke: pathLength="1" and an inline stroke-dashoffset (1 is none, 0 is all). */
+.part { stroke-dasharray: 1; }
+.defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+/* Frame strips: the board alone at given moments of a sentence. The rest of the frame does not change. */
+.strip { display: grid; grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); gap: 16px; width: 100%; max-width: 1168px; }
+.mini { display: block; width: 100%; aspect-ratio: 16 / 9; background: var(--deep); border-radius: 6px; }
+.ft { font-size: 12px; color: var(--mut); margin-top: 6px; }
+.ft b { color: var(--ink); font-weight: 600; }
+.say { width: 100%; max-width: 1168px; font: 17px/1.5 var(--read); color: var(--ink); text-align: center; }
+.tl { display: flex; gap: 4px; width: 100%; max-width: 1168px; }
+.tl span { flex: var(--f, 1); border-top: 3px solid var(--seam2); padding-top: 8px; font-size: 12px; color: var(--mut); }
+.tl b { color: var(--ink); font-weight: 600; }
+/* Kinds table: one row per kind, three moments of its entry. */
+.kinds { display: grid; grid-template-columns: 200px repeat(3, minmax(0, 1fr)); gap: 10px 16px; align-items: center; width: 100%; max-width: 1168px; }
+.kinds .cell { display: block; width: 100%; aspect-ratio: 2 / 1; background: var(--deep); border-radius: 6px; }
+.kinds .k b { display: block; font-weight: 600; }
+.kinds .k code { font: 12px ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--mut); }
+.looks { width: 100%; max-width: 1168px; display: grid; gap: 8px; }
+.looks svg { display: block; width: 100%; height: auto; border-radius: 6px; background: var(--deep); }
+pre.tag { font: 12px/1.6 ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--mut); white-space: pre-wrap; background: var(--deep); border-radius: 8px; padding: 10px 14px; width: 100%; max-width: 1168px; }
+</style></head><body>
+<nav class="mock" aria-label="Mockup screens"><b>Board</b><a href="Rabbithole-brd.1.html">brd.1 Board opens</a><a href="Rabbithole-brd.2.html" aria-current=page>brd.2 Shapes and labels</a><a href="Rabbithole-brd.4.html">brd.4 Math, highlight, pointer, erase, fresh space</a><label><input type="checkbox" id="lt"> Light</label></nav>
+
+<!-- Board items reused by the frames below: one group per sentence of the reply. -->
+<svg class="defs" aria-hidden="true" focusable="false"><defs>
+<g id="s1"><rect class="bs k-focus" x="300" y="340" width="120" height="220" rx="12"/><text class="btx k-muted" x="190" y="450">battery</text></g>
+<g id="s2"><path class="bs" d="M360 340V180"/><path class="bs" d="M360 180H1240"/><path class="bs" d="M1240 180V380"/></g>
+<g id="s3"><circle class="bs" cx="1240" cy="450" r="70"/><text class="btx k-muted" x="1460" y="450">bulb</text></g>
+<g id="s4"><path class="bs" d="M1240 520V720"/><path class="bs" d="M1240 720H360"/><path class="bs" d="M360 720V560"/></g>
+<g id="s5"><path class="bs k-new" d="M680 130H920"/><path class="bs k-new" d="M896 112L920 130L896 148"/><path class="bs k-new" d="M920 770H680"/><path class="bs k-new" d="M704 752L680 770L704 788"/></g>
+<g id="s6"><circle class="bdot k-focus" cx="560" cy="180" r="14"/><circle class="bdot k-focus" cx="1040" cy="720" r="14"/></g>
+<g id="s7"><path class="bs k-focus" d="M1300 390L1340 350M1326 450H1380M1300 510L1340 550M1180 390L1140 350M1180 510L1140 550"/></g>
+<g id="reply1"><use href="#s1"/><use href="#s2"/><use href="#s3"/><use href="#s4"/><use href="#s5"/><use href="#s6"/><use href="#s7"/></g>
+</defs></svg>
+
+<header class="intro"><h1>The tutor draws shapes and labels as it speaks</h1><p>Rabbithole-brd.2. Each spoken sentence brings one small change to the board: its op lines draw circles, boxes, dots, lines, arrows and short labels at the coordinates the tutor gave, each item entering over its share of the sentence. Spec: <code>docs/board-spec.md</code> (Op language, Board player, UI). Decision: ADR 0028. The spec wins where they differ. The frame around the board is Rabbithole-brd.1's and does not change here.</p></header>
+<ul class="rules">
+<li>The board is 1600×900 board pixels, drawn as large as the board field allows, as in Rabbithole-brd.1. Every size below is in board pixels and scales with the board (at 912px wide, 1 board pixel is 0.57px).</li>
+<li>Shapes are clean marker strokes: 7px, round caps and joins, no fill, no jitter. A box has 12px rounded corners. A dot is a filled circle of radius 14. An arrow's head is two 7px strokes, 24px back along the shaft and 18px either side.</li>
+<li>Labels are in the reading face, weight 500, centred on their point: <code>size=s</code> 32px, <code>m</code> 44px (the default), <code>l</code> 64px. A label is a few words at most.</li>
+<li>Colour comes only from looks. No look is ink; <code>focus</code> is porcelain, <code>muted</code> muted ink, <code>good</code> success, <code>wrong</code> error, <code>new</code> info. The model never writes a colour.</li>
+<li>Nothing pops in. A stroke draws on from its start, a dot grows from its centre, a label writes in left to right. Each item takes an equal share of its sentence, in the order the ops came, and eases out (cubic-bezier(0.16, 1, 0.3, 1)).</li>
+<li>A sentence lasts its estimated time: 15 characters per second at 1.5×. A 57-character sentence lasts 3.8 s.</li>
+<li>The learner never sees op text, ids or errors on the board or in the caption.</li>
+</ul>
+<main class="specs wide">
+
+<section class="spec"><h2>1. As the reply finishes</h2><p>The learner asked "How does a torch actually light up?". Seven sentences drew the loop. The last one is still speaking, and its five rays have just drawn on around the bulb. The battery is the focus, the charge arrows are new, the two labels are muted.</p><div class="stage">
+<div class="app"><nav class="side" aria-label="Sidebar"><div class="top"><button class="ib" aria-label="Shrink sidebar to rail"><i class="i i-rail"></i></button><a class="mark" href="line-diagram/library.html"><svg viewBox="0 0 26 26" aria-hidden="true"><path class="ln" style="stroke-width:3.5" d="M5 13H12L18 7H22M12 13L18 19H22"/><circle class="stn" cx="5" cy="13" r="3.4"/></svg>Rabbithole</a></div><div class="new"><a class="btn pri" href="line-diagram/read.html"><i class="i i--sm i-plus"></i>New chat</a><button class="ib" aria-label="Search conversations"><i class="i i-magnifying-glass"></i></button></div><div class="views"><a class="view" href="line-diagram/read.html" aria-current=page><i class="i i-book-open"></i>Read</a><a class="view" href="line-diagram/map.html"><i class="i i-map"></i>Map</a><a class="view" href="line-diagram/knowledge.html"><i class="i i-share"></i>Knowledge</a><a class="view" href="line-diagram/videos.html"><i class="i i-film"></i>Videos</a><a class="view" href="line-diagram/pieces.html"><i class="i i-cube"></i>Pieces</a><a class="view" href="line-diagram/library.html"><i class="i i-rectangle-stack"></i>Library</a></div><div class="tree"><h2>How do circuits work?</h2><small>4 conversations</small></div>
+<div class="sec cap">Contents</div>
+<div class="stops" role="region" aria-label="Contents"><svg width="60" height="144" aria-hidden="true"><path class="ln c0" d="M12 18V110"/><path class="ln c1" d="M12 38L28 54"/><path class="ln c2" d="M12 74L28 90"/><path class="ln c3" d="M12 110L28 126"/><circle class="stn" cx="12" cy="18" r="5.5"/><circle class="stn" cx="28" cy="54" r="5"/><circle class="stn" cx="28" cy="90" r="7.5"/><circle class="dot" cx="28" cy="90" r="2.8"/><circle class="stn" cx="28" cy="126" r="5"/></svg>
+<a class="st" href="#"><i>1</i>How do circuits work?</a><a class="st" href="#"><i>1.1</i>What is current?</a><a class="st on" href="#" aria-current="true"><i>1.2</i>How does a torch work?</a><a class="st" href="#"><i>1.3</i>Series or parallel?</a></div>
+<div style="flex:1"></div><div class="foot"><a class="view" href="line-diagram/settings.html"><i class="i i-cog-6-tooth"></i>Settings</a><button class="ib" aria-label="Downloads"><i class="i i-tray"></i></button></div></nav><main class="chat bd-col"><div class="chead"><span class="chip c2">1.2</span><b>How does a torch work?</b><span class="end"><button class="bd-toggle" role="switch" aria-checked="true"><span class="sw on"></span>Board</button><button class="ib" aria-label="Token stats"><i class="i i-chart-bar"></i></button><button class="ib" aria-label="Return to tree"><i class="i i-arrow-uturn-left"></i></button><button class="ib" aria-label="More"><i class="i i-ellipsis-horizontal"></i></button></span></div>
+<div class="bd-field"><div class="bd"><svg viewBox="0 0 1600 900" role="img" aria-label="Board"><use href="#reply1"/></svg></div></div>
+<div class="bd-line"><span role="status"><span class="bd-state speaking">Speaking</span></span><p class="bd-cap" aria-live="polite">When it passes through the bulb, the bulb glows.</p><span></span></div>
+<div class="cfoot bd-foot"><div class="comp"><div class="ta">Ask a question</div><div class="row"><span class="bd-tools"><button class="ib bd-mic" aria-pressed="false" aria-label="Turn mic on" disabled><i class="i i-microphone"></i></button></span><button class="btn pri sq off" aria-label="Send"><i class="i i-arrow-up"></i></button></div></div></div>
+</main></div>
+<pre class="tag">What the tutor wrote (never shown). A "&gt; " line is a sentence; the op lines under it belong to it.
+
+&gt; A torch is just a loop, so let me draw its battery first.
+bat box at 360,450 w=120 h=220 look=focus
+bt text "battery" at 190,450 size=s look=muted
+&gt; Wire runs from the top, round to the bulb.
+w1 line 360,340 -&gt; 360,180
+w2 line 360,180 -&gt; 1240,180
+w3 line 1240,180 -&gt; 1240,380
+&gt; Here's the bulb.
+bulb circle at 1240,450 r=70
+bl text "bulb" at 1460,450 size=s look=muted
+&gt; And back down to the battery, closing the loop.
+w4 line 1240,520 -&gt; 1240,720
+w5 line 1240,720 -&gt; 360,720
+w6 line 360,720 -&gt; 360,560
+&gt; Charge flows round it in one direction.
+c1 arrow 680,130 -&gt; 920,130 look=new
+c2 arrow 920,770 -&gt; 680,770 look=new
+&gt; Picture each bit of charge as a dot on the wire.
+e1 dot at 560,180 look=focus
+e2 dot at 1040,720 look=focus
+&gt; When it passes through the bulb, the bulb glows.
+r1 line 1300,390 -&gt; 1340,350 look=focus
+r2 line 1326,450 -&gt; 1380,450 look=focus
+r3 line 1300,510 -&gt; 1340,550 look=focus
+r4 line 1180,390 -&gt; 1140,350 look=focus
+r5 line 1180,510 -&gt; 1140,550 look=focus</pre>
+</div></section>
+
+<section class="spec"><h2>2. One sentence, its items in order</h2><p>The first sentence (57 characters, 3.8 s) has two ops, so each gets 1.9 s. The battery box draws on clockwise from its top-left corner, then its label writes in. The board was empty before it.</p><div class="stage">
+<div class="tl"><span><b>bat</b> box · 0 to 1.9 s</span><span><b>bt</b> text · 1.9 to 3.8 s</span></div>
+<div class="strip" style="--n:4">
+<div><svg class="mini" viewBox="0 0 1600 900" aria-hidden="true"><rect class="bs k-focus part" pathLength="1" style="stroke-dashoffset:.5" x="300" y="340" width="120" height="220" rx="12"/></svg><p class="ft"><b>0.95 s</b> · the box is half drawn</p></div>
+<div><svg class="mini" viewBox="0 0 1600 900" aria-hidden="true"><rect class="bs k-focus" x="300" y="340" width="120" height="220" rx="12"/></svg><p class="ft"><b>1.9 s</b> · the box is done; the label starts</p></div>
+<div><svg class="mini" viewBox="0 0 1600 900" aria-hidden="true"><defs><clipPath id="bt-half"><rect x="120" y="400" width="70" height="100"/></clipPath></defs><rect class="bs k-focus" x="300" y="340" width="120" height="220" rx="12"/><text class="btx k-muted" x="190" y="450" clip-path="url(#bt-half)">battery</text></svg><p class="ft"><b>2.85 s</b> · the label is half written</p></div>
+<div><svg class="mini" viewBox="0 0 1600 900" aria-hidden="true"><use href="#s1"/></svg><p class="ft"><b>3.8 s</b> · the sentence ends</p></div>
+</div>
+<p class="say">A torch is just a loop, so let me draw its battery first.</p>
+</div></section>
+
+<section class="spec"><h2>3. Three ops share one sentence</h2><p>The second sentence (42 characters, 2.8 s) has three wires, so each line gets 0.93 s and draws from its first point to its last. The next op starts only when the one before is done.</p><div class="stage">
+<div class="tl"><span><b>w1</b> line · 0 to 0.93 s</span><span><b>w2</b> line · 0.93 to 1.87 s</span><span><b>w3</b> line · 1.87 to 2.8 s</span></div>
+<div class="strip">
+<div><svg class="mini" viewBox="0 0 1600 900" aria-hidden="true"><use href="#s1"/><path class="bs part" pathLength="1" style="stroke-dashoffset:.5" d="M360 340V180"/></svg><p class="ft"><b>0.47 s</b> · w1 half drawn, upward</p></div>
+<div><svg class="mini" viewBox="0 0 1600 900" aria-hidden="true"><use href="#s1"/><path class="bs" d="M360 340V180"/><path class="bs part" pathLength="1" style="stroke-dashoffset:.5" d="M360 180H1240"/></svg><p class="ft"><b>1.4 s</b> · w1 done, w2 half drawn</p></div>
+<div><svg class="mini" viewBox="0 0 1600 900" aria-hidden="true"><use href="#s1"/><use href="#s2"/></svg><p class="ft"><b>2.8 s</b> · all three done</p></div>
+</div>
+<p class="say">Wire runs from the top, round to the bulb.</p>
+</div></section>
+
+<section class="spec"><h2>4. How each kind enters</h2><p>Each row shows one item a quarter of the way through its share, halfway, and done. A circle starts at the top and goes clockwise; a box starts at its top-left corner and goes clockwise; a line and an arrow's shaft run from the first point; the arrowhead draws in the last fifth of the share; a dot's radius grows; a label is revealed left to right, never letter by letter.</p><div class="stage">
+<div class="kinds">
+<span></span><span class="ft">¼ of its share</span><span class="ft">½</span><span class="ft">done</span>
+
+<span class="k"><b>circle</b><code>at X,Y r=</code></span>
+<svg class="cell" viewBox="0 0 400 200" aria-hidden="true"><circle class="bs part" pathLength="1" style="stroke-dashoffset:.75" transform="rotate(-90 200 100)" cx="200" cy="100" r="60"/></svg>
+<svg class="cell" viewBox="0 0 400 200" aria-hidden="true"><circle class="bs part" pathLength="1" style="stroke-dashoffset:.5" transform="rotate(-90 200 100)" cx="200" cy="100" r="60"/></svg>
+<svg class="cell" viewBox="0 0 400 200" aria-hidden="true"><circle class="bs" cx="200" cy="100" r="60"/></svg>
+
+<span class="k"><b>box</b><code>at X,Y w= h=</code></span>
+<svg class="cell" viewBox="0 0 400 200" aria-hidden="true"><rect class="bs part" pathLength="1" style="stroke-dashoffset:.75" x="120" y="50" width="160" height="100" rx="12"/></svg>
+<svg class="cell" viewBox="0 0 400 200" aria-hidden="true"><rect class="bs part" pathLength="1" style="stroke-dashoffset:.5" x="120" y="50" width="160" height="100" rx="12"/></svg>
+<svg class="cell" viewBox="0 0 400 200" aria-hidden="true"><rect class="bs" x="120" y="50" width="160" height="100" rx="12"/></svg>
+
+<span class="k"><b>dot</b><code>at X,Y</code></span>
+<svg class="cell" viewBox="0 0 400 200" aria-hidden="true"><circle class="bdot" cx="200" cy="100" r="6"/></svg>
+<svg class="cell" viewBox="0 0 400 200" aria-hidden="true"><circle class="bdot" cx="200" cy="100" r="10"/></svg>
+<svg class="cell" viewBox="0 0 400 200" aria-hidden="true"><circle class="bdot" cx="200" cy="100" r="14"/></svg>
+
+<span class="k"><b>line</b><code>X,Y -&gt; X,Y</code></span>
+<svg class="cell" viewBox="0 0 400 200" aria-hidden="true"><path class="bs part" pathLength="1" style="stroke-dashoffset:.75" d="M110 150L290 50"/></svg>
+<svg class="cell" viewBox="0 0 400 200" aria-hidden="true"><path class="bs part" pathLength="1" style="stroke-dashoffset:.5" d="M110 150L290 50"/></svg>
+<svg class="cell" viewBox="0 0 400 200" aria-hidden="true"><path class="bs" d="M110 150L290 50"/></svg>
+
+<span class="k"><b>arrow</b><code>X,Y -&gt; X,Y, or from id to id</code></span>
+<svg class="cell" viewBox="0 0 400 200" aria-hidden="true"><path class="bs part" pathLength="1" style="stroke-dashoffset:.6875" d="M80 100H320"/></svg>
+<svg class="cell" viewBox="0 0 400 200" aria-hidden="true"><path class="bs part" pathLength="1" style="stroke-dashoffset:.375" d="M80 100H320"/></svg>
+<svg class="cell" viewBox="0 0 400 200" aria-hidden="true"><path class="bs" d="M80 100H320M296 82L320 100L296 118"/></svg>
+
+<span class="k"><b>text</b><code>"label" at X,Y size=</code></span>
+<svg class="cell" viewBox="0 0 400 200" aria-hidden="true"><defs><clipPath id="tx-q"><rect x="100" y="50" width="50" height="100"/></clipPath></defs><text class="btx m" x="200" y="100" clip-path="url(#tx-q)">battery</text></svg>
+<svg class="cell" viewBox="0 0 400 200" aria-hidden="true"><defs><clipPath id="tx-h"><rect x="100" y="50" width="100" height="100"/></clipPath></defs><text class="btx m" x="200" y="100" clip-path="url(#tx-h)">battery</text></svg>
+<svg class="cell" viewBox="0 0 400 200" aria-hidden="true"><text class="btx m" x="200" y="100">battery</text></svg>
+</div>
+<p class="note">A connector written <code>from bat to bulb</code> runs between the two items' edges, not their centres, and enters like any arrow.</p>
+</div></section>
+
+<section class="spec"><h2>5. Reduced motion: each item fades in</h2><p>With the system's reduced-motion setting on, the same sentence keeps the same timing, but every item appears already whole and fades from 0 to full opacity over its share. Nothing draws, grows or writes.</p><div class="stage">
+<div class="strip">
+<div><svg class="mini" viewBox="0 0 1600 900" aria-hidden="true"><g opacity=".5"><rect class="bs k-focus" x="300" y="340" width="120" height="220" rx="12"/></g></svg><p class="ft"><b>0.95 s</b> · the box at half opacity</p></div>
+<div><svg class="mini" viewBox="0 0 1600 900" aria-hidden="true"><rect class="bs k-focus" x="300" y="340" width="120" height="220" rx="12"/><g opacity=".5"><text class="btx k-muted" x="190" y="450">battery</text></g></svg><p class="ft"><b>2.85 s</b> · the label at half opacity</p></div>
+<div><svg class="mini" viewBox="0 0 1600 900" aria-hidden="true"><use href="#s1"/></svg><p class="ft"><b>3.8 s</b> · done</p></div>
+</div>
+<p class="say">A torch is just a loop, so let me draw its battery first.</p>
+</div></section>
+
+<section class="spec"><h2>6. Looks, in dark and light</h2><p>Five looks plus none, the same in every theme by role: none is ink, focus is porcelain, muted is muted ink, good is success, wrong is error and new is info. Shapes and labels use the look's colour for stroke, fill and text alike.</p><div class="stage">
+<div class="looks">
+<svg viewBox="0 0 1200 160" aria-label="Looks in dark"><g><circle class="bs" cx="100" cy="60" r="28"/><text class="btx" x="100" y="128">none</text></g><g class="k-focus"><circle class="bs" cx="300" cy="60" r="28"/><text class="btx" x="300" y="128">focus</text></g><g class="k-muted"><circle class="bs" cx="500" cy="60" r="28"/><text class="btx" x="500" y="128">muted</text></g><g class="k-good"><circle class="bs" cx="700" cy="60" r="28"/><text class="btx" x="700" y="128">good</text></g><g class="k-wrong"><circle class="bs" cx="900" cy="60" r="28"/><text class="btx" x="900" y="128">wrong</text></g><g class="k-new"><circle class="bs" cx="1100" cy="60" r="28"/><text class="btx" x="1100" y="128">new</text></g></svg>
+<div style="color-scheme:light"><svg viewBox="0 0 1200 160" aria-label="Looks in light"><g><circle class="bs" cx="100" cy="60" r="28"/><text class="btx" x="100" y="128">none</text></g><g class="k-focus"><circle class="bs" cx="300" cy="60" r="28"/><text class="btx" x="300" y="128">focus</text></g><g class="k-muted"><circle class="bs" cx="500" cy="60" r="28"/><text class="btx" x="500" y="128">muted</text></g><g class="k-good"><circle class="bs" cx="700" cy="60" r="28"/><text class="btx" x="700" y="128">good</text></g><g class="k-wrong"><circle class="bs" cx="900" cy="60" r="28"/><text class="btx" x="900" y="128">wrong</text></g><g class="k-new"><circle class="bs" cx="1100" cy="60" r="28"/><text class="btx" x="1100" y="128">new</text></g></svg></div>
+</div>
+</div></section>
+
+<section class="spec"><h2>7. A theme switch redraws the board</h2><p>Switching theme or appearance redraws every item at once in the new theme's colours, in its finished state. Nothing replays its entry. Shown: the same board in four themes.</p><div class="stage">
+<div class="strip" style="--n:2">
+<div data-theme="main" style="color-scheme:dark"><svg class="mini" viewBox="0 0 1600 900" aria-hidden="true"><use href="#reply1"/></svg><p class="ft"><b>Main Line</b> · dark</p></div>
+<div data-theme="main" style="color-scheme:light"><svg class="mini" viewBox="0 0 1600 900" aria-hidden="true"><use href="#reply1"/></svg><p class="ft"><b>Main Line</b> · light</p></div>
+<div data-theme="ferry" style="color-scheme:dark"><svg class="mini" viewBox="0 0 1600 900" aria-hidden="true"><use href="#reply1"/></svg><p class="ft"><b>Ferry</b> · dark</p></div>
+<div data-theme="timetable" style="color-scheme:light"><svg class="mini" viewBox="0 0 1600 900" aria-hidden="true"><use href="#reply1"/></svg><p class="ft"><b>Timetable</b> · light</p></div>
+</div>
+</div></section>
+
+<section class="spec"><h2>8. A broken op is skipped</h2><p>An op that doesn't parse, or names an id the board doesn't have, is left out and logged. Everything else in the reply draws as usual, in its own sentence's time; the skipped op's share goes to the ops left in its sentence. Here the bulb's label had no Y and an arrow named <code>batt</code>: the board simply has no "bulb" label and no third arrow.</p><div class="stage">
+<div class="strip" style="--n:2">
+<div><svg class="mini" viewBox="0 0 1600 900" aria-hidden="true"><use href="#s1"/><use href="#s2"/><circle class="bs" cx="1240" cy="450" r="70"/><use href="#s4"/><use href="#s5"/><use href="#s6"/><use href="#s7"/></svg><p class="ft"><b>Done</b> · no label by the bulb, no error, no op text</p></div>
+<pre class="tag" style="align-self:start">&gt; Here's the bulb.
+bulb circle at 1240,450 r=70
+bl text "bulb" at 1460 size=s look=muted
+...
+&gt; Charge flows round it in one direction.
+c1 arrow 680,130 -&gt; 920,130 look=new
+c2 arrow 920,770 -&gt; 680,770 look=new
+c3 arrow from batt to bulb look=new
+
+console.warn: Board op skipped (sentence 3): bl text "bulb" at 1460 size=s look=muted: at needs X,Y
+console.warn: Board op skipped (sentence 5): c3 arrow from batt to bulb look=new: unknown id batt</pre>
+</div>
+</div></section>
+
+<section class="spec"><h2>9. Reopened later: the final board at once</h2><p>The reply stored its op lines. Switching the board off and on, or coming back to the conversation, replays every op up to the latest reply and shows the final board in the first frame: no entries animate. The state is idle, and the reply's last sentence is held in muted ink, as in Rabbithole-brd.1.</p><div class="stage">
+<div class="app"><nav class="side" aria-label="Sidebar"><div class="top"><button class="ib" aria-label="Shrink sidebar to rail"><i class="i i-rail"></i></button><a class="mark" href="line-diagram/library.html"><svg viewBox="0 0 26 26" aria-hidden="true"><path class="ln" style="stroke-width:3.5" d="M5 13H12L18 7H22M12 13L18 19H22"/><circle class="stn" cx="5" cy="13" r="3.4"/></svg>Rabbithole</a></div><div class="new"><a class="btn pri" href="line-diagram/read.html"><i class="i i--sm i-plus"></i>New chat</a><button class="ib" aria-label="Search conversations"><i class="i i-magnifying-glass"></i></button></div><div class="views"><a class="view" href="line-diagram/read.html" aria-current=page><i class="i i-book-open"></i>Read</a><a class="view" href="line-diagram/map.html"><i class="i i-map"></i>Map</a><a class="view" href="line-diagram/knowledge.html"><i class="i i-share"></i>Knowledge</a><a class="view" href="line-diagram/videos.html"><i class="i i-film"></i>Videos</a><a class="view" href="line-diagram/pieces.html"><i class="i i-cube"></i>Pieces</a><a class="view" href="line-diagram/library.html"><i class="i i-rectangle-stack"></i>Library</a></div><div class="tree"><h2>How do circuits work?</h2><small>4 conversations</small></div>
+<div class="sec cap">Contents</div>
+<div class="stops" role="region" aria-label="Contents"><svg width="60" height="144" aria-hidden="true"><path class="ln c0" d="M12 18V110"/><path class="ln c1" d="M12 38L28 54"/><path class="ln c2" d="M12 74L28 90"/><path class="ln c3" d="M12 110L28 126"/><circle class="stn" cx="12" cy="18" r="5.5"/><circle class="stn" cx="28" cy="54" r="5"/><circle class="stn" cx="28" cy="90" r="7.5"/><circle class="dot" cx="28" cy="90" r="2.8"/><circle class="stn" cx="28" cy="126" r="5"/></svg>
+<a class="st" href="#"><i>1</i>How do circuits work?</a><a class="st" href="#"><i>1.1</i>What is current?</a><a class="st on" href="#" aria-current="true"><i>1.2</i>How does a torch work?</a><a class="st" href="#"><i>1.3</i>Series or parallel?</a></div>
+<div style="flex:1"></div><div class="foot"><a class="view" href="line-diagram/settings.html"><i class="i i-cog-6-tooth"></i>Settings</a><button class="ib" aria-label="Downloads"><i class="i i-tray"></i></button></div></nav><main class="chat bd-col"><div class="chead"><span class="chip c2">1.2</span><b>How does a torch work?</b><span class="end"><button class="bd-toggle" role="switch" aria-checked="true"><span class="sw on"></span>Board</button><button class="ib" aria-label="Token stats"><i class="i i-chart-bar"></i></button><button class="ib" aria-label="Return to tree"><i class="i i-arrow-uturn-left"></i></button><button class="ib" aria-label="More"><i class="i i-ellipsis-horizontal"></i></button></span></div>
+<div class="bd-field"><div class="bd"><svg viewBox="0 0 1600 900" role="img" aria-label="Board"><use href="#reply1"/></svg></div></div>
+<div class="bd-line"><span role="status"><span></span></span><p class="bd-cap mut" aria-live="polite">When it passes through the bulb, the bulb glows.</p><span></span></div>
+<div class="cfoot bd-foot"><div class="comp"><div class="ta">Ask a question</div><div class="row"><span class="bd-tools"><button class="ib bd-mic" aria-pressed="false" aria-label="Turn mic on" disabled><i class="i i-microphone"></i></button></span><button class="btn pri sq" aria-label="Send"><i class="i i-arrow-up"></i></button></div></div></div>
+</main></div>
+</div></section>
+
+</main>
+<script src="line-diagram/ld.js"></script>
+</body></html>
