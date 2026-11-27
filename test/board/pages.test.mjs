@@ -6,6 +6,9 @@ import { mount } from './mountBoard.mjs';
 
 // The page strip and back chip (mockup Rabbithole-pgs.4): the learner moves between board pages.
 test('board: the strip lists pages with side pages after their parent, and the learner opens any of them', async (t) => {
+    // Opening a page cross-fades here, as with reduced motion.
+    globalThis.matchMedia = () => ({ matches: true });
+    t.after(() => delete globalThis.matchMedia);
     const board = await mount(t, [
         { id: 'r', role: 'assistant', text: 'Friction.', status: 'completed', board: true },
     ]);

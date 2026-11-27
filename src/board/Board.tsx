@@ -24,7 +24,7 @@ import type { ThreadProps } from '../chat/ChatThread';
 import TranscriptRail from './TranscriptRail';
 import { useBoard, type Drawn } from './useBoard';
 import BoardItem, { strokePath } from './BoardItem';
-import { follow } from './camera';
+import { follow, slide } from './camera';
 import PageStrip, { BackChip, pagesOf } from './PageStrip';
 import { labelRows } from './player';
 import { DEFAULT_SPEED } from './voice';
@@ -42,6 +42,8 @@ function boardPoint(e: PointerEvent<SVGSVGElement>): Point {
 
 const STATES = { thinking: 'Thinking', speaking: 'Speaking' } as const;
 const MB = (bytes = 0) => Math.round(bytes / 1e6);
+// How long a page the learner opens takes to slide in.
+const VIEW_MS = 400;
 
 // The board column (mockup Rabbithole-brd.1): the board field, the caption line and the board's composer.
 // The tutor's sentences show one at a time as the caption while their ops draw (mockup Rabbithole-brd.2).
@@ -115,10 +117,21 @@ export default function Board({
     const top = onScreen?.top ?? 0;
     const parent = pages.find((p) => p.id === onScreen?.parent);
     const scroller = useRef<HTMLDivElement>(null);
-    // The view follows the page on screen, which the tutor's drawing keeps on its own (src/board/camera.ts).
+    const followed = useRef<number>(undefined);
+    // The view follows the page the tutor draws on (src/board/camera.ts); an item that moves no page leaves it be,
+    // so a slide the learner started runs on.
     useLayoutEffect(() => {
-        if (scroller.current) return follow(scroller.current, board.items.at(-1), top);
-    }, [board.items.length, board.at, top]);
+        const last = board.items.at(-1);
+        if (!scroller.current || (top === followed.current && !last?.ms)) return;
+        followed.current = top;
+        return follow(scroller.current, last, top);
+    }, [board.items.length, board.at]);
+    // A page the learner opens slides in as a tutor's open does.
+    useLayoutEffect(() => {
+        if (!scroller.current || !board.view) return;
+        followed.current = top;
+        return slide(scroller.current, top, VIEW_MS);
+    }, [board.view]);
     const rows = labelRows(board.items.map((drawn) => drawn.op));
     const parts = componentParts(scene.shown.map((drawn) => drawn.op));
     const { mic } = board;

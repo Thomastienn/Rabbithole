@@ -21,7 +21,13 @@ export function follow(el: HTMLElement, last: Drawn | undefined, top: number) {
             el.scrollTo({ top: to, behavior: reduced() ? 'auto' : 'smooth' });
         return;
     }
-    const ms = last.ms;
+    return slide(el, top, last.ms);
+}
+
+// Slides the view to the page whose top edge is `top` over `ms` (with reduced motion, cross-fades); returns a
+// cleanup that stops it.
+export function slide(el: HTMLElement, top: number, ms: number) {
+    const to = (top / 900) * el.clientHeight;
     if (reduced()) {
         el.firstElementChild?.animate?.([{ opacity: 1 }, { opacity: 0 }, { opacity: 1 }], ms);
         const timer = setTimeout(() => (el.scrollTop = to), ms / 2);
