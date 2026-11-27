@@ -1,7 +1,7 @@
 // Reads the board's line-based stream as it arrives: each complete `> ` line is a spoken sentence, a `?> `
 // line is a spoken question for the learner, a `~> ` line a spoken check-in, a `!> ` line a spoken sentence marked key,
 // and every other line is an op of the sentence above it.
-export function scriptReader() {
+function scriptReader() {
     let rest = '';
     const read = (lines) =>
         lines
@@ -36,4 +36,58 @@ export function scriptReader() {
             return read([last]);
         },
     };
+}
+
+// A sentence's prosody rate in percent (docs/board-sketches-spec.md, Pacing): a key sentence and one drawing math
+// are said slower, the slower of the two when both apply; the client stretches its caption estimate to match.
+const KEY_RATE = -15;
+const MATH_RATE = -10;
+const sentenceRate = (sentence) =>
+    Math.min(
+        sentence.key ? KEY_RATE : 0,
+        sentence.ops.some((op) => op.kind === 'math') ? MATH_RATE : 0,
+    );
+
+// A reply's sentences as the stream arrives: each with its ops read through the board's guard, its op lines
+// and its rate. A sentence goes to done() once its ops are all written: when the next sentence starts or the
+// reply ends. read(op) returns { item, moved, error }; moved(item) and skipped(error) report the guard's fixes.
+export function scriptSentences({ read, id, done, moved, skipped }) {
+    const reader = scriptReader();
+    let writing = null;
+    const flush = () => {
+        if (!writing) return;
+        const sentence = writing;
+        writing = null;
+        sentence.rate = sentenceRate(sentence);
+        done(sentence);
+    };
+    const add = (lines, ended = false) => {
+        for (const line of lines) {
+            if (line.sentence !== undefined) {
+                flush();
+                writing = {
+                    id: id(),
+                    text: line.sentence,
+                    question: line.question,
+                    checkIn: line.checkIn,
+                    key: line.key,
+                    ops: [],
+                    lines: [],
+                };
+                continue;
+            }
+            const {
+                item,
+                moved: fixed,
+                error,
+            } = writing ? read(line.op) : { error: 'op before its sentence' };
+            if (fixed) moved(item);
+            if (item) {
+                writing.ops.push(item);
+                writing.lines.push(line.op);
+            } else skipped(error);
+        }
+        if (ended || reader.nextSentence()) flush();
+    };
+    return { feed: (text) => add(reader.feed(text)), end: () => add(reader.end(), true) };
 }

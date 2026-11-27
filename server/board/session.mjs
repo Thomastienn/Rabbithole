@@ -1,7 +1,7 @@
 import { rm } from 'node:fs/promises';
 import { formatLog, errorCause } from '../log.mjs';
 import { validUsage } from '../store/usage.mjs';
-import { scriptReader } from './script.mjs';
+import { scriptSentences } from './script.mjs';
 import { boardOps } from './ops.mjs';
 import { boardSystem } from './prompt.mjs';
 import { boardMic } from './mic.mjs';
@@ -31,16 +31,6 @@ export const NO_ANSWER = [
 // { type: 'hearing', on } as the learner starts and stops speaking, and { type: 'heard', text } as a spoken question is sent.
 // lang: the board's Voice language; guided: the learner chose tutor-guided boards in Settings;
 // checkIns: how often the tutor checks in, 'off' | 'sometimes' | 'often'.
-// A sentence's prosody rate in percent (docs/board-sketches-spec.md, Pacing): a key sentence and one drawing math
-// are said slower, the slower of the two when both apply; the client stretches its caption estimate to match.
-const KEY_RATE = -15;
-const MATH_RATE = -10;
-export const sentenceRate = (sentence) =>
-    Math.min(
-        sentence.key ? KEY_RATE : 0,
-        sentence.ops.some((op) => op.kind === 'math') ? MATH_RATE : 0,
-    );
-
 export function boardSession(ctx, id, socket, lang = 'en', guided = false, checkIns = 'sometimes') {
     const { store, log } = ctx;
     const send = (event) => {
@@ -236,55 +226,22 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
     };
     const run = async (current, tree, text, free, signal) => {
         const started = performance.now();
-        const reader = scriptReader();
-        // A sentence goes down with its ops once they are all written: when the next sentence starts or the reply ends.
-        let writing = null;
-        const flush = () => {
-            if (!writing) return;
-            writing.rate = sentenceRate(writing);
-            current.sentences.push(writing);
-            if (current.sentences.length === 1) send({ type: 'state', state: 'speaking' });
-            const { lines, ...sentence } = writing;
-            send({ type: 'sentence', ...sentence, ...(speech && { voiced: true }) });
-            writing = null;
-            speak(current);
-        };
-        const add = (lines, ended = false) => {
-            if (current.done) return;
-            for (const line of lines) {
-                if (line.sentence !== undefined) {
-                    flush();
-                    writing = {
-                        id: String(++count),
-                        text: line.sentence,
-                        question: line.question,
-                        checkIn: line.checkIn,
-                        key: line.key,
-                        ops: [],
-                        lines: [],
-                    };
-                    continue;
-                }
-                const { item, moved, error } = writing
-                    ? board.read(line.op)
-                    : { error: 'op before its sentence' };
-                // Moves show prompt regressions in the log (docs/board-spec.md, the guard).
-                if (moved) log(formatLog('info', 'board', 'item moved', { id: item.id }));
-                if (item) {
-                    writing.ops.push(item);
-                    writing.lines.push(line.op);
-                }
-                // The learner never sees a broken op; the log keeps why it was skipped.
-                else
-                    log(
-                        formatLog('warn', 'board', 'op skipped', {
-                            id: current.reply,
-                            cause: error,
-                        }),
-                    );
-            }
-            if (ended || reader.nextSentence()) flush();
-        };
+        const sentences = scriptSentences({
+            read: (op) => board.read(op),
+            id: () => String(++count),
+            done(sentence) {
+                current.sentences.push(sentence);
+                if (current.sentences.length === 1) send({ type: 'state', state: 'speaking' });
+                const { lines, ...shown } = sentence;
+                send({ type: 'sentence', ...shown, ...(speech && { voiced: true }) });
+                speak(current);
+            },
+            // Moves show prompt regressions in the log (docs/board-spec.md, the guard).
+            moved: (item) => log(formatLog('info', 'board', 'item moved', { id: item.id })),
+            // The learner never sees a broken op; the log keeps why it was skipped.
+            skipped: (cause) =>
+                log(formatLog('warn', 'board', 'op skipped', { id: current.reply, cause })),
+        });
         let result, selection, index;
         try {
             await ready;
@@ -300,7 +257,12 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
                         : text
                 }`;
                 selection = { provider: tree.provider, model };
-                result = await process.ask(prompt, (e) => add(reader.feed(e.text)), signal, images);
+                result = await process.ask(
+                    prompt,
+                    (e) => !current.done && sentences.feed(e.text),
+                    signal,
+                    images,
+                );
             }
         } catch (error) {
             result = { status: 'failed', cause: error };
@@ -308,7 +270,7 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
             if (current.files)
                 await rm(current.files, { recursive: true, force: true }).catch(() => {});
         }
-        if (result.status === 'completed') add(reader.end(), true);
+        if (result.status === 'completed' && !current.done) sentences.end();
         const usage = result.usage;
         // Account for the call even if playback stopped before the provider reported its totals.
         if (selection)
