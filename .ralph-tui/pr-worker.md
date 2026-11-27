@@ -52,7 +52,7 @@ pushes to your branch and Beads updates are authorized (AGENTS.md).
    fix rounds.
 8. **Hand over.** With every check green, run
    `bd update <task> --add-label in-review` and end. The task stays open: the
-   reviewer merges the PR and `ralph-afk` closes the task.
+   reviewer approves the PR, then `ralph-afk` merges it and closes the task.
 
 You are done when the PR is open, every check is green and the task carries
 `in-review`, or when the task carries `needs-human` with a note.
