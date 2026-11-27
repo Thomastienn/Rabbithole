@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import type { Op } from './player';
 
 // An arrowhead is two strokes 24 board pixels back along the shaft and 18 either side (mockup Rabbithole-brd.2).
@@ -12,9 +13,9 @@ function head([x0, y0]: [number, number], [x, y]: [number, number]) {
 export const strokePath = (points: [number, number][]) =>
     `M${points[0]}` + points.map((p) => `L${p}`).join('');
 
-// One board item in board pixels, coloured by its look, fading in over its share of the sentence,
-// or out once erased.
-export default function BoardItem({ op, ms, erased }: { op: Op; ms: number; erased?: boolean }) {
+// One board item in board pixels, coloured by its look, entering by hand over its share of the sentence,
+// or fading out once erased. pathLength 1 lets one dash draw any stroke on (src/styles/board.css).
+export default function BoardItem({ op, ms, erased }: { op: Op; ms: number; erased?: number }) {
     const [x, y] = op.at ?? [0, 0];
     const label = (size: 's' | 'm' | 'l') => (
         <text className={`board-text ${size}`} x={x} y={y}>
@@ -25,13 +26,16 @@ export default function BoardItem({ op, ms, erased }: { op: Op; ms: number; eras
     const path = points.map(([px, py], i) => `${i ? 'L' : 'M'}${px} ${py}`).join('');
     return (
         <g
-            className={`board-item${op.look ? ` ${op.look}` : ''}${erased ? ' erased' : ''}`}
-            style={{ animationDuration: `${ms}ms` }}
+            className={`board-item${op.look ? ` ${op.look}` : ''}${erased !== undefined ? ' erased' : ''}`}
+            style={{ '--board-ms': `${ms}ms`, '--board-out': `${erased}ms` } as CSSProperties}
         >
-            {op.kind === 'circle' && <circle className="board-stroke" cx={x} cy={y} r={op.r} />}
+            {op.kind === 'circle' && (
+                <circle className="board-stroke" pathLength={1} cx={x} cy={y} r={op.r} />
+            )}
             {op.kind === 'box' && (
                 <rect
                     className="board-stroke"
+                    pathLength={1}
                     x={x - op.w! / 2}
                     y={y - op.h! / 2}
                     width={op.w}
@@ -41,9 +45,13 @@ export default function BoardItem({ op, ms, erased }: { op: Op; ms: number; eras
             )}
             {op.kind === 'stroke' && <path className="board-learner" d={strokePath(points)} />}
             {op.kind === 'dot' && <circle className="board-dot" cx={x} cy={y} r={14} />}
-            {op.kind === 'line' && <path className="board-stroke" d={path} />}
+            {op.kind === 'line' && <path className="board-stroke" pathLength={1} d={path} />}
             {op.kind === 'arrow' && (
-                <path className="board-stroke" d={path + head(points.at(-2)!, points.at(-1)!)} />
+                <path
+                    className="board-stroke"
+                    pathLength={1}
+                    d={path + head(points.at(-2)!, points.at(-1)!)}
+                />
             )}
             {op.kind === 'text' ? label(op.size ?? 'm') : op.text && label('s')}
         </g>

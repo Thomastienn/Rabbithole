@@ -1,12 +1,20 @@
 // Sketches: small diagrams the tutor writes as ```sketch <kind> blocks (ADR 0027).
 // The only place that knows the kinds. Plain: no React, no DOM, no model call.
 
+import { compare, pie, venn } from './comparisons.ts';
 import { equation, grid, sequence } from './maths.ts';
 import { plot } from './plot.ts';
 import { cycle, parts, stack, timeline, tree } from './structure.ts';
 
 // The theme colours by role; the app passes CSS variables, tests pass hex values.
-export type Palette = { ground: string; ink: string; muted: string; seam: string; focus: string };
+export type Palette = {
+    ground: string;
+    ink: string;
+    muted: string;
+    seam: string;
+    hairline: string;
+    focus: string;
+};
 // One per drawn element. `text` is what a screen reader hears for it.
 // `level` nests a tree's items for a screen reader; other kinds leave it out.
 export type SketchItem = { label: string; focus: boolean; text: string; level?: number };
@@ -164,6 +172,7 @@ function flow(lines: Line[], p: Palette): Drawing {
         chevrons.add(`M${tip - 5 * way} ${y(n) - 5}L${tip} ${y(n)}L${tip - 5 * way} ${y(n) + 5}`);
     }
     let bottom = 0;
+    const rowBottom = new Map<number, number>();
     const text = (tx: number, ty: number, words: string, style: string, note = false) =>
         `<text${note ? ' class="sketch-note"' : ''} x="${tx}" y="${ty}" style="${style}">${esc(words)}</text>`;
     // One group per item, in the items' order; `--i` is its place in the sketch's build.
@@ -180,6 +189,7 @@ function flow(lines: Line[], p: Palette): Drawing {
         const labels = wrap(n, column - 24).map((l, i) => {
             const baseline = y(n) + (notesAbove ? 28 : 26) + LINE * i;
             bottom = Math.max(bottom, baseline);
+            rowBottom.set(row.get(n)!, Math.max(rowBottom.get(row.get(n)!) ?? 0, baseline));
             return text(
                 x(n),
                 baseline,
@@ -189,11 +199,25 @@ function flow(lines: Line[], p: Palette): Drawing {
         });
         return `<g style="--i:${k}">${notes.join('')}${station}${labels.join('')}</g>`;
     });
+    // Each station's hit area (mockup Rabbithole-skt.6): its column less 8px, from 12px above the
+    // station to 8px under its row's last label line; the outline sits inside it, the focus ring 2px outside.
+    const hits = names.map((n, i) => {
+        const w = column - 8,
+            hx = x(n) - w / 2,
+            hy = y(n) - 12,
+            h = rowBottom.get(row.get(n)!)! + 8 - hy;
+        return (
+            `<g data-item="${i}"><rect class="sketch-hit" x="${hx}" y="${hy}" width="${w}" height="${h}"/>` +
+            `<rect class="sketch-outline" x="${hx + 1}" y="${hy + 1}" width="${w - 2}" height="${h - 2}" rx="3"/>` +
+            `<rect class="sketch-ring" x="${hx - 3}" y="${hy - 3}" width="${w + 6}" height="${h + 6}" rx="7"/></g>`
+        );
+    });
     const markup =
         `<svg class="sketch-flow" viewBox="0 0 ${WIDTH} ${bottom + (notesAbove ? 10 : 8)}">` +
         `<path class="sketch-line" style="stroke:${p.seam}" d="${runs.map((r) => r.d).join('')}"/>` +
         `<path class="sketch-arrow" style="stroke:${p.muted}" d="${[...chevrons].join('')}"/>` +
         groups.join('') +
+        hits.join('') +
         '</svg>';
     const items = names.map((n) => {
         const next = edges
@@ -215,20 +239,28 @@ function flow(lines: Line[], p: Palette): Drawing {
 // A number as written at the start of a value: 1,000 and .5 read, 1.2.3 does not.
 const NUMBER = /^-?(?:(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?(?![\d.,])/i;
 
-// Bars: one row per item, `label: number` with an optional unit after the number.
+// `label: number`, with an optional unit after the number (bars and pie).
+export type Quantity = { label: string; value: string; number: string; n: number; focus: boolean };
+export function quantity(line: Line): Quantity | { error: string } {
+    const colon = line.text.lastIndexOf(':'),
+        label = plain(line.text.slice(0, Math.max(colon, 0))),
+        value = plain(line.text.slice(colon + 1)),
+        number = NUMBER.exec(value)?.[0];
+    if (colon < 1 || !label) return { error: `${quoted(line)} is not label: number` };
+    if (number === undefined) return { error: `${quoted(line)} has no number` };
+    const n = Number(number.replace(/,/g, ''));
+    if (!Number.isFinite(n)) return { error: `${quoted(line)} is out of range` };
+    return { label, value, number, n, focus: isFocus(line.text) };
+}
+
+// Bars: one row per item.
 function bars(lines: Line[], p: Palette): Drawing {
-    const rows = [];
+    const rows: Quantity[] = [];
     for (const line of lines) {
-        const colon = line.text.lastIndexOf(':'),
-            label = plain(line.text.slice(0, Math.max(colon, 0))),
-            value = plain(line.text.slice(colon + 1)),
-            number = NUMBER.exec(value)?.[0];
-        if (colon < 1 || !label) return { error: `${quoted(line)} is not label: number` };
-        if (number === undefined) return { error: `${quoted(line)} has no number` };
-        const n = Number(number.replace(/,/g, ''));
-        if (!Number.isFinite(n)) return { error: `${quoted(line)} is out of range` };
-        if (n < 0) return { error: `${quoted(line)} is below zero` };
-        rows.push({ label, value, n, focus: isFocus(line.text) });
+        const row = quantity(line);
+        if ('error' in row) return row;
+        if (row.n < 0) return { error: `${quoted(line)} is below zero` };
+        rows.push(row);
     }
     const max = Math.max(...rows.map((r) => r.n)) || 1;
     const markup =
@@ -244,6 +276,13 @@ function bars(lines: Line[], p: Palette): Drawing {
                     `<s style="background:${r.focus ? p.focus : p.seam}"></s>${esc(r.value)}</dd>`
                 );
             })
+            .join('') +
+        // One hit area per row: the whole row, label to bar track end (mockup Rabbithole-skt.6).
+        rows
+            .map(
+                (_, i) =>
+                    `<div class="sketch-hit" data-item="${i}" style="grid-row:${i + 1} / span 1"></div>`,
+            )
             .join('') +
         '</dl>';
     const items = rows.map((r) => ({
@@ -512,6 +551,9 @@ function spectrum(lines: Line[], p: Palette, [head]: Line[]): Drawing {
 const KINDS = new Map<string, [Draw, string[]?]>([
     ['flow', [flow]],
     ['bars', [bars]],
+    ['compare', [compare, ['vs: A | B']]],
+    ['venn', [venn]],
+    ['pie', [pie]],
     ['cycle', [cycle]],
     ['stack', [stack]],
     ['tree', [tree]],

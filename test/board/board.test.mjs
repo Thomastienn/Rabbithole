@@ -155,7 +155,10 @@ test('board: reopened, it holds the latest board reply’s last sentence and its
     );
     const drawn = [...board.container.querySelectorAll('svg .board-item')];
     assert.deepEqual(
-        drawn.map((g) => [g.firstElementChild.getAttribute('cx'), g.style.animationDuration]),
+        drawn.map((g) => [
+            g.firstElementChild.getAttribute('cx'),
+            g.style.getPropertyValue('--board-ms'),
+        ]),
         [
             ['800', '0ms'],
             ['900', '0ms'],

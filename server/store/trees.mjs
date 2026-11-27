@@ -21,8 +21,11 @@ export const trees = {
             )
             .all()
             .map(({ artifactId, label, explanation, trail, step, line, ...t }) => {
+                // A sketch item branch keeps its item's label, with no artifact.
                 const visual = !artifactId
-                    ? {}
+                    ? label === null
+                        ? {}
+                        : { label }
                     : line !== null
                       ? { artifactId, line }
                       : { artifactId, label, explanation, ...picked(trail, step) };
@@ -162,10 +165,11 @@ export const trees = {
         return savedBranch
             ? {
                   ...branch,
-                  ...(artifactId &&
-                      (line !== null
+                  ...(artifactId
+                      ? line !== null
                           ? { artifactId, line, speaker, discussion }
-                          : { artifactId, label, explanation, ...picked(trail, step) })),
+                          : { artifactId, label, explanation, ...picked(trail, step) }
+                      : label !== null && { label }),
               }
             : null;
     },

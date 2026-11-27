@@ -5,8 +5,8 @@ import { boardPlayer, type Op } from './player';
 
 export type BoardState = 'idle' | 'thinking' | 'speaking';
 type Caption = { text: string; muted: boolean };
-// A drawn board item and how long its entry, or its fade once erased, takes.
-export type Drawn = { op: Op; ms: number; erased?: boolean };
+// A drawn board item, how long its entry takes and, once erased, how long its fade takes.
+export type Drawn = { op: Op; ms: number; erased?: number };
 
 // One open board: its socket to the board session, the caption line and the session state.
 export function useBoard(conversation: string, messages: Message[], reload: () => void) {
@@ -32,11 +32,13 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         // Erased items fade out over the op's share of its sentence, then leave the board.
         const erase = (ids: string[], ms: number) => {
             setItems((drawn) =>
-                drawn.map((d) => (ids.includes(d.op.id) ? { ...d, ms, erased: true } : d)),
+                drawn.map((d) => (ids.includes(d.op.id) ? { ...d, erased: ms } : d)),
             );
             setTimeout(
                 () =>
-                    setItems((drawn) => drawn.filter((d) => !(d.erased && ids.includes(d.op.id)))),
+                    setItems((drawn) =>
+                        drawn.filter((d) => d.erased === undefined || !ids.includes(d.op.id)),
+                    ),
                 ms,
             );
         };
