@@ -130,11 +130,11 @@ module deeper.
 
 ## Smoke set
 
-`scripts/verify/` holds only `verify-all.mjs`, these five fixture scripts and their `lib/`
+`scripts/verify/` holds only `verify-all.mjs`, these six fixture scripts and their `lib/`
 helpers. There are no live-provider or real-tool scripts:
 
 `verify-first-conversation`, `verify-branch-first`, `verify-keyboard-journey`,
-`verify-settings-window`, `verify-video-player`.
+`verify-settings-window`, `verify-video-player`, `verify-board`.
 
 ## Not covered
 
