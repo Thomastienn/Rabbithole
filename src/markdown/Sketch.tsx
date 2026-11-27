@@ -38,7 +38,12 @@ export default function Sketch({
         return <div className="sketch-wait" role="status" aria-label="Drawing a sketch" />;
     if (!sketch || 'error' in sketch) return null;
     return (
-        <figure className="sketch" aria-label={sketch.title ? `Sketch: ${sketch.title}` : 'Sketch'}>
+        <figure
+            className="sketch"
+            aria-label={[sketch.title ? `Sketch: ${sketch.title}` : 'Sketch', sketch.about]
+                .filter(Boolean)
+                .join(', ')}
+        >
             {sketch.title && <figcaption aria-hidden="true">{sketch.title}</figcaption>}
             {/* The module escapes every label the tutor wrote. */}
             <div aria-hidden="true" dangerouslySetInnerHTML={{ __html: sketch.markup }} />

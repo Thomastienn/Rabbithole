@@ -41,6 +41,22 @@
 .sketch .sketch-note {
     font-size: 13px;
 }
+.sketch .sketch-start {
+    text-anchor: start;
+}
+.sketch .sketch-end {
+    text-anchor: end;
+}
+.sketch .sketch-leader {
+    fill: none;
+    stroke-width: 1.5;
+}
+/* A ground-coloured halo keeps a quadrant label readable where it crosses an axis. */
+.sketch-quadrant text {
+    paint-order: stroke;
+    stroke-width: 4px;
+    stroke-linejoin: round;
+}
 .sketch-bars {
     display: grid;
     grid-template-columns: fit-content(45%) minmax(0, 360px);
