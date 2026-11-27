@@ -122,18 +122,6 @@ export default function ChatThread({
             visualCount =
                 message.role === 'assistant' &&
                 visualsReady(artifactsAt(tree.artifacts ?? [], tree.id, message.id));
-        const feedback = (
-            <ReplyFeedback
-                message={message}
-                suggestions={suggestions}
-                overview={overview}
-                active={active}
-                latest={message === tree.messages.at(-1)}
-                previous={tree.messages.at(-2)}
-                compactionError={tree.compaction?.error}
-                retry={(text) => void send(text, tree, true)}
-            />
-        );
         return (
             <ChatMessage
                 key={message.id}
@@ -184,7 +172,6 @@ export default function ChatThread({
                                     {visualCount}
                                 </Text>
                             )}
-                            {partialBoardReply && feedback}
                         </HStack>
                     )
                 }
@@ -401,7 +388,19 @@ export default function ChatThread({
                                 />
                             ),
                         )}
-                {!partialBoardReply && feedback}
+                {/* A board reply the learner left halfway shows no notice (mockup Rabbithole-brd.16, state 2). */}
+                {!(partialBoardReply && message.stopped === 'learner') && (
+                    <ReplyFeedback
+                        message={message}
+                        suggestions={suggestions}
+                        overview={overview}
+                        active={active}
+                        latest={message === tree.messages.at(-1)}
+                        previous={tree.messages.at(-2)}
+                        compactionError={tree.compaction?.error}
+                        retry={(text) => void send(text, tree, true)}
+                    />
+                )}
                 {/* An empty passage marks a free branch; its row sits between the reply and its next questions. */}
                 <FreeBranches
                     branches={trees
