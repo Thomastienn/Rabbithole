@@ -210,6 +210,7 @@ export function sketchDrawnAt(raw: string, start: unknown, end: unknown) {
                 ink: '',
                 muted: '',
                 seam: '',
+                hairline: '',
                 focus: '',
             });
     return drawn && !('error' in drawn) ? drawn : undefined;
