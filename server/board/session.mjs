@@ -1,6 +1,7 @@
 import { formatLog, errorCause } from '../log.mjs';
 import { validUsage } from '../store/usage.mjs';
-import { sentenceReader } from './script.mjs';
+import { scriptReader } from './script.mjs';
+import { boardOps } from './ops.mjs';
 import { boardSystem } from './prompt.mjs';
 import { conversationHistory } from '../providers/conversationHistory.mjs';
 
@@ -8,7 +9,8 @@ const STOPPED = 'The tutor stopped. Ask again to carry on.';
 
 // One board session per open board: the conversation's own model process, its turns and their saving.
 // Up: { type: 'ask', text }, { type: 'progress', sentence, phase: 'start' | 'end' } as each caption shows and ends, { type: 'leave' }.
-// Down: { type: 'state', state: 'idle' | 'thinking' | 'speaking' }, { type: 'sentence', id, text }, { type: 'notice', notice }.
+// Down: { type: 'state', state: 'idle' | 'thinking' | 'speaking' }, { type: 'notice', notice },
+// { type: 'sentence', id, text, ops } with the drawable ops written under it (server/board/ops.mjs).
 export function boardSession(ctx, id, socket) {
     const { store, log } = ctx;
     const send = (event) => {
@@ -20,6 +22,8 @@ export function boardSession(ctx, id, socket) {
         turn = null,
         closed = false,
         count = 0;
+    // The items drawn on this board so far, across its turns.
+    const board = boardOps();
     const ended = Promise.withResolvers();
     // A newer board for the same conversation replaces this one; deleting it or stopping the app ends it too.
     ctx.jobs.get('board', id)?.controller.abort();
@@ -115,15 +119,38 @@ export function boardSession(ctx, id, socket) {
     };
     const run = async (current, tree, text, signal) => {
         const started = performance.now();
-        const reader = sentenceReader();
-        const add = (texts) => {
+        const reader = scriptReader();
+        // A sentence goes down with its ops once they are all written: when the next sentence starts or the reply ends.
+        let writing = null;
+        const flush = () => {
+            if (!writing) return;
+            current.sentences.push(writing);
+            if (current.sentences.length === 1) send({ type: 'state', state: 'speaking' });
+            send({ type: 'sentence', ...writing });
+            writing = null;
+        };
+        const add = (lines, ended = false) => {
             if (current.done) return;
-            for (const text of texts) {
-                const sentence = { id: String(++count), text };
-                current.sentences.push(sentence);
-                if (current.sentences.length === 1) send({ type: 'state', state: 'speaking' });
-                send({ type: 'sentence', ...sentence });
+            for (const line of lines) {
+                if (line.sentence !== undefined) {
+                    flush();
+                    writing = { id: String(++count), text: line.sentence, ops: [] };
+                    continue;
+                }
+                const { item, error } = writing
+                    ? board.read(line.op)
+                    : { error: 'op before its sentence' };
+                if (item) writing.ops.push(item);
+                // The learner never sees a broken op; the log keeps why it was skipped.
+                else
+                    log(
+                        formatLog('warn', 'board', 'op skipped', {
+                            id: current.reply,
+                            cause: error,
+                        }),
+                    );
             }
+            if (ended || reader.nextSentence()) flush();
         };
         let result;
         try {
@@ -135,7 +162,7 @@ export function boardSession(ctx, id, socket) {
         } catch (error) {
             result = { status: 'failed', cause: error };
         }
-        if (result.status === 'completed') add(reader.end());
+        if (result.status === 'completed') add(reader.end(), true);
         const usage = result.usage;
         const status = signal.aborted ? 'interrupted' : result.status;
         const failed = status === 'failed' || (status === 'completed' && !current.sentences.length);
