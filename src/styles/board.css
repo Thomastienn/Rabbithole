@@ -83,7 +83,7 @@
     width: 14px;
     height: 14px;
     border-radius: 50%;
-    background: var(--color-background);
+    background: var(--color-background-body);
 }
 .board-toggle input:checked + span {
     justify-content: flex-end;

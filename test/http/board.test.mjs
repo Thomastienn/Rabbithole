@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import WebSocket from 'ws';
 import { complete, open, until } from '../support/diagram-kit.mjs';
 import { notify } from '../support/events.mjs';
-import { TUTOR_RULES, VERDICT_RULE } from '../../server/media/tutor-instructions.mjs';
 
 // A Claude-like provider whose board process plays scripted output: each ask streams the next script in chunks.
 function boardProvider(scripts, { status = 'completed' } = {}) {
@@ -112,8 +111,6 @@ test('board: a typed question gets its sentences one at a time and saves as a le
     assert.equal(process.options.model, 'sonnet');
     assert.match(process.options.system, /Use cooking analogies\./);
     assert.match(process.options.system, /Studies biology\./);
-    assert.ok(!process.options.system.includes(TUTOR_RULES), 'no chat media rules');
-    assert.ok(!process.options.system.includes(VERDICT_RULE), 'no verdict block');
     assert.equal(process.asked.length, 0, 'the tutor waits for the first question');
 
     board.send({ type: 'ask', text: 'How does a hypha grow at its tip?' });

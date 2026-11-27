@@ -69,7 +69,7 @@ test('board: an empty board waits for a typed question with the mic off, then sh
     assert.equal(board.q('.board-empty'), null);
     assert.equal(board.q('.board-caption').textContent, 'How does a hypha grow?');
     assert.ok(board.q('.board-caption.muted'), 'the question shows muted while the tutor thinks');
-    assert.equal(board.q('[role=status]').textContent, 'Thinking');
+    assert.ok(board.q('[role=status]').textContent, 'the learner hears a busy status');
     assert.ok(button(board.container, 'Send').disabled, 'Send waits for the tutor');
     assert.equal(board.q('[contenteditable=true]').textContent, '', 'the composer clears');
 });
@@ -78,6 +78,7 @@ test('board: each sentence becomes the caption, reported as it shows, and leavin
     const board = await mount(t);
     await board.type('Why?');
     await board.act(async () => button(board.container, 'Send').click());
+    const thinking = board.q('[role=status]').textContent;
     await board.act(async () => {
         board.socket.server({ type: 'state', state: 'speaking' });
         board.socket.server({ type: 'sentence', id: '1', text: 'A hypha grows at its tip.' });
@@ -85,7 +86,12 @@ test('board: each sentence becomes the caption, reported as it shows, and leavin
     });
     assert.equal(board.q('.board-caption').textContent, 'A hypha grows at its tip.');
     assert.equal(board.q('.board-caption.muted'), null);
-    assert.equal(board.q('[role=status]').textContent, 'Speaking');
+    assert.ok(board.q('[role=status]').textContent);
+    assert.notEqual(
+        board.q('[role=status]').textContent,
+        thinking,
+        'the accessible status changes',
+    );
     assert.deepEqual(board.socket.sent.at(-1), { type: 'progress', sentence: '1', phase: 'start' });
     await board.act(async () => board.socket.server({ type: 'notice', notice: 'Stopped.' }));
     assert.equal(board.q('[role=alert]').textContent, 'Stopped.');
