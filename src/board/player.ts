@@ -17,7 +17,15 @@ export type Op = {
         | 'highlight'
         | 'pointer'
         | 'erase'
-        | 'clear';
+        | 'clear'
+        | 'axes'
+        | 'numberline'
+        | 'plot'
+        | 'point';
+    // A component's child names its component; components and plots carry their own path and numbers.
+    on?: string;
+    d?: string;
+    labels?: { at: [number, number]; text: string; end?: boolean }[];
     look?: Look;
     at?: [number, number];
     r?: number;
@@ -30,6 +38,22 @@ export type Op = {
     from?: [number, number];
     ids?: string[];
 };
+// Point labels on one number line, in value order: a label that would touch its left neighbour's on the
+// same row goes to the second row, so a crowded run alternates rows (mockup Rabbithole-brd.5).
+export function labelRows(ops: Op[]) {
+    const rows = new Map<string, number>();
+    const width = (op: Op) => (op.text ?? '').length * 36 * 0.56;
+    const points = ops
+        .filter((op) => op.kind === 'point')
+        .sort((a, b) => a.on!.localeCompare(b.on!) || a.at![0] - b.at![0]);
+    points.forEach((op, i) => {
+        const left = points[i - 1];
+        const touches =
+            left?.on === op.on && op.at![0] - left.at![0] < (width(left) + width(op)) / 2 + 8;
+        rows.set(op.id, touches && !rows.get(left.id) ? 1 : 0);
+    });
+    return rows;
+}
 export type Sentence = { id: string; text: string; ops?: Op[] };
 type Clock = {
     setTimeout: (run: () => void, ms: number) => unknown;

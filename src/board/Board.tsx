@@ -12,6 +12,7 @@ import type { Message } from '../chat/turn';
 import { useBoard, type Drawn } from './useBoard';
 import BoardItem from './BoardItem';
 import { follow } from './camera';
+import { labelRows } from './player';
 
 const STATES = { thinking: 'Thinking', speaking: 'Speaking' } as const;
 
@@ -36,6 +37,7 @@ export default function Board({
     useLayoutEffect(() => {
         if (scroller.current) return follow(scroller.current, board.items.at(-1));
     }, [board.items.length, board.at]);
+    const rows = labelRows(board.items.map((drawn) => drawn.op));
     const submit = (text: string) => {
         if (busy || !text.trim()) return;
         if (board.ask(text.trim())) setDraft('');
@@ -72,6 +74,7 @@ export default function Board({
                                     op={op}
                                     ms={ms}
                                     gone={scene.erased.get(op.id)}
+                                    row={rows.get(op.id)}
                                 />
                             ))}
                         </svg>

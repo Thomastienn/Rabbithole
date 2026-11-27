@@ -1,6 +1,7 @@
 // Board op lines (docs/board-spec.md, Op language): `<id> <kind> <args> [key=value]` on a fixed
 // 1600×900 board (ADR 0028). Tokens follow prototype/board-placement.
 import katex from 'katex';
+import { COMPONENTS, component, child, layout } from './components.mjs';
 
 const KINDS = new Set([
     'circle',
@@ -9,6 +10,10 @@ const KINDS = new Set([
     'line',
     'arrow',
     'text',
+    'axes',
+    'plot',
+    'numberline',
+    'point',
     'math',
     'highlight',
     'pointer',
@@ -34,7 +39,7 @@ const point = (word) => {
 };
 
 function tokens(line) {
-    const op = { strs: [], pts: [], refs: [], opts: {} };
+    const op = { strs: [], pts: [], vals: [], refs: [], opts: {} };
     const words = [...line.matchAll(TOKEN)].map((m) =>
         m[1] ? { k: m[1], v: m[2] } : m[3] !== undefined ? { s: m[3] } : { w: m[4] },
     );
@@ -50,10 +55,12 @@ function tokens(line) {
         else if (w === 'at') {
             op.at = point(rest[++i]?.w);
             if (!op.at) return { error: 'at needs X,Y' };
-        } else if (w === 'from' || w === 'to') {
-            op[w] = rest[++i]?.w;
-            if (!op[w]) return { error: `${w} needs an id` };
+        } else if (w === 'from' || w === 'to' || w === 'on' || w === 'in') {
+            const key = w === 'in' ? 'on' : w;
+            op[key] = rest[++i]?.w;
+            if (!op[key]) return { error: `${w} needs an id` };
         } else if (point(w)) op.pts.push(point(w));
+        else if (/^-?\d*\.?\d+(\/\d*\.?\d+)?$/.test(w)) op.vals.push(w);
         else if (/^\w+=\S+$/.test(w)) op.opts[w.split('=')[0]] = w.slice(w.indexOf('=') + 1);
         else if (MARKS.has(op.kind) && ID.test(w)) op.refs.push(w);
         else return { error: `unexpected token "${w}"` };
@@ -214,12 +221,13 @@ export function boardOps() {
     let area = 0,
         pointer = [800, 450];
     const erased = new Set();
-    // An item still on the board that ops can name; erase can also name a highlight.
-    // Only erase reaches back into earlier areas, since the camera shows the current one.
+    // An item still on the board that ops can name; erase can also name a highlight or a component's child.
+    // Only erase reaches back into earlier areas, since the camera shows the current one, and into a component,
+    // since the rest join top-level items only.
     const target = (id, kind) => {
         const item = items.get(id);
         const named = !MARKS.has(item?.kind) || (kind === 'erase' && item.kind === 'highlight');
-        const here = () => kind === 'erase' || bounds(item).c[1] >= area * AREA;
+        const here = () => kind === 'erase' || (!item.on && bounds(item).c[1] >= area * AREA);
         return item && named && !erased.has(id) && here() ? item : undefined;
     };
     const positive = (value, fallback) =>
@@ -241,8 +249,13 @@ export function boardOps() {
             const unknown = op.refs.find((ref) => !target(ref, op.kind));
             if (unknown) return { error: `unknown id ${unknown}` };
             if (op.kind === 'erase') {
-                for (const ref of op.refs) erased.add(ref);
-                return { item: { ...item, ids: op.refs } };
+                // Erasing a component erases what is on it too.
+                const ids = [...items.values()]
+                    .filter((o) => op.refs.includes(o.on) && !erased.has(o.id))
+                    .map((o) => o.id);
+                ids.unshift(...op.refs);
+                for (const id of ids) erased.add(id);
+                return { item: { ...item, ids } };
             }
             if (op.refs.length > 1) return { error: `${op.kind} takes one id` };
             const b = bounds(items.get(op.refs[0]));
@@ -267,8 +280,16 @@ export function boardOps() {
             else return { error: `${op.kind} needs two points or from ID to ID` };
             return { item };
         }
+        if (op.on || op.kind === 'plot' || op.kind === 'point') {
+            const error = child(op, item, target(op.on));
+            return error ? { error } : { item };
+        }
         if (!op.at) return { error: 'at needs X,Y' };
         item.at = placed(op.at);
+        if (COMPONENTS.has(op.kind)) {
+            const error = component(op, item);
+            return error ? { error } : { item };
+        }
         if (op.kind === 'circle') item.r = positive(op.opts.r, 90);
         if (op.kind === 'box')
             [item.w, item.h] = [positive(op.opts.w, 280), positive(op.opts.h, 160)];
@@ -299,15 +320,19 @@ export function boardOps() {
             if (parsed.error) return parsed;
             const built = build(parsed.op);
             if (!built.item) return built;
-            // Marks are not placed; placed items keep clear of what is still on the board, in the current area.
+            // Marks are not placed, and a component's children stay inside its box, unguarded; the rest keep
+            // clear of what is still on the board, in the current area, with a component as one item at its box.
+            if (built.item.on || MARKS.has(built.item.kind)) {
+                items.set(built.item.id, built.item);
+                return built;
+            }
             const others = [...items.values()].filter(
-                (o) => !MARKS.has(o.kind) && !erased.has(o.id),
+                (o) => !o.on && !MARKS.has(o.kind) && !erased.has(o.id),
             );
-            const item = MARKS.has(built.item.kind)
-                ? built.item
-                : guard(built.item, others, connectors, area * AREA);
+            const guarded = guard(built.item, others, connectors, area * AREA);
+            const item = COMPONENTS.has(guarded.kind) ? layout(guarded) : guarded;
             items.set(item.id, item);
-            return item === built.item ? { item } : { item, moved: true };
+            return guarded === built.item ? { item } : { item, moved: true };
         },
     };
 }
