@@ -53,6 +53,15 @@ export function savedBoardSpeed() {
     }
 }
 
+// Push-to-talk on a board: off unless switched on in Settings.
+export function savedPushToTalk() {
+    try {
+        return localStorage.getItem('rabbithole.push-to-talk') === 'on';
+    } catch {
+        return false;
+    }
+}
+
 export function savePreference(
     key:
         | 'appearance'
@@ -63,6 +72,7 @@ export function savePreference(
         | 'ghost-trees'
         | 'discord-status'
         | 'board-speed'
+        | 'push-to-talk'
         | 'reading-font'
         | 'interface-font',
     value: string,

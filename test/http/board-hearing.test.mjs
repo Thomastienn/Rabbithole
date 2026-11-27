@@ -182,3 +182,69 @@ test('board: speech model files download once from their pinned commit, with pro
         /does not match its recorded hash/,
     );
 });
+
+test('board: holding push-to-talk stops the tutor at once, and letting go asks everything said while held', async (t) => {
+    const provider = boardProvider([
+        ['> The orbit is tilted.\n', '> So the shadow misses.\n'],
+        ['> By five degrees.\n'],
+    ]);
+    const hearing = fakeHearing();
+    const { env, id, connect } = await setup(t, provider, { app: { hearing } });
+    const board = connect();
+    await opened(board.ws);
+    board.send({ type: 'mic', on: true });
+    await board.next('mic', (m) => m.status === 'on');
+    board.send({ type: 'ask', text: 'Why no eclipse every month?' });
+    const sentence = await board.next('sentence');
+    board.send({ type: 'progress', sentence: sentence.id, phase: 'start' });
+
+    board.send({ type: 'hold', on: true });
+    assert.equal((await board.next('hearing')).on, true);
+    assert.equal((await board.next('state')).state, 'idle');
+    // Pauses while held do not end the question; voice detection is not asked.
+    speak(board, 2, 14);
+    speak(board, 3, 0);
+    board.send({ type: 'hold', on: false });
+    assert.equal((await board.next('hearing')).on, false);
+    assert.equal((await board.next('heard')).text, 'Why is there no eclipse every month?');
+    assert.deepEqual(hearing.heard, [(2 + 14 + 3) * FRAME]);
+    const reply = await board.next('sentence');
+    board.send({ type: 'progress', sentence: reply.id, phase: 'start' });
+    board.send({ type: 'progress', sentence: reply.id, phase: 'end' });
+    await board.next('state', (m) => m.state === 'idle');
+    assert.deepEqual(
+        messages(env, id).map((m) => [m.role, m.text, m.status]),
+        [
+            ['user', 'Why no eclipse every month?', 'completed'],
+            ['assistant', 'The orbit is tilted.', 'interrupted'],
+            ['user', 'Why is there no eclipse every month?', 'completed'],
+            ['assistant', 'By five degrees.', 'completed'],
+        ],
+    );
+});
+
+test('board: a hold pressed again while the last one is recognized keeps its audio from voice detection', async (t) => {
+    const provider = boardProvider([['> Because it is lit.\n']]);
+    const recognized = Promise.withResolvers();
+    const hearing = fakeHearing({ held: recognized.promise });
+    const { connect } = await setup(t, provider, { app: { hearing } });
+    const board = connect();
+    await opened(board.ws);
+    board.send({ type: 'mic', on: true });
+    await board.next('mic', (m) => m.status === 'on');
+    board.send({ type: 'hold', on: true });
+    speak(board, 4, 0);
+    board.send({ type: 'hold', on: false });
+    await until(() => hearing.heard.length);
+    board.send({ type: 'hold', on: true });
+    // The mic answers in order, so the hold has reached the server before recognition ends.
+    board.send({ type: 'mic', on: true });
+    await board.next('mic', (m) => m.status === 'on');
+    recognized.resolve();
+    await board.next('heard');
+    // Speech and a long pause while still held: voice detection would end the question on its own.
+    speak(board, 8, 12);
+    board.send({ type: 'hold', on: false });
+    await until(() => hearing.heard.length === 2);
+    assert.deepEqual(hearing.heard, [4 * FRAME, 20 * FRAME]);
+});

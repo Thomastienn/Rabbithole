@@ -31,7 +31,7 @@ function strokeImage(points) {
 }
 
 // One board session per open board: the conversation's own model process, its turns and their saving.
-// Up: { type: 'ask', text }, { type: 'mic', on } and, while on, mic audio as binary frames of 16 kHz mono float32 samples, { type: 'stroke', points } as the learner finishes a pen stroke, { type: 'progress', sentence, phase: 'start' | 'end' } as each caption shows and ends, { type: 'leave' }.
+// Up: { type: 'ask', text }, { type: 'mic', on }, { type: 'hold', on } as push-to-talk is held and let go, and, while on, mic audio as binary frames of 16 kHz mono float32 samples, { type: 'stroke', points } as the learner finishes a pen stroke, { type: 'progress', sentence, phase: 'start' | 'end' } as each caption shows and ends, { type: 'leave' }.
 // Down: { type: 'state', state: 'idle' | 'thinking' | 'speaking' }, thinking with the turn's user and reply message ids, { type: 'notice', notice },
 // { type: 'sentence', id, text, ops, voiced } with the drawable ops written under it (server/board/ops.mjs),
 // then, when voiced, its speech as binary frames (one byte of id length, the id, the audio) and { type: 'audio-end', id },
@@ -541,6 +541,7 @@ export function boardSession(ctx, id, socket) {
             stroke(m.points.map((p) => p.map(Math.round)));
         if (m?.type === 'progress' && typeof m.sentence === 'string') progress(m.sentence, m.phase);
         if (m?.type === 'mic') m.on ? mic.on() : mic.off();
+        if (m?.type === 'hold') mic.hold(!!m.on);
         if (m?.type === 'leave') close();
     });
     socket.on('close', close);

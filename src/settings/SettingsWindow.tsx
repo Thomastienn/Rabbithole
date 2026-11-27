@@ -11,6 +11,7 @@ import {
     CpuChipIcon,
     LinkIcon,
     PuzzlePieceIcon,
+    SpeakerWaveIcon,
     SwatchIcon,
 } from '@heroicons/react/24/outline';
 import EndpointSettings from './EndpointSettings';
@@ -23,6 +24,7 @@ import MemoryNoteSettings from './MemoryNoteSettings';
 import SearchSettings from './SearchSettings';
 import TutorToolsSettings from './TutorToolsSettings';
 import AddonsSettings from './AddonsSettings';
+import BoardSettings from './BoardSettings';
 import ClaudeSignIn from './ClaudeSignIn';
 import UsageDashboard from '../usage/UsageDashboard';
 import CliInstall from '../shell/CliInstall';
@@ -32,7 +34,7 @@ import type { Appearance, ThemeChoice } from '../shell/appearance';
 import InterfaceSettings, { Done, Problem, Section } from './InterfaceSettings';
 import { useDesktopUpdate } from '../shell/UpdateBanner';
 
-export type SettingsTab = 'models' | 'connections' | 'interface' | 'addons' | 'usage';
+export type SettingsTab = 'models' | 'board' | 'connections' | 'interface' | 'addons' | 'usage';
 // tab: the section to scroll to (undefined opens at the top); focus is a selector to focus once open.
 export type SettingsRequest = { tab?: SettingsTab; focus?: string };
 
@@ -48,6 +50,12 @@ const TABS: { id: SettingsTab; label: string; description: string; icon: typeof 
         label: 'Models',
         description: 'Which model does which job.',
         icon: CpuChipIcon,
+    },
+    {
+        id: 'board',
+        label: 'Board',
+        description: 'How the tutor talks and listens on a board.',
+        icon: SpeakerWaveIcon,
     },
     {
         id: 'connections',
@@ -247,6 +255,7 @@ export default function SettingsWindow({
         <VStack gap={8} className="settings-panel">
             {tab === 'usage' && group('usage', <UsageDashboard providers={providers} />)}
             {tab === 'addons' && group('addons', <AddonsSettings />)}
+            {tab === 'board' && group('board', <BoardSettings />)}
             {tab === 'interface' &&
                 group(
                     'interface',
