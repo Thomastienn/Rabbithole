@@ -215,10 +215,12 @@ export function boardOps() {
         pointer = [800, 450];
     const erased = new Set();
     // An item still on the board that ops can name; erase can also name a highlight.
+    // Only erase reaches back into earlier areas, since the camera shows the current one.
     const target = (id, kind) => {
         const item = items.get(id);
         const named = !MARKS.has(item?.kind) || (kind === 'erase' && item.kind === 'highlight');
-        return item && named && !erased.has(id) ? item : undefined;
+        const here = () => kind === 'erase' || bounds(item).c[1] >= area * AREA;
+        return item && named && !erased.has(id) && here() ? item : undefined;
     };
     const positive = (value, fallback) =>
         value === undefined ? fallback : Number(value) > 0 ? Number(value) : NaN;

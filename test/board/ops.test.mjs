@@ -123,11 +123,17 @@ test('board ops: math, highlight, pointer and erase name their items; clear move
         [680, 1520],
         [900, 1520],
     ]);
+    assert.match(
+        board.read('p4 pointer bat').error,
+        /unknown id bat/,
+        'marks stay on the area in view',
+    );
     assert.deepEqual(
-        read('p4 pointer bat').from,
+        read('p4 pointer ohm').from,
         [800, 1350],
         'the pointer starts a fresh area at its centre',
     );
+    assert.deepEqual(read('x3 erase bat').ids, ['bat'], 'erase still reaches earlier areas');
     assert.match(board.read('m3 math "P = \\frac{V^2}{" at 800,780').error, /KaTeX parse error/);
     for (const line of ['h2 highlight', 'h3 highlight bat bulb', 'x2 erase nope', 'p5 pointer x1'])
         assert.ok(board.read(line).error, line);
