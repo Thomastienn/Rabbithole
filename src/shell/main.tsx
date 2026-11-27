@@ -44,6 +44,7 @@ import '../styles/states.css';
 import '../styles/first-run.css';
 import '../styles/map.css';
 import '../styles/board.css';
+import '../styles/board-pen.css';
 import '../styles/settings.css';
 
 applyFont('reading-font', savedFont('reading-font'));

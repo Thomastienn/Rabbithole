@@ -21,7 +21,9 @@ export type Op = {
         | 'axes'
         | 'numberline'
         | 'plot'
-        | 'point';
+        | 'point'
+        | 'stroke'
+        | 'erase';
     // A component's child names its component; components and plots carry their own path and numbers.
     on?: string;
     d?: string;

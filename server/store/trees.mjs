@@ -463,12 +463,14 @@ export const trees = {
     saveBoardOps(id, lines) {
         this.db.prepare('UPDATE messages SET ops=? WHERE id=?').run(JSON.stringify(lines), id);
     },
-    // Each board reply's text and op lines, in order; replaying the lines rebuilds the board.
+    // Each board message's role, text and op lines, in order; replaying the lines rebuilds the board.
     boardReplies(tree) {
         return this.db
-            .prepare('SELECT text, ops FROM messages WHERE tree=? AND ops IS NOT NULL ORDER BY seq')
+            .prepare(
+                'SELECT role, text, ops FROM messages WHERE tree=? AND ops IS NOT NULL ORDER BY seq',
+            )
             .all(tree)
-            .map((m) => ({ text: m.text, lines: JSON.parse(m.ops) }));
+            .map((m) => ({ role: m.role, text: m.text, lines: JSON.parse(m.ops) }));
     },
     nextQuestions(id, questions) {
         this.db

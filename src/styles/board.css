@@ -270,16 +270,13 @@
     padding: 0;
     font-size: 15px;
 }
-.board-composer :is(.astryx-chat-send-button, .board-mic) {
+.board-composer :is(.astryx-chat-send-button, .board-mic, .board-pen) {
     width: 36px;
     height: 36px;
 }
-.board-composer :is(.astryx-chat-send-button, .board-mic) svg {
+.board-composer :is(.astryx-chat-send-button, .board-mic, .board-pen) :is(svg, span:has(> svg)) {
     width: 20px;
     height: 20px;
-}
-.board-mic {
-    margin-inline-start: -8px;
 }
 .focused-chat .board-composer .board-send-busy:disabled {
     opacity: 0.45;

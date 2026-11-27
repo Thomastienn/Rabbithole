@@ -264,6 +264,7 @@ export default function FocusedChat({
                     conversation={tree.id}
                     messages={tree.messages}
                     reload={reloadTree}
+                    ink={addresses.get(tree.id)?.ink ?? 0}
                 />
             ) : (
                 <ChatLayout

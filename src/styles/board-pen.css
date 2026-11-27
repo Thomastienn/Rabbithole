@@ -1,0 +1,60 @@
+/* The learner's pen on the board (mockup Rabbithole-brd.14): its toolbar button, the marks pill and the strokes. */
+/* The board's tool group: the mic, then the pen (mockup Rabbithole-brd.14). */
+.board-tools {
+    display: flex;
+    gap: 2px;
+    margin-inline-start: -8px;
+}
+/* Off, the pen is a muted icon like the mockup's; pressed, it fills porcelain with its icon in the porcelain text colour. */
+.board-composer .board-pen {
+    color: var(--color-text-secondary);
+}
+.board-composer .board-pen:hover {
+    color: var(--color-text-primary);
+}
+.board-composer .board-pen[aria-pressed='true'] {
+    background: var(--rabbithole-paper);
+    color: var(--rabbithole-paper-ink);
+}
+/* Marks waiting for the next question: one pill above the composer text, with a short line in the learner's ink. */
+.board-tray {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-block-end: 8px;
+}
+.board-marks {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 30px;
+    padding: 0 10px;
+    border-radius: var(--radius-inner);
+    background: var(--color-background-gray);
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+.board-marks > span {
+    flex: none;
+    width: 14px;
+    height: 4px;
+    border-radius: var(--radius-full);
+    background: var(--ink);
+}
+/* With the pen on, a drag over the board draws; off, the board ignores the pointer. */
+.board.pen-on svg {
+    cursor: crosshair;
+    touch-action: none;
+}
+/* Learner strokes: freehand, 6 board px, round caps, in the conversation's family ink so they never read as the tutor's. */
+.board-learner {
+    fill: none;
+    stroke: var(--ink);
+    stroke-width: 6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.board-tip {
+    fill: var(--ink);
+}

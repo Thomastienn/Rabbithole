@@ -46,6 +46,10 @@ function head([x0, y0]: [number, number], [x, y]: [number, number]) {
     return `M${bx - 18 * uy} ${by + 18 * ux}L${x} ${y}L${bx + 18 * uy} ${by - 18 * ux}`;
 }
 
+// A learner's freehand stroke; a lone point still draws as a dot under its round cap.
+export const strokePath = (points: [number, number][]) =>
+    `M${points[0]}` + points.map((p) => `L${p}`).join('');
+
 // One board item in board pixels, coloured by its look, entering by hand over its share of the sentence,
 // and fading out over the share of the erase that names it (`gone`).
 // pathLength 1 lets one dash draw any stroke on (src/styles/board.css). A point's label sits on `row` 0 or 1
@@ -116,6 +120,7 @@ export default function BoardItem({
                     rx={12}
                 />
             )}
+            {op.kind === 'stroke' && <path className="board-learner" d={strokePath(points)} />}
             {op.kind === 'dot' && <circle className="board-dot" cx={x} cy={y} r={14} />}
             {op.kind === 'line' && <path className="board-stroke" pathLength={1} d={path} />}
             {op.kind === 'arrow' && (

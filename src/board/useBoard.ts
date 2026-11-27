@@ -29,6 +29,8 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
     const dropSilent = () => setReplies((rs) => (rs.at(-1)?.caption ? rs : rs.slice(0, -1)));
     const onLast = (change: (reply: Reply) => Reply) =>
         setReplies((rs) => [...rs.slice(0, -1), change(rs.at(-1) ?? { items: [], caption: '' })]);
+    // Pen strokes over board items since the last question; they go with the next one.
+    const [marks, setMarks] = useState(0);
     const restored = latest && { text: latest.text.trim().split('\n').at(-1) ?? '', muted: true };
     const socket = useRef<WebSocket>(undefined);
     useEffect(() => {
@@ -74,6 +76,11 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
                     })),
                 );
             if (m.type === 'sentence') player.add(m);
+            // A stroke joins the board it was drawn on, as the server replays it.
+            if (m.type === 'stroke') {
+                onLast((r) => ({ ...r, items: [...r.items, { op: m.item, ms: 0 }] }));
+                if (m.mark) setMarks((n) => n + 1);
+            }
             if (m.type === 'notice') setNotice(m.notice);
         };
         return () => {
@@ -99,6 +106,7 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         if (ws?.readyState !== WebSocket.OPEN) return false;
         ws.send(JSON.stringify({ type: 'ask', text }));
         setAsked(true);
+        setMarks(0);
         setNotice(undefined);
         // The sent question shows muted until the tutor speaks, so the learner sees it was heard.
         setCaption({ text, muted: true });
@@ -113,6 +121,11 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
     const go = (to: number) => {
         setReplies(still);
         setStep(to < replies.length - 1 ? to : undefined);
+    };
+    // A finished pen stroke, in board pixels; the server hit-tests it and sends it back as an item.
+    const draw = (points: [number, number][]) => {
+        const ws = socket.current;
+        if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'stroke', points }));
     };
     return {
         state,
@@ -129,6 +142,8 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         at,
         stepped: step !== undefined,
         go,
+        marks,
         ask,
+        draw,
     };
 }

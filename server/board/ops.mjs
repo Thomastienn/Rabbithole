@@ -19,6 +19,7 @@ const KINDS = new Set([
     'pointer',
     'erase',
     'clear',
+    'stroke',
 ]);
 // Kinds that name other items instead of placing one; they cannot be named themselves.
 const MARKS = new Set(['highlight', 'pointer', 'erase', 'clear']);
@@ -109,6 +110,24 @@ function edge(b, to) {
         : Math.min(b.w / 2 / Math.abs(dx || 1e-9), b.h / 2 / Math.abs(dy || 1e-9)) * length;
     const t = (reach + GAP) / length;
     return [Math.round(b.c[0] + dx * t), Math.round(b.c[1] + dy * t)];
+}
+
+// How far a point lies outside an item's space, 0 inside it.
+function gap(b, [x, y]) {
+    if (b.round) return Math.max(0, Math.hypot(x - b.c[0], y - b.c[1]) - b.r);
+    const dx = Math.max(0, Math.abs(x - b.c[0]) - b.w / 2);
+    const dy = Math.max(0, Math.abs(y - b.c[1]) - b.h / 2);
+    return Math.hypot(dx, dy);
+}
+
+// Whether a point is inside the polygon a stroke traces, by ray casting.
+function inside([x, y], points) {
+    let hit = false;
+    for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+        const [[xi, yi], [xj, yj]] = [points[i], points[j]];
+        if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) hit = !hit;
+    }
+    return hit;
 }
 
 // The guard (docs/board-spec.md, ADR 0028), with the prototype's overlap measure.
@@ -267,6 +286,10 @@ export function boardOps() {
             pointer = item.at = [b.c[0] + w / 2 + 12, b.c[1]];
             return { item };
         }
+        if (op.kind === 'stroke') {
+            if (!op.pts.length) return { error: 'stroke needs a point' };
+            return { item: { ...item, points: op.pts } };
+        }
         // Points in a fresh area start at its top left.
         const placed = ([x, y]) => [x, y + area * AREA];
         if (op.kind === 'line' || op.kind === 'arrow') {
@@ -329,10 +352,42 @@ export function boardOps() {
             const others = [...items.values()].filter(
                 (o) => !o.on && !MARKS.has(o.kind) && !erased.has(o.id),
             );
-            const guarded = guard(built.item, others, connectors, area * AREA);
+            // The learner's strokes stay where they were drawn.
+            const guarded =
+                built.item.kind === 'stroke'
+                    ? built.item
+                    : guard(built.item, others, connectors, area * AREA);
             const item = COMPONENTS.has(guarded.kind) ? layout(guarded) : guarded;
             items.set(item.id, item);
             return guarded === built.item ? { item } : { item, moved: true };
+        },
+        has: (id) => items.has(id),
+        // What a learner stroke marks (docs/board-spec.md, Learner pen): a closed loop circles the items whose
+        // centres it encloses; otherwise it points at the item nearest its end, within 40 board pixels.
+        mark(points) {
+            // Only items still on the board with a place to circle or point at; a plot is a path inside its axes.
+            const targets = [...items.values()].filter(
+                (i) =>
+                    i.kind !== 'stroke' &&
+                    !MARKS.has(i.kind) &&
+                    !erased.has(i.id) &&
+                    (i.at || i.points),
+            );
+            const [start, end] = [points[0], points.at(-1)];
+            const box = bounds({ points });
+            const closed =
+                points.length > 2 &&
+                Math.hypot(end[0] - start[0], end[1] - start[1]) <=
+                    Math.max(60, 0.3 * Math.hypot(box.w, box.h));
+            const circled = closed
+                ? targets.filter((i) => inside(bounds(i).c, points)).map((i) => i.id)
+                : [];
+            if (circled.length) return { verb: 'circled', ids: circled };
+            const [near] = targets
+                .map((i) => ({ id: i.id, d: gap(bounds(i), end) }))
+                .filter(({ d }) => d <= 40)
+                .sort((a, b) => a.d - b.d);
+            return near ? { verb: 'pointed at', ids: [near.id] } : null;
         },
     };
 }
