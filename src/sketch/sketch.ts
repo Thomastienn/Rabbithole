@@ -1,18 +1,21 @@
 // Sketches: small diagrams the tutor writes as ```sketch <kind> blocks (ADR 0027).
 // The only place that knows the kinds. Plain: no React, no DOM, no model call.
 
+import { equation, grid, sequence } from './maths.ts';
+import { plot } from './plot.ts';
+
 // The theme colours by role; the app passes CSS variables, tests pass hex values.
 export type Palette = { ground: string; ink: string; muted: string; seam: string; focus: string };
 // One per drawn element. `text` is what a screen reader hears for it.
 export type SketchItem = { label: string; focus: boolean; text: string };
 export type Sketch = { title: string; items: SketchItem[]; markup: string };
-type Drawing = { items: SketchItem[]; markup: string } | { error: string };
-type Line = { text: string; at: number };
+export type Drawing = { items: SketchItem[]; markup: string } | { error: string };
+export type Line = { text: string; at: number };
 
-const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
-const plain = (s: string) => s.replace(/\*/g, '').trim();
-const isFocus = (s: string) => /\*[^*]+\*/.test(s);
-const quoted = (line: Line) => `line ${line.at} "${line.text}"`;
+export const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+export const plain = (s: string) => s.replace(/\*/g, '').trim();
+export const isFocus = (s: string) => /\*[^*]+\*/.test(s);
+export const quoted = (line: Line) => `line ${line.at} "${line.text}"`;
 const list = (parts: string[]) =>
     parts.length < 2 ? parts.join('') : `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}`;
 
@@ -29,7 +32,8 @@ export function drawSketch(
         .filter((l) => l.text);
     const title = lines[0] && /^title\s*:/i.test(lines[0].text) ? lines.shift()! : undefined;
     if (!lines.length) return { error: 'empty body' };
-    if (lines.length > 8) return { error: 'more than eight items' };
+    // A grid's rows are cells of one item, not items.
+    if (lines.length > 8 && draw !== grid) return { error: 'more than eight items' };
     const drawing = draw(lines, palette);
     return 'error' in drawing
         ? drawing
@@ -231,4 +235,8 @@ function bars(lines: Line[], p: Palette): Drawing {
 const KINDS = new Map([
     ['flow', flow],
     ['bars', bars],
+    ['plot', plot],
+    ['sequence', sequence],
+    ['equation', equation],
+    ['grid', grid],
 ]);

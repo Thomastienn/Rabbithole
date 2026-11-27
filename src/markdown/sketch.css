@@ -66,6 +66,135 @@
 .sketch-bars .focus {
     font-weight: 600;
 }
+.sketch .sketch-start {
+    text-anchor: start;
+}
+.sketch .sketch-end {
+    text-anchor: end;
+}
+/* Plot, sequence, equation and grid (mockup Rabbithole-skt.4); colours come inline from the palette. */
+.sketch .sketch-axis {
+    fill: none;
+    stroke-width: 1.5;
+}
+.sketch .sketch-tick {
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+.sketch-math {
+    font: 15px/28px math;
+    white-space: nowrap;
+}
+.sketch .sketch-life {
+    fill: none;
+    stroke-width: 2;
+}
+.sketch .sketch-gap {
+    fill: none;
+    stroke-width: 6;
+}
+.sketch-eq {
+    display: flex;
+    gap: 10px;
+    height: calc(38px + var(--rows) * 26px);
+    font: 26px/40px math;
+}
+.sketch-eq .tk {
+    display: block;
+    height: 40px;
+    white-space: nowrap;
+}
+.sketch-eq .an {
+    position: relative;
+    display: inline-block;
+    height: 40px;
+    vertical-align: top;
+}
+.sketch-eq :is(sub, sup) {
+    font-size: 70%;
+    line-height: 0;
+}
+.sketch-eq .up {
+    font-style: normal;
+}
+.sketch-eq .ld {
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    margin-left: -1px;
+    width: 10px;
+    height: calc(14px + var(--r) * 26px);
+    border: solid;
+    border-width: 0 0 2px 2px;
+}
+.sketch-eq .ld span {
+    position: absolute;
+    left: 16px;
+    top: 100%;
+    transform: translateY(-50%);
+    margin-top: -1px;
+    white-space: nowrap;
+    font: 14px/20px var(--rabbithole-font-reading);
+}
+.sketch :is(.sketch-eq, .sketch-grids) em {
+    font-style: normal;
+    font-weight: 600;
+}
+.sketch-grids {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    max-width: 640px;
+    overflow-x: auto;
+}
+.sketch-grids.stack {
+    flex-direction: column;
+    align-items: flex-start;
+}
+.sketch-grids .gb {
+    display: flex;
+    flex-direction: column;
+}
+.sketch-grids .gc {
+    margin-bottom: 6px;
+    font: 13px/18px var(--rabbithole-font-reading);
+}
+.sketch-grids .gd {
+    display: grid;
+    grid-template-columns: repeat(var(--c), auto);
+    gap: 1px;
+    padding: 1px;
+    width: max-content;
+}
+.sketch-grids .gd > i {
+    display: block;
+    min-width: 36px;
+    min-height: 32px;
+    max-width: 200px;
+    padding: 6px 10px;
+    font: 14px/20px var(--rabbithole-font-reading);
+    font-style: normal;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+.sketch-grids .gd.tbl > i {
+    text-align: start;
+}
+.sketch-grids .gd.tbl > i.h {
+    font: 600 13px/20px var(--rabbithole-font-reading);
+    border-bottom: 1px solid;
+}
+.sketch-grids .gd > i.f {
+    font-weight: 600;
+    outline: 2px solid;
+    outline-offset: -2px;
+}
+.sketch-grids:has(.gc) .op {
+    padding-top: 24px;
+}
+.sketch-grids .op {
+    font: 24px/1 math;
+}
 /* Streaming: the size of a small sketch, in the skeleton tone. */
 .sketch-wait {
     height: 96px;

@@ -78,6 +78,133 @@ test('a bars sketch keeps each unit, marks the focus and draws a zero', () => {
     assert.ok(zero.querySelector('s'));
 });
 
+const maths = {
+    plot: ['title: x² and its tangent at x = 1', 'y = x^2', '*y = 2*x - 1*', 'x: -0.5..2.5'].join(
+        '\n',
+    ),
+    sequence: [
+        'title: What crosses the public channel',
+        'actors: Alice | Eve | Bob',
+        'Alice: keeps a = 6 private',
+        'Alice -> Bob: A = 8',
+        'Bob -> Alice: B = 19',
+        'Bob: 8^15 mod 23 = *2*',
+    ].join('\n'),
+    equation: [
+        'title: With our numbers',
+        'eq: K = g^ab mod p',
+        'K: the shared key, 2',
+        'g: public base, 5',
+        'ab: 6 × 15 = 90, *never sent*',
+        'p: public prime, 23',
+    ].join('\n'),
+    grid: [
+        'title: Slide a 3×3 filter',
+        'image:',
+        '10 10 0',
+        '10 10 0',
+        '×',
+        'filter:',
+        '1 -1',
+        '=',
+        'output:',
+        '0 *30*',
+        'rocks:',
+        'Parent rock | Becomes',
+        'Shale | Slate',
+    ].join('\n'),
+};
+
+test('maths and exchange sketches draw one item per element, with title and focus', () => {
+    const items = (kind) => {
+        const sketch = drawSketch(kind, maths[kind], dark);
+        assert.ok(sketch.title);
+        return sketch.items.map((i) => [i.label, i.focus, i.text]);
+    };
+    assert.deepEqual(items('plot'), [
+        ['y = x^2', false, 'Curve y = x², x from −0.5 to 2.5'],
+        ['y = 2*x - 1', true, 'Curve y = 2x − 1, x from −0.5 to 2.5, focus'],
+    ]);
+    assert.deepEqual(items('sequence'), [
+        ['Alice, Eve, Bob', false, 'Actors: Alice, Eve, Bob'],
+        ['keeps a = 6 private', false, 'Alice, note: keeps a = 6 private'],
+        ['A = 8', false, 'Alice to Bob: A = 8'],
+        ['B = 19', false, 'Bob to Alice: B = 19'],
+        ['8^15 mod 23 = 2', true, 'Bob, note: 8^15 mod 23 = 2, focus'],
+    ]);
+    assert.deepEqual(items('equation'), [
+        ['K = g^ab mod p', false, 'Equation: K = g superscript ab mod p'],
+        ['K', false, 'K: the shared key, 2'],
+        ['g', false, 'g: public base, 5'],
+        ['ab', true, 'ab: 6 × 15 = 90, never sent, focus'],
+        ['p', false, 'p: public prime, 23'],
+    ]);
+    assert.deepEqual(items('grid'), [
+        ['image', false, 'image, table, 2 rows, 3 columns: 10, 10, 0; 10, 10, 0'],
+        ['filter', false, 'times filter, table, 1 row, 2 columns: 1; −1'],
+        ['output', true, 'equals output, table, 1 row, 2 columns: 0; 30, focus'],
+        ['rocks', false, 'rocks, table, 2 rows, 2 columns: Parent rock, Becomes; Shale, Slate'],
+    ]);
+});
+
+test('a plot draws each curve over its range and parses its formula, never running it', () => {
+    const svg = new JSDOM(drawSketch('plot', maths.plot, dark).markup).window.document;
+    const curves = [...svg.querySelectorAll('path.sketch-line')];
+    assert.equal(curves.length, 2);
+    // 201 samples across x, so every curve spans the whole range.
+    for (const c of curves) assert.equal(c.getAttribute('d').match(/[ML]/g).length, 201);
+    assert.ok(curves[1].getAttribute('style').includes(dark.focus));
+    assert.deepEqual(
+        [...svg.querySelectorAll('.sketch-math math')].map((m) => m.textContent.includes('y')),
+        [true, true],
+    );
+    // A value that is not a number breaks the curve instead of drawing to it.
+    const broken = drawSketch('plot', 'y = sqrt(x)\nx: -1..1', dark).markup;
+    assert.equal(broken.match(/class="sketch-line"[^>]*d="([^"]*)"/)[1].match(/M/g).length, 1);
+    globalThis.reached = false;
+    for (const formula of ['reached', 'constructor(x)', 'x; reached = true', 'x)(', 'sin x', '2 +'])
+        assert.match(drawSketch('plot', `y = ${formula}\nx: 0..1`, dark).error, /line 1/);
+    assert.equal(globalThis.reached, false);
+    delete globalThis.reached;
+});
+
+test('a sequence draws each actor once and each message in order, and an equation links each symbol', () => {
+    const seq = new JSDOM(drawSketch('sequence', maths.sequence, dark).markup).window.document;
+    const words = [...seq.querySelectorAll('text')].map((t) => t.textContent);
+    assert.deepEqual(words.slice(0, 3), ['Alice', 'Eve', 'Bob']);
+    assert.ok(words.indexOf('A = 8') < words.indexOf('B = 19'));
+    // The message from Alice to Bob passes over Eve's lifeline, which breaks under it.
+    assert.ok(seq.querySelector('path.sketch-gap'));
+    const eq = new JSDOM(drawSketch('equation', maths.equation, dark).markup).window.document;
+    assert.deepEqual(
+        [...eq.querySelectorAll('.an')].map((a) => a.querySelector('.ld span').textContent),
+        ['the shared key, 2', 'public base, 5', '6 × 15 = 90, never sent', 'public prime, 23'],
+    );
+    assert.equal(eq.querySelectorAll('.tk').length, 5);
+});
+
+test('a grid draws joined grids with their join signs, captions and focus cells', () => {
+    const doc = new JSDOM(drawSketch('grid', maths.grid, dark).markup).window.document;
+    assert.deepEqual(
+        [...doc.querySelectorAll('.op')].map((o) => o.textContent),
+        ['×', '='],
+    );
+    assert.deepEqual(
+        [...doc.querySelectorAll('.gc')].map((c) => c.textContent),
+        ['image', 'filter', 'output', 'rocks'],
+    );
+    assert.deepEqual(
+        [...doc.querySelectorAll('i.f')].map((c) => c.textContent),
+        ['30'],
+    );
+    assert.deepEqual(
+        [...doc.querySelectorAll('i.h')].map((c) => c.textContent),
+        ['Parent rock', 'Becomes'],
+    );
+    const stacked = drawSketch('grid', 'a:\n1 2\nb:\n3 4', dark).markup;
+    assert.match(stacked, /sketch-grids stack/);
+});
+
 test('a sketch it cannot draw names the reason', () => {
     for (const [kind, body, reason] of [
         ['venn-ish', 'A -> B', /unknown kind "venn-ish"/],
@@ -89,13 +216,35 @@ test('a sketch it cannot draw names the reason', () => {
         ['bars', 'Mass: 1.2.3 kg', /has no number/],
         ['bars', 'Mass: 1e999 kg', /out of range/],
         ['bars', 'Row: 1\n'.repeat(9), /more than eight items/],
+        ['plot', 'y = (x + abs(x)) / 2\nx: -30..30', /line 1 .* uses abs, which is not one of/],
+        ['plot', 'y = x', /no x: min..max/],
+        ['plot', 'y = x\nx: 3..1', /line 2 "x: 3..1" is out of range/],
+        ['plot', 'y = x\ny = 2\ny = 3\nx: 0..1', /more than two curves/],
+        ['plot', 'y = sqrt(x - 9)\nx: 0..1', /has no value/],
+        ['sequence', 'Alice -> Bob: hi', /line 1 .* is not actors/],
+        [
+            'sequence',
+            'actors: Alice | Bob\nAlice -> Bob: A = 8\nEve: sees 8',
+            /line 3 "Eve: sees 8" names Eve, who is not in actors/,
+        ],
+        ['sequence', 'actors: Alice | Bob\nJust words', /line 2/],
+        ['equation', 'S = k ln W', /line 1 .* is not eq:/],
+        [
+            'equation',
+            'eq: S = k_B ln W\nS: entropy\nΩ: count',
+            /line 3 "Ω: count" annotates Ω, which is not a symbol/,
+        ],
+        ['grid', 'image:\n0 0 9\n×', /line 3 "×" joins nothing after it/],
+        ['grid', '×\n1 2', /line 1 "×" joins nothing before it/],
+        ['grid', '1 2\n3', /line 2 "3" has 1 cells where its grid has 2/],
+        ['grid', '1\n'.repeat(9), /ninth row/],
     ])
         assert.match(drawSketch(kind, body, dark).error, reason);
 });
 
 test('a sketch takes the palette it is given, light or dark', () => {
-    for (const kind of ['flow', 'bars']) {
-        const body = kind === 'flow' ? freezing : speeds,
+    for (const kind of ['flow', 'bars', ...Object.keys(maths)]) {
+        const body = maths[kind] ?? (kind === 'flow' ? freezing : speeds),
             [a, b] = [drawSketch(kind, body, dark).markup, drawSketch(kind, body, light).markup];
         assert.ok(a.includes(dark.seam) && a.includes(dark.focus) && !a.includes(light.seam));
         assert.ok(b.includes(light.seam) && b.includes(light.focus) && !b.includes(dark.seam));
@@ -103,8 +252,14 @@ test('a sketch takes the palette it is given, light or dark', () => {
 });
 
 test('labels the tutor writes are escaped, never markup', () => {
-    const sketch = drawSketch('flow', '<img src=x onerror=alert(1)> -> B', dark);
-    assert.ok(!sketch.markup.includes('<img'));
+    const img = '<img src=x onerror=alert(1)>';
+    for (const [kind, body] of [
+        ['flow', `${img} -> B`],
+        ['sequence', `actors: ${img} | B\n${img} -> B: ${img}\nB: *${img}*`],
+        ['equation', `eq: ${img} = x\nx: *${img}*`],
+        ['grid', `${img}:\n${img} | *${img}*`],
+    ])
+        assert.ok(!drawSketch(kind, body, dark).markup.includes('<img'), kind);
 });
 
 const page = (raw) =>
