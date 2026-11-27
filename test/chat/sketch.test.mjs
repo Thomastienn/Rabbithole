@@ -183,12 +183,13 @@ test('a pie sketch shows each share as a percentage of the whole', () => {
         'Argon, 0.93%',
         'Carbon dioxide, 0.04%',
     ]);
-    assert.equal(
-        new JSDOM(
-            drawSketch('pie', 'Rest: 3\nWork: 0', dark).markup,
-        ).window.document.querySelectorAll('path').length,
-        1,
-    );
+    const slices = new JSDOM(
+        drawSketch('pie', 'Rest: 3\nWork: 0', dark).markup,
+    ).window.document.querySelectorAll('path');
+    assert.equal(slices.length, 1);
+    // A lone share is still a ring: its inner arc has two different ends.
+    const [, start, end] = /L([\d. ]+)A48 48 0 1 0 ([\d. ]+)Z/.exec(slices[0].getAttribute('d'));
+    assert.notEqual(start, end);
 });
 
 test('a sketch it cannot draw names the reason', () => {
@@ -210,6 +211,7 @@ test('a sketch it cannot draw names the reason', () => {
         ['venn', 'A: x\nB: y\nC: z', /needs two sets, found 3/],
         ['venn', 'Just words\nB: y', /line 1 "Just words" is not set/],
         ['venn', 'A:\nB:', /no items/],
+        ['venn', 'A: a, b, c, d, e\nB: f, g\nboth: h, i', /more than eight items/],
         [
             'pie',
             'title: Monthly budget\nRent: 900\nFood: 400\nSavings: -150',

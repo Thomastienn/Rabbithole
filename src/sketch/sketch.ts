@@ -326,6 +326,7 @@ function venn(lines: Line[], p: Palette): Drawing {
         { x: 480, at: 112, rings: [400], items: right.items, where: `${right.name} only` },
     ];
     if (stacks.every((s) => !s.items.length)) return { error: 'no items' };
+    if (stacks.flatMap((s) => s.items).length > 8) return { error: 'more than eight items' };
     // Each stack is centred on the rings' middle; a line's top is measured from it.
     let ry = 80;
     const laid = stacks.map((s) => {
@@ -420,7 +421,8 @@ function pie(lines: Line[], p: Palette): Drawing {
     let from = 0;
     const slices = rows.map((r, i) => {
         const part = r.n / total,
-            to = from + Math.min(part, 0.9999),
+            // A whole-pie slice stops short, far enough that its rounded arc ends stay apart.
+            to = from + Math.min(part, 0.999),
             big = part > 0.5 ? 1 : 0,
             d = `M${at(from, 80)}A80 80 0 ${big} 1 ${at(to, 80)}L${at(to, 48)}A48 48 0 ${big} 0 ${at(from, 48)}Z`;
         from += part;
