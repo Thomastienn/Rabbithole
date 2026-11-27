@@ -32,10 +32,10 @@ export function serverFetch(
 }
 
 // A board's socket; a browser cannot set headers on one, so the CSRF token rides in its address.
-export function boardSocket(conversation: string) {
+export function boardSocket(conversation: string, guided: boolean) {
     const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
     return new WebSocket(
-        `${scheme}://${window.location.host}/api/trees/${conversation}/board?csrf=${encodeURIComponent(csrf)}&lang=${savedVoiceLanguage()}`,
+        `${scheme}://${window.location.host}/api/trees/${conversation}/board?csrf=${encodeURIComponent(csrf)}&lang=${savedVoiceLanguage()}${guided ? '&mode=guided' : ''}`,
     );
 }
 

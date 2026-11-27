@@ -28,6 +28,8 @@ export function boardSockets(ctx, server) {
         const lang = Object.hasOwn(VOICES, url.searchParams.get('lang'))
             ? url.searchParams.get('lang')
             : 'en';
-        sockets.handleUpgrade(req, socket, head, (ws) => boardSession(ctx, id, ws, lang));
+        sockets.handleUpgrade(req, socket, head, (ws) =>
+            boardSession(ctx, id, ws, lang, url.searchParams.get('mode') === 'guided'),
+        );
     });
 }

@@ -230,7 +230,7 @@ test('the desktop app shows the Discord status switch and reports its choice', a
     assert.deepEqual(choices, [false]);
 });
 
-test('the Board page has Voice language, English by default, and push-to-talk, off by default, keeping both for boards', async (t) => {
+test('the Board page has Voice language, English by default, push-to-talk off and learner-led by default, keeping the choices for boards', async (t) => {
     let downloaded = false;
     const calls = fakeServer(t, (path) =>
         path.startsWith('/api/settings/voice-models')
@@ -291,4 +291,15 @@ test('the Board page has Voice language, English by default, and push-to-talk, o
     await page.act(async () => ptt.click());
     assert.equal(ptt.checked, true);
     assert.equal(window.localStorage.getItem('rabbithole.push-to-talk'), 'on');
+    const mode = (label) =>
+        [...page.container.querySelectorAll('[role=radio]')].find((r) =>
+            r.textContent.includes(label),
+        );
+    const text = () => page.container.textContent;
+    assert.equal(mode('Learner-led').getAttribute('aria-checked'), 'true');
+    assert.match(text(), /You ask whenever something is unclear\./);
+    await page.act(async () => mode('Tutor-guided').click());
+    assert.equal(mode('Tutor-guided').getAttribute('aria-checked'), 'true');
+    assert.match(text(), /gives a hint if you stay quiet/, 'the hint describes the choice');
+    assert.equal(window.localStorage.getItem('rabbithole.board-mode'), 'guided');
 });

@@ -62,6 +62,15 @@ export function savedPushToTalk() {
     }
 }
 
+// How a board runs: learner-led unless tutor-guided is chosen in Settings.
+export function savedTutorGuided() {
+    try {
+        return localStorage.getItem('rabbithole.board-mode') === 'guided';
+    } catch {
+        return false;
+    }
+}
+
 // The board's Voice languages, English first: the keys of the server's voice table (server/board/speech.mjs).
 export const VOICE_LANGUAGES = ['en', 'zh', 'nl', 'fr', 'de', 'it', 'ja', 'pt', 'es'];
 export function savedVoiceLanguage() {
@@ -84,6 +93,7 @@ export function savePreference(
         | 'discord-status'
         | 'board-speed'
         | 'push-to-talk'
+        | 'board-mode'
         | 'voice-language'
         | 'reading-font'
         | 'interface-font',

@@ -1,13 +1,17 @@
-// Reads the board's line-based stream as it arrives: each complete `> ` line is a spoken sentence and
-// every other line is an op of the sentence above it.
+// Reads the board's line-based stream as it arrives: each complete `> ` line is a spoken sentence, a `?> `
+// line is a spoken question for the learner, and every other line is an op of the sentence above it.
 export function scriptReader() {
     let rest = '';
     const read = (lines) =>
         lines
             .map((line) => line.trim())
-            .filter((line) => line && line !== '>')
+            .filter((line) => line && line !== '>' && line !== '?>')
             .map((line) =>
-                line.startsWith('> ') ? { sentence: line.slice(2).trim() } : { op: line },
+                line.startsWith('> ')
+                    ? { sentence: line.slice(2).trim() }
+                    : line.startsWith('?> ')
+                      ? { sentence: line.slice(3).trim(), question: true }
+                      : { op: line },
             );
     return {
         // The sentences and op lines completed by this chunk of text.
@@ -17,7 +21,7 @@ export function scriptReader() {
             return read(lines);
         },
         // Whether the line being written is the next sentence, which ends the ops of the one before.
-        nextSentence: () => rest.trimStart().startsWith('>'),
+        nextSentence: () => /^\??>/.test(rest.trimStart()),
         // The last line, which may end without a newline.
         end() {
             const last = rest;
