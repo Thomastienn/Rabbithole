@@ -76,7 +76,7 @@ function setup(t) {
     return { launches, board, ask, flag };
 }
 
-test('Claude board: one warm process for the whole board, resuming the conversation at low effort', async (t) => {
+test('Claude board: one warm process for the whole board, in its own session at low effort', async (t) => {
     const { launches, board, ask, flag } = setup(t);
     const b = board({ thread: 'chat-session' });
     b.open();
@@ -86,18 +86,23 @@ test('Claude board: one warm process for the whole board, resuming the conversat
     assert.equal(launches.length, 1, 'every turn reuses the process');
     const [run] = launches;
     assert.equal(flag(run, '--input-format'), 'stream-json');
-    assert.equal(flag(run, '--resume'), 'chat-session');
+    assert.equal(
+        run.args.includes('--resume'),
+        false,
+        'a resumed chat session keeps the chat prompt',
+    );
+    assert.ok(flag(run, '--session-id'));
     assert.equal(flag(run, '--model'), 'sonnet');
     assert.equal(flag(run, '--effort'), 'low');
     assert.equal(flag(run, '--tools'), '');
     assert.deepEqual(JSON.parse(flag(run, '--mcp-config')), { mcpServers: {} });
     assert.equal(run.env.CLAUDE_CODE_EFFORT_LEVEL, 'low');
     assert.equal(run.system, 'Board prompt.');
-    assert.deepEqual(run.sent, ['Why?', 'And then?'], 'a resumed session already holds the chat');
+    assert.deepEqual(run.sent, ['Why?', 'And then?'], 'no saved discussion to replay');
     assert.equal(first.streamed, '> Hello there.\n');
     assert.deepEqual(first.usage, { input: 103, output: 7, cacheRead: 40, thinking: 3 });
     assert.equal(second.status, 'completed');
-    assert.equal(b.thread, 'chat-session');
+    assert.equal(b.thread, null, 'the next chat turn replays the saved discussion');
     const image = join(mkdtempSync(join(tmpdir(), 'tt-board-image-')), 'p1.png');
     writeFileSync(image, 'png bytes');
     await b.ask('Look.', () => {}, new AbortController().signal, [
@@ -116,15 +121,19 @@ test('Claude board: one warm process for the whole board, resuming the conversat
     ]);
 });
 
-test('Claude board: a fresh conversation gets the saved chat once and keeps its new session', async (t) => {
-    const { launches, board, ask, flag } = setup(t);
-    const b = board({ thread: null, history: [{ role: 'user', text: 'What are hyphae?' }] });
+test('Claude board: it gets the saved chat once and keeps it out of the chat session', async (t) => {
+    const { launches, board, ask } = setup(t);
+    const b = board({
+        thread: 'chat-session',
+        history: [{ role: 'user', text: 'What are hyphae?' }],
+    });
     await ask(b, 'Why?');
     await ask(b, 'And then?');
     const [run] = launches;
     assert.match(run.sent[0], /What are hyphae\?[\s\S]*Why\?$/);
     assert.equal(run.sent[1], 'And then?');
-    assert.equal(b.thread, flag(run, '--session-id'), 'later chat turns resume the board session');
+    assert.equal(run.args.includes('--resume'), false);
+    assert.equal(b.thread, null, 'chat turns never resume the board prompt');
 });
 
 test('Claude board: it stops after 10 minutes idle or on close, and a dead process restarts on the next question', async (t) => {
@@ -150,7 +159,11 @@ test('Claude board: it stops after 10 minutes idle or on close, and a dead proce
     launches[1].dies = true;
     assert.equal((await ask(b, 'Why?')).status, 'failed', 'the process ended on its own');
     assert.equal((await ask(b, 'Again?')).status, 'completed');
-    assert.equal(flag(launches[2], '--resume'), 'chat-session');
+    assert.equal(
+        flag(launches[2], '--resume'),
+        flag(launches[1], '--session-id'),
+        'a restart resumes the board session',
+    );
     b.close();
     assert.equal(launches[2].child.killed, true);
 });

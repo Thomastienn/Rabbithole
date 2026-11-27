@@ -8,12 +8,16 @@ import { launchArgs } from './findCli.mjs';
 const IDLE = 600000;
 
 // One long-lived Claude Code CLI for one open board, fed one stream-json user message per learner turn.
-// It resumes the conversation's own session with the board prompt at low effort, so board turns and chat turns share history.
+// It runs its own session with the board prompt at low effort: a resumed session keeps the system prompt it was
+// created with, so resuming the chat's session would answer in chat format. The saved discussion goes in once.
 export class ClaudeBoard {
-    constructor(claude, { model, thread, system, history = [] }) {
+    constructor(claude, { model, system, history = [] }) {
         this.claude = claude;
         this.model = model;
-        this.thread = thread;
+        // The conversation's session after a board turn: none, so the next chat turn replays the saved discussion.
+        this.thread = null;
+        // This board's own session once a turn completes, resumed after an idle restart.
+        this.resumes = null;
         this.system = system;
         this.history = history;
         this.idle = IDLE;
@@ -32,8 +36,8 @@ export class ClaudeBoard {
             const system = join(this.files, 'system.md');
             writeFileSync(system, this.system, { mode: 0o600 });
             // Until a turn completes there is no session to resume; a restart starts another fresh one.
-            this.session = this.thread ?? randomUUID();
-            this.primed = !!this.thread;
+            this.session = this.resumes ?? randomUUID();
+            this.primed = !!this.resumes;
             const { CLAUDE_CODE_EFFORT_LEVEL, ...env } = claude.env();
             child = claude.launch(
                 ...launchArgs(claude.cli(), [
@@ -58,7 +62,7 @@ export class ClaudeBoard {
                     this.model,
                     '--effort',
                     'low',
-                    ...(this.thread ? ['--resume', this.thread] : ['--session-id', this.session]),
+                    ...(this.resumes ? ['--resume', this.resumes] : ['--session-id', this.session]),
                 ]),
                 // The CLI gives its environment effort precedence over --effort.
                 {
@@ -141,7 +145,7 @@ export class ClaudeBoard {
                     thinking = event.usage?.output_tokens_details?.thinking_tokens ?? thinking;
                 if (m.type !== 'result') return;
                 const u = m.usage;
-                if (!m.is_error) this.thread = started;
+                if (!m.is_error) this.resumes = started;
                 done({
                     status: m.is_error ? 'failed' : 'completed',
                     usage: u && {
