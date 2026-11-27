@@ -20,11 +20,9 @@ export function boardSession(ctx, id, socket) {
     };
     // ctx.speech makes the session's edge-tts client (server/board/speech.mjs); off in tests.
     const speech = ctx.speech?.() ?? null;
-    const sendAudio = (sentence, chunk) => {
+    const sendAudio = (id, chunk) => {
         if (socket.readyState === socket.OPEN)
-            socket.send(
-                Buffer.concat([Buffer.from([sentence.length]), Buffer.from(sentence), chunk]),
-            );
+            socket.send(Buffer.concat([Buffer.from([id.length]), Buffer.from(id), chunk]));
     };
     let process = null,
         model,

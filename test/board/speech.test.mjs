@@ -55,4 +55,24 @@ test('board speech warms one socket, streams before the clip ends, and closes on
     const disconnected = once(peer, 'close');
     controller.abort();
     await Promise.all([cancelled, disconnected]);
+
+    // The service closes idle sockets: each next sentence opens a fresh one and still streams.
+    const fresh = async () => {
+        const connected = Promise.withResolvers();
+        // Config and sentence can arrive in one read, so the peer is watched from its first frame.
+        server.once('connection', (peer) => {
+            let frames = 0;
+            peer.on('message', () => ++frames === 2 && connected.resolve(peer));
+        });
+        const spoken = client.speak('Again.', () => {});
+        const peer = await connected.promise;
+        peer.send('Path:turn.end\r\n\r\n');
+        await spoken;
+        return peer;
+    };
+    const idle = await fresh();
+    const closed = once(idle, 'close');
+    idle.close();
+    await closed;
+    await fresh();
 });
