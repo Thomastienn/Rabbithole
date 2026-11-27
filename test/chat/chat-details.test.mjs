@@ -230,7 +230,10 @@ test('a board reply left halfway shows its saved text and snapshot, no notice, a
     );
     await act(async () => button(reply, 'Copy tutor reply 1').click());
     assert.deepEqual(copied, [text]);
-    assert.ok(button(reply, 'Select passage in tutor reply 1'), 'branchable like a completed reply');
+    assert.ok(
+        button(reply, 'Select passage in tutor reply 1'),
+        'branchable like a completed reply',
+    );
 });
 
 test('the reply usage line sits behind a closed Usage button, including while the reply is still streaming, and a memory write opens the note', async (t) => {
