@@ -135,7 +135,7 @@
     width: 6px;
     height: calc(100% / var(--areas) - 6px);
     top: calc(4px + var(--scrolled) * (100% - 8px - (100% / var(--areas) - 6px)));
-    border-radius: 3px;
+    border-radius: var(--radius-full);
     background: var(--color-border-emphasized);
     pointer-events: none;
 }
