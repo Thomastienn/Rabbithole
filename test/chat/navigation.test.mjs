@@ -49,7 +49,16 @@ test('Contents lists nested conversation addresses and figures and routes each a
             active: [],
             current: {
                 id: 'root',
-                messages: [{ id: 'reply', role: 'assistant', text: 'Trade', status: 'completed' }],
+                messages: [
+                    { id: 'reply', role: 'assistant', text: 'Trade', status: 'completed' },
+                    {
+                        id: 'sketch',
+                        role: 'assistant',
+                        text: '```sketch flow\nFungus -> Plant\n```',
+                        status: 'completed',
+                    },
+                    { id: 'next', role: 'assistant', text: 'Sugar', status: 'completed' },
+                ],
                 artifacts: [
                     {
                         id: 'figure',
@@ -73,6 +82,13 @@ test('Contents lists nested conversation addresses and figures and routes each a
                         title: 'Canceled visual',
                         status: 'canceled',
                     },
+                    {
+                        id: 'second',
+                        message: 'next',
+                        kind: 'mermaid',
+                        title: 'Sugar loop',
+                        status: 'ready',
+                    },
                 ],
             },
             open: (id) => calls.push(['conversation', id]),
@@ -91,8 +107,9 @@ test('Contents lists nested conversation addresses and figures and routes each a
         '1.1.1 Could a plant go alone?',
         '1.2 What are hyphae?',
         'Fig 1 Trade loop',
+        'Fig 2 Sugar loop',
     ]);
-    assert.match(container.textContent, /4 conversations · 1 figure/);
+    assert.match(container.textContent, /4 conversations · 2 figures/);
     assert.equal(
         container.querySelector('[aria-current=location]').getAttribute('aria-label'),
         '1 How do fungi trade?',

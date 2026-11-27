@@ -3,8 +3,9 @@ import { createElement as h, Fragment, type ReactNode } from 'react';
 import { decodeString } from 'micromark-util-decode-string';
 import { Code } from '@astryxdesign/core/Code';
 import { Text, Heading } from '@astryxdesign/core/Text';
-import { parse, plainText, type MarkdownNode } from './markdownText.ts';
+import { isSketch, parse, plainText, type MarkdownNode } from './markdownText.ts';
 import CopyButton from './CopyButton.ts';
+import Sketch from './Sketch.tsx';
 import { codeTokens } from './codeTokens.ts';
 import ReplyImage, { imageUrl, type ImageSource } from './ReplyImage.tsx';
 import { inkStyle } from '../map/treeList.ts';
@@ -109,6 +110,7 @@ export function renderMarkdown(
     sources: Record<string, ImageSource> = {},
     flow = false,
     resources: Record<string, string> = {},
+    sketches: 'off' | 'streaming' | 'saved' = 'saved',
 ): ReactNode {
     let revealed = 0;
     let imageLink: string | undefined;
@@ -379,6 +381,19 @@ export function renderMarkdown(
                 });
             }
             case 'code': {
+                if (sketches !== 'off' && isSketch(n)) {
+                    if (hit(s, e)) revealed++;
+                    return h(Sketch, {
+                        ...attrs,
+                        kind: n.meta ?? '',
+                        body: n.value ?? '',
+                        fence: n.sketchClosed
+                            ? 'closed'
+                            : sketches === 'streaming'
+                              ? 'open'
+                              : 'unfinished',
+                    });
+                }
                 const lines = sourceLines(raw, n, true),
                     tokens = codeTokens(n.value!.replace(/\r\n?/g, '\n'), n.lang || 'plaintext');
                 return h(

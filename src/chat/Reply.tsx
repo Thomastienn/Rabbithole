@@ -26,6 +26,7 @@ const LAYOUT_MIN_WIDTH = 480;
 // Parsing is memoised so streaming chunks and selection state changes reuse the rendered tree.
 const Reply = memo(function Reply({
     text,
+    streaming,
     tools = [],
     reveal,
     underlines,
@@ -39,6 +40,7 @@ const Reply = memo(function Reply({
     resources = [],
 }: {
     text: string;
+    streaming?: boolean;
     tools?: ToolCall[];
     reveal?: Source;
     underlines: { start: number; end: number; child?: string }[];
@@ -148,9 +150,11 @@ const Reply = memo(function Reply({
                         imageSources(tools),
                         narrow,
                         links,
+                        streaming === undefined ? 'off' : streaming ? 'streaming' : 'saved',
                     ),
                 [
                     text,
+                    streaming,
                     reveal?.start,
                     reveal?.end,
                     reveal?.text,

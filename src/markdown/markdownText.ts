@@ -18,6 +18,8 @@ export type MarkdownNode = {
     start?: number | null;
     url?: string;
     lang?: string | null;
+    meta?: string | null;
+    sketchClosed?: boolean;
     alt?: string | null;
     identifier?: string;
     align?: ('left' | 'right' | 'center' | null)[];
@@ -151,6 +153,15 @@ const bracketMathFromMarkdown: MdastExtension = {
     },
     exit: { bracketMathText: exitMath, bracketMathDisplay: exitMath, dollarMathDisplay: exitMath },
 };
+const sketchFences: MdastExtension = {
+    enter: {
+        codeFencedFence() {
+            const code = this.stack.at(-2) as MarkdownNode | undefined;
+            // The closing fence arrives while the parser is buffering the code body.
+            if (code?.type === 'code' && code.lang === 'sketch') code.sketchClosed = true;
+        },
+    },
+};
 export const parse = (text: string) =>
     fromMarkdown(text, {
         extensions: [
@@ -165,13 +176,31 @@ export const parse = (text: string) =>
             mathFromMarkdown(),
             bracketMathFromMarkdown,
             directiveFromMarkdown(),
+            sketchFences,
         ],
     }) as MarkdownNode;
+
+export const isSketch = (node: MarkdownNode) => node.type === 'code' && node.lang === 'sketch';
+
+// The clipboard keeps reply Markdown and omits the syntax used to draw sketches.
+export function withoutSketches(raw: string) {
+    if (!raw.includes('```') && !raw.includes('~~~')) return raw;
+    let from = 0,
+        result = '';
+    const walk = (node: MarkdownNode) => {
+        if (isSketch(node)) {
+            result += raw.slice(from, node.position!.start.offset!);
+            from = node.position!.end.offset!;
+        } else node.children?.forEach(walk);
+    };
+    walk(parse(raw));
+    return result + raw.slice(from);
+}
 
 // Derived display text only. Never replace the canonical message or its offsets with this.
 export function plainText(raw: string): string {
     const walk = (n: MarkdownNode): string =>
-        n.type === 'definition'
+        n.type === 'definition' || isSketch(n)
             ? ''
             : n.type === 'break'
               ? ' '

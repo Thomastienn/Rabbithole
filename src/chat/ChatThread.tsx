@@ -8,6 +8,7 @@ import DiscussionCard from '../media/DiscussionCard';
 import VideoCard from '../media/VideoCard';
 import VisualFrame from '../media/VisualFrame';
 import CopyButton from '../markdown/CopyButton';
+import { withoutSketches } from '../markdown/markdownText';
 import { artifactsAt } from '../media/artifacts';
 import { visualsReady } from '../media/visualProgress';
 import { replyUsageLine } from './turn';
@@ -137,7 +138,7 @@ export default function ChatThread({
                         <HStack gap={2} vAlign="center">
                             {message.status === 'completed' && (
                                 <CopyButton
-                                    text={message.text}
+                                    text={withoutSketches(message.text)}
                                     label={`Copy tutor reply ${index}`}
                                     className="reply-copy"
                                 />

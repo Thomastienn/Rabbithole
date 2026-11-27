@@ -1,0 +1,75 @@
+/* Sketches (mockup Rabbithole-skt.1): no frame, fill or head band, at the reading column's width. */
+.sketch,
+.sketch-wait {
+    position: relative;
+    max-width: 640px;
+    margin: 8px 0 20px;
+}
+.reply-md > p + :is(.sketch, .sketch-wait) {
+    margin-block-start: 15px;
+}
+.sketch figcaption {
+    margin-bottom: 10px;
+    font: 600 15px/1.35 var(--rabbithole-font-reading);
+    color: var(--color-text-primary);
+}
+.sketch svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+}
+.sketch .sketch-line {
+    fill: none;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.sketch .sketch-arrow {
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.sketch circle {
+    stroke-width: 2.5;
+}
+.sketch text {
+    font: 14px var(--rabbithole-font-reading);
+    text-anchor: middle;
+}
+.sketch .sketch-note {
+    font-size: 13px;
+}
+.sketch-bars {
+    display: grid;
+    grid-template-columns: fit-content(45%) minmax(0, 360px);
+    gap: 6px 16px;
+    align-items: center;
+    margin: 0;
+    font: 14px/20px var(--rabbithole-font-reading);
+}
+.sketch-bars dd {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+}
+.sketch-bars s {
+    flex: none;
+    height: 8px;
+    min-width: 8px;
+    width: calc(var(--v) * (100% - 72px));
+    border-radius: var(--radius-full);
+}
+.sketch-bars .focus {
+    font-weight: 600;
+}
+/* Streaming: the size of a small sketch, in the skeleton tone. */
+.sketch-wait {
+    height: 96px;
+    border-radius: var(--radius-container);
+    background: var(--color-skeleton);
+    opacity: 0.6;
+}

@@ -395,6 +395,7 @@ export default function Passage({
             >
                 <Reply
                     tools={message.tools}
+                    streaming={message.status === 'streaming'}
                     text={
                         message.text ||
                         (message.status === 'streaming'
