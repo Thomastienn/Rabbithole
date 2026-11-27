@@ -67,15 +67,21 @@
     font-weight: 600;
 }
 /* Expand into visual: the visual's quiet actions box, shown on hover and keyboard focus inside the sketch. */
-.sketch-actions {
+.sketch .sketch-actions {
     top: -6px;
     display: none;
+}
+.sketch-actions button {
+    height: auto;
+    min-height: 30px;
+    padding: 0 10px;
+    font-size: 13px;
 }
 .sketch:is(:hover, :focus-within) .sketch-actions {
     display: flex;
 }
 @media (hover: none) {
-    .sketch-actions {
+    .sketch .sketch-actions {
         display: flex;
     }
 }
