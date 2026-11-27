@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import { createElement as h, useState } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { JSDOM } from 'jsdom';
-import { drawSketch } from '../../src/sketch/sketch.ts';
+import { drawSketch, sketchItemOf } from '../../src/sketch/sketch.ts';
 import { renderMarkdown } from '../../src/markdown/markdown.ts';
 import Sketch from '../../src/markdown/Sketch.tsx';
-import { previewText } from '../../src/markdown/markdownText.ts';
+import { previewText, sketchDrawnAt } from '../../src/markdown/markdownText.ts';
 import ChatThread from '../../src/chat/ChatThread.tsx';
 import { render } from '../support/render.mjs';
 import { threadProps } from '../support/thread-props.mjs';
@@ -258,14 +258,14 @@ test("a sketch's items are asked about by pointer or keyboard, and a branched it
                 .find((b) => b === document.activeElement)
                 .dispatchEvent(new window.KeyboardEvent('keydown', { key, bubbles: true })),
         );
-    assert.equal(document.activeElement, items(freeze)[1]);
-    assert.ok(freeze.querySelectorAll('[data-item]')[1].classList.contains('kf'));
+    assert.ok(document.activeElement === items(freeze)[1]);
+    assert.ok(freeze.querySelectorAll('[data-item]')[1].classList.contains('focused'));
     await act(async () =>
         document.activeElement.dispatchEvent(
             new window.KeyboardEvent('keydown', { key: 'End', bubbles: true }),
         ),
     );
-    assert.equal(document.activeElement, items(freeze)[4]);
+    assert.ok(document.activeElement === items(freeze)[4]);
     await act(async () => document.activeElement.click());
     await act(async () => items(freeze)[2].focus());
     await act(async () => items(freeze)[2].blur());
@@ -302,7 +302,7 @@ test("a sketch's items are asked about by pointer or keyboard, and a branched it
             ],
         ],
     );
-    assert.equal(asked[0].origin.current, items(freeze)[4], 'Escape returns to the item');
+    assert.ok(asked[0].origin.current === items(freeze)[4], 'Escape returns to the item');
     // The open box keeps its item outlined.
     await act(async () =>
         rerender(props({ branch: { parent: 'root', anchor: anchors[1], question: '' } })),
@@ -317,13 +317,35 @@ test("a sketch's items are asked about by pointer or keyboard, and a branched it
     assert.match(container.querySelector('.branch-form input').placeholder, /60° latitude/);
     // A branched item is marked in its line colour, read with its address, and its chip opens the branch.
     const heat = freeze.querySelectorAll('[data-item]')[2];
-    assert.ok(heat.classList.contains('mk'));
+    assert.ok(heat.classList.contains('branched'));
     assert.match(items(freeze)[2].getAttribute('aria-label'), /branch 1\.2$/);
     const chip = freeze.querySelector('[role="group"] button');
     assert.equal(chip.textContent, '1.2');
     await act(async () => chip.click());
     assert.deepEqual(opened, ['child']);
     assert.equal(speed.querySelector('[role="group"]'), null);
+    // Going back from the branch to its source lands on the item.
+    const source = {
+        messageId: 'r',
+        start: text.indexOf(flow),
+        end: text.indexOf(flow) + flow.length,
+        text: 'Freezing below 0 °C › Heat flows out',
+    };
+    await act(async () => rerender(props({ source, validSource: true })));
+    assert.ok(document.activeElement === items(freeze)[2]);
+    assert.ok(heat.classList.contains('focused'));
+});
+
+test("a sketch item branch's source is found while its sketch still draws that item", () => {
+    const block = `\`\`\`sketch flow\n${freezing}\n\`\`\``,
+        text = `Intro.\n\n${block}\n\nOutro.`,
+        at = text.indexOf(block),
+        item = (start, end, passage) => sketchItemOf(sketchDrawnAt(text, start, end), passage);
+    assert.equal(item(at, at + block.length, 'Freezing below 0 °C › Heat flows out'), 2);
+    assert.equal(item(at, at + block.length, 'Freezing below 0 °C › Not drawn'), -1);
+    assert.equal(item(at, at + block.length, 'Other title › Heat flows out'), -1);
+    assert.equal(item(at + 1, at + block.length, 'Freezing below 0 °C › Heat flows out'), -1);
+    assert.equal(item(0, 6, 'Intro.'), -1);
 });
 
 test('streamed bars and flow sketches schedule their items over half a second', async () => {

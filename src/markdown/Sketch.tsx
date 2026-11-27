@@ -10,7 +10,13 @@ import {
     type CSSProperties,
 } from 'react';
 import { HStack } from '@astryxdesign/core/Layout';
-import { drawSketch, sketchPassage, type Palette, type Sketch as Drawing } from '../sketch/sketch';
+import {
+    drawSketch,
+    sketchItemOf,
+    sketchPassage,
+    type Palette,
+    type Sketch as Drawing,
+} from '../sketch/sketch';
 import type { Anchor } from '../chat/branch';
 import { inkStyle } from '../map/treeList';
 import './sketch.css';
@@ -51,6 +57,7 @@ export default function Sketch({
     live,
     start,
     end,
+    reveal,
 }: {
     kind: string;
     body: string;
@@ -58,6 +65,8 @@ export default function Sketch({
     live: boolean;
     start: number;
     end: number;
+    // The passage of the sketch item branch whose source is being revealed here.
+    reveal?: string;
 }) {
     const sketch = useMemo(
         () => (fence === 'closed' ? drawSketch(kind, body, THEME) : undefined),
@@ -75,7 +84,15 @@ export default function Sketch({
     if (fence === 'open')
         return <div className="sketch-wait" role="status" aria-label="Drawing a sketch" />;
     if (!sketch || 'error' in sketch) return null;
-    return <SketchDrawing drawn={sketch} live={live} start={start} end={end} />;
+    return (
+        <SketchDrawing
+            drawn={sketch}
+            live={live}
+            start={start}
+            end={end}
+            revealed={sketchItemOf(sketch, reveal)}
+        />
+    );
 }
 
 function SketchDrawing({
@@ -83,11 +100,13 @@ function SketchDrawing({
     live,
     start,
     end,
+    revealed,
 }: {
     drawn: Drawing;
     live: boolean;
     start: number;
     end: number;
+    revealed: number;
 }) {
     const [build] = useState(
         () => live && !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -109,8 +128,8 @@ function SketchDrawing({
             const label = drawn.items[i]?.label,
                 branch = label === undefined ? undefined : branchOf(label);
             el.classList.toggle('open', label === openLabel);
-            el.classList.toggle('kf', i === focused);
-            el.classList.toggle('mk', !!branch);
+            el.classList.toggle('focused', i === focused);
+            el.classList.toggle('branched', !!branch);
             const ink = branch && (inkStyle(branch.ink ?? 0) as Record<string, string>)['--ink'];
             el.style.setProperty('--ink', ink || null);
         });
@@ -183,6 +202,8 @@ function SketchDrawing({
                                         buttons.current[i] = el;
                                     }}
                                     tabIndex={i === last ? 0 : -1}
+                                    // Going back to a branch's source focuses its item, as a revealed passage is.
+                                    data-reveal={i === revealed ? '' : undefined}
                                     aria-label={
                                         address ? `${item.text}, branch ${address}` : item.text
                                     }

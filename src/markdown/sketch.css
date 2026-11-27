@@ -124,18 +124,18 @@
 .sketch-bars [data-item].open {
     border-color: var(--color-text-secondary);
 }
-.sketch [data-item].mk .sketch-outline {
+.sketch [data-item].branched .sketch-outline {
     stroke: var(--ink);
     stroke-dasharray: none;
 }
-.sketch-bars [data-item].mk {
+.sketch-bars [data-item].branched {
     border-style: solid;
     border-color: var(--ink);
 }
-.sketch [data-item].kf .sketch-ring {
+.sketch [data-item].focused .sketch-ring {
     stroke: var(--rabbithole-paper);
 }
-.sketch-bars [data-item].kf {
+.sketch-bars [data-item].focused {
     outline: 2px solid var(--rabbithole-paper);
     outline-offset: 2px;
 }

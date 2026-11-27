@@ -104,7 +104,7 @@ function sourceLines(raw: string, n: MarkdownNode, code = false): Run[][] {
 // Slots (inline visuals) go before the first top-level block starting at or after their offset, else at the end.
 export function renderMarkdown(
     raw: string,
-    reveal?: Span,
+    reveal?: Span & { text?: string },
     underlines: (Span & { child?: string; address?: string; ink?: number })[] = [],
     slots: { at: number; node: ReactNode; kind?: string; side?: string | null }[] = [],
     sources: Record<string, ImageSource> = {},
@@ -389,6 +389,7 @@ export function renderMarkdown(
                         body: n.value ?? '',
                         start: s,
                         end: e,
+                        reveal: hit(s, e) ? reveal!.text : undefined,
                         live: sketches === 'streaming',
                         fence: n.sketchClosed
                             ? 'closed'

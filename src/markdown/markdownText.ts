@@ -5,6 +5,7 @@ import { math } from 'micromark-extension-math';
 import { mathFromMarkdown } from 'mdast-util-math';
 import { directive } from 'micromark-extension-directive';
 import { directiveFromMarkdown } from 'mdast-util-directive';
+import { drawSketch } from '../sketch/sketch.ts';
 import type { Construct, Code, Effects, State, Extension } from 'micromark-util-types';
 import type { CompileContext, Extension as MdastExtension, Token } from 'mdast-util-from-markdown';
 
@@ -197,6 +198,21 @@ export function sketchAt(raw: string, start: unknown, end: unknown) {
     };
     walk(parse(raw));
     return found;
+}
+
+// The sketch drawn from the closed block spanning exactly start..end of a reply, without colours.
+export function sketchDrawnAt(raw: string, start: unknown, end: unknown) {
+    const block = sketchAt(raw, start, end),
+        drawn =
+            block &&
+            drawSketch(block.kind, block.body, {
+                ground: '',
+                ink: '',
+                muted: '',
+                seam: '',
+                focus: '',
+            });
+    return drawn && !('error' in drawn) ? drawn : undefined;
 }
 
 // The clipboard keeps reply Markdown and omits the syntax used to draw sketches.
