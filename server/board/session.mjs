@@ -36,7 +36,8 @@ function strokeImage(points) {
 // then, when voiced, its speech as binary frames (one byte of id length, the id, the audio) and { type: 'audio-end', id },
 // a filler clip the same way under the id `filler` when a turn's first audio hasn't started after 1 s,
 // { type: 'stroke', item, mark } back for each pen stroke, with what it marks or null,
-// { type: 'board', items } once on open: the saved board, replayed from the op lines of every board message.
+// { type: 'board', replies: [{ caption, items }] } once on open: the saved board, each reply's items replayed
+// from its op lines with the reply's last sentence as its caption.
 export function boardSession(ctx, id, socket) {
     const { store, log } = ctx;
     const send = (event) => {
@@ -80,12 +81,23 @@ export function boardSession(ctx, id, socket) {
     };
     // The items drawn on this board so far, across its turns.
     let board;
+    // Rebuilds the board from the saved turns, and returns them as replies.
     const load = () => {
         board = boardOps();
-        store.boardOpLines(id).forEach((line) => board.read(line));
+        const replies = [];
+        for (const { role, text, lines } of store.boardReplies(id)) {
+            const items = lines.flatMap((line) => board.read(line).item ?? []);
+            // The learner's strokes join the board they were drawn on; a reply that said nothing is not a step.
+            if (role === 'user') {
+                if (!replies.length) replies.push({ caption: '', items: [] });
+                replies.at(-1).items.push(...items);
+            } else if (text.trim())
+                replies.push({ caption: text.trim().split('\n').at(-1), items });
+        }
+        return replies;
     };
-    load();
-    if (board.items().length) send({ type: 'board', items: board.items() });
+    const replies = load();
+    if (replies.length) send({ type: 'board', replies });
     const ended = Promise.withResolvers();
     // A newer board for the same conversation replaces this one; deleting it or stopping the app ends it too.
     ctx.jobs.get('board', id)?.controller.abort();

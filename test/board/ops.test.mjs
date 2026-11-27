@@ -84,6 +84,62 @@ test('board ops: a malformed op or one naming an unknown id is skipped with its 
     assert.ok(board.read('bl text "bulb" at 1460,450').item, 'a skipped id stays free');
 });
 
+test('board ops: math, highlight, pointer and erase name their items; clear moves on to a fresh area below', () => {
+    const board = boardOps();
+    const read = (line) => board.read(line).item;
+    board.read('bat box at 360,450 w=120 h=220');
+    board.read('bulb circle at 1240,450 r=70');
+    board.read('e1 dot at 560,180');
+    assert.deepEqual(read('v math "V" at 490,450 size=l look=focus'), {
+        id: 'v',
+        kind: 'math',
+        look: 'focus',
+        at: [490, 450],
+        size: 'l',
+        text: 'V',
+    });
+    assert.deepEqual(read('p1 pointer bat'), {
+        id: 'p1',
+        kind: 'pointer',
+        from: [800, 450],
+        at: [432, 450],
+    });
+    assert.deepEqual(
+        read('p2 pointer bulb').from,
+        [432, 450],
+        'it glides on from where it stopped',
+    );
+    assert.deepEqual(read('h1 highlight bulb'), {
+        id: 'h1',
+        kind: 'highlight',
+        at: [1240, 450],
+        w: 180,
+        h: 180,
+    });
+    assert.deepEqual(read('x1 erase e1 h1'), { id: 'x1', kind: 'erase', ids: ['e1', 'h1'] });
+    assert.match(board.read('p3 pointer e1').error, /unknown id e1/, 'erased items are gone');
+    assert.deepEqual(read('n1 clear'), { id: 'n1', kind: 'clear' });
+    assert.deepEqual(read('ohm math "I = \\frac{V}{R}" at 800,330').at, [800, 1230]);
+    assert.deepEqual(read('a1 arrow 680,620 -> 900,620').points, [
+        [680, 1520],
+        [900, 1520],
+    ]);
+    assert.match(
+        board.read('p4 pointer bat').error,
+        /unknown id bat/,
+        'marks stay on the area in view',
+    );
+    assert.deepEqual(
+        read('p4 pointer ohm').from,
+        [800, 1350],
+        'the pointer starts a fresh area at its centre',
+    );
+    assert.deepEqual(read('x3 erase bat').ids, ['bat'], 'erase still reaches earlier areas');
+    assert.match(board.read('m3 math "P = \\frac{V^2}{" at 800,780').error, /KaTeX parse error/);
+    for (const line of ['h2 highlight', 'h3 highlight bat bulb', 'x2 erase nope', 'p5 pointer x1'])
+        assert.ok(board.read(line).error, line);
+});
+
 test('board ops: erase removes the items it names, and a learner stroke marks what it circles or points at', () => {
     const board = boardOps();
     board.read('load box at 370,548 w=140 h=112');
@@ -124,11 +180,12 @@ test('board ops: erase removes the items it names, and a learner stroke marks wh
     assert.deepEqual(board.read('e1 erase p1 tip').item, {
         id: 'e1',
         kind: 'erase',
-        ids: ['tip', 'p1'],
+        ids: ['p1', 'tip'],
     });
     assert.deepEqual(
-        board.items().map((i) => i.id),
-        ['load', 'pivot'],
+        board.mark(loop),
+        { verb: 'circled', ids: ['pivot'] },
+        'erased items are gone',
     );
     assert.ok(board.read('e2 erase').error, 'erase needs an id');
 });
@@ -146,7 +203,7 @@ test('board ops: a stroke over a plot marks its axes, and erasing the axes takes
     ];
     assert.deepEqual(board.mark(loop), { verb: 'circled', ids: ['a1'] });
     assert.deepEqual(board.read('e1 erase a1').item.ids, ['a1', 'sq']);
-    assert.deepEqual(board.items(), []);
+    assert.equal(board.mark(loop), null);
 });
 
 test('board ops: the guard moves an overlapping or off-board item to the nearest free spot', () => {
@@ -267,6 +324,18 @@ test('board ops: to the guard a component is one item at its box, and bad childr
         ['a3 axes at 300,300 x=5..1', 'ranges are LO..HI'],
     ])
         assert.equal(board.read(line).error, cause, line);
+});
+
+test('board ops: marks name top-level items in view, and erasing a component erases what is on it', () => {
+    const board = boardOps();
+    board.read('a1 axes at 680,480 w=1080 h=680 x=0..5 y=0..32');
+    board.read('p1 plot on a1 y=x^2');
+    assert.equal(board.read('h1 highlight p1').error, 'unknown id p1');
+    assert.ok(board.read('h2 highlight a1').item);
+    assert.deepEqual(board.read('x1 erase a1').item.ids, ['a1', 'p1']);
+    board.read('b1 axes at 680,480 w=1080 h=680 x=0..5 y=0..32');
+    board.read('n1 clear');
+    assert.equal(board.read('p2 plot on b1 y=x').error, 'unknown parent b1', 'b1 is an area up');
 });
 
 test('board ops: plot math keeps precedence, unary minus and implicit products', () => {

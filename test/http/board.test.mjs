@@ -86,7 +86,9 @@ test('board: a typed question gets its sentences one at a time and saves as a le
     // Reopened, the board replays its saved op lines at once, and the tutor can still join their ids.
     board.send({ type: 'leave' });
     const again = connect();
-    assert.deepEqual((await again.next('board')).items, [...first.ops, ...second.ops]);
+    assert.deepEqual((await again.next('board')).replies, [
+        { caption: 'Tiny sacs carry new wall forward.', items: [...first.ops, ...second.ops] },
+    ]);
     again.send({ type: 'ask', text: 'And then?' });
     const joined = await again.next('sentence');
     assert.deepEqual(
@@ -255,12 +257,12 @@ test('board: pen strokes wait for the next question, which names what they mark,
         ['t1', 't2', 'p2', 'p3'],
     );
 
-    // Reopened, the strokes saved with the question show again, except the one the tutor erased.
+    // Reopened, the strokes saved with the question show again on the board they were drawn on, and the erase.
     board.send({ type: 'leave' });
     const again = connect();
     assert.deepEqual(
-        (await again.next('board')).items.map((i) => i.id),
-        ['t1', 't2', 'p2', 'p3'],
+        (await again.next('board')).replies.map((r) => r.items.map((i) => i.id)),
+        [['t1', 't2', 'p1', 'p2', 'p3'], ['e1']],
     );
 });
 
@@ -315,7 +317,7 @@ test('board: a stroke drawn after an erase that was never shown keeps its own id
     assert.equal(await strokeAndAsk('Second?'), 'p2');
     board.send({ type: 'leave' });
     assert.deepEqual(
-        (await connect().next('board')).items.map((i) => i.id),
+        (await connect().next('board')).replies.flatMap((r) => r.items.map((i) => i.id)),
         ['p1', 'p2'],
     );
 });
