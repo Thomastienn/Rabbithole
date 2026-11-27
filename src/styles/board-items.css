@@ -180,7 +180,6 @@
 }
 .board-part-text.note {
     fill: var(--color-text-secondary);
-    font-size: 28px;
 }
 /* A piece in focus is porcelain throughout, its note and shelf too. */
 .board-item.focus .board-part-text.note {
