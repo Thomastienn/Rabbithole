@@ -297,6 +297,91 @@ test('board: chat cannot start before the queued board captions finish or are st
     assert.equal(reply.text, 'One.');
 });
 
+test('board: pen strokes wait for the next question, which names what they mark, and the tutor can erase them', async (t) => {
+    const provider = boardProvider([
+        ['> Here is the pivot.\nt1 box at 560,660 w=120 h=80\nt2 text "load" at 370,450 size=s\n'],
+        ['> The pivot carries the load.\ne1 erase p1\n'],
+    ]);
+    const { env, id, connect } = await setup(t, provider);
+    const board = connect();
+    await opened(board.ws);
+    await until(() => provider.boards[0]?.opened);
+    const play = async () => {
+        const sentence = await board.next('sentence');
+        for (const phase of ['start', 'end'])
+            board.send({ type: 'progress', sentence: sentence.id, phase });
+        await board.next('state', (e) => e.state === 'idle');
+        return sentence;
+    };
+    board.send({ type: 'ask', text: 'What is a lever?' });
+    await play();
+
+    const loop = [
+        [650, 620],
+        [470, 600],
+        [480, 760],
+        [690, 740],
+        [640, 615],
+    ];
+    board.send({ type: 'stroke', points: loop });
+    const circled = await board.next('stroke');
+    assert.deepEqual(circled.mark, { verb: 'circled', ids: ['t1'] });
+    assert.deepEqual(circled.item, { id: 'p1', kind: 'stroke', points: loop });
+    board.send({
+        type: 'stroke',
+        points: [
+            [500, 380],
+            [400.4, 455],
+        ],
+    });
+    assert.deepEqual((await board.next('stroke')).mark, { verb: 'pointed at', ids: ['t2'] });
+    board.send({ type: 'stroke', points: [[1500, 100]] });
+    assert.equal((await board.next('stroke')).mark, null);
+    board.send({ type: 'stroke', points: [['x', 1]] });
+    assert.equal(provider.boards[0].asked.length, 1, 'the pen alone sends nothing');
+
+    board.send({ type: 'ask', text: 'Why here?' });
+    const sentence = await play();
+    assert.deepEqual(sentence.ops, [{ id: 'e1', kind: 'erase', ids: ['p1'] }]);
+    assert.equal(
+        provider.boards[0].asked[1],
+        'Why here?\n\npen: circled t1 · pointed at t2 · strokes p1, p2, p3',
+    );
+    const question = messages(env, id)[2];
+    assert.equal(question.text, 'Why here?', 'the learner message keeps their own words');
+
+    // Reopened, the strokes saved with the question show again, except the one the tutor erased.
+    board.send({ type: 'leave' });
+    const again = connect();
+    assert.deepEqual(
+        (await again.next('board')).items.map((i) => i.id),
+        ['t1', 't2', 'p2', 'p3'],
+    );
+});
+
+test('board: a stroke drawn after an erase that was never shown keeps its own id and comes back on reopen', async (t) => {
+    // The reply fails before its erase sentence shows, so the erase of p1 is never saved.
+    const provider = boardProvider([['> One.\n> Gone.\ne1 erase p1\n'], []], { status: 'failed' });
+    const { connect } = await setup(t, provider);
+    const board = connect();
+    await opened(board.ws);
+    await until(() => provider.boards[0]?.opened);
+    const strokeAndAsk = async (text) => {
+        board.send({ type: 'stroke', points: [[1500, 100]] });
+        const { item } = await board.next('stroke');
+        board.send({ type: 'ask', text });
+        await board.next('state', (e) => e.state === 'idle');
+        return item.id;
+    };
+    assert.equal(await strokeAndAsk('First?'), 'p1');
+    assert.equal(await strokeAndAsk('Second?'), 'p2');
+    board.send({ type: 'leave' });
+    assert.deepEqual(
+        (await connect().next('board')).items.map((i) => i.id),
+        ['p1', 'p2'],
+    );
+});
+
 test('board: leaving mid-reply stops the tutor at once and saves the reply up to the sentence shown', async (t) => {
     const provider = boardProvider([['> First idea.\n> Second idea.\n> Third idea.\n']]);
     const { env, id, logs, connect } = await setup(t, provider);
