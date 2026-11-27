@@ -1,6 +1,9 @@
+import type { Voice } from './voice';
+
 // The board player: shows the tutor's sentences one at a time, each for as long as it takes to say,
 // and draws each sentence's ops in order over that time.
-// Later tickets add audio timing, speed, pause and interruptions here.
+// A voiced sentence starts on its first audio chunk and lasts as long as its audio plays.
+// Later tickets add speed, pause and interruptions here.
 export type Phase = 'start' | 'end';
 export type Look = 'focus' | 'muted' | 'good' | 'wrong' | 'new';
 // A drawable op as the board session sends it (server/board/ops.mjs), in board pixels.
@@ -50,8 +53,10 @@ export function labelRows(ops: Op[]) {
     });
     return rows;
 }
-export type Sentence = { id: string; text: string; ops?: Op[] };
+// voiced: the sentence's audio follows on the socket, so it waits for its first chunk or its audio end.
+export type Sentence = { id: string; text: string; ops?: Op[]; voiced?: boolean };
 type Clock = {
+    now: () => number;
     setTimeout: (run: () => void, ms: number) => unknown;
     clearTimeout: (timer: unknown) => void;
 };
@@ -63,44 +68,125 @@ export function boardPlayer(
     show: (sentence: Sentence) => void,
     draw: (op: Op, ms: number) => void,
     report: (sentence: Sentence, phase: Phase) => void,
+    voice?: Voice,
     clock: Clock = {
+        now: () => performance.now(),
         setTimeout: (run, ms) => setTimeout(run, ms),
         clearTimeout: (timer) => clearTimeout(timer as number),
     },
 ) {
     let queue: Sentence[] = [],
         current: Sentence | undefined,
-        timers: unknown[] = [];
+        timers: unknown[] = [],
+        ending: unknown,
+        playing: string | undefined;
+    const pending = new Map<string, 'waiting' | 'chunked' | 'silent'>();
     const next = () => {
-        current = queue.shift();
-        if (!current) return;
-        const sentence = current;
-        const ms = (sentence.text.length / CHARS_PER_SECOND) * 1000;
+        const sentence = queue[0];
+        if (current || !sentence) return;
+        const audio = pending.get(sentence.id);
+        if (audio === 'waiting') return;
+        queue.shift();
+        pending.delete(sentence.id);
+        current = sentence;
+        const started = clock.now();
         const ops = sentence.ops ?? [];
+        const entries: { start: number; end: number }[] = [];
+        // Retiming updates items already on the board as well as scheduling the rest.
+        const space = (ms: number, audioElapsed?: number) => {
+            timers.forEach(clock.clearTimeout);
+            timers = [];
+            const now = clock.now();
+            const elapsed = audioElapsed ?? now - started;
+            const share = ms / (ops.length || 1);
+            for (const [index, op] of ops.entries()) {
+                const endAt = now - elapsed + (index + 1) * share;
+                const entry = entries[index];
+                if (entry) {
+                    const end = audioElapsed === undefined ? entry.start + share : endAt;
+                    if (entry.end === end || (entry.end <= now && end <= now)) continue;
+                    entry.end = end;
+                    draw(op, Math.max(0, end - entry.start));
+                    continue;
+                }
+                const enter = () => {
+                    const start = clock.now();
+                    const end = audioElapsed === undefined ? start + share : endAt;
+                    entries[index] = { start, end };
+                    draw(op, Math.max(0, end - start));
+                };
+                const wait = index * share - elapsed;
+                if (wait <= 0) enter();
+                else timers.push(clock.setTimeout(enter, wait));
+            }
+        };
+        const end = () => {
+            if (current !== sentence) return;
+            timers.forEach(clock.clearTimeout);
+            clock.clearTimeout(ending);
+            current = undefined;
+            playing = undefined;
+            report(sentence, 'end');
+            next();
+        };
+        const estimate = (sentence.text.length / CHARS_PER_SECOND) * 1000;
+        const byEstimate = () =>
+            (ending = clock.setTimeout(end, Math.max(0, estimate - (clock.now() - started))));
         show(sentence);
         report(sentence, 'start');
-        // Each op takes an equal share of its sentence, in order.
-        const share = ms / (ops.length || 1);
-        timers = ops.map((op, i) =>
-            i ? clock.setTimeout(() => draw(op, share), i * share) : draw(op, share),
-        );
-        timers.push(
-            clock.setTimeout(() => {
-                report(sentence, 'end');
-                next();
-            }, ms),
-        );
+        space(estimate);
+        if (voice && audio === 'chunked') {
+            playing = sentence.id;
+            voice.play(sentence.id, {
+                duration: (ms, elapsed) => current === sentence && space(ms, elapsed),
+                ended: () => {
+                    if (current !== sentence) return;
+                    space(0, 0);
+                    end();
+                },
+                failed: () => {
+                    if (current !== sentence) return;
+                    playing = undefined;
+                    space(estimate);
+                    byEstimate();
+                },
+            });
+        } else byEstimate();
     };
     return {
         add(sentence: Sentence) {
+            if (sentence.voiced) pending.set(sentence.id, 'waiting');
             queue.push(sentence);
-            if (!current) next();
+            next();
+        },
+        // The sentence's speech streams in chunks; its first chunk starts it.
+        chunk(id: string, bytes: Uint8Array) {
+            const audio = pending.get(id);
+            if (playing !== id && (!audio || audio === 'silent')) return;
+            voice?.chunk(id, bytes);
+            if (audio === 'waiting') {
+                pending.set(id, 'chunked');
+                next();
+            }
+        },
+        // The sentence's speech is complete; with no chunk at all it plays by its estimate.
+        audioEnd(id: string) {
+            const audio = pending.get(id);
+            if (playing === id || audio === 'chunked') voice?.end(id);
+            if (audio === 'waiting') {
+                pending.set(id, 'silent');
+                next();
+            }
         },
         // Drops what has not started; the sentence on show keeps its caption and drawn items stay.
         stop() {
             timers.forEach(clock.clearTimeout);
+            clock.clearTimeout(ending);
+            voice?.stop();
             queue = [];
             current = undefined;
+            playing = undefined;
+            pending.clear();
         },
     };
 }

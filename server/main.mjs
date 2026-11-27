@@ -17,6 +17,7 @@ import { searxngDownload } from './searxng.mjs';
 import { pythonTool } from './tools/python.mjs';
 import { downloadManager } from './downloads.mjs';
 import { videoTools } from './media/video-tools.mjs';
+import { edgeSpeech } from './board/speech.mjs';
 
 process.umask(0o077);
 const dir = resolve(process.env.RABBITHOLE_DATA_DIR ?? dataDir());
@@ -81,6 +82,7 @@ try {
         searxng: searxng.status,
         python: pythonTool({ dir }),
         videoEmbed: embed,
+        speech: () => edgeSpeech(),
         pieceSnapshot: sandboxSnapshot,
         downloads,
     });

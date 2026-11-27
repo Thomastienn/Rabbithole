@@ -30,6 +30,12 @@ class FakeSocket {
     server(message) {
         this.onmessage?.({ data: JSON.stringify(message) });
     }
+    // A speech frame as the board session sends it: one byte of id length, the id, then the audio.
+    audio(id, bytes) {
+        this.onmessage?.({
+            data: new Uint8Array([id.length, ...Buffer.from(id), ...bytes]).buffer,
+        });
+    }
 }
 
 async function mount(t, messages = []) {
@@ -203,6 +209,24 @@ test('board: disconnecting holds the last caption and keeps a typed draft', asyn
     assert.equal(board.q('.board-caption.muted').textContent, 'The visible caption.');
     assert.ok(button(board.container, 'Send').disabled);
     assert.equal(board.q('[contenteditable=true]').textContent, 'Keep this draft');
+});
+
+test('board: a voiced sentence waits for its first speech chunk before it shows', async (t) => {
+    const board = await mount(t);
+    await board.type('Why?');
+    await board.act(async () => button(board.container, 'Send').click());
+    await board.act(async () => {
+        board.socket.server({ type: 'state', state: 'speaking' });
+        board.socket.server({ type: 'sentence', id: '12', text: 'Spoken aloud.', voiced: true });
+    });
+    assert.equal(board.q('.board-caption').textContent, 'Why?', 'silent until its speech arrives');
+    await board.act(async () => board.socket.audio('12', [1, 2, 3]));
+    assert.equal(board.q('.board-caption').textContent, 'Spoken aloud.');
+    assert.deepEqual(board.socket.sent.at(-1), {
+        type: 'progress',
+        sentence: '12',
+        phase: 'start',
+    });
 });
 
 test('board: the pen draws a stroke that waits for the question, and an erase op fades it out', async (t) => {
