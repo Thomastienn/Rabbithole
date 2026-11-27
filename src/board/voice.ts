@@ -9,16 +9,21 @@ export type Voice = {
         id: string,
         on: { duration(ms: number, elapsed: number): void; ended(): void; failed(): void },
     ): void;
+    // The learner's speed applies to the sentence playing and those after it.
+    speed(rate: number): void;
+    pause(on: boolean): void;
     stop(): void;
 };
 
-// Speech plays at the default 1.5×, the speed the caption estimate assumes.
-const RATE = 1.5;
+// Board time runs at the default 1.5×, the speed the caption estimate assumes.
+export const DEFAULT_SPEED = 1.5;
 
 export function streamedVoice(): Voice {
     type Clip = { chunks: Uint8Array[]; ended: boolean; feed?: () => void };
     const clips = new Map<string, Clip>();
     let release = () => {};
+    let rate = DEFAULT_SPEED,
+        current: { audio: HTMLAudioElement; start: () => void } | undefined;
     const clip = (id: string) => {
         let c = clips.get(id);
         if (!c) clips.set(id, (c = { chunks: [], ended: false }));
@@ -55,6 +60,7 @@ export function streamedVoice(): Voice {
                 done = true;
                 c.feed = undefined;
                 clips.delete(id);
+                current = undefined;
                 audio.pause();
                 audio.removeAttribute('src');
                 URL.revokeObjectURL(url);
@@ -64,6 +70,11 @@ export function streamedVoice(): Voice {
                 release();
                 on.failed();
             };
+            // Pausing before playback begins rejects play() with AbortError; resuming plays it afresh.
+            const start = () =>
+                audio.play().catch((e: unknown) => {
+                    if ((e as Error)?.name !== 'AbortError') fail();
+                });
             source.addEventListener('sourceopen', () => {
                 if (done) return;
                 let buffer: SourceBuffer;
@@ -91,13 +102,18 @@ export function streamedVoice(): Voice {
                     } catch {
                         return fail();
                     }
-                    on.duration((source.duration * 1000) / RATE, (audio.currentTime * 1000) / RATE);
+                    on.duration(
+                        (source.duration * 1000) / DEFAULT_SPEED,
+                        (audio.currentTime * 1000) / DEFAULT_SPEED,
+                    );
                 };
                 buffer.addEventListener('updateend', () => c.feed?.());
                 c.feed();
             });
-            audio.defaultPlaybackRate = RATE;
+            audio.defaultPlaybackRate = rate;
+            audio.playbackRate = rate;
             audio.preservesPitch = true;
+            current = { audio, start };
             audio.addEventListener('ended', () => {
                 if (done) return;
                 release();
@@ -105,7 +121,16 @@ export function streamedVoice(): Voice {
             });
             audio.addEventListener('error', fail);
             audio.src = url;
-            audio.play().catch(fail);
+            start();
+        },
+        speed(r) {
+            rate = r;
+            if (current) current.audio.playbackRate = r;
+        },
+        pause(on) {
+            if (!current) return;
+            if (on) current.audio.pause();
+            else current.start();
         },
         stop() {
             release();

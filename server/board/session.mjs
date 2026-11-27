@@ -34,6 +34,7 @@ function strokeImage(points) {
 // Down: { type: 'state', state: 'idle' | 'thinking' | 'speaking' }, { type: 'notice', notice },
 // { type: 'sentence', id, text, ops, voiced } with the drawable ops written under it (server/board/ops.mjs),
 // then, when voiced, its speech as binary frames (one byte of id length, the id, the audio) and { type: 'audio-end', id },
+// a filler clip the same way under the id `filler` when a turn's first audio hasn't started after 1 s,
 // { type: 'stroke', item, mark } back for each pen stroke, with what it marks or null,
 // { type: 'board', items } once on open: the saved board, replayed from the op lines of every board message.
 export function boardSession(ctx, id, socket) {
@@ -56,7 +57,27 @@ export function boardSession(ctx, id, socket) {
         // The learner's strokes since the last question, as op lines and what each marks; they go with the next one.
         pending = [],
         // The last pen id handed out; never reused in a session, since an erase may be applied but not saved.
-        pen = 0;
+        pen = 0,
+        // The filler played last, so the next turn's filler differs.
+        lastFiller = -1;
+    // Filler clips load as the board opens, so the first slow turn has them ready.
+    const fillers = speech && ctx.fillers ? ctx.fillers() : null;
+    const clock = ctx.boardClock;
+    // The turn's first audio has started (or its first sentence has none): no filler from now on.
+    const heard = (current) => {
+        current.heard = true;
+        clock.clearTimeout(current.filler);
+    };
+    // A filler never repeats the last one and is never part of the reply.
+    const filler = async (current) => {
+        const clips = await fillers.catch(() => []);
+        if (current.heard || current.done) return;
+        const choices = clips.map((_, i) => i).filter((i) => i !== lastFiller);
+        if (!choices.length) return;
+        lastFiller = choices[Math.floor(Math.random() * choices.length)];
+        sendAudio('filler', clips[lastFiller]);
+        send({ type: 'audio-end', id: 'filler' });
+    };
     // The items drawn on this board so far, across its turns.
     const board = boardOps();
     store.boardOpLines(id).forEach((line) => board.read(line));
@@ -139,6 +160,7 @@ export function boardSession(ctx, id, socket) {
     const finish = (current, status) => {
         if (current.done) return;
         current.done = true;
+        heard(current);
         if (status === 'failed') current.job.controller.abort();
         const stopped = status === 'interrupted' ? (ctx.stopping ? 'shutdown' : 'learner') : null;
         save(current, status, stopped);
@@ -343,6 +365,7 @@ export function boardSession(ctx, id, socket) {
         };
         turn = current;
         speech?.warm();
+        if (fillers) current.filler = clock.setTimeout(() => filler(current), 1000);
         send({ type: 'state', state: 'thinking' });
         current.job = ctx.jobs.start(
             'reply',
@@ -366,20 +389,22 @@ export function boardSession(ctx, id, socket) {
         current.voiced++;
         current.speaking = true;
         const signal = current.job.controller.signal;
-        let heard = false;
+        let spoke = false;
         const say = () =>
             speech.speak(
                 sentence.text,
                 (chunk) => {
-                    heard = true;
-                    if (!current.done) sendAudio(sentence.id, chunk);
+                    spoke = true;
+                    if (current.done) return;
+                    heard(current);
+                    sendAudio(sentence.id, chunk);
                 },
                 signal,
             );
         (current.silent
             ? Promise.resolve()
             : say().catch((error) => {
-                  if (heard || signal.aborted) throw error;
+                  if (spoke || signal.aborted) throw error;
                   return say();
               })
         )
@@ -391,13 +416,14 @@ export function boardSession(ctx, id, socket) {
                         cause: errorCause(error, [sentence.text]),
                     }),
                 );
-                if (heard) return;
+                if (spoke) return;
                 current.silent = true;
                 send({ type: 'notice', notice: VOICE_UNAVAILABLE });
             })
             .finally(() => {
                 current.speaking = false;
                 if (current.done) return;
+                heard(current);
                 send({ type: 'audio-end', id: sentence.id });
                 speak(current);
             });
