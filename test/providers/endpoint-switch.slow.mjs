@@ -254,9 +254,20 @@ test('all six provider switches preserve root and nested history/context, inheri
                     assert.equal(inherited.provider, target);
                     assert.equal(inherited.model, model[target]);
                 }
+                const nestedNow = await env.get(`/api/trees/${nested.id}`);
                 assert.deepEqual(
                     await env.get(`/api/trees/${child.id}`),
-                    fixedChild,
+                    {
+                        ...fixedChild,
+                        // The branch preview names the child's current model.
+                        branchPreviews: {
+                            [nested.id]: {
+                                ...fixedChild.branchPreviews[nested.id],
+                                provider: nestedNow.provider,
+                                model: nestedNow.model,
+                            },
+                        },
+                    },
                     'switching never changes a separate parent/child',
                 );
                 if (id === root.id)
