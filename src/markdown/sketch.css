@@ -3,7 +3,10 @@
 .sketch-wait {
     position: relative;
     max-width: 640px;
-    margin-block-end: 20px;
+    margin: 8px 0 20px;
+}
+.reply-md > p + :is(.sketch, .sketch-wait) {
+    margin-block-start: 15px;
 }
 .sketch figcaption {
     margin-bottom: 10px;

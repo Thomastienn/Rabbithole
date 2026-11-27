@@ -1,11 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createElement as h } from 'react';
+import { createElement as h, useState } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { JSDOM } from 'jsdom';
 import { drawSketch } from '../../src/sketch/sketch.ts';
 import { renderMarkdown } from '../../src/markdown/markdown.ts';
+import { previewText } from '../../src/markdown/markdownText.ts';
+import ChatThread from '../../src/chat/ChatThread.tsx';
 import { render } from '../support/render.mjs';
+import { threadProps } from '../support/thread-props.mjs';
+import { ui } from '../support/ui.mjs';
 
 const dark = {
     ground: '#101010',
@@ -68,15 +72,23 @@ test('a bars sketch keeps each unit, marks the focus and draws a zero', () => {
             ['North Pole', false, 'North Pole, 0 m/s'],
         ],
     );
+    const bars = page(`\`\`\`sketch bars\n${speeds}\n\`\`\``);
+    const zero = [...bars.querySelectorAll('dd')].find((row) => row.textContent === '0 m/s');
+    assert.equal(zero.style.getPropertyValue('--v'), '0');
+    assert.ok(zero.querySelector('s'));
 });
 
 test('a sketch it cannot draw names the reason', () => {
     for (const [kind, body, reason] of [
         ['venn-ish', 'A -> B', /unknown kind "venn-ish"/],
+        ['constructor', 'A -> B', /unknown kind/],
         ['flow', 'title: Only a title\n\n', /empty body/],
         ['flow', 'A -> B\nJust words', /line 2 "Just words"/],
         ['bars', 'Pressure push: strong', /line 1 "Pressure push: strong" has no number/],
         ['bars', 'Loss: -3 kg', /below zero/],
+        ['bars', 'Mass: 1.2.3 kg', /has no number/],
+        ['bars', 'Mass: 1e999 kg', /out of range/],
+        ['bars', 'Row: 1\n'.repeat(9), /more than eight items/],
     ])
         assert.match(drawSketch(kind, body, dark).error, reason);
 });
@@ -103,22 +115,57 @@ test('a reply draws a sketch block as a named figure with no code, copy button o
     const doc = page(`Before.\n\n\`\`\`sketch flow\n${freezing}\n\`\`\`\n\nAfter.`),
         figure = doc.querySelector('figure.sketch');
     assert.equal(figure.getAttribute('aria-label'), 'Sketch: Freezing below 0 °C');
-    assert.equal(figure.querySelectorAll('.sr-only li').length, 5);
+    assert.deepEqual(
+        [...figure.querySelectorAll('.sr-only li')].map((item) => item.textContent),
+        drawSketch('flow', freezing, dark).items.map((item) => item.text),
+    );
     assert.equal(doc.querySelector('pre, button'), null);
     assert.ok(!doc.body.textContent.includes('->'));
 });
 
-test('a sketch fence still streaming shows the placeholder, then the sketch once it closes', () => {
-    const open = page(`Intro\n\n\`\`\`sketch bars\n${speeds}\n`);
-    assert.equal(
-        open.querySelector('[role="status"]').getAttribute('aria-label'),
-        'Drawing a sketch',
-    );
-    assert.equal(open.querySelector('figure, pre'), null);
-    assert.ok(!open.body.textContent.includes('465'));
-    const closed = page(`Intro\n\n\`\`\`sketch bars\n${speeds}\n\`\`\``);
-    assert.equal(closed.querySelector('[role="status"]'), null);
-    assert.equal(closed.querySelectorAll('figure.sketch .sr-only li').length, 3);
+test('only tutor sketches draw, waiting on a real closing fence while the reply streams', async (t) => {
+    const intro = 'Intro';
+    const open = `${intro}\n\n\`\`\`sketch bars\n${speeds}\n`;
+    const closed = `${open}\`\`\``.replaceAll('\n', '\r');
+    const learnerCode = '```sketch flow\nA -> B\n```';
+    let update;
+    function Fixture() {
+        const [reply, set] = useState({ text: `${open}> \`\`\``, status: 'streaming' });
+        update = set;
+        return h(
+            ChatThread,
+            threadProps({
+                tree: {
+                    id: 'root',
+                    messages: [
+                        { id: 'q', role: 'user', status: 'completed', text: learnerCode },
+                        { id: 'r', role: 'assistant', ...reply },
+                    ],
+                },
+                active: reply.status === 'streaming',
+            }),
+        );
+    }
+    const copied = [];
+    const { container, act, cleanup } = await render(h(Fixture), (window) => {
+        ui(window);
+        Object.defineProperty(window.navigator, 'clipboard', {
+            value: { writeText: async (text) => void copied.push(text) },
+        });
+    });
+    t.after(cleanup);
+    const reply = () => container.querySelector('[data-chat-message="r"]');
+    assert.equal(container.querySelector('[data-chat-message="q"] pre').textContent, 'A -> B');
+    assert.ok(reply().querySelector('.sketch-wait[role="status"]').getAttribute('aria-label'));
+    assert.equal(reply().querySelector('figure, pre'), null);
+    assert.ok(!reply().textContent.includes('465'));
+    await act(async () => update({ text: closed, status: 'streaming' }));
+    assert.equal(reply().querySelector('.sketch-wait'), null);
+    assert.ok(reply().querySelector('figure.sketch').textContent.includes('465 m/s'));
+    await act(async () => update({ text: closed, status: 'completed' }));
+    await act(async () => reply().querySelector('.reply-copy').click());
+    assert.equal(copied[0].trimEnd(), intro);
+    assert.equal(previewText(closed, 'assistant'), intro);
 });
 
 test('a broken sketch shows nothing from its source and is logged with its kind and reason', async (t) => {
@@ -130,12 +177,20 @@ test('a broken sketch shows nothing from its source and is logged with its kind 
         h(
             'div',
             null,
-            renderMarkdown('Before.\n\n```sketch bars\nPressure push: strong\n```\n\nAfter.'),
+            renderMarkdown(
+                'Before.\n\n```sketch bars\nPressure push: strong\n```\n\nAfter.\n\n```sketch flow\nA -> B',
+            ),
         ),
     );
     t.after(cleanup);
     assert.equal(container.textContent, 'Before.After.');
+    assert.equal(container.querySelector('.sketch-wait'), null);
     assert.deepEqual(warned, [
         'Sketch hidden (bars): line 1 "Pressure push: strong" has no number',
+        'Sketch hidden (flow): unclosed fence',
     ]);
+    assert.equal(
+        previewText('Before.\n\n```sketch bars\nPressure push: strong', 'assistant'),
+        'Before.',
+    );
 });

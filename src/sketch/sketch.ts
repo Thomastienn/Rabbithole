@@ -21,14 +21,15 @@ export function drawSketch(
     body: string,
     palette: Palette,
 ): Sketch | { error: string } {
-    const draw = KINDS[kind.trim().toLowerCase() as keyof typeof KINDS];
+    const draw = KINDS.get(kind.trim().toLowerCase());
     if (!draw) return { error: `unknown kind "${kind.trim()}"` };
     const lines = body
-        .split(/\r?\n/)
+        .split(/\r\n?|\n/)
         .map((text, i) => ({ text: text.trim(), at: i + 1 }))
         .filter((l) => l.text);
     const title = lines[0] && /^title\s*:/i.test(lines[0].text) ? lines.shift()! : undefined;
     if (!lines.length) return { error: 'empty body' };
+    if (lines.length > 8) return { error: 'more than eight items' };
     const drawing = draw(lines, palette);
     return 'error' in drawing
         ? drawing
@@ -71,6 +72,7 @@ function flow(lines: Line[], p: Palette): Drawing {
         if (colon >= 0) steps[steps.length - 1] = last.slice(0, colon);
         if (steps.length < 2 || steps.some((s) => !plain(s)))
             return { error: `${quoted(line)} is not A -> B` };
+        if (edges.length + steps.length - 1 > 8) return { error: 'more than eight steps' };
         for (let i = 0; i + 1 < steps.length; i++)
             edges.push({
                 a: node(steps[i]),
@@ -101,7 +103,8 @@ function flow(lines: Line[], p: Palette): Drawing {
         row.set(n, parent && row.has(parent.a) ? row.get(parent.a)! : rows++);
     }
     const column = WIDTH / (Math.max(...rank.values()) + 1),
-        top = 24 + (edges.some((e) => e.label && row.get(e.b) === 0) ? 16 : 0),
+        notesAbove = edges.some((e) => e.label && row.get(e.b) === 0),
+        top = notesAbove ? 40 : 24,
         x = (n: string) => column * (rank.get(n)! + 0.5),
         y = (n: string) => top + ROW * row.get(n)!;
     // Each edge turns only at 45 or 90 degrees, then runs straight along its target's row.
@@ -129,7 +132,9 @@ function flow(lines: Line[], p: Palette): Drawing {
                 way > 0
                     ? Math.max(...into.map((r) => r.from))
                     : Math.min(...into.map((r) => r.from)),
-            tip = (from + tx) / 2 + 2 * way;
+            // Centre a short fork approach and give a chevron after a rejoin more room past the bend.
+            offset = into.length > 1 ? 4 : from === x(into[0].e.a) ? 2 : 0,
+            tip = (from + tx) / 2 + offset * way;
         chevrons.add(`M${tip - 5 * way} ${y(n) - 5}L${tip} ${y(n)}L${tip - 5 * way} ${y(n) + 5}`);
     }
     let bottom = 0;
@@ -137,11 +142,12 @@ function flow(lines: Line[], p: Palette): Drawing {
         `<text${note ? ' class="sketch-note"' : ''} x="${tx}" y="${ty}" style="${style}">${esc(words)}</text>`;
     const labels = names.flatMap((n) =>
         wrap(n, column - 24).map((l, i) => {
-            bottom = Math.max(bottom, y(n) + 26 + LINE * i);
+            const baseline = y(n) + (notesAbove ? 28 : 26) + LINE * i;
+            bottom = Math.max(bottom, baseline);
             const f = focus.has(n);
             return text(
                 x(n),
-                y(n) + 26 + LINE * i,
+                baseline,
                 l,
                 `fill:${f ? p.focus : p.ink}${f ? ';font-weight:600' : ''}`,
             );
@@ -158,7 +164,7 @@ function flow(lines: Line[], p: Palette): Drawing {
             : `<circle cx="${x(n)}" cy="${y(n)}" r="6" style="fill:${p.ground};stroke:${p.muted}"/>`,
     );
     const markup =
-        `<svg class="sketch-flow" viewBox="0 0 ${WIDTH} ${bottom + 10}">` +
+        `<svg class="sketch-flow" viewBox="0 0 ${WIDTH} ${bottom + (notesAbove ? 10 : 8)}">` +
         `<path class="sketch-line" style="stroke:${p.seam}" d="${runs.map((r) => r.d).join('')}"/>` +
         `<path class="sketch-arrow" style="stroke:${p.muted}" d="${[...chevrons].join('')}"/>` +
         arrowLabels.join('') +
@@ -189,10 +195,14 @@ function bars(lines: Line[], p: Palette): Drawing {
         const colon = line.text.lastIndexOf(':'),
             label = plain(line.text.slice(0, Math.max(colon, 0))),
             value = plain(line.text.slice(colon + 1)),
-            number = /^-?(?:\d[\d,]*)?\.?\d+/.exec(value)?.[0];
+            number =
+                /^-?(?:(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?(?![\d.,])/i.exec(
+                    value,
+                )?.[0];
         if (colon < 1 || !label) return { error: `${quoted(line)} is not label: number` };
         if (number === undefined) return { error: `${quoted(line)} has no number` };
-        const n = parseFloat(number.replace(/,/g, ''));
+        const n = Number(number.replace(/,/g, ''));
+        if (!Number.isFinite(n)) return { error: `${quoted(line)} is out of range` };
         if (n < 0) return { error: `${quoted(line)} is below zero` };
         rows.push({ label, value, n, focus: isFocus(line.text) });
     }
@@ -218,4 +228,7 @@ function bars(lines: Line[], p: Palette): Drawing {
     return { items, markup };
 }
 
-const KINDS = { flow, bars };
+const KINDS = new Map([
+    ['flow', flow],
+    ['bars', bars],
+]);

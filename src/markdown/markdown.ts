@@ -3,7 +3,7 @@ import { createElement as h, Fragment, type ReactNode } from 'react';
 import { decodeString } from 'micromark-util-decode-string';
 import { Code } from '@astryxdesign/core/Code';
 import { Text, Heading } from '@astryxdesign/core/Text';
-import { parse, plainText, type MarkdownNode } from './markdownText.ts';
+import { isSketch, parse, plainText, type MarkdownNode } from './markdownText.ts';
 import CopyButton from './CopyButton.ts';
 import Sketch from './Sketch.tsx';
 import { codeTokens } from './codeTokens.ts';
@@ -110,6 +110,7 @@ export function renderMarkdown(
     sources: Record<string, ImageSource> = {},
     flow = false,
     resources: Record<string, string> = {},
+    sketches: 'off' | 'streaming' | 'saved' = 'saved',
 ): ReactNode {
     let revealed = 0;
     let imageLink: string | undefined;
@@ -380,19 +381,17 @@ export function renderMarkdown(
                 });
             }
             case 'code': {
-                if (n.lang === 'sketch') {
-                    // Never its source, even under a saved reveal; an unclosed fence is still streaming.
-                    // shortcut: a finished reply whose sketch fence never closed keeps its placeholder; close it on final if one appears.
+                if (sketches !== 'off' && isSketch(n)) {
                     if (hit(s, e)) revealed++;
-                    const fence = /^(`{3,}|~{3,})/.exec(raw.slice(s, e))![1],
-                        last = raw.slice(s, e).split(/\r?\n/).slice(1).at(-1) ?? '';
                     return h(Sketch, {
                         ...attrs,
                         kind: n.meta ?? '',
                         body: n.value ?? '',
-                        open: !new RegExp(`^[\\s>]*\\${fence[0]}{${fence.length},}\\s*$`).test(
-                            last,
-                        ),
+                        fence: n.sketchClosed
+                            ? 'closed'
+                            : sketches === 'streaming'
+                              ? 'open'
+                              : 'unfinished',
                     });
                 }
                 const lines = sourceLines(raw, n, true),

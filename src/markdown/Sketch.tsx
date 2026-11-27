@@ -15,21 +15,27 @@ const THEME: Palette = {
 export default function Sketch({
     kind,
     body,
-    open,
+    fence,
 }: {
     kind: string;
     body: string;
-    open: boolean;
+    fence: 'open' | 'closed' | 'unfinished';
 }) {
     const sketch = useMemo(
-        () => (open ? undefined : drawSketch(kind, body, THEME)),
-        [kind, body, open],
+        () => (fence === 'closed' ? drawSketch(kind, body, THEME) : undefined),
+        [kind, body, fence],
     );
-    const error = sketch && 'error' in sketch ? sketch.error : undefined;
+    const error =
+        fence === 'unfinished'
+            ? 'unclosed fence'
+            : sketch && 'error' in sketch
+              ? sketch.error
+              : undefined;
     useEffect(() => {
         if (error) console.warn(`Sketch hidden (${kind.trim()}): ${error}`);
     }, [kind, error]);
-    if (open) return <div className="sketch-wait" role="status" aria-label="Drawing a sketch" />;
+    if (fence === 'open')
+        return <div className="sketch-wait" role="status" aria-label="Drawing a sketch" />;
     if (!sketch || 'error' in sketch) return null;
     return (
         <figure className="sketch" aria-label={sketch.title ? `Sketch: ${sketch.title}` : 'Sketch'}>
