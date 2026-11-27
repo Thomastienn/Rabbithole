@@ -123,14 +123,18 @@ export default function ChatThread({
             preview: p.preview,
             model: modelLabel({ ...p, effort: null }),
         };
+    // A board reply left halfway is what was said, so it branches like a completed one, as in the board's rail.
+    const partial = (m: Tree['messages'][number]) =>
+        !overview && !!m.board && m.status === 'interrupted' && !!m.text;
     return tree.messages.map((message) => {
         const suggestions = tree.suggestions?.find((s) => s.message === message.id),
             index =
                 tree.messages
-                    .filter((m) => m.role === 'assistant' && m.status === 'completed')
+                    .filter(
+                        (m) => m.role === 'assistant' && (m.status === 'completed' || partial(m)),
+                    )
                     .indexOf(message) + 1,
-            partialBoardReply =
-                !overview && message.board && message.status === 'interrupted' && !!message.text,
+            partialBoardReply = partial(message),
             copyable = message.status === 'completed' || partialBoardReply,
             visualCount =
                 message.role === 'assistant' &&
@@ -227,7 +231,9 @@ export default function ChatThread({
                         }}
                     >
                         <Passage
-                            message={message}
+                            message={
+                                partialBoardReply ? { ...message, status: 'completed' } : message
+                            }
                             addresses={addresses}
                             resources={tree.resources}
                             suggestions={suggestions}

@@ -195,7 +195,7 @@ test('chat details show per-reply media and task totals, including running and u
     assert.doesNotMatch(container.textContent, /\$|price/i);
 });
 
-test('a board reply left halfway shows its saved text and snapshot, no notice, and can be copied', async (t) => {
+test('a board reply left halfway shows its saved text and snapshot, no notice, and can be copied and branched', async (t) => {
     const { default: ChatThread } = await import('../../src/chat/ChatThread.tsx');
     const text = 'Pressure pushes the soft tip outward.';
     const message = {
@@ -228,8 +228,9 @@ test('a board reply left halfway shows its saved text and snapshot, no notice, a
         reply.querySelector('[role=img]').getAttribute('aria-label'),
         /soft tip, pressure$/,
     );
-    await act(async () => button(reply, 'Copy tutor reply').click());
+    await act(async () => button(reply, 'Copy tutor reply 1').click());
     assert.deepEqual(copied, [text]);
+    assert.ok(button(reply, 'Select passage in tutor reply 1'), 'branchable like a completed reply');
 });
 
 test('the reply usage line sits behind a closed Usage button, including while the reply is still streaming, and a memory write opens the note', async (t) => {
