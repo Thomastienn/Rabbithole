@@ -114,10 +114,23 @@ export function boardSession(ctx, id, socket) {
                 cacheRead: current.usage.cacheRead,
                 reasoning: current.usage.thinking,
             });
+        // Usage history counts a board turn as a chat reply, like reply-turn.mjs does.
+        if (current.called)
+            store.record(
+                `chat:${current.reply}`,
+                'chat',
+                { provider: store.header(id)?.provider, model },
+                current.usage,
+            );
         if (status === 'completed') {
             store.thread(id, process.thread, model);
             store.finishModel(id, true);
             warmedFor = version(store.tree(id));
+            // As after a chat reply: familiarity from the learner's question and concepts from the reply,
+            // but no suggestion marks or next questions (docs/board-spec.md).
+            const answer = shownText(current);
+            ctx.startVerdicts(id, current.user, current.question, answer);
+            ctx.boardSuggestions(id, current.reply, current.question, answer);
         } else if (current.sentences.length) {
             // Claude may have stored text the learner never saw. Replay the saved discussion next time.
             store.forgetThread(id);
@@ -170,6 +183,7 @@ export function boardSession(ctx, id, socket) {
         try {
             await ready;
             if (!signal.aborted) await warm(tree, signal);
+            current.called = !signal.aborted;
             result = signal.aborted
                 ? { status: 'interrupted' }
                 : await process.ask(text, (e) => add(reader.feed(e.text)), signal);
@@ -234,7 +248,15 @@ export function boardSession(ctx, id, socket) {
         const reply = store.message(id, 'assistant', '', 'streaming');
         store.onBoard(user);
         store.onBoard(reply);
-        const current = { reply, sentences: [], shown: 0, over: 0, ended: Promise.withResolvers() };
+        const current = {
+            reply,
+            user,
+            question: text,
+            sentences: [],
+            shown: 0,
+            over: 0,
+            ended: Promise.withResolvers(),
+        };
         turn = current;
         send({ type: 'state', state: 'thinking' });
         current.job = ctx.jobs.start(

@@ -50,7 +50,7 @@ function boardProvider(scripts, { status = 'completed' } = {}) {
     return provider;
 }
 
-async function setup(t, provider, { providerName = 'claude' } = {}) {
+async function setup(t, provider, { providerName = 'claude', app = {} } = {}) {
     const logs = [];
     const env = await open(
         { models: async () => [], generate: async () => {} },
@@ -60,6 +60,7 @@ async function setup(t, provider, { providerName = 'claude' } = {}) {
                 logs.push(line);
                 notify();
             },
+            ...app,
         },
     );
     t.after(env.close);
@@ -150,6 +151,18 @@ test('board: a typed question gets its sentences one at a time and saves as a le
     assert.equal(reply.status, 'completed');
     assert.ok(reply.board);
     assert.equal(reply.usage.output, 20);
+    // Normal chat draws the board as it stood at the end of the reply.
+    assert.deepEqual(reply.snapshot, [...first.ops, ...second.ops]);
+    assert.equal(question.snapshot, undefined);
+    // Usage history counts the board turn as a chat reply under the conversation's model.
+    assert.deepEqual(
+        {
+            ...env.store.db
+                .prepare('SELECT task,provider,model,output FROM usage_events WHERE id=?')
+                .get(`chat:${reply.id}`),
+        },
+        { task: 'chat', provider: 'claude', model: 'sonnet', output: 20 },
+    );
     // The board turn joined the conversation's provider session, so the next chat turn resumes it.
     assert.equal(env.store.header(id).thread, 'board-session');
     assert.ok(
@@ -167,6 +180,37 @@ test('board: a typed question gets its sentences one at a time and saves as a le
         joined.ops.map((op) => op.id),
         ['j1'],
     );
+});
+
+test('board: a finished board reply records familiarity and concepts, with no marks or next questions', async (t) => {
+    const provider = boardProvider([['> A hypha grows at its tip.\nt1 text "tip" at 800,450\n']]);
+    const quick = [];
+    provider.generate = async (tree, text, emit) => {
+        quick.push(tree.role);
+        return complete(
+            emit,
+            tree.role === 'verdict'
+                ? '[{"concept":"Hypha","level":1,"confidence":"low"}]'
+                : '{"suggestions":[{"text":"tip","concept":"Tip"}],"concepts":[{"name":"Hypha","topics":["Mycology"]}],"links":[],"next_questions":["Why?"]}',
+        );
+    };
+    const { env, id, connect } = await setup(t, provider, {
+        app: { suggestions: true, verdicts: true },
+    });
+    const board = connect();
+    await opened(board.ws);
+    board.send({ type: 'ask', text: 'How do hyphae grow?' });
+    const sentence = await board.next('sentence');
+    for (const phase of ['start', 'end'])
+        board.send({ type: 'progress', sentence: sentence.id, phase });
+    await until(() => quick.length === 2);
+    await env.app.settled();
+    const hypha = env.store.graph().concepts.find((c) => c.name === 'Hypha');
+    assert.deepEqual(hypha.topics, ['Mycology']);
+    assert.deepEqual(hypha.observations, [0, 1, 0, 0, 0, 0], "the learner's question is evidence");
+    const tree = env.store.tree(id);
+    assert.deepEqual(tree.suggestions, [], 'no suggestion marks');
+    assert.equal(tree.messages[1].questions, undefined, 'no next questions');
 });
 
 test('board: opening during chat shares the finished conversation in both directions', async (t) => {

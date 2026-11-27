@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { excerpt, previewText } from '../../src/markdown/markdownText.ts';
 import { blob, vector } from './embeddings.mjs';
+import { boardOps } from '../board/ops.mjs';
 
 // A picked visual part's trail and step; the whole-visual Ask and older part branches have none.
 const picked = (trail, step) => (trail ? { trail: JSON.parse(trail), step } : {});
@@ -171,17 +172,25 @@ export const trees = {
     },
     tree(id) {
         const { layout, ...tree } = this.header(id) ?? {};
+        // The board as it stood after each reply: the replay of every op line up to it.
+        const replay = boardOps();
+        let drawn = [];
         return (
             tree.id && {
                 ...tree,
                 branch: this.branchOf(id),
                 messages: this.db
                     .prepare(
-                        'SELECT id,role,text,status,stopped,usage,questions,memory,board FROM messages WHERE tree=? ORDER BY seq',
+                        'SELECT id,role,text,status,stopped,usage,questions,memory,board,ops FROM messages WHERE tree=? ORDER BY seq',
                     )
                     .all(id)
-                    .map(({ usage, stopped, questions, memory, board, ...m }) => {
+                    .map(({ usage, stopped, questions, memory, board, ops, ...m }) => {
+                        for (const line of ops ? JSON.parse(ops) : []) {
+                            const { item } = replay.read(line);
+                            if (item) drawn = [...drawn, item];
+                        }
                         if (board) m.board = true;
+                        if (board && m.role === 'assistant' && drawn.length) m.snapshot = drawn;
                         if (m.role !== 'assistant') {
                             const attachments = this.attachments(id, m.id);
                             return attachments.length ? { ...m, attachments } : m;

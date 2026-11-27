@@ -304,3 +304,21 @@
         opacity: 0;
     }
 }
+
+/* Board snapshot (mockup Rabbithole-brd.16): a board reply's board at its end, still, under the reply's text
+   in normal chat. 400px at 16:9, never wider than the column, on the board surface with no frame.
+   Margins give the mockup's drawn gaps (15px under the text, 14px to the copy button) inside the reply's 4px flex gap. */
+.board-snapshot {
+    width: 400px;
+    max-width: 100%;
+    aspect-ratio: 16 / 9;
+    margin: 11px 0 14px;
+    background: var(--color-background-muted);
+    border-radius: var(--radius-container);
+    overflow: hidden;
+}
+.board-snapshot svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}

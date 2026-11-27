@@ -16,6 +16,7 @@ import { FreeBranches, Groundwork, NextQuestions, ReplyFeedback, ReplyUsage } fr
 import Passage from './Passage';
 import Reply from './Reply';
 import BranchForm from './BranchForm';
+import BoardSnapshot from '../board/BoardSnapshot';
 import type { Summary } from '../map/TreeOverview';
 import type { Tree } from './types';
 import { figureList } from './figures';
@@ -300,6 +301,7 @@ export default function ChatThread({
                         )}
                     </>
                 )}
+                {message.snapshot && <BoardSnapshot items={message.snapshot} />}
 
                 {!overview &&
                     message.role === 'assistant' &&

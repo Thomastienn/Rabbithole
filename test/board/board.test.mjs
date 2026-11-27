@@ -179,3 +179,19 @@ test('board: disconnecting holds the last caption and keeps a typed draft', asyn
     assert.ok(button(board.container, 'Send').disabled);
     assert.equal(board.q('[contenteditable=true]').textContent, 'Keep this draft');
 });
+
+test('board snapshot: a board reply in chat shows its board still, read as one image of its labels', async (t) => {
+    const { default: BoardSnapshot } = await import('../../src/board/BoardSnapshot.tsx');
+    const items = [
+        { id: 'h', kind: 'box', at: [650, 450], w: 900, h: 140, text: 'hypha' },
+        { id: 'v', kind: 'dot', at: [520, 450] },
+        { id: 's', kind: 'text', at: [1150, 330], text: 'soft wall', look: 'focus' },
+    ];
+    const view = await render(h(BoardSnapshot, { items }), (w) => ui(w));
+    t.after(view.cleanup);
+    const figure = view.container.querySelector('figure.board-snapshot[role=img]');
+    assert.equal(figure.getAttribute('aria-label'), 'Board at this reply: hypha, soft wall');
+    assert.equal(figure.querySelectorAll('.board-item').length, 3);
+    for (const item of figure.querySelectorAll('.board-item'))
+        assert.equal(item.style.animationDuration, '0ms', 'drawn still');
+});

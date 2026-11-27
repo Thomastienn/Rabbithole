@@ -228,5 +228,13 @@ export function suggestionJobs(ctx) {
         } else if (status === 'completed')
             startSuggestions(conversation, message, question, answer, notes);
     };
-    return { noteSuggestions, cleanupMerges };
+    // A board reply has no marks: quick thinking only records its concepts (and memory edits), with no next questions.
+    const boardSuggestions = (conversation, message, question, answer) =>
+        answer.trim() &&
+        startSuggestions(conversation, message, question, answer, {
+            ended: true,
+            passages: [],
+            groundwork: [],
+        });
+    return { noteSuggestions, boardSuggestions, cleanupMerges };
 }
