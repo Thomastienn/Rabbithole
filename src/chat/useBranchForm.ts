@@ -231,11 +231,11 @@ export function useBranchForm(
     }
     // A brief explanation of a reply passage, saved by the server and served from storage on reopening.
     // Kept on the open conversation so its popup and reopened textbox show it without reloading.
-    // A visual part's explanation is not saved.
+    // A visual part's or sketch item's explanation is not saved.
     const explainBrief = (parent: string, anchor: Anchor) =>
         api(`/api/trees/${parent}/brief`, branchRequest(anchor)).then(
             ({ explanation, suggestions }: { explanation: string; suggestions?: Suggestions }) => {
-                if (anchor.artifactId !== undefined) return explanation;
+                if (anchor.artifactId !== undefined || anchor.sketch) return explanation;
                 const saved = {
                     message: anchor.messageId,
                     start: anchor.start!,

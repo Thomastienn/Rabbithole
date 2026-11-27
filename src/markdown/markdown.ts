@@ -1,6 +1,5 @@
 // Raw message text is canonical. Text leaves carry raw UTF-16 [data-o, data-e) markers.
 import { createElement as h, Fragment, type ReactNode } from 'react';
-import { decodeString } from 'micromark-util-decode-string';
 import { Code } from '@astryxdesign/core/Code';
 import { Text, Heading } from '@astryxdesign/core/Text';
 import { isSketch, parse, plainText, type MarkdownNode } from './markdownText.ts';
@@ -13,104 +12,31 @@ import { figure, layout } from './layouts.ts';
 import { mathMarkup } from './mathParts.ts';
 export { plainText };
 export { rawOffsets, rawRange } from './rawOffsets.ts';
+import { cut, decoded, pos, sourceLines, type Run, type Span } from './sourceRuns.ts';
 
-type Span = { start: number; end: number };
-type Run = Span & { value: string; atomic?: boolean };
-const pos = (n: MarkdownNode) => ({
-    start: n.position?.start.offset ?? 0,
-    end: n.position?.end.offset ?? 0,
-});
 const hasDirective = (n: MarkdownNode): boolean =>
     n.type === 'containerDirective' || !!n.children?.some(hasDirective);
-
-// Decode only Markdown's escapes/entities. Each transformed token retains its entire source span.
-function decoded(raw: string, start: number, prose: boolean): Run[] {
-    const out: Run[] = [];
-    const pattern =
-        /\\[!-/:-@\[-`{-~]|&(?:#\d{1,7}|#[xX][\da-fA-F]{1,6}|[a-zA-Z][\da-zA-Z]{1,31});|\r\n?|\n/g;
-    let at = 0;
-    for (const match of raw.matchAll(pattern)) {
-        if (match.index > at)
-            out.push({
-                start: start + at,
-                end: start + match.index,
-                value: raw.slice(at, match.index),
-            });
-        const value = match[0][0] === '\r' ? '\n' : prose ? decodeString(match[0]) : match[0];
-        out.push({
-            start: start + match.index,
-            end: start + match.index + match[0].length,
-            value,
-            atomic: value !== match[0],
-        });
-        at = match.index + match[0].length;
-    }
-    if (at < raw.length)
-        out.push({ start: start + at, end: start + raw.length, value: raw.slice(at) });
-    return out;
-}
-
-function cut(runs: Run[], start: number, end: number): Run[] {
-    let at = 0;
-    return runs.flatMap((run) => {
-        const a = Math.max(0, start - at),
-            b = Math.min(run.value.length, end - at);
-        at += run.value.length;
-        return b > a
-            ? [
-                  {
-                      ...run,
-                      value: run.value.slice(a, b),
-                      start: run.atomic ? run.start : run.start + a,
-                      end: run.atomic ? run.end : run.start + b,
-                  },
-              ]
-            : [];
-    });
-}
-
-// Match within each physical source line, never in a fence label or an earlier repeated line.
-// The content is the suffix after any blockquote/list prefix and removed code indentation.
-function sourceLines(raw: string, n: MarkdownNode, code = false): Run[][] {
-    const { start, end } = pos(n),
-        source = raw.slice(start, end);
-    const physical = [...source.matchAll(/([^\r\n]*)(\r\n|\r|\n|$)/g)].filter((m) => m[0].length);
-    const fenced = code && /^ {0,3}(`{3,}|~{3,})/.test(physical[0]?.[1] ?? '');
-    const lines = (n.value ?? '').replace(/\r\n?/g, '\n').split('\n');
-    return lines.map((line, i) => {
-        const part = physical[i + (fenced ? 1 : 0)];
-        if (!part) return [];
-        const offset = start + part.index,
-            runs = decoded(part[1], offset, !code);
-        const value = runs.map((r) => r.value).join(''),
-            at = value.lastIndexOf(line);
-        const content =
-            at < 0
-                ? [{ start: offset, end: offset + part[1].length, value: line, atomic: true }]
-                : cut(runs, at, at + line.length);
-        if (i < lines.length - 1)
-            content.push({
-                start: offset + part[1].length,
-                end: offset + part[0].length,
-                value: '\n',
-                atomic: part[2] !== '\n',
-            });
-        return content;
-    });
-}
 
 // Underlines are drawn on text leaves and formula symbols; the first piece of each is its single Tab stop.
 // shortcut: a passage covering only hidden syntax draws nothing; extend if suggestions target those.
 // Slots (inline visuals) go before the first top-level block starting at or after their offset, else at the end.
+// A slot with `sketch` is a visual expanded from the sketch starting at its offset: it draws in the sketch's place.
 export function renderMarkdown(
     raw: string,
-    reveal?: Span,
+    reveal?: Span & { text?: string },
     underlines: (Span & { child?: string; address?: string; ink?: number })[] = [],
-    slots: { at: number; node: ReactNode; kind?: string; side?: string | null }[] = [],
+    slots: {
+        at: number;
+        node: ReactNode;
+        kind?: string;
+        side?: string | null;
+        sketch?: { id: string; shown: boolean };
+    }[] = [],
     sources: Record<string, ImageSource> = {},
     flow = false,
     resources: Record<string, string> = {},
     sketches: 'off' | 'streaming' | 'saved' = 'saved',
+    onSketch?: (at: number) => void,
 ): ReactNode {
     let revealed = 0;
     let imageLink: string | undefined;
@@ -229,7 +155,7 @@ export function renderMarkdown(
     }
     findDefinitions(tree);
     // Shared so media layouts can claim visuals before the root places the rest.
-    const pending = [...slots].sort((a, b) => a.at - b.at);
+    const pending = slots.filter((slot) => !slot.sketch).sort((a, b) => a.at - b.at);
     function node(n: MarkdownNode, inTable = false): ReactNode {
         const before = revealed,
             result = renderNode(n, inTable),
@@ -383,10 +309,17 @@ export function renderMarkdown(
             case 'code': {
                 if (sketches !== 'off' && isSketch(n)) {
                     if (hit(s, e)) revealed++;
+                    const expanded = slots.find((slot) => slot.sketch && slot.at === s);
+                    if (expanded && !expanded.sketch!.shown) return expanded.node;
                     return h(Sketch, {
                         ...attrs,
+                        visual: expanded?.sketch!.id,
+                        onExpand: onSketch && (() => onSketch(s)),
                         kind: n.meta ?? '',
                         body: n.value ?? '',
+                        start: s,
+                        end: e,
+                        reveal: hit(s, e) ? reveal!.text : undefined,
                         live: sketches === 'streaming',
                         fence: n.sketchClosed
                             ? 'closed'

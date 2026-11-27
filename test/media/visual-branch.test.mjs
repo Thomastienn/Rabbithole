@@ -372,3 +372,58 @@ test('current databases migrate saved text branches without loss and accept visu
         await env.close();
     }
 });
+
+test("a sketch item branches with its sketch's title and the item's label, and only a drawn item of a closed sketch block is accepted", async () => {
+    const env = await open();
+    try {
+        const root = env.store.create('Entropy', 'codex', 'chat', 'low');
+        const block =
+            "```sketch flow\ntitle: Freezing below 0 °C\nWater freezes -> Heat flows out\nHeat flows out -> Surroundings' entropy rises\n```";
+        const text = `Ice is more ordered.\n\n${block}\n\nSo the total rises.\n\n\`\`\`js\nA -> B\n\`\`\``;
+        const messageId = env.store.message(root.id, 'assistant', text, 'completed');
+        const start = text.indexOf(block),
+            end = start + block.length;
+        const body = {
+            messageId,
+            start,
+            end,
+            text: 'Untrusted passage',
+            sketch: { title: 'Untrusted title', label: 'Heat flows out' },
+            question: 'Why does the room gain more?',
+        };
+        const code = text.lastIndexOf('```js');
+        for (const change of [
+            { sketch: { label: 'Not drawn' } },
+            { sketch: null },
+            { start: start + 1 },
+            { end: end - 1 },
+            { start: code, end: text.length },
+            { suggestion: true },
+        ])
+            assert.equal(
+                (await env.post(`/api/trees/${root.id}/branches`, { ...body, ...change })).status,
+                400,
+                JSON.stringify(change),
+            );
+        const response = await env.post(`/api/trees/${root.id}/branches`, body);
+        assert.equal(response.status, 201);
+        const child = await compacted(env.app, env.origin, (await response.json()).id);
+        const passage = 'Freezing below 0 °C › Heat flows out';
+        assert.equal(child.branch.text, passage);
+        assert.equal(child.branch.label, 'Heat flows out');
+        assert.deepEqual([child.branch.start, child.branch.end], [start, end]);
+        const compact = env.calls[0];
+        assert.equal(
+            JSON.parse(compact.text.slice(compact.text.indexOf('\n') + 1)).passage,
+            passage,
+        );
+        assert.doesNotMatch(JSON.stringify(compact), /Untrusted/);
+        const summary = (await env.get('/api/state')).trees.find((t) => t.id === child.id);
+        assert.deepEqual(
+            [summary.label, summary.passage, summary.start, summary.end, summary.artifactId],
+            ['Heat flows out', passage, start, end, undefined],
+        );
+    } finally {
+        await env.close();
+    }
+});

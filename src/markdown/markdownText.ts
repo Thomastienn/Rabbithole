@@ -5,6 +5,7 @@ import { math } from 'micromark-extension-math';
 import { mathFromMarkdown } from 'mdast-util-math';
 import { directive } from 'micromark-extension-directive';
 import { directiveFromMarkdown } from 'mdast-util-directive';
+import { drawSketch } from '../sketch/sketch.ts';
 import type { Construct, Code, Effects, State, Extension } from 'micromark-util-types';
 import type { CompileContext, Extension as MdastExtension, Token } from 'mdast-util-from-markdown';
 
@@ -181,6 +182,39 @@ export const parse = (text: string) =>
     }) as MarkdownNode;
 
 export const isSketch = (node: MarkdownNode) => node.type === 'code' && node.lang === 'sketch';
+
+// The closed sketch block spanning exactly start..end of a reply, as its kind and body.
+export function sketchAt(raw: string, start: unknown, end: unknown) {
+    let found: { kind: string; body: string } | undefined;
+    const walk = (node: MarkdownNode) => {
+        if (
+            isSketch(node) &&
+            node.sketchClosed &&
+            node.position?.start.offset === start &&
+            node.position?.end.offset === end
+        )
+            found = { kind: node.meta ?? '', body: node.value ?? '' };
+        else node.children?.forEach(walk);
+    };
+    walk(parse(raw));
+    return found;
+}
+
+// The sketch drawn from the closed block spanning exactly start..end of a reply, without colours.
+export function sketchDrawnAt(raw: string, start: unknown, end: unknown) {
+    const block = sketchAt(raw, start, end),
+        drawn =
+            block &&
+            drawSketch(block.kind, block.body, {
+                ground: '',
+                ink: '',
+                muted: '',
+                seam: '',
+                hairline: '',
+                focus: '',
+            });
+    return drawn && !('error' in drawn) ? drawn : undefined;
+}
 
 // The clipboard keeps reply Markdown and omits the syntax used to draw sketches.
 export function withoutSketches(raw: string) {
