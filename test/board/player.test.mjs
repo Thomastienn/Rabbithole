@@ -1,7 +1,7 @@
 import '../support/tsx.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-const { boardPlayer } = await import('../../src/board/player.ts');
+const { boardPlayer, labelRows } = await import('../../src/board/player.ts');
 
 function fakeClock() {
     let now = 0;
@@ -233,4 +233,16 @@ test('board player: an early audio end still draws every item before advancing',
         ['a', 0],
         ['b', 0],
     ]);
+});
+
+test('board player: a later point reflows crowded labels to alternate rows in value order', () => {
+    const point = (id, x, text, on = 'n1') => ({ id, kind: 'point', on, at: [x, 520], text });
+    const rows = (...ops) => Object.fromEntries(labelRows(ops));
+    const seven = point('q1', 1040, '0.7');
+    assert.deepEqual(rows(seven), { q1: 0 });
+    const third = point('q2', 1000, '2/3');
+    assert.deepEqual(rows(seven, third), { q2: 0, q1: 1 }, "0.7's label moves up for 2/3");
+    assert.deepEqual(rows(seven, third, point('q3', 1100, '3/4')), { q2: 0, q1: 1, q3: 0 });
+    assert.deepEqual(rows(seven, point('o1', 1000, '2/3', 'n2')), { q1: 0, o1: 0 }, 'per line');
+    assert.deepEqual(rows(seven, point('q4', 1400, '1')), { q1: 0, q4: 0 }, 'far apart');
 });

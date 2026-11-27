@@ -24,8 +24,9 @@ import { inkStyle } from '../map/treeList';
 import './sketch.css';
 
 // Theme tokens by role (mockup Rabbithole-skt.1). As CSS variables, a theme switch recolours every sketch.
+// Layouts on a raised surface set --sketch-ground, so station rings take the surface under them.
 const THEME: Palette = {
-    ground: 'var(--color-background-body)',
+    ground: 'var(--sketch-ground, var(--color-background-body))',
     ink: 'var(--color-text-primary)',
     muted: 'var(--color-text-secondary)',
     seam: 'var(--color-border-emphasized)',
@@ -53,6 +54,7 @@ export const SketchAsk = createContext<{
 
 // A sketch block in a reply: a placeholder while its fence is open, nothing (logged) when it cannot draw.
 // One that arrives in a streaming reply builds in item by item, like the text around it; a saved reply's shows at once.
+// It draws at its own box's width (mockup Rabbithole-skt.5), so it fits whichever layout cell holds it.
 // A saved reply's sketch offers Expand into visual, or Show visual once its visual exists.
 export default function Sketch({
     kind,
@@ -76,9 +78,10 @@ export default function Sketch({
     visual?: string;
     onExpand?: () => void;
 }) {
+    const [width, setWidth] = useState(640);
     const sketch = useMemo(
-        () => (fence === 'closed' ? drawSketch(kind, body, THEME) : undefined),
-        [kind, body, fence],
+        () => (fence === 'closed' ? drawSketch(kind, body, THEME, width) : undefined),
+        [kind, body, fence, width],
     );
     const error =
         fence === 'unfinished'
@@ -99,6 +102,7 @@ export default function Sketch({
             start={start}
             end={end}
             revealed={sketchItemOf(sketch, reveal)}
+            onWidth={setWidth}
             visual={visual}
             onExpand={onExpand}
         />
@@ -111,6 +115,7 @@ function SketchDrawing({
     start,
     end,
     revealed,
+    onWidth,
     visual,
     onExpand,
 }: {
@@ -119,12 +124,29 @@ function SketchDrawing({
     start: number;
     end: number;
     revealed: number;
+    onWidth: (width: number) => void;
     visual?: string;
     onExpand?: () => void;
 }) {
-    const [build] = useState(
+    const box = useRef<HTMLElement>(null);
+    const [build, setBuild] = useState(
         () => live && !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
     );
+    // A later redraw at a new width, or a hidden check answer opening, shows the sketch whole.
+    useEffect(() => {
+        if (!build) return;
+        const done = setTimeout(() => setBuild(false), 500);
+        return () => clearTimeout(done);
+    }, [build]);
+    // Measured before paint, so the first frame is already drawn at the box's width; a hidden box (0) keeps the last.
+    useLayoutEffect(() => {
+        const el = box.current!,
+            measure = () => el.clientWidth && onWidth(el.clientWidth);
+        measure();
+        const observer = new ResizeObserver(measure);
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [onWidth]);
     const asking = useContext(SketchAsk),
         // shortcut: only kinds that draw hit areas (flow, bars) can be asked about; give a kind hit areas in sketch.ts to switch it on.
         context = drawn.markup.includes('data-item=') ? asking : null,
@@ -180,6 +202,7 @@ function SketchDrawing({
     const chips = mine.filter((b) => b.address);
     return (
         <figure
+            ref={box}
             className={['sketch', build && 'sketch-build', context && 'askable']
                 .filter(Boolean)
                 .join(' ')}

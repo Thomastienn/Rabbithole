@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { boardOps } from '../../server/board/ops.mjs';
+import { expression } from '../../server/board/components.mjs';
 
 test('board ops: each kind becomes an item at its board coordinates, with its look', () => {
     const board = boardOps();
@@ -117,4 +118,117 @@ test('board ops: a label in a shape, a line over shapes and a connector at its e
         undefined,
         'a connector across a shape is never moved',
     );
+});
+
+test('board ops: axes lay out in their box and each plot traces left to right in their units', () => {
+    const board = boardOps();
+    const axes = board.read('a1 axes at 680,480 w=1080 h=680 x=0..5 y=0..32').item;
+    assert.match(axes.d, /^M200 760H1200M200 760V160/, 'axes as drawn in mockup Rabbithole-brd.5');
+    assert.deepEqual(
+        axes.labels.map((l) => l.text),
+        ['0', '1', '2', '3', '4', '5', '0', '8', '16', '24', '32'],
+    );
+    assert.deepEqual(axes.labels[1], { at: [400, 808], text: '1' });
+    assert.deepEqual(axes.labels.at(-1), { at: [176, 169], text: '32', end: true });
+    const square = board.read('p1 plot on a1 y=x^2').item;
+    assert.equal(square.on, 'a1');
+    const xs = [...square.d.matchAll(/[ML](-?[\d.]+) (-?[\d.]+)/g)].map((m) => [+m[1], +m[2]]);
+    assert.deepEqual(xs[0], [200, 760]);
+    assert.deepEqual(
+        xs.find(([x]) => x === 400),
+        [400, 741.3],
+    );
+    assert.deepEqual(xs.at(-1), [1200, 291.3]);
+    assert.ok(
+        xs.every(([x], i) => !i || x > xs[i - 1][0]),
+        'left to right',
+    );
+    // 2^x ends in the top corner; x^3 leaves the top early, cut at the axes' edge.
+    assert.ok(board.read('p2 plot "2^x" on a1').item.d.endsWith('L1200 160'));
+    const cube = board.read('p3 plot "x^3" on a1').item.d;
+    assert.match(cube, /L[\d.]+ 160$/, 'a curve leaving the axes stops at their top');
+    assert.equal(board.read('dt dot 2,4 on a1').item.at.join(), '600,685');
+});
+
+test('board ops: a number line draws its ticks and each point sits at its value', () => {
+    const board = boardOps();
+    const line = board.read('n1 numberline at 800,500 w=1300 h=240 range=0..1 ticks=0,1/2,1').item;
+    assert.equal(line.d, 'M200 520H1400M200 506V534M800 506V534M1400 506V534');
+    assert.deepEqual(
+        line.labels.map((l) => [l.at[0], l.at[1], l.text]),
+        [
+            [200, 580, '0'],
+            [800, 580, '1/2'],
+            [1400, 580, '1'],
+        ],
+    );
+    assert.deepEqual(board.read('q1 point on n1 0.7 label=0.7').item, {
+        id: 'q1',
+        kind: 'point',
+        on: 'n1',
+        at: [1040, 520],
+        text: '0.7',
+    });
+    assert.deepEqual(board.read('q2 point 2/3 in n1').item.at, [1000, 520]);
+    assert.equal(board.read('q2 point 2/3 in n1').error, 'id q2 is already on the board');
+});
+
+test('board ops: to the guard a component is one item at its box, and bad children are skipped', () => {
+    const board = boardOps();
+    board.read('a1 axes at 680,480 w=1080 h=680 x=0..5 y=0..32');
+    assert.equal(board.read('t1 text "x²" at 1265,294').moved, undefined, 'clear of the box');
+    assert.equal(
+        board.read('t3 text "in" at 600,400').moved,
+        true,
+        'a top-level item inside the box moves',
+    );
+    assert.equal(board.read('p1 plot on a1 y=x^2').moved, undefined, 'children are not guarded');
+    const moved = board.read('a2 axes at 700,480 w=400 h=300 x=0..1 y=0..1');
+    assert.equal(moved.moved, true);
+    assert.ok(
+        moved.item.d.startsWith(`M${moved.item.at[0] - 200 + 60} `),
+        'laid out at its new box',
+    );
+    for (const [line, cause] of [
+        ['p3 plot on a9 y=x^3', 'unknown parent a9'],
+        ['p4 plot y=x^3', 'plot needs on ID'],
+        ['p5 plot on a1 y=x^^3', 'bad math'],
+        ['p6 plot on a1 "x +"', 'bad math'],
+        ['p7 plot on a1 "foo(x)"', 'bad math'],
+        ['q1 point on a1 1', 'point needs numberline, not axes a1'],
+        ['d1 dot 9,9 on a1', 'dot needs X,Y inside the axes'],
+        ['b1 box at 10,10 on a1', 'box cannot go on a component'],
+        ['c1 arrow from t1 to p1', 'unknown id p1'],
+        ['a3 axes at 300,300 x=5..1', 'ranges are LO..HI'],
+    ])
+        assert.equal(board.read(line).error, cause, line);
+});
+
+test('board ops: plot math keeps precedence, unary minus and implicit products', () => {
+    for (const [text, x, y] of [
+        ['-x^2', 3, -9],
+        ['2x^2', 3, 18],
+        ['x^2^3', 2, 256],
+        ['2^-1', 0, 0.5],
+        ['sin(x)^2', 1, Math.sin(1) ** 2],
+        ['2(x+1)', 1, 4],
+        ['e^x', 1, Math.E],
+    ])
+        assert.equal(expression(text)(x), y, text);
+});
+
+test('board ops: ticks keep exact values and skip a 0 an axis runs through', () => {
+    const board = boardOps();
+    const labels = (line) => board.read(line).item.labels.map((l) => l.text);
+    assert.deepEqual(labels('n1 numberline at 800,150 range=0..0.5'), ['0', '0.25', '0.5']);
+    assert.deepEqual(labels('a1 axes at 800,550 w=800 h=600 x=-2..2 y=-2..2'), [
+        '-2',
+        '-1',
+        '1',
+        '2',
+        '-2',
+        '-1',
+        '1',
+        '2',
+    ]);
 });
