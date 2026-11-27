@@ -399,6 +399,7 @@ export function renderMarkdown(
                         onExpand: onSketch && (() => onSketch(s)),
                         kind: n.meta ?? '',
                         body: n.value ?? '',
+                        live: sketches === 'streaming',
                         fence: n.sketchClosed
                             ? 'closed'
                             : sketches === 'streaming'

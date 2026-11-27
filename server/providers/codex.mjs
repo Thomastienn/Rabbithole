@@ -8,6 +8,7 @@ import { inputParts } from '../attachments.mjs';
 import { toolEvents } from './toolEvents.mjs';
 import { ENDED, STALLED } from './chatStream.mjs';
 import { FRESH_FOR } from './auth.mjs';
+import { conversationHistory } from './conversationHistory.mjs';
 
 export class Codex {
     readsImages = true;
@@ -17,6 +18,7 @@ export class Codex {
         this.dir = dir;
         this.launch = launch;
         this.pending = new Map();
+        this.threadPrompts = new Map();
         this.listeners = new Set();
         this.id = 0;
         this.toolSession = toolSession;
@@ -229,7 +231,47 @@ export class Codex {
             defaultFallback: !terra && m === selected,
         }));
     }
-    async generate(tree, text, emit, saveThread, signal) {
+    // A board runs its turns on this shared app-server with the board prompt at low effort (docs/board-spec.md).
+    board({ model, thread, system, history = [] }) {
+        const codex = this;
+        return {
+            thread,
+            // Warms the app-server before the first question; ask reports a failed start.
+            open: () => codex.ready().catch(() => {}),
+            async ask(text, emit, signal) {
+                let status = 'failed',
+                    usage;
+                const tree = {
+                    model,
+                    thread: this.thread,
+                    effort: 'low',
+                    system,
+                    // A fresh thread gets the saved discussion, including captions already shown on a board.
+                    messages: history.map((m) => ({ ...m, status: 'completed' })),
+                };
+                const onEvent = (e) => {
+                    if (e.type === 'delta') emit(e);
+                    if (e.type === 'status') status = e.status;
+                    if (e.type === 'usage')
+                        usage = {
+                            input: e.usage.input,
+                            output: e.usage.output,
+                            cacheRead: e.usage.cacheRead,
+                            thinking: e.usage.reasoning ?? null,
+                        };
+                };
+                try {
+                    await codex.generate(tree, text, onEvent, (id) => (this.thread = id), signal);
+                } catch (error) {
+                    return { status: 'failed', usage, error: error.message };
+                }
+                return { status, usage };
+            },
+            // The app-server is shared with chat and stays up; leaving aborts the turn's signal, which interrupts it.
+            close() {},
+        };
+    }
+    async generate(tree, text, emit, saveThread, signal, forkThread = false) {
         if (
             (tree.nativeTools?.length || tree.tools?.length) &&
             !this.toolSession &&
@@ -250,7 +292,9 @@ export class Codex {
             );
             this.workers.add(worker);
             try {
-                return await worker.generate(tree, text, emit, saveThread, signal);
+                // Fork board history in the tools worker too, so the shared server cannot resume a stale copy.
+                const fork = this.threadPrompts.get(tree.thread) != null;
+                return await worker.generate(tree, text, emit, saveThread, signal, fork);
             } finally {
                 mcp?.close();
                 worker.close();
@@ -274,28 +318,27 @@ export class Codex {
             cwd: join(this.dir, 'workspace'),
             approvalPolicy: 'never',
             sandbox: 'read-only',
-            baseInstructions: tutorSystem(tree),
+            baseInstructions: tree.system ?? tutorSystem(tree),
         };
-        const result = await this.rpc(tree.thread ? 'thread/resume' : 'thread/start', {
+        // A loaded thread ignores instruction overrides. A fork carries its history to the new prompt.
+        const promptChanged =
+            this.threadPrompts.has(tree.thread) &&
+            this.threadPrompts.get(tree.thread) !== tree.system;
+        const resumeMethod = forkThread || promptChanged ? 'thread/fork' : 'thread/resume';
+        const result = await this.rpc(tree.thread ? resumeMethod : 'thread/start', {
             ...params,
             model,
             ...(tree.thread ? { threadId: tree.thread } : {}),
         });
-        if (cancelled()) return;
         const threadId = result.thread.id;
+        this.threadPrompts.set(threadId, tree.system);
+        if (cancelled()) return;
         if (!tree.thread) {
-            const items = (tree.messages ?? [])
-                .filter((m) => m.status === 'completed')
-                .map((m) => ({
-                    type: 'message',
-                    role: m.role,
-                    content: [
-                        {
-                            type: m.role === 'assistant' ? 'output_text' : 'input_text',
-                            text: m.text,
-                        },
-                    ],
-                }));
+            const items = conversationHistory(tree).map(({ role, text }) => ({
+                type: 'message',
+                role,
+                content: [{ type: role === 'assistant' ? 'output_text' : 'input_text', text }],
+            }));
             if (items.length) await this.rpc('thread/inject_items', { threadId, items });
         }
         if (cancelled()) return;
@@ -487,6 +530,7 @@ export class Codex {
     }
     // Ends this CLI only: a worker runs its turn on its own CLI and token.
     stop() {
+        this.threadPrompts.clear();
         const child = this.process;
         if (child) {
             child.kill();
