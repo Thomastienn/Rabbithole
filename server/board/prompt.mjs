@@ -63,6 +63,8 @@ a1 math "A = 3 \\times 2 = 6" at 1050,450 size=l
 > Six squares.
 hl1 highlight a1`;
 
+const languageName = (code) => new Intl.DisplayNames(['en'], { type: 'language' }).of(code);
+
 // The board's system prompt: its skills, the learner's own tutor style, then what a chat turn gets about this learner.
 // An unset tutor style adds nothing here: chat's default style is written for reading.
 export const boardSystem = (tree) =>
@@ -75,5 +77,8 @@ export const boardSystem = (tree) =>
             (tree.tutorStyle?.trim()
                 ? '\n\nTutor style (follow it where it differs from the board skills above, except FORMAT and PACE):\n' +
                   tree.tutorStyle.trim()
+                : '') +
+            (tree.lang && tree.lang !== 'en'
+                ? `\n\nVOICE LANGUAGE: the learner speaks ${languageName(tree.lang)}. Say every sentence and write every board label in ${languageName(tree.lang)}.`
                 : ''),
     });

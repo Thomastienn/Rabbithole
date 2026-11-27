@@ -163,3 +163,43 @@ test('board: a filler plays only when a turn’s first audio is over 1 s late, n
         'fillers are not saved in the reply',
     );
 });
+
+test('board: a Voice language other than English speaks, prompts and recognizes in it, without English fillers', async (t) => {
+    const provider = boardProvider([]);
+    const asked = { speech: [], fillers: [], hearing: [], downloaded: [] };
+    const hearing = (progress, lang) => {
+        asked.hearing.push(lang);
+        return Promise.resolve({ detector: () => async () => 0, recognize: async () => '' });
+    };
+    hearing.downloaded = async (lang) => (asked.downloaded.push(lang), false);
+    const client = { warm() {}, async speak() {}, close() {} };
+    const { env, connect } = await setup(t, provider, {
+        app: {
+            speech: (lang) => (asked.speech.push(lang), client),
+            fillers: (lang) => (asked.fillers.push(lang), null),
+            hearing,
+        },
+    });
+    const { csrf } = await (await env.get('/api/state')).json();
+    const board = connect(`?csrf=${csrf}&lang=de`);
+    await opened(board.ws);
+    await until(() => provider.boards[0]);
+    assert.match(
+        provider.boards[0].options.system,
+        /VOICE LANGUAGE: the learner speaks German\. Say every sentence and write every board label in German\./,
+    );
+    board.send({ type: 'mic', on: true });
+    assert.equal((await board.next('mic')).status, 'on');
+    assert.deepEqual(asked, { speech: ['de'], fillers: ['de'], hearing: ['de'], downloaded: [] });
+
+    // A language outside the voice table is English, with no language line in the prompt.
+    const other = connect(`?csrf=${csrf}&lang=xx`);
+    await opened(other.ws);
+    await until(() => provider.boards[1]);
+    assert.deepEqual(asked.speech, ['de', 'en']);
+    assert.doesNotMatch(provider.boards[1].options.system, /VOICE LANGUAGE/);
+
+    // Settings asks whether the language's speech models are on this computer.
+    const status = await (await env.get('/api/settings/voice-models?lang=de')).json();
+    assert.deepEqual([status, asked.downloaded], [{ downloaded: false }, ['de']]);
+});

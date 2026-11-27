@@ -41,13 +41,13 @@ function strokeImage(points) {
 // from its op lines with the reply's last sentence as its caption,
 // { type: 'mic', status: 'loading' | 'on' | 'off', loaded, total } as the speech models download and the mic turns on or off,
 // { type: 'hearing', on } as the learner starts and stops speaking, and { type: 'heard', text } as a spoken question is sent.
-export function boardSession(ctx, id, socket) {
+export function boardSession(ctx, id, socket, lang = 'en') {
     const { store, log } = ctx;
     const send = (event) => {
         if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(event));
     };
-    // ctx.speech makes the session's edge-tts client (server/board/speech.mjs); off in tests.
-    const speech = ctx.speech?.() ?? null;
+    // ctx.speech makes the session's edge-tts client for its Voice language (server/board/speech.mjs); off in tests.
+    const speech = ctx.speech?.(lang) ?? null;
     const sendAudio = (id, chunk) => {
         if (socket.readyState === socket.OPEN)
             socket.send(Buffer.concat([Buffer.from([id.length]), Buffer.from(id), chunk]));
@@ -65,7 +65,7 @@ export function boardSession(ctx, id, socket) {
         // The filler played last, so the next turn's filler differs.
         lastFiller = -1;
     // Filler clips load as the board opens, so the first slow turn has them ready.
-    const fillers = speech && ctx.fillers ? ctx.fillers() : null;
+    const fillers = speech && ctx.fillers ? ctx.fillers(lang) : null;
     const clock = ctx.boardClock;
     // The turn's first audio has started (or its first sentence has none): no filler from now on.
     const heard = (current) => {
@@ -144,6 +144,7 @@ export function boardSession(ctx, id, socket) {
                 tutorStyle: store.tutorStyle(),
                 memoryNote: store.memoryNote(),
                 neighbourhood,
+                lang,
             }),
             history: conversationHistory(tree),
         });
@@ -520,7 +521,7 @@ export function boardSession(ctx, id, socket) {
         p.length === 2 &&
         p.every((v) => Number.isFinite(v) && Math.abs(v) < 1e5);
     const busy = () => turn;
-    const mic = boardMic(ctx.hearing, { send, log, ask, stop, busy, closed: () => closed });
+    const mic = boardMic(ctx.hearing, lang, { send, log, ask, stop, busy, closed: () => closed });
     socket.on('message', (data, binary) => {
         if (binary) return mic.audio(data);
         let m;

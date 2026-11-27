@@ -84,8 +84,10 @@ try {
         searxng: searxng.status,
         python: pythonTool({ dir }),
         videoEmbed: embed,
-        speech: () => edgeSpeech(),
-        fillers: () => boardFillers(dir, VOICES.en, () => edgeSpeech()),
+        speech: (lang) => edgeSpeech(VOICES[lang]),
+        // shortcut: the filler words are English, so other Voice languages get none; translate them if a slow first sentence feels bare there.
+        fillers: (lang) =>
+            lang === 'en' ? boardFillers(dir, VOICES.en, () => edgeSpeech()) : null,
         hearing: localHearing(dir),
         pieceSnapshot: sandboxSnapshot,
         downloads,
