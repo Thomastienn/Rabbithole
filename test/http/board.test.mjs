@@ -41,7 +41,8 @@ function boardProvider(scripts, { status = 'completed' } = {}) {
                                 signal.addEventListener('abort', resolve, { once: true }),
                             ),
                         ]);
-                    if (signal.aborted) return { status: 'interrupted' };
+                    if (signal.aborted)
+                        return { status: 'interrupted', usage: board.interruptedUsage };
                     return {
                         status,
                         usage: { input: 10, output: 20, cacheRead: 5, thinking: 0 },
@@ -55,7 +56,7 @@ function boardProvider(scripts, { status = 'completed' } = {}) {
     return provider;
 }
 
-async function setup(t, provider, { providerName = 'claude' } = {}) {
+async function setup(t, provider, { providerName = 'claude', app = {} } = {}) {
     const logs = [];
     const env = await open(
         { models: async () => [], generate: async () => {} },
@@ -65,6 +66,7 @@ async function setup(t, provider, { providerName = 'claude' } = {}) {
                 logs.push(line);
                 notify();
             },
+            ...app,
         },
     );
     t.after(env.close);
@@ -160,6 +162,15 @@ test('board: a typed question gets its sentences one at a time and saves as a le
     assert.equal(reply.status, 'completed');
     assert.ok(reply.board);
     assert.equal(reply.usage.output, 20);
+    // Normal chat draws the board as it stood at the end of the reply.
+    assert.deepEqual(reply.snapshot, [...first.ops, ...second.ops]);
+    assert.equal(question.snapshot, undefined);
+    // Usage history counts the board turn as a chat reply under the conversation's model.
+    const [usage] = env.store.usageEvents().events.filter((event) => event.task === 'chat');
+    assert.deepEqual(
+        [usage.provider, usage.model, usage.tree, usage.output, usage.reasoning],
+        ['claude', 'sonnet', id, 20, 0],
+    );
     // The board turn joined the conversation's provider session, so the next chat turn resumes it.
     assert.equal(env.store.header(id).thread, 'board-session');
     assert.ok(
@@ -177,6 +188,43 @@ test('board: a typed question gets its sentences one at a time and saves as a le
         joined.ops.map((op) => op.id),
         ['j1'],
     );
+    for (const phase of ['start', 'end'])
+        again.send({ type: 'progress', sentence: joined.id, phase });
+    await again.next('state', (event) => event.state === 'idle');
+    const [, earlier, , latest] = messages(env, id);
+    assert.deepEqual(earlier.snapshot, [...first.ops, ...second.ops]);
+    assert.deepEqual(latest.snapshot, [...earlier.snapshot, ...joined.ops]);
+});
+
+test('board: a finished board reply records familiarity and concepts, with no marks or next questions', async (t) => {
+    const provider = boardProvider([['> A hypha grows at its tip.\nt1 text "tip" at 800,450\n']]);
+    const quick = [];
+    provider.generate = async (tree, text, emit) => {
+        quick.push(tree.role);
+        return complete(
+            emit,
+            tree.role === 'verdict'
+                ? '[{"concept":"Hypha","level":1,"confidence":"low"}]'
+                : '{"suggestions":[{"text":"tip","concept":"Tip"}],"concepts":[{"name":"Hypha","topics":["Mycology"]}],"links":[],"next_questions":["Why?"]}',
+        );
+    };
+    const { env, id, connect } = await setup(t, provider, {
+        app: { suggestions: true, verdicts: true },
+    });
+    const board = connect();
+    await opened(board.ws);
+    board.send({ type: 'ask', text: 'How do hyphae grow?' });
+    const sentence = await board.next('sentence');
+    for (const phase of ['start', 'end'])
+        board.send({ type: 'progress', sentence: sentence.id, phase });
+    await until(() => quick.length === 2);
+    await env.app.settled();
+    const hypha = env.store.graph().concepts.find((c) => c.name === 'Hypha');
+    assert.deepEqual(hypha.topics, ['Mycology']);
+    assert.deepEqual(hypha.observations, [0, 1, 0, 0, 0, 0], "the learner's question is evidence");
+    const tree = env.store.tree(id);
+    assert.deepEqual(tree.suggestions, [], 'no suggestion marks');
+    assert.equal(tree.messages[1].questions, undefined, 'no next questions');
 });
 
 test('board: opening during chat shares the finished conversation in both directions', async (t) => {
@@ -296,6 +344,11 @@ test('board: pen strokes wait for the next question, which names what they mark,
     assert.deepEqual(provider.boards[0].images[1], [], 'a model that reads no images gets none');
     const question = messages(env, id)[2];
     assert.equal(question.text, 'Why here?', 'the learner message keeps their own words');
+    // Normal chat's snapshot of that reply leaves out what it erased.
+    assert.deepEqual(
+        messages(env, id)[3].snapshot.map((i) => i.id),
+        ['t1', 't2', 'p2', 'p3'],
+    );
 
     // Reopened, the strokes saved with the question show again, except the one the tutor erased.
     board.send({ type: 'leave' });
@@ -362,8 +415,12 @@ test('board: a stroke drawn after an erase that was never shown keeps its own id
     );
 });
 
-test('board: leaving mid-reply stops the tutor at once and saves the reply up to the sentence shown', async (t) => {
-    const provider = boardProvider([['> First idea.\n> Second idea.\n> Third idea.\n']]);
+test('board: leaving mid-reply saves only shown sentences and keeps any usage the provider reports', async (t) => {
+    const provider = boardProvider([
+        [
+            '> First idea.\na dot at 300,450\n> Second idea.\nb dot at 600,450\n> Third idea.\nc dot at 900,450\n',
+        ],
+    ]);
     const { env, id, logs, connect } = await setup(t, provider);
     env.store.thread(id, 'old-session', 'sonnet');
     const board = connect();
@@ -371,6 +428,7 @@ test('board: leaving mid-reply stops the tutor at once and saves the reply up to
     await until(() => provider.boards[0]?.opened);
     const process = provider.boards[0];
     process.hold = new Promise(() => {}); // still generating when the learner leaves
+    process.interruptedUsage = { input: 10, output: 14, cacheRead: 5, thinking: 3 };
     board.send({ type: 'ask', text: 'Why?' });
     const first = await board.next('sentence');
     const second = await board.next('sentence');
@@ -382,12 +440,18 @@ test('board: leaving mid-reply stops the tutor at once and saves the reply up to
     await until(() => process.closed);
     assert.ok(process.signals[0].aborted, 'the running turn stops');
     await until(() =>
-        logs.some((line) => /model interrupted.*task="board".*thinking="unreported"/.test(line)),
+        logs.some((line) => /model interrupted.*task="board".*thinking=3/.test(line)),
     );
     const reply = messages(env, id)[1];
     assert.deepEqual(
         { text: reply.text, status: reply.status, stopped: reply.stopped },
         { text: 'First idea.\nSecond idea.', status: 'interrupted', stopped: 'learner' },
+    );
+    assert.deepEqual(reply.snapshot, [...first.ops, ...second.ops]);
+    const calls = env.store.usageEvents().events.filter((event) => event.task === 'chat');
+    assert.deepEqual(
+        calls.map(({ tree, output, reasoning }) => [tree, output, reasoning]),
+        [[id, 14, 3]],
     );
     await opened(connect().ws);
     await until(() => provider.boards[1]?.opened);

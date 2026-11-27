@@ -71,5 +71,5 @@ Everything else: choose a default, record it, and finish.
 ## Boundaries
 
 Work only in this worktree and on your branch. The owner's main checkout,
-`master` and other task branches belong to others; merging and closing the
-task belong to the reviewer and `ralph-afk`.
+`master` and other task branches belong to others; approving belongs to the
+reviewer, merging and closing the task to `ralph-afk`.
