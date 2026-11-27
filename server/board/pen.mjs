@@ -23,19 +23,27 @@ export function strokeImage(points) {
     return sharp(Buffer.from(svg)).png().toBuffer();
 }
 
-// The learner's pen on a board (board() is the session's current board): each finished stroke becomes a
-// board item of its own, `p<n>`, and waits for the next question, which carries what it marks.
+// The learner's pen and view on a board (board() is the session's current board): each finished stroke becomes a
+// board item of its own, `p<n>`, and each page they open an `open` op, waiting for the next question, which carries
+// what they mark and the page it was asked from.
 export function boardPen(ctx, board) {
-    // The strokes since the last question, as op lines and what each marks.
+    // The strokes and opens since the last question, as op lines and what each marks.
     let pending = [],
         // The last pen id handed out; never reused in a session, since an erase may be applied but not saved.
-        pen = 0;
+        pen = 0,
+        // The page the learner opened mid-reply ('' for the tutor's page), opened on the board once the reply ends.
+        viewing;
+    const next = () => {
+        while (board().has(`p${++pen}`));
+        return `p${pen}`;
+    };
     return {
         stroke(points) {
-            while (board().has(`p${++pen}`));
-            const mark = board().mark(points);
+            const id = next();
+            // Mid-reply the learner may be looking at another page than the one the tutor draws on.
+            const mark = board().mark(points, viewing || undefined);
             const line = [
-                `p${pen} stroke`,
+                `${id} stroke`,
                 mark && `${mark.verb.split(' ')[0]}=${mark.ids.join(',')}`,
                 ...points.map((p) => p.join(',')),
             ]
@@ -45,24 +53,49 @@ export function boardPen(ctx, board) {
             pending.push({ line, mark, points });
             return { item, mark };
         },
+        // The learner opened `page` (none: back to the tutor's page, the open page before their first view since the
+        // last question). An `open` op waits with the strokes, so the strokes and the next reply land on that page
+        // and replay there; a view straight back drops it. Mid-reply (busy) the view waits for settle(), since the
+        // tutor's ops land on its own page. Returns the open item to show, or null.
+        view(page, busy) {
+            viewing = busy ? (page ?? '') : undefined;
+            if (busy) return null;
+            const home = pending.find((s) => s.page)?.home ?? board().open();
+            const to = page || home;
+            if (!to || to === board().open()) return null;
+            const line = `${next()} open ${to}`;
+            const { item } = board().read(line);
+            if (!item) return null;
+            while (pending.at(-1)?.page) pending.pop();
+            if (to !== (pending.findLast((s) => s.page)?.page ?? home))
+                pending.push({ line, page: to, home });
+            return item;
+        },
+        // The reply ended: a view the learner chose during it opens now.
+        settle() {
+            return viewing === undefined ? null : this.view(viewing);
+        },
         // Strokes waiting for the next question stay on a rebuilt board.
         replay: () => pending.forEach((s) => board().read(s.line)),
-        // Hands the waiting strokes to a question: their op lines, the note it ends with
-        // ("pen: circled t2 · pointed at t3 · strokes p1, p2", or ''), and the free-space strokes.
+        // Hands the waiting strokes and opens to a question: their op lines, the note it ends with
+        // ("pen: circled t2 · pointed at t3 · strokes p1, p2", then "page: s1" when asked from a page other than
+        // the tutor's, or ''), and the free-space strokes.
         take() {
+            const opened = pending.findLast((s) => s.page);
+            const page = opened && opened.page !== opened.home && `page: ${opened.page}`;
             const marks = Object.entries(
                 Object.groupBy(
                     pending.flatMap((s) => s.mark ?? []),
                     (m) => m.verb,
                 ),
             ).map(([verb, ms]) => `${verb} ${[...new Set(ms.flatMap((m) => m.ids))].join(', ')}`);
-            const strokes = pending.map((s) => s.line.split(' ')[0]);
+            const strokes = pending.filter((s) => s.points).map((s) => s.line.split(' ')[0]);
+            const drawn =
+                strokes.length && `pen: ${[...marks, `strokes ${strokes.join(', ')}`].join(' · ')}`;
             const taken = {
                 lines: pending.map((s) => s.line),
-                note: strokes.length
-                    ? `pen: ${[...marks, `strokes ${strokes.join(', ')}`].join(' · ')}`
-                    : '',
-                free: pending.filter((s) => !s.mark),
+                note: [drawn, page].filter(Boolean).join('\n'),
+                free: pending.filter((s) => s.points && !s.mark),
             };
             pending = [];
             return taken;

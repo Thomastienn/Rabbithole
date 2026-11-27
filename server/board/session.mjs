@@ -19,12 +19,13 @@ export const NO_ANSWER = [
 ];
 
 // One board session per open board: the conversation's own model process, its turns and their saving.
-// Up: { type: 'ask', text }, { type: 'mic', on }, { type: 'hold', on } as push-to-talk is held and let go, and, while on, mic audio as binary frames of 16 kHz mono float32 samples, { type: 'stroke', points } as the learner finishes a pen stroke, { type: 'progress', sentence, phase: 'start' | 'end' } as each caption shows and ends, { type: 'leave' }.
+// Up: { type: 'ask', text }, { type: 'mic', on }, { type: 'hold', on } as push-to-talk is held and let go, and, while on, mic audio as binary frames of 16 kHz mono float32 samples, { type: 'stroke', points } as the learner finishes a pen stroke, { type: 'view', page } as the learner opens a board page (no page: the view follows the tutor's page again), { type: 'progress', sentence, phase: 'start' | 'end' } as each caption shows and ends, { type: 'leave' }.
 // Down: { type: 'state', state: 'idle' | 'thinking' | 'speaking' }, thinking with the turn's user and reply message ids, { type: 'notice', notice },
 // { type: 'sentence', id, text, ops, voiced } with the drawable ops written under it (server/board/ops.mjs),
 // then, when voiced, its speech as binary frames (one byte of id length, the id, the audio) and { type: 'audio-end', id },
 // a filler clip the same way under the id `filler` when a turn's first audio hasn't started after 1 s,
-// { type: 'stroke', item, mark } back for each pen stroke, with what it marks or null,
+// { type: 'stroke', item, mark } back for each pen stroke, with what it marks or null, and as { type: 'stroke', item }
+// with the open item when the learner's view opens a page on the board,
 // { type: 'board', replies: [{ caption, items }] } once on open: the saved board, each reply's items replayed
 // from its op lines with the reply's last sentence as its caption,
 // { type: 'mic', status: 'loading' | 'on' | 'off', loaded, total } as the speech models download and the mic turns on or off,
@@ -75,6 +76,8 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
     // The items drawn on this board so far, across its turns.
     let board;
     const pen = boardPen(ctx, () => board);
+    // The learner's view opens its page on the board; nothing goes to the model until their next message.
+    const opened = (item) => item && send({ type: 'stroke', item });
     // An answer starting, typed, spoken or drawn, holds the wait open: no hint comes.
     const answering = () => {
         clock.clearTimeout(waiting);
@@ -211,6 +214,7 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
             pen.replay();
         }
         if (turn === current) turn = null;
+        if (!closed) opened(pen.settle());
         ctx.jobs.remove(current.job);
         current.ended.resolve();
         // A question waits for its answer; the hint turn always waits once more, then the tutor carries on.
@@ -363,7 +367,8 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
         const reply = store.message(id, 'assistant', '', 'streaming');
         if (user) store.onBoard(user);
         store.onBoard(reply);
-        // A no-answer turn leaves the pen's strokes for the learner's next question.
+        // A no-answer turn leaves the pen's strokes for the learner's next question, and draws on the tutor's page.
+        if (noAnswer) opened(pen.view());
         const { lines, note, free } = noAnswer ? { lines: [], free: [] } : pen.take();
         if (lines.length) store.saveBoardOps(user, lines);
         // The provider got text the learner never heard, so a turn after a cut names where the learner stopped hearing.
@@ -524,6 +529,8 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
             answering();
             send({ type: 'stroke', ...pen.stroke(m.points.map((p) => p.map(Math.round))) });
         }
+        if (m?.type === 'view' && (m.page === undefined || /^[A-Za-z_][\w-]*$/.test(m.page)))
+            opened(pen.view(m.page, !!turn));
         if (m?.type === 'progress' && typeof m.sentence === 'string') progress(m.sentence, m.phase);
         if (m?.type === 'mic') m.on ? mic.on() : mic.off();
         if (m?.type === 'hold') {
