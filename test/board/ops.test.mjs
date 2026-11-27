@@ -82,3 +82,52 @@ test('board ops: a malformed op or one naming an unknown id is skipped with its 
     assert.ok(board.read('c5 line 0,0 -> 10,10').item, 'the board carries on');
     assert.ok(board.read('bl text "bulb" at 1460,450').item, 'a skipped id stays free');
 });
+
+test('board ops: erase removes the items it names, and a learner stroke marks what it circles or points at', () => {
+    const board = boardOps();
+    board.read('load box at 370,548 w=140 h=112');
+    board.read('pivot text "pivot" at 560,760 size=s');
+    board.read('tip dot at 560,673');
+    const loop = [
+        [650, 620],
+        [470, 600],
+        [480, 800],
+        [690, 760],
+        [640, 615],
+    ];
+    assert.deepEqual(board.mark(loop), { verb: 'circled', ids: ['pivot', 'tip'] });
+    assert.deepEqual(
+        board.mark([
+            [640, 380],
+            [432, 500],
+        ]),
+        { verb: 'pointed at', ids: ['load'] },
+    );
+    assert.equal(
+        board.mark([
+            [1200, 100],
+            [1300, 120],
+        ]),
+        null,
+        'a stroke over no item marks nothing',
+    );
+    assert.deepEqual(board.read('p1 stroke circled=pivot,tip 650,620 470,600').item, {
+        id: 'p1',
+        kind: 'stroke',
+        points: [
+            [650, 620],
+            [470, 600],
+        ],
+    });
+    assert.ok(board.read('e1 erase p1 nowhere').error, 'an unknown id skips the whole erase');
+    assert.deepEqual(board.read('e1 erase p1 tip').item, {
+        id: 'e1',
+        kind: 'erase',
+        ids: ['p1', 'tip'],
+    });
+    assert.deepEqual(
+        board.items().map((i) => i.id),
+        ['load', 'pivot'],
+    );
+    assert.ok(board.read('e2 erase').error, 'erase needs an id');
+});

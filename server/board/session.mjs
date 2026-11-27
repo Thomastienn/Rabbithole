@@ -8,10 +8,11 @@ import { conversationHistory } from '../providers/conversationHistory.mjs';
 const STOPPED = 'The tutor stopped. Ask again to carry on.';
 
 // One board session per open board: the conversation's own model process, its turns and their saving.
-// Up: { type: 'ask', text }, { type: 'progress', sentence, phase: 'start' | 'end' } as each caption shows and ends, { type: 'leave' }.
+// Up: { type: 'ask', text }, { type: 'stroke', points } as the learner finishes a pen stroke, { type: 'progress', sentence, phase: 'start' | 'end' } as each caption shows and ends, { type: 'leave' }.
 // Down: { type: 'state', state: 'idle' | 'thinking' | 'speaking' }, { type: 'notice', notice },
 // { type: 'sentence', id, text, ops } with the drawable ops written under it (server/board/ops.mjs),
-// { type: 'board', items } once on open: the saved board, replayed from every board reply's op lines.
+// { type: 'stroke', item, mark } back for each pen stroke, with what it marks or null,
+// { type: 'board', items } once on open: the saved board, replayed from the op lines of every board message.
 export function boardSession(ctx, id, socket) {
     const { store, log } = ctx;
     const send = (event) => {
@@ -22,11 +23,13 @@ export function boardSession(ctx, id, socket) {
         warmedFor,
         turn = null,
         closed = false,
-        count = 0;
+        count = 0,
+        // The learner's strokes since the last question, as op lines and what each marks; they go with the next one.
+        pending = [];
     // The items drawn on this board so far, across its turns.
     const board = boardOps();
-    const items = store.boardOpLines(id).flatMap((line) => board.read(line).item ?? []);
-    if (items.length) send({ type: 'board', items });
+    store.boardOpLines(id).forEach((line) => board.read(line));
+    if (board.items().length) send({ type: 'board', items: board.items() });
     const ended = Promise.withResolvers();
     // A newer board for the same conversation replaces this one; deleting it or stopping the app ends it too.
     ctx.jobs.get('board', id)?.controller.abort();
@@ -234,6 +237,23 @@ export function boardSession(ctx, id, socket) {
         const reply = store.message(id, 'assistant', '', 'streaming');
         store.onBoard(user);
         store.onBoard(reply);
+        // The question carries what its strokes mark and their ids: "pen: circled t2 · pointed at t3 · strokes p1, p2".
+        const marks = Object.entries(
+            Object.groupBy(
+                pending.flatMap((s) => s.mark ?? []),
+                (m) => m.verb,
+            ),
+        ).map(([verb, ms]) => `${verb} ${[...new Set(ms.flatMap((m) => m.ids))].join(', ')}`);
+        if (pending.length)
+            store.saveBoardOps(
+                user,
+                pending.map((s) => s.line),
+            );
+        const strokes = pending.map((s) => s.line.split(' ')[0]);
+        const prompt = strokes.length
+            ? `${text}\n\npen: ${[...marks, `strokes ${strokes.join(', ')}`].join(' · ')}`
+            : text;
+        pending = [];
         const current = { reply, sentences: [], shown: 0, over: 0, ended: Promise.withResolvers() };
         turn = current;
         send({ type: 'state', state: 'thinking' });
@@ -246,7 +266,7 @@ export function boardSession(ctx, id, socket) {
                 signal.addEventListener('abort', () => finish(current, 'interrupted'), {
                     once: true,
                 });
-                return run(current, tree, text, signal).then(() => current.ended.promise);
+                return run(current, tree, prompt, signal).then(() => current.ended.promise);
             },
             { settle: false },
         );
@@ -285,6 +305,26 @@ export function boardSession(ctx, id, socket) {
         if (ctx.stopping) socket.terminate();
         else socket.close();
     }
+    // A pen stroke becomes a board item of its own, `p<n>`, and its line waits for the next question.
+    const stroke = (points) => {
+        let n = 0;
+        while (board.has(`p${++n}`));
+        const mark = board.mark(points);
+        const line = [
+            `p${n} stroke`,
+            mark && `${mark.verb.split(' ')[0]}=${mark.ids.join(',')}`,
+            ...points.map((p) => p.join(',')),
+        ]
+            .filter(Boolean)
+            .join(' ');
+        const { item } = board.read(line);
+        pending.push({ line, mark });
+        send({ type: 'stroke', item, mark });
+    };
+    const isPoint = (p) =>
+        Array.isArray(p) &&
+        p.length === 2 &&
+        p.every((v) => Number.isFinite(v) && Math.abs(v) < 1e5);
     socket.on('message', (data, binary) => {
         if (binary) return;
         let m;
@@ -295,6 +335,14 @@ export function boardSession(ctx, id, socket) {
         }
         if (m?.type === 'ask' && typeof m.text === 'string' && m.text.trim())
             ask(m.text.slice(0, 100000));
+        if (
+            m?.type === 'stroke' &&
+            Array.isArray(m.points) &&
+            m.points.length &&
+            m.points.length <= 2000 &&
+            m.points.every(isPoint)
+        )
+            stroke(m.points.map((p) => p.map(Math.round)));
         if (m?.type === 'progress' && typeof m.sentence === 'string') progress(m.sentence, m.phase);
         if (m?.type === 'leave') close();
     });

@@ -8,8 +8,13 @@ function head([x0, y0]: [number, number], [x, y]: [number, number]) {
     return `M${bx - 18 * uy} ${by + 18 * ux}L${x} ${y}L${bx + 18 * uy} ${by - 18 * ux}`;
 }
 
-// One board item in board pixels, coloured by its look, fading in over its share of the sentence.
-export default function BoardItem({ op, ms }: { op: Op; ms: number }) {
+// A learner's freehand stroke; a lone point still draws as a dot under its round cap.
+export const strokePath = (points: [number, number][]) =>
+    `M${points[0]}` + points.map((p) => `L${p}`).join('');
+
+// One board item in board pixels, coloured by its look, fading in over its share of the sentence,
+// or out once erased.
+export default function BoardItem({ op, ms, erased }: { op: Op; ms: number; erased?: boolean }) {
     const [x, y] = op.at ?? [0, 0];
     const label = (size: 's' | 'm' | 'l') => (
         <text className={`board-text ${size}`} x={x} y={y}>
@@ -20,7 +25,7 @@ export default function BoardItem({ op, ms }: { op: Op; ms: number }) {
     const path = points.map(([px, py], i) => `${i ? 'L' : 'M'}${px} ${py}`).join('');
     return (
         <g
-            className={`board-item${op.look ? ` ${op.look}` : ''}`}
+            className={`board-item${op.look ? ` ${op.look}` : ''}${erased ? ' erased' : ''}`}
             style={{ animationDuration: `${ms}ms` }}
         >
             {op.kind === 'circle' && <circle className="board-stroke" cx={x} cy={y} r={op.r} />}
@@ -34,6 +39,7 @@ export default function BoardItem({ op, ms }: { op: Op; ms: number }) {
                     rx={12}
                 />
             )}
+            {op.kind === 'stroke' && <path className="board-learner" d={strokePath(points)} />}
             {op.kind === 'dot' && <circle className="board-dot" cx={x} cy={y} r={14} />}
             {op.kind === 'line' && <path className="board-stroke" d={path} />}
             {op.kind === 'arrow' && (
