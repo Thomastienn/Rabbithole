@@ -2,7 +2,7 @@ import { isSketch, parse, plainText } from '../../src/markdown/markdownText.ts';
 import { drawSketch } from '../../src/sketch/sketch.ts';
 import { LIMITS } from './reply-parser.mjs';
 
-const PALETTE = { ground: '', ink: '', muted: '', seam: '', focus: '' };
+const PALETTE = { ground: '', ink: '', muted: '', seam: '', hairline: '', focus: '' };
 const NEAR = LIMITS.excerpt / 2;
 
 // The visual request for expanding the sketch whose block starts at `at` in a saved reply (ADR 0027):
