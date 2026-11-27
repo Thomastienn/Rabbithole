@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import type { Op } from './player';
+import type { Part } from './layout';
 
 // An arrowhead is two strokes 24 board pixels back along the shaft and 18 either side (mockup Rabbithole-brd.2).
 function head([x0, y0]: [number, number], [x, y]: [number, number]) {
@@ -15,16 +16,19 @@ export const strokePath = (points: [number, number][]) =>
 
 // One board item in board pixels, coloured by its look, entering by hand over its share of the sentence,
 // or fading out once erased. pathLength 1 lets one dash draw any stroke on (src/styles/board.css). A point's
-// label sits on `row` 0 or 1 above its line and slides when a later point reflows it (mockup Rabbithole-brd.5).
+// label sits on `row` 0 or 1 above its line and slides when a later point reflows it (mockup Rabbithole-brd.5). A flow, tree, table
+// or Venn item draws its `parts` (src/board/layout.ts) one after another, each over its share of the entry.
 export default function BoardItem({
     op,
     ms,
     row = 0,
+    parts = [],
     erased,
 }: {
     op: Op;
     ms: number;
     row?: number;
+    parts?: Part[];
     erased?: number;
 }) {
     const [x, y] = op.at ?? [0, 0];
@@ -104,9 +108,54 @@ export default function BoardItem({
                     </text>
                 </>
             )}
+            {parts.map((part) => (
+                <ComponentPart key={part.key} part={part} ms={ms} />
+            ))}
             {op.kind === 'text'
                 ? label(op.size ?? 'm')
-                : op.kind !== 'point' && op.text && label('s')}
+                : !parts.length && op.kind !== 'point' && op.text && label('s')}
         </g>
+    );
+}
+
+// One part, placed by CSS geometry so a reflow slides it rather than jumping (src/styles/board.css).
+function ComponentPart({ part, ms }: { part: Part; ms: number }) {
+    const [from, to] = part.t;
+    const timing = { animationDelay: `${ms * from}ms`, animationDuration: `${ms * (to - from)}ms` };
+    if (part.kind === 'box')
+        return (
+            <rect
+                className="board-stroke board-part-box"
+                pathLength={1}
+                rx={18}
+                style={{ ...timing, x: part.x, y: part.y, width: part.w, height: part.h }}
+            />
+        );
+    if (part.kind === 'line')
+        return (
+            <path
+                className={`board-stroke board-part-${part.look}`}
+                pathLength={1}
+                style={{ ...timing, d: `path("${part.d}")` } as CSSProperties}
+            />
+        );
+    if (part.kind === 'circle')
+        return (
+            <circle
+                className="board-stroke board-part-circle"
+                pathLength={1}
+                cx={part.x}
+                cy={part.y}
+                r={part.r}
+                style={timing}
+            />
+        );
+    return (
+        <text
+            className={`board-part-text${part.look ? ` ${part.look}` : ''}${part.anchor ? ` ${part.anchor}` : ''}`}
+            style={{ ...timing, translate: `${part.x}px ${part.y}px` }}
+        >
+            {part.text}
+        </text>
     );
 }
