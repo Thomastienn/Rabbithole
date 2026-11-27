@@ -389,6 +389,7 @@ export function renderMarkdown(
                         body: n.value ?? '',
                         start: s,
                         end: e,
+                        live: sketches === 'streaming',
                         fence: n.sketchClosed
                             ? 'closed'
                             : sketches === 'streaming'

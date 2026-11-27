@@ -7,9 +7,10 @@ import {
     useMemo,
     useRef,
     useState,
+    type CSSProperties,
 } from 'react';
 import { HStack } from '@astryxdesign/core/Layout';
-import { drawSketch, sketchPassage, type Palette } from '../sketch/sketch';
+import { drawSketch, sketchPassage, type Palette, type Sketch as Drawing } from '../sketch/sketch';
 import type { Anchor } from '../chat/branch';
 import { inkStyle } from '../map/treeList';
 import './sketch.css';
@@ -42,16 +43,19 @@ export const SketchAsk = createContext<{
 } | null>(null);
 
 // A sketch block in a reply: a placeholder while its fence is open, nothing (logged) when it cannot draw.
+// One that arrives in a streaming reply builds in item by item, like the text around it; a saved reply's shows at once.
 export default function Sketch({
     kind,
     body,
     fence,
+    live,
     start,
     end,
 }: {
     kind: string;
     body: string;
     fence: 'open' | 'closed' | 'unfinished';
+    live: boolean;
     start: number;
     end: number;
 }) {
@@ -68,6 +72,26 @@ export default function Sketch({
     useEffect(() => {
         if (error) console.warn(`Sketch hidden (${kind.trim()}): ${error}`);
     }, [kind, error]);
+    if (fence === 'open')
+        return <div className="sketch-wait" role="status" aria-label="Drawing a sketch" />;
+    if (!sketch || 'error' in sketch) return null;
+    return <SketchDrawing drawn={sketch} live={live} start={start} end={end} />;
+}
+
+function SketchDrawing({
+    drawn,
+    live,
+    start,
+    end,
+}: {
+    drawn: Drawing;
+    live: boolean;
+    start: number;
+    end: number;
+}) {
+    const [build] = useState(
+        () => live && !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    );
     const context = useContext(SketchAsk),
         drawing = useRef<HTMLDivElement>(null),
         buttons = useRef<(HTMLButtonElement | null)[]>([]),
@@ -75,15 +99,14 @@ export default function Sketch({
         // The focused item, and the one Tab lands on: the item focused last, else the first.
         [focused, setFocused] = useState<number>(),
         [last, setLast] = useState(0);
-    const drawn = sketch && !('error' in sketch) ? sketch : undefined,
-        mine = context?.branches.filter((b) => b.start === start && b.end === end) ?? [],
+    const mine = context?.branches.filter((b) => b.start === start && b.end === end) ?? [],
         open = context?.open,
         openLabel = open?.sketch && open.start === start && open.end === end && open.sketch.label,
         branchOf = (label: string) => mine.find((b) => b.label === label);
     // The drawing is the module's markup, so its items take their state as classes.
     useLayoutEffect(() => {
         drawing.current?.querySelectorAll<HTMLElement>('[data-item]').forEach((el, i) => {
-            const label = drawn!.items[i]?.label,
+            const label = drawn.items[i]?.label,
                 branch = label === undefined ? undefined : branchOf(label);
             el.classList.toggle('open', label === openLabel);
             el.classList.toggle('kf', i === focused);
@@ -92,9 +115,6 @@ export default function Sketch({
             el.style.setProperty('--ink', ink || null);
         });
     });
-    if (fence === 'open')
-        return <div className="sketch-wait" role="status" aria-label="Drawing a sketch" />;
-    if (!drawn) return null;
     // The ask box hangs 4px under the item's hit area, from its left edge, or its right edge in the column's right half.
     function ask(i: number) {
         const hit = drawing.current!.querySelectorAll('[data-item]')[i],
@@ -102,14 +122,14 @@ export default function Sketch({
             reply = hit.closest('.passage')?.getBoundingClientRect(),
             column = drawing.current!.getBoundingClientRect();
         if (!reply) return;
-        const label = drawn!.items[i].label;
+        const label = drawn.items[i].label;
         context!.ask(
             {
                 messageId: context!.messageId,
                 start,
                 end,
-                text: sketchPassage(drawn!.title, label),
-                sketch: { title: drawn!.title, label },
+                text: sketchPassage(drawn.title, label),
+                sketch: { title: drawn.title, label },
                 at: {
                     x: area.left - reply.left,
                     y: area.top - reply.top,
@@ -125,7 +145,18 @@ export default function Sketch({
     const chips = mine.filter((b) => b.address);
     return (
         <figure
-            className={context ? 'sketch askable' : 'sketch'}
+            className={['sketch', build && 'sketch-build', context && 'askable']
+                .filter(Boolean)
+                .join(' ')}
+            // The items share about 0.5 s: 0.3 s of staggered starts, then each fades for 0.2 s.
+            style={
+                build
+                    ? ({
+                          '--step': `${300 / Math.max(drawn.items.length - 1, 1)}ms`,
+                          '--fade': '200ms',
+                      } as CSSProperties)
+                    : undefined
+            }
             aria-label={drawn.title ? `Sketch: ${drawn.title}` : 'Sketch'}
         >
             {drawn.title && <figcaption aria-hidden="true">{drawn.title}</figcaption>}

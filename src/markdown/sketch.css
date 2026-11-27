@@ -73,6 +73,17 @@
     background: var(--color-skeleton);
     opacity: 0.6;
 }
+@media (prefers-reduced-motion: no-preference) {
+    .sketch-build :is(svg > *, .sketch-bars > *) {
+        animation: sketch-in var(--fade) ease-out both;
+        animation-delay: calc(var(--i, 0) * var(--step));
+    }
+}
+@keyframes sketch-in {
+    from {
+        opacity: 0;
+    }
+}
 
 /* Asking about an item (mockup Rabbithole-skt.6): each hit area outlines dotted when pointed at or open,
    solid in its branch's line colour once branched, and wears the focus ring from the keyboard. */
