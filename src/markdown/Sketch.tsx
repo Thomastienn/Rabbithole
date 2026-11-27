@@ -76,7 +76,9 @@ function SketchDrawing({
                       } as CSSProperties)
                     : undefined
             }
-            aria-label={sketch.title ? `Sketch: ${sketch.title}` : 'Sketch'}
+            aria-label={[sketch.title ? `Sketch: ${sketch.title}` : 'Sketch', sketch.about]
+                .filter(Boolean)
+                .join(', ')}
             data-artifact={visual}
         >
             {sketch.title && <figcaption aria-hidden="true">{sketch.title}</figcaption>}
