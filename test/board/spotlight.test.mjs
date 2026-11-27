@@ -14,15 +14,21 @@ test('board: while the tutor speaks, what its latest sentence drew or named stay
             .map((g) => g.dataset.item)
             .sort();
     const at = { sun: 200, earth: 1300, moon: 900, orbit: 1000 };
-    // Each sentence is two characters, so it shows for about 133 ms of board time.
+    // Polls the board on real timers, so a loaded machine only makes it slower.
+    const until = async (ready) => {
+        for (let ms = 0; !ready() && ms < 5000; ms += 10)
+            await board.act(() => new Promise((done) => setTimeout(done, 10)));
+        assert.ok(ready());
+    };
+    // Each sentence waits on show until the one before has ended.
     let n = 0;
     const say = async (ops) => {
+        const text = `S${++n}.`;
         await board.act(async () =>
-            board.socket.server({ type: 'sentence', id: String(++n), text: 'A.', ops }),
+            board.socket.server({ type: 'sentence', id: String(n), text, ops }),
         );
-        await board.act(() => new Promise((done) => setTimeout(done, 20)));
+        await until(() => board.q('.board-caption').textContent === text);
     };
-    const next = () => board.act(() => new Promise((done) => setTimeout(done, 160)));
     const circle = (id, extra) => ({
         id,
         kind: 'circle',
@@ -47,7 +53,6 @@ test('board: while the tutor speaks, what its latest sentence drew or named stay
         }),
     );
     assert.deepEqual(named(), [], 'everything the first sentence drew is lit');
-    await next();
     await say([
         {
             id: 'a1',
@@ -64,20 +69,16 @@ test('board: while the tutor speaks, what its latest sentence drew or named stay
         ['f1', 'sun'],
         'a connector lights its two ends; the muted orbit and the pen stroke do not dim',
     );
-    await next();
     await say(undefined);
     assert.deepEqual(named(), ['f1', 'sun'], 'a sentence without ops keeps the lit set');
-    await next();
     await say([{ id: 'c1', kind: 'step', on: 'f1', text: 'new' }]);
     assert.deepEqual(named(), ['a1', 'earth', 'moon', 'sun'], 'a child lights its whole component');
-    await next();
     await say([{ id: 'h1', kind: 'highlight', at: [200, 300], w: 120, h: 120, names: ['sun'] }]);
     assert.deepEqual(
         named(),
         ['a1', 'c1', 'earth', 'f1', 'moon'],
         'a highlight lights its item, with its wash',
     );
-    await next();
     await say([{ id: 'x1', kind: 'erase', ids: ['orbit'] }]);
     assert.deepEqual(named(), ['a1', 'c1', 'earth', 'f1', 'moon'], 'an erase lights nothing');
 
@@ -90,11 +91,12 @@ test('board: while the tutor speaks, what its latest sentence drew or named stay
         'resuming brings the spotlight back',
     );
 
-    await next();
     await say([
         { id: 'p2', kind: 'page', top: 900, title: 'Two', parent: 'first' },
         circle('q', { at: [700, 1200] }),
     ]);
+    // Opened once the page's last item has drawn, so no tutor item brings the learner back.
+    await until(() => board.q('[data-item="q"]'));
     await board.act(async () => button(board.container, 'Back to Page 1').click());
     assert.deepEqual(named(), [], 'a page the learner opens shows in full');
 
@@ -112,7 +114,6 @@ test('board: while the tutor speaks, what its latest sentence drew or named stay
         [],
         'a new reply starts in full until a sentence draws or names something',
     );
-    await next();
     await say([circle('r')]);
     assert.ok(named().length, 'the spotlight comes back with a drawing');
     await board.type('Wait');
