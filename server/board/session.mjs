@@ -272,16 +272,20 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
             }
             if (ended || reader.nextSentence()) flush();
         };
-        let result, selection;
+        let result, selection, index;
         try {
             await ready;
             if (!signal.aborted) await warm(tree, signal);
             if (signal.aborted) result = { status: 'interrupted' };
             else {
                 const images = await pen.sketches(current, tree, model, free);
-                const prompt = images.length
-                    ? `${text} · images of ${images.map((i) => i.id).join(', ')} attached`
-                    : text;
+                // The model gets only spoken captions back from history, so each turn says what pages exist.
+                index = board.index();
+                const prompt = `${index}\n\n${
+                    images.length
+                        ? `${text} · images of ${images.map((i) => i.id).join(', ')} attached`
+                        : text
+                }`;
                 selection = { provider: tree.provider, model };
                 result = await process.ask(prompt, (e) => add(reader.feed(e.text)), signal, images);
             }
@@ -318,6 +322,8 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
                     output: usage?.output,
                     cacheRead: usage?.cacheRead,
                     thinking: usage?.thinking,
+                    // Untested: how large the index grows on a long board (docs/board-pages-and-check-ins-spec.md).
+                    index: index?.length,
                     ms: Math.round(performance.now() - started),
                     ...(failed && {
                         cause: errorCause(

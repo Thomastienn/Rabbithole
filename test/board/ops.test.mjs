@@ -472,3 +472,24 @@ test('board ops: flow, tree, table and venn children keep their words and are ch
     ])
         assert.equal(board.read(line).error, cause, line);
 });
+
+test('board ops: the page index lists each page with the ids and texts still on it', () => {
+    const board = boardOps();
+    assert.equal(board.index(), 'BOARD PAGES (* marks the open page)\n(none yet)');
+    for (const line of [
+        'a1 math "a^2+b^2" at 400,300',
+        'b1 box at 900,300',
+        'x1 text "gone" at 400,700',
+        'e1 erase x1',
+        'p2 page "Table" from=a1',
+        'tb table cols="A|B" w=600 h=300 at 800,450',
+        'r1 row "1|2" in tb',
+        'fl flow w=600 h=200 at 800,800',
+        's1 step "add" in fl',
+    ])
+        assert.ok(board.read(line).item, line);
+    assert.equal(
+        board.index(),
+        'BOARD PAGES (* marks the open page)\nfirst "Page 1": a1 "a^2+b^2", b1\n* p2 "Table" parent=first from=a1: tb "A|B", r1 "1|2", fl, s1 "add"',
+    );
+});
