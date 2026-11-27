@@ -145,9 +145,9 @@ Now and then the tutor **checks in**: after a big idea, or before going back fro
   - the page on screen marked
   - clicking a title opens that page and sends `view`
 - **The back chip:** a side page shows a "back to <parent title>" chip, which opens the parent page.
-- **The check-in wait:** the check-in's caption stays and the "your turn" cue keeps pulsing, with no timer and no reminder.
+- **The check-in wait:** the check-in's caption stays and the "your turn" cue keeps pulsing, with no timer and no reminder. It reuses the look of a `?> ` question waiting for its answer, so it needs no mockup.
 - **Settings:** the Board section gains **Check-ins**, with Off, Now and then (the default) and Often, remembered in the browser like the other Board choices. This adds to the existing section in its current look, so it needs no mockup.
-- **Mockup:** the page strip, the back chip and the check-in wait are new UI parts. They need a mockup at `docs/mockups/<issue-id>.html` before their ticket is published (label `new-ui`), using the mockup acceptance criterion in `docs/agents/mockups.md`.
+- **Mockup:** the page strip and the back chip are new UI parts. They need a mockup at `docs/mockups/<issue-id>.html` before their ticket is published (label `new-ui`), using the mockup acceptance criterion in `docs/agents/mockups.md`.
 
 ### Familiarity
 
