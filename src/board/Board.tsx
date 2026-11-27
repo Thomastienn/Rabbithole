@@ -5,11 +5,12 @@ import { ExclamationTriangleIcon, MicrophoneIcon } from '@heroicons/react/24/out
 import { holdEnter } from '../chat/Attachments';
 import type { Message } from '../chat/turn';
 import { useBoard } from './useBoard';
+import BoardItem from './BoardItem';
 
 const STATES = { thinking: 'Thinking', speaking: 'Speaking' } as const;
 
 // The board column (mockup Rabbithole-brd.1): the board field, the caption line and the board's composer.
-// Nothing is drawn or spoken yet; the tutor's sentences show one at a time as the caption.
+// The tutor's sentences show one at a time as the caption while their ops draw (mockup Rabbithole-brd.2).
 export default function Board({
     conversation,
     messages,
@@ -30,7 +31,11 @@ export default function Board({
         <section className="board-column" aria-label="Board">
             <div className="board-field">
                 <div className="board">
-                    <svg viewBox="0 0 1600 900" role="img" aria-label="Board" />
+                    <svg viewBox="0 0 1600 900" role="img" aria-label="Board">
+                        {board.items.map(({ op, ms }) => (
+                            <BoardItem key={op.id} op={op} ms={ms} />
+                        ))}
+                    </svg>
                     {!board.asked && <p className="board-empty">Ask a question to start.</p>}
                     {board.notice && (
                         <p className="board-notice" role="alert">
