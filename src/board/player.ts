@@ -3,7 +3,7 @@ import type { Voice } from './voice';
 // The board player: shows the tutor's sentences one at a time, each for as long as it takes to say,
 // and draws each sentence's ops in order over that time.
 // A voiced sentence starts on its first audio chunk and lasts as long as its audio plays.
-// Later tickets add hand-drawn entry, speed, pause and interruptions here.
+// Later tickets add speed, pause and interruptions here.
 export type Phase = 'start' | 'end';
 export type Look = 'focus' | 'muted' | 'good' | 'wrong' | 'new';
 // A drawable op as the board session sends it (server/board/ops.mjs), in board pixels.

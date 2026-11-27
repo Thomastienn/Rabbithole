@@ -135,7 +135,7 @@ test('board: each sentence becomes the caption, reported as it shows, and leavin
     assert.deepEqual(board.reloads, ['c1'], 'the conversation reloads once the server has saved');
 });
 
-test('board: reopened, it holds the latest board reply’s last sentence and no hint', async (t) => {
+test('board: reopened, it holds the latest board reply’s last sentence and its whole board at once, with no hint', async (t) => {
     const board = await mount(t, [
         { id: 'q', role: 'user', text: 'Why?', status: 'completed', board: true },
         {
@@ -150,6 +150,27 @@ test('board: reopened, it holds the latest board reply’s last sentence and no 
     assert.equal(board.q('.board-empty'), null);
     assert.equal(board.q('.board-caption.muted').textContent, 'Dr. Lin explains how.');
     assert.equal(board.q('[role=status]').textContent, '');
+    await board.act(async () =>
+        board.socket.server({
+            type: 'board',
+            items: [
+                { id: 'tip', kind: 'circle', at: [800, 450], r: 60 },
+                { id: 'v1', kind: 'dot', at: [900, 450] },
+            ],
+        }),
+    );
+    const drawn = [...board.container.querySelectorAll('svg .board-item')];
+    assert.deepEqual(
+        drawn.map((g) => [
+            g.firstElementChild.getAttribute('cx'),
+            g.style.getPropertyValue('--board-ms'),
+        ]),
+        [
+            ['800', '0ms'],
+            ['900', '0ms'],
+        ],
+        'every saved item shows at once, without entry',
+    );
 });
 
 test('board: disconnecting holds the last caption and keeps a typed draft', async (t) => {

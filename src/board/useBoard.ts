@@ -59,6 +59,8 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
                     setCaption((c) => c && { ...c, muted: true });
                 }
             }
+            // The saved board shows at once, without entry.
+            if (m.type === 'board') setItems(m.items.map((op: Op) => ({ op, ms: 0 })));
             if (m.type === 'sentence') player.add(m);
             if (m.type === 'audio-end') player.audioEnd(m.id);
             if (m.type === 'notice') setNotice(m.notice);

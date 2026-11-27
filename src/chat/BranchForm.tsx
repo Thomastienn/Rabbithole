@@ -41,6 +41,8 @@ export default function BranchForm({
     const pending = !!branch.pending;
     // A picked visual part, named by its trail.
     const part = 'trail' in anchor && anchor.trail ? anchor : undefined;
+    // A sketch item, named by its sketch's title and its label.
+    const { sketch } = anchor;
     // Reply passages and visual parts can have a brief explanation, discussion lines cannot; only an unexplored
     // suggestion asks on opening, a selection or a part waits for its button. The text tells parts apart.
     const briefKey =
@@ -147,6 +149,12 @@ export default function BranchForm({
                         ))}
                         <strong aria-current="location">{part.label}</strong>
                     </nav>
+                ) : sketch ? (
+                    <nav className="crumbs sketch-crumbs" aria-label="Item of the sketch">
+                        <span>{sketch.title || 'Sketch'}</span>
+                        <ChevronRightIcon className="crumb-sep" aria-hidden />
+                        <strong aria-current="location">{sketch.label}</strong>
+                    </nav>
                 ) : (
                     <Text id="branch-passage" className="branch-passage sr-only">
                         {branch.anchor.text}
@@ -221,11 +229,15 @@ export default function BranchForm({
                 <HStack gap={1} vAlign="center">
                     <TextInput
                         label={
-                            part ? 'Question about this visual part' : 'Question about this passage'
+                            part
+                                ? 'Question about this visual part'
+                                : sketch
+                                  ? 'Question about this sketch item'
+                                  : 'Question about this passage'
                         }
                         isLabelHidden
-                        placeholder={part ? `Ask about ${part.label}` : 'Ask about this passage'}
-                        aria-describedby={part ? undefined : 'branch-passage'}
+                        placeholder={`Ask about ${part?.label ?? sketch?.label ?? 'this passage'}`}
+                        aria-describedby={part || sketch ? undefined : 'branch-passage'}
                         value={branch.question}
                         onChange={(question) => setQuestion(question)}
                         isDisabled={branching || pending}
@@ -248,6 +260,7 @@ export default function BranchForm({
                             label="Explain briefly"
                             size="sm"
                             variant="secondary"
+                            isDisabled={branching}
                             onClick={(e) => {
                                 // The button gives way to the loading state, so focus moves on to the question box.
                                 e.currentTarget.form?.querySelector('input')?.focus();

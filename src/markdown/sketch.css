@@ -82,6 +82,170 @@
 .sketch-bars .focus {
     font-weight: 600;
 }
+/* Stack (mockup Rabbithole-skt.2): one layer per row, each on a 3px shelf as wide as the widest layer. */
+.sketch .sketch-stack {
+    display: grid;
+    grid-template-columns: fit-content(288px) auto;
+    column-gap: 16px;
+    width: fit-content;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font: 14px/20px var(--rabbithole-font-reading);
+}
+.sketch .sketch-stack li {
+    position: relative;
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+    align-items: baseline;
+    margin: 0;
+    padding: 5px 0 9px;
+}
+.sketch .sketch-stack li::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0;
+    height: 3px;
+    border-radius: var(--radius-full);
+    background: var(--shelf);
+}
+.sketch .sketch-stack b {
+    font-weight: 400;
+}
+.sketch .sketch-stack span {
+    font-size: 13px;
+}
+.sketch .sketch-start {
+    text-anchor: start;
+}
+.sketch .sketch-end {
+    text-anchor: end;
+}
+/* Plot, sequence, equation and grid (mockup Rabbithole-skt.4); colours come inline from the palette. */
+.sketch .sketch-axis {
+    fill: none;
+    stroke-width: 1.5;
+}
+.sketch .sketch-tick {
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+.sketch-math {
+    font: 15px/28px math;
+    white-space: nowrap;
+}
+.sketch .sketch-life {
+    fill: none;
+    stroke-width: 2;
+}
+.sketch .sketch-gap {
+    fill: none;
+    stroke-width: 6;
+}
+.sketch-eq {
+    display: flex;
+    gap: 10px;
+    height: calc(38px + var(--rows) * 26px);
+    font: 26px/40px math;
+}
+.sketch-eq .tk {
+    display: block;
+    height: 40px;
+    white-space: nowrap;
+}
+.sketch-eq .an {
+    position: relative;
+    display: inline-block;
+    height: 40px;
+    vertical-align: top;
+}
+.sketch-eq :is(sub, sup) {
+    font-size: 70%;
+    line-height: 0;
+}
+.sketch-eq .up {
+    font-style: normal;
+}
+.sketch-eq .ld {
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    margin-left: -1px;
+    width: 10px;
+    height: calc(14px + var(--r) * 26px);
+    border: solid;
+    border-width: 0 0 2px 2px;
+}
+.sketch-eq .ld span {
+    position: absolute;
+    left: 16px;
+    top: 100%;
+    transform: translateY(-50%);
+    margin-top: -1px;
+    white-space: nowrap;
+    font: 14px/20px var(--rabbithole-font-reading);
+}
+.sketch :is(.sketch-eq, .sketch-grids) em {
+    font-style: normal;
+    font-weight: 600;
+}
+.sketch-grids {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    max-width: 640px;
+    overflow-x: auto;
+}
+.sketch-grids.stack {
+    flex-direction: column;
+    align-items: flex-start;
+}
+.sketch-grids .gb {
+    display: flex;
+    flex-direction: column;
+}
+.sketch-grids .gc {
+    margin-bottom: 6px;
+    font: 13px/18px var(--rabbithole-font-reading);
+}
+.sketch-grids .gd {
+    display: grid;
+    grid-template-columns: repeat(var(--c), auto);
+    gap: 1px;
+    padding: 1px;
+    width: max-content;
+}
+.sketch-grids .gd > i {
+    display: block;
+    min-width: 36px;
+    min-height: 32px;
+    max-width: 200px;
+    padding: 6px 10px;
+    font: 14px/20px var(--rabbithole-font-reading);
+    font-style: normal;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+.sketch-grids .gd.tbl > i {
+    text-align: start;
+}
+.sketch-grids .gd.tbl > i.h {
+    font: 600 13px/20px var(--rabbithole-font-reading);
+    border-bottom: 1px solid;
+}
+.sketch-grids .gd > i.f {
+    font-weight: 600;
+    outline: 2px solid;
+    outline-offset: -2px;
+}
+.sketch-grids:has(.gc) .op {
+    padding-top: 24px;
+}
+.sketch-grids .op {
+    font: 24px/1 math;
+}
 /* Streaming: the size of a small sketch, in the skeleton tone. */
 .sketch-wait {
     height: 96px;
@@ -89,8 +253,85 @@
     background: var(--color-skeleton);
     opacity: 0.6;
 }
+/* Compare (mockup Rabbithole-skt.3): an aspect column up to 30% and two even value columns, on hairline seams. */
+.sketch-compare {
+    display: grid;
+    grid-template-columns: fit-content(30%) 1fr 1fr;
+    column-gap: 16px;
+    font: 14px/20px var(--rabbithole-font-reading);
+}
+.sketch-compare span {
+    padding: 7px 0;
+    border-top: 1px solid;
+    border-top-color: inherit;
+}
+.sketch-compare span:nth-child(-n + 6) {
+    border-top: 0;
+}
+.sketch-compare span:nth-child(-n + 3) {
+    padding: 0 0 8px;
+}
+.sketch-compare s {
+    display: block;
+    height: 3px;
+    margin-top: 6px;
+    border-radius: var(--radius-full);
+}
+.sketch-compare .focus,
+.sketch-pie .focus {
+    font-weight: 600;
+}
+.sketch .sketch-ring {
+    fill: none;
+    stroke-width: 3;
+}
+/* Pie: a 176px ring beside its rows of swatch, label, value and share. */
+.sketch-pie {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+.sketch .sketch-pie svg {
+    flex: none;
+    width: 176px;
+}
+.sketch .sketch-slice {
+    stroke-width: 2;
+    stroke-linejoin: round;
+}
+.sketch-pie dl {
+    display: grid;
+    grid-template-columns: fit-content(220px) max-content max-content;
+    gap: 6px 16px;
+    margin: 0;
+    font: 14px/20px var(--rabbithole-font-reading);
+    font-variant-numeric: tabular-nums;
+}
+.sketch-pie dl.as-written {
+    grid-template-columns: fit-content(220px) max-content;
+}
+.sketch-pie dt {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+.sketch-pie s {
+    flex: none;
+    width: 16px;
+    height: 8px;
+    margin-top: 6px;
+    border-radius: var(--radius-inner);
+}
+.sketch-pie dd {
+    margin: 0;
+    text-align: right;
+}
+.sketch-pie .share {
+    font-size: 13px;
+}
 @media (prefers-reduced-motion: no-preference) {
-    .sketch-build :is(svg > *, .sketch-bars > *) {
+    .sketch-build
+        :is(svg > *, .sketch-bars > *, .sketch-stack > *, .sketch-compare > *, .sketch-pie dl > *) {
         animation: sketch-in var(--fade) ease-out both;
         animation-delay: calc(var(--i, 0) * var(--step));
     }
@@ -99,4 +340,78 @@
     from {
         opacity: 0;
     }
+}
+
+/* Asking about an item (mockup Rabbithole-skt.6): each hit area outlines dotted when pointed at or open,
+   solid in its branch's line colour once branched, and wears the focus ring from the keyboard. */
+.sketch.askable [data-item] {
+    cursor: pointer;
+}
+.sketch .sketch-hit {
+    fill: transparent;
+}
+.sketch .sketch-outline,
+.sketch .sketch-ring {
+    fill: none;
+    stroke: transparent;
+    stroke-width: 2;
+    pointer-events: none;
+}
+.sketch .sketch-outline {
+    stroke-dasharray: 2 2;
+    transition: stroke 120ms;
+}
+.sketch .sketch-bars {
+    position: relative;
+}
+.sketch-bars .sketch-hit {
+    position: absolute;
+    grid-column: 1 / -1;
+    inset: -3px -6px;
+    border: 2px dotted transparent;
+    border-radius: var(--radius-inner);
+    transition: border-color 120ms;
+}
+/* A tap on a touch screen leaves :hover on the tapped item, which is the one its box opens on. */
+.sketch.askable [data-item]:hover .sketch-outline,
+.sketch [data-item].open .sketch-outline {
+    stroke: var(--color-text-secondary);
+}
+.sketch.askable .sketch-bars [data-item]:hover,
+.sketch-bars [data-item].open {
+    border-color: var(--color-text-secondary);
+}
+.sketch [data-item].branched .sketch-outline {
+    stroke: var(--ink);
+    stroke-dasharray: none;
+}
+.sketch-bars [data-item].branched {
+    border-style: solid;
+    border-color: var(--ink);
+}
+.sketch [data-item].focused .sketch-ring {
+    stroke: var(--rabbithole-paper);
+}
+.sketch-bars [data-item].focused {
+    outline: 2px solid var(--rabbithole-paper);
+    outline-offset: 2px;
+}
+/* The ask box's crumbs: the sketch's title, then the item's label. */
+.sketch-crumbs {
+    min-height: 30px;
+    padding: 0 4px;
+}
+.sketch-crumbs > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+}
+.sketch-crumbs strong {
+    font-size: 14px;
+}
+/* A sketch item's box opens 4px under its hit area, the passage box's own gap. */
+.passage-box:has(.sketch-crumbs) .branch-form {
+    margin-top: 0;
 }
