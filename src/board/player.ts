@@ -147,6 +147,12 @@ function pacedClock(real: Clock) {
     };
 }
 
+// The board's component kinds; test/board/player.test.mjs keeps it equal to COMPONENTS in server/board/components.mjs.
+export const COMPONENT_KINDS = new Set([
+    ...['axes', 'numberline', 'flow', 'tree', 'table', 'venn'],
+    ...['cycle', 'stack', 'timeline', 'parts'],
+]);
+
 // An estimated ten characters per second at 1× plays at fifteen at the default 1.5×.
 const CHARS_PER_SECOND = 15;
 
