@@ -23,8 +23,9 @@ export function edgeSpeech(
 ) {
     let socket = null;
     const stamp = () => new Date().toUTCString();
-    const connect = () =>
-        (socket ??= (async () => {
+    const connect = () => {
+        if (socket) return socket;
+        const opening = (async () => {
             const url = protocol.buildSynthesisUrl(
                 Constants.WSS_URL,
                 Constants.TRUSTED_CLIENT_TOKEN,
@@ -35,7 +36,6 @@ export function edgeSpeech(
             const ws = open(url, {
                 headers: { ...Constants.getBaseHeaders(), ...Constants.WSS_HEADERS },
             });
-            const opening = socket;
             // The service closes idle sockets; the next sentence opens a fresh one.
             ws.on('close', () => socket === opening && (socket = null));
             ws.on('error', () => {});
@@ -46,9 +46,12 @@ export function edgeSpeech(
             ws.send(protocol.buildConfigMessage(stamp(), FORMAT));
             return ws;
         })().catch((error) => {
-            socket = null;
+            // A connect given up on by a timed-out sentence may fail after the retry opened its own socket.
+            if (socket === opening) socket = null;
             throw error;
-        }));
+        });
+        return (socket = opening);
+    };
     const close = () => {
         socket?.then((ws) => ws.close()).catch(() => {});
         socket = null;
