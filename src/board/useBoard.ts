@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { boardSocket } from '../serverAccess';
 import type { Message } from '../chat/turn';
-import { boardPlayer } from './player';
+import { boardPlayer, type Op } from './player';
 
 export type BoardState = 'idle' | 'thinking' | 'speaking';
 type Caption = { text: string; muted: boolean };
+// A drawn board item and how long its entry takes.
+export type Drawn = { op: Op; ms: number };
 
 // One open board: its socket to the board session, the caption line and the session state.
 export function useBoard(conversation: string, messages: Message[], reload: () => void) {
@@ -16,6 +18,7 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
     const [notice, setNotice] = useState<string>();
     const [asked, setAsked] = useState(false);
     const [caption, setCaption] = useState<Caption>();
+    const [items, setItems] = useState<Drawn[]>([]);
     const restored = latest && { text: latest.text.trim().split('\n').at(-1) ?? '', muted: true };
     const socket = useRef<WebSocket>(undefined);
     useEffect(() => {
@@ -26,6 +29,7 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         };
         const player = boardPlayer(
             (s) => setCaption({ text: s.text, muted: false }),
+            (op, ms) => setItems((drawn) => [...drawn, { op, ms }]),
             (s, phase) => send({ type: 'progress', sentence: s.id, phase }),
         );
         ws.onopen = () => setReady(true);
@@ -84,6 +88,7 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         notice,
         asked: asked || messages.some((m) => m.board),
         caption: caption ?? restored,
+        items,
         ask,
     };
 }
