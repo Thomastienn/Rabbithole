@@ -40,6 +40,112 @@ const speeds = [
     '*60° latitude*: 233 m/s',
     'North Pole: 0 m/s',
 ].join('\n');
+const voltage = [
+    'title: Membrane voltage (mV)',
+    'range: -90..50',
+    '-70: Resting',
+    '-55: *Threshold*',
+    '30: Typical peak',
+].join('\n');
+const week = [
+    'title: Urgent or important?',
+    'x: Not urgent .. Urgent',
+    'y: Not important .. Important',
+    'Exam tomorrow: 9, 9',
+    '*Weekly revision*: 2, 9',
+    'Booking the dentist: 4, 6',
+    'Most notifications: 8, 2',
+    'Onshore wind: 2, 0',
+    'Solar farms: 2, 0',
+].join('\n');
+const cooling = [
+    'title: Cooling speed and crystal size',
+    'ends: Slow cooling .. Very fast cooling',
+    'Granite: crystals easy to see',
+    'Basalt: crystals mostly tiny',
+    '*Obsidian*: glass, no real crystals',
+].join('\n');
+const svg = (markup) => new JSDOM(markup).window.document;
+const circles = (markup) =>
+    [...svg(markup).querySelectorAll('circle')].map((c) => [
+        +c.getAttribute('cx'),
+        +c.getAttribute('cy'),
+    ]);
+
+test('a line sketch places each value along its range, label above and value below', () => {
+    const sketch = drawSketch('line', voltage, dark);
+    assert.equal(sketch.about, 'from −90 to 50');
+    assert.deepEqual(
+        sketch.items.map((i) => i.text),
+        ['Resting, −70', 'Threshold, −55, focus', 'Typical peak, 30'],
+    );
+    assert.deepEqual(circles(sketch.markup), [
+        [108.6, 56],
+        [172, 56],
+        [531.4, 56],
+    ]);
+    // Threshold crowds Resting, so it rises a row on a leader.
+    assert.equal(svg(sketch.markup).querySelectorAll('.sketch-leader').length, 1);
+    const food = drawSketch(
+        'line',
+        'range: -25..25\n-18 °C: Freezer\n4 °C: *Fridge*\n21 °C: Typical room',
+        dark,
+    );
+    const words = [...svg(food.markup).querySelectorAll('text')].map((t) => t.textContent);
+    assert.ok(words.includes('−25 °C') && !words.includes('25 °C'), 'the crowded end is left out');
+});
+
+test('a quadrant sketch places items by x and y from 0 to 10 under its axis labels', () => {
+    const sketch = drawSketch('quadrant', week, dark);
+    assert.equal(sketch.about, 'across Not urgent to Urgent, up Not important to Important');
+    assert.deepEqual(
+        sketch.items.map((i) => i.text),
+        [
+            'Exam tomorrow, x 9, y 9',
+            'Weekly revision, x 2, y 9, focus',
+            'Booking the dentist, x 4, y 6',
+            'Most notifications, x 8, y 2',
+            'Onshore wind, x 2, y 0',
+            'Solar farms, x 2, y 0',
+        ],
+    );
+    // Two items at one spot share a station.
+    assert.deepEqual(circles(sketch.markup), [
+        [480, 60],
+        [200, 60],
+        [280, 132],
+        [440, 228],
+        [200, 276],
+    ]);
+    const words = [...svg(sketch.markup).querySelectorAll('text')].map((t) => t.textContent);
+    for (const axis of ['Not urgent', 'Urgent', 'Not important', 'Important'])
+        assert.ok(words.includes(axis), axis);
+});
+
+test('a spectrum sketch spaces its items in order between its ends', () => {
+    const sketch = drawSketch('spectrum', cooling, dark);
+    assert.equal(sketch.about, 'from Slow cooling to Very fast cooling');
+    assert.deepEqual(
+        sketch.items.map((i) => i.text),
+        [
+            'Granite, crystals easy to see',
+            'Basalt, crystals mostly tiny',
+            'Obsidian, glass, no real crystals, focus',
+        ],
+    );
+    assert.deepEqual(circles(sketch.markup), [
+        [122.7, 30],
+        [320, 30],
+        [517.3, 30],
+    ]);
+    const seven = drawSketch(
+        'spectrum',
+        'ends: Long .. Short\nRadio\nMicrowave: ovens\nInfrared\nVisible\nUltraviolet\nX-ray\nGamma',
+        dark,
+    );
+    assert.equal(seven.items[0].text, 'Radio');
+    assert.equal(svg(seven.markup).querySelectorAll('.sketch-leader').length, 3);
+});
 
 test('a flow sketch draws one item per step, with its title, focus and arrow labels', () => {
     const sketch = drawSketch('flow', freezing, dark);
@@ -244,14 +350,38 @@ test('a sketch it cannot draw names the reason', () => {
         ['grid', '×\n1 2', /line 1 "×" joins nothing before it/],
         ['grid', '1 2\n3', /line 2 "3" has 1 cells where its grid has 2/],
         ['grid', '1\n'.repeat(9), /ninth row/],
+        [
+            'line',
+            'title: Water at sea level (°C)\nrange: 0..100\n0: Freezes\n100: Boils\n120: Steam',
+            /line 5 "120: Steam" is outside 0..100/,
+        ],
+        ['line', '0: Freezes', /no "range: min..max" line/],
+        ['line', 'range: 0..100\nBoils: 100', /line 2 "Boils: 100" is not value: label/],
+        [
+            'quadrant',
+            'x: Easy .. Hard\ny: Low payoff .. High payoff\nFlashcards: 3, 8\nRewriting notes: 6, 12',
+            /line 4 "Rewriting notes: 6, 12" has y 12, above 10/,
+        ],
+        ['quadrant', 'x: Easy .. Hard\ny: Low .. High\nCards: -1, 8', /has x -1, below 0/],
+        ['quadrant', 'x: Easy .. Hard\ny: Low .. High\nCards: often', /is not item: x, y/],
+        ['spectrum', 'Granite: crystals\nBasalt: tiny', /no "ends: low .. high" line/],
+        ['spectrum', 'ends: Slow\nGranite', /line 1 "ends: Slow" is not ends: low .. high/],
+        ['spectrum', `ends: a .. b\n${'Rock\n'.repeat(9)}`, /more than eight items/],
     ])
         assert.match(drawSketch(kind, body, dark).error, reason);
 });
 
 test('a sketch takes the palette it is given, light or dark', () => {
-    for (const kind of ['flow', 'bars', ...Object.keys(maths)]) {
-        const body = maths[kind] ?? (kind === 'flow' ? freezing : speeds),
-            [a, b] = [drawSketch(kind, body, dark).markup, drawSketch(kind, body, light).markup];
+    const bodies = {
+        flow: freezing,
+        bars: speeds,
+        line: voltage,
+        quadrant: week,
+        spectrum: cooling,
+        ...maths,
+    };
+    for (const [kind, body] of Object.entries(bodies)) {
+        const [a, b] = [drawSketch(kind, body, dark).markup, drawSketch(kind, body, light).markup];
         assert.ok(a.includes(dark.seam) && a.includes(dark.focus) && !a.includes(light.seam));
         assert.ok(b.includes(light.seam) && b.includes(light.focus) && !b.includes(dark.seam));
     }
@@ -282,6 +412,12 @@ test('a reply draws a sketch block as a named figure with no code, copy button o
     );
     assert.equal(doc.querySelector('pre, button'), null);
     assert.ok(!doc.body.textContent.includes('->'));
+    assert.equal(
+        page(`\`\`\`sketch line\n${voltage}\n\`\`\``)
+            .querySelector('figure')
+            .getAttribute('aria-label'),
+        'Sketch: Membrane voltage (mV), from −90 to 50',
+    );
 });
 
 test('only tutor sketches draw, waiting on a real closing fence while the reply streams', async (t) => {
@@ -362,10 +498,13 @@ test('a broken sketch shows nothing from its source and is logged with its kind 
     );
 });
 
-test('streamed bars and flow sketches schedule their items over half a second', async () => {
+test('streamed sketches schedule their items over half a second', async () => {
     for (const [kind, body, items, expectedOrder] of [
         ['bars', speeds, '.sketch-bars > *', [0, 0, 1, 1, 2, 2]],
         ['flow', freezing, 'svg > g', [0, 1, 2, 3, 4]],
+        ['line', voltage, 'svg > g', [0, 1, 2]],
+        ['quadrant', week, 'svg > g', [0, 1, 2, 3, 4, 5]],
+        ['spectrum', cooling, 'svg > g', [0, 1, 2]],
     ]) {
         const { container, cleanup } = await render(
             h(Sketch, { kind, body, fence: 'closed', live: true }),
