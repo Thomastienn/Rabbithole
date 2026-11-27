@@ -8,6 +8,7 @@ import TreeSearch from './TreeSearch';
 import ShellBand, { SaveAlert, viewTab } from './ShellBand';
 import { savedVim, savePreference } from './preferences';
 import { useDiscordStatus } from './useDiscordStatus';
+import { useSettingsWindow } from './useSettingsWindow';
 import LibraryPanel from './LibraryPanel';
 import ReturnPanel from './ReturnPanel';
 import FirstRunSetup from './FirstRunSetup';
@@ -18,7 +19,7 @@ import MapView from '../map/MapView';
 import KnowledgePage from '../knowledge/KnowledgePage';
 import VideoLibrary from '../media/VideoLibrary';
 import PieceLibrary from '../media/PieceLibrary';
-import SettingsWindow, { type SettingsRequest, type SettingsTab } from '../settings/SettingsWindow';
+import SettingsWindow from '../settings/SettingsWindow';
 import { FirstQuestion, TreeLoading, TreeLoadFailure } from '../chat/ChatStates';
 import Contents from '../chat/Contents';
 import FocusedChat from '../chat/FocusedChat';
@@ -47,9 +48,7 @@ export default function ChatPage({
     const c = useChatState();
     const { error, setError, mobile, tab, setTab, drawer, setDrawer } = c;
     const { root, overview, expanded } = c;
-    const [settings, setSettings] = useState<SettingsRequest>();
-    const settingsOpener = useRef<HTMLElement | null>(null),
-        settingsFrom = useRef('learning');
+    const { settings, openSettings, closeSettings } = useSettingsWindow(tab, setTab);
     const [searching, setSearching] = useState(false);
     const searchFromDrawer = useRef(false);
     // Only this boolean is stored, per browser and app origin; unreadable storage means off.
@@ -76,28 +75,6 @@ export default function ChatPage({
     const { newChat, askDelete } = actions;
     const active = !!tree && !!state?.active.includes(tree.id);
     const [discord, setDiscord] = useDiscordStatus(tree?.title ?? null);
-    function openSettings(
-        section?: SettingsTab,
-        focus?: string,
-        opener = document.activeElement as HTMLElement | null,
-    ) {
-        settingsOpener.current = opener;
-        if (tab !== 'settings') settingsFrom.current = tab;
-        setTab('settings');
-        setSettings({ tab: section, focus });
-    }
-    function closeSettings() {
-        setSettings(undefined);
-        setTab(settingsFrom.current);
-        // Menu items that opened the window are gone by now; fall back to the menu trigger that held them.
-        const opener = settingsOpener.current;
-        requestAnimationFrame(() =>
-            (opener?.isConnected
-                ? opener
-                : document.querySelector<HTMLElement>('.map-toolbar [aria-label="Map menu"]')
-            )?.focus(),
-        );
-    }
     const menu = (actions?: MapActions) => (
         <MapMenu
             actions={actions}

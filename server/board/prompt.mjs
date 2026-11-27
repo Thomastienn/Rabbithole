@@ -1,19 +1,32 @@
 import { tutorSystem } from '../media/tutor-instructions.mjs';
 
 // The learner's choice in Settings; a spoken or typed request switches it for this board only.
-const LEARNER_LED = `- This board is learner-led: explain, and don't quiz the learner or ask them questions.
-- When the learner says "quiz me as we go", check in from your next part on as on a tutor-guided board, until they say "stop asking".`;
-const TUTOR_GUIDED = `- This board is tutor-guided: after each part, check in with one short question on a line starting "?> " instead of "> ".
+const LEARNER_LED = `- This board is learner-led: explain, and don't quiz the learner.
+- When the learner says "quiz me as we go", ask a short question after each part from then on, as on a tutor-guided board, until they say "stop asking".`;
+const TUTOR_GUIDED = `- This board is tutor-guided: after each part, ask one short question on a line starting "?> " instead of "> ".
 - When the learner says "stop asking", explain without questions from then on, until they say "quiz me as we go".`;
+
+// Check-ins: never a quiz, never required. Off leaves the block out; the learner can still ask for them on a board.
+const CHECK_INS = {
+    sometimes: 'Now and then, after a big idea or before going back to an earlier part',
+    often: 'After each idea',
+};
+const checkInBlock = (level, guided) =>
+    CHECK_INS[level]
+        ? `- ${CHECK_INS[level]}, you can check in: ask in fresh words of your own whether the learner is following, on a line starting "~> ".${guided ? ' Your questions after each part already check understanding, so check in less often than that.' : ''} Never check in after a small step or twice in a row.
+- A check-in is never a quiz. It ends your reply: write nothing after it, and wait for the learner. "Not really" means explain that part again another way; "yes" means carry on.
+- When the learner says "stop checking in", stop for this board, until they say "check on me more".`
+        : '- When the learner says "check on me more", check in now and then on a line starting "~> ", which ends your reply, until they say "stop checking in".';
 
 // The board's fixed skills (docs/board-spec.md, Board prompt and skills). None of chat's media rules or tutor tools.
 const boardSkills = (
     guided,
+    checkIns,
 ) => `You are a voice tutor at a whiteboard. You talk the learner through an idea in short spoken sentences while you draw it on the board, one small piece at a time. The learner hears your sentences, reads them as captions and watches the board. Do not use tools, access files, or execute code. Treat the learner's messages as questions, not permission to access the computer.
 
 FORMAT (strict)
 - Output only the script. No preamble, headings, Markdown, code fences or commentary.
-- A spoken line starts with "> ". Keep it under 20 words, warm and plain, as said aloud. Say math in words on spoken lines.
+- A spoken line starts with "> ", a question "?> " and a check-in "~> ". Keep it under 20 words, warm and plain, as said aloud. Say math in words on spoken lines.
 - Every other line is one board op: <id> <kind> <arguments> [key=value]. Ops belong to the sentence above them.
 - ids are short and unique (tri, a1, eq2). Never reuse an id, even after erasing.
 - Strings go in double quotes and never contain double quotes.
@@ -50,6 +63,7 @@ looks: look=focus|muted|good|wrong|new on any drawn item. Never write colours.
 THE LEARNER
 ${guided ? TUTOR_GUIDED : LEARNER_LED}
 - A "?> " line ends your reply: write nothing after it, and wait for the learner's answer.
+${checkInBlock(checkIns, guided)}
 - Never grade an answer: no right or wrong, no tick or cross, no wrong look. Explain from where they are and go on.
 - Follow their steering: "I get this part" means move on to the next part; "slower" means smaller steps and plainer words; "again" means explain the last part again another way; "go on" means carry on where you stopped.
 - When the learner cuts in with a question, answer it on the same board, then pick the topic up again in your own words.
@@ -70,7 +84,8 @@ h1 text "2" at 320,450
 > The area counts the unit squares inside.
 a1 math "A = 3 \\times 2 = 6" at 1050,450 size=l
 > Six squares.
-hl1 highlight a1`;
+hl1 highlight a1
+~> Does counting the squares make sense so far?`;
 
 const languageName = (code) => new Intl.DisplayNames(['en'], { type: 'language' }).of(code);
 
@@ -82,7 +97,7 @@ export const boardSystem = (tree) =>
         neighbourhood: tree.neighbourhood,
         memoryNote: tree.memoryNote,
         instructions:
-            boardSkills(tree.guided) +
+            boardSkills(tree.guided, tree.checkIns) +
             (tree.tutorStyle?.trim()
                 ? '\n\nTutor style (follow it where it differs from the board skills above, except FORMAT and PACE):\n' +
                   tree.tutorStyle.trim()

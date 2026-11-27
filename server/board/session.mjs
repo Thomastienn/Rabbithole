@@ -29,8 +29,9 @@ export const NO_ANSWER = [
 // from its op lines with the reply's last sentence as its caption,
 // { type: 'mic', status: 'loading' | 'on' | 'off', loaded, total } as the speech models download and the mic turns on or off,
 // { type: 'hearing', on } as the learner starts and stops speaking, and { type: 'heard', text } as a spoken question is sent.
-// lang: the board's Voice language; guided: the learner chose tutor-guided boards in Settings.
-export function boardSession(ctx, id, socket, lang = 'en', guided = false) {
+// lang: the board's Voice language; guided: the learner chose tutor-guided boards in Settings;
+// checkIns: how often the tutor checks in, 'off' | 'sometimes' | 'often'.
+export function boardSession(ctx, id, socket, lang = 'en', guided = false, checkIns = 'sometimes') {
     const { store, log } = ctx;
     const send = (event) => {
         if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(event));
@@ -141,6 +142,7 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false) {
                 neighbourhood,
                 lang,
                 guided,
+                checkIns,
             }),
             history: conversationHistory(tree),
         });
@@ -210,11 +212,14 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false) {
         ctx.jobs.remove(current.job);
         current.ended.resolve();
         // A question waits for its answer; the hint turn always waits once more, then the tutor carries on.
+        // A check-in waits with no timer: the next turn is the learner's own.
+        let checkIn = false;
         if (status === 'completed' && !closed && turn === null && !current.cut && !drafting) {
             const next = current.noAnswer === 1 ? 2 : current.sentences.at(-1)?.question ? 1 : 0;
             if (next) waiting = clock.setTimeout(() => ask(NO_ANSWER[next - 1], next), WAIT_MS);
+            else checkIn = !!current.sentences.at(-1)?.checkIn;
         }
-        send({ type: 'state', state: 'idle', ...(waiting && { waiting: true }) });
+        send({ type: 'state', state: 'idle', ...((waiting || checkIn) && { waiting: true }) });
     };
     const run = async (current, tree, text, free, signal) => {
         const started = performance.now();
@@ -239,6 +244,7 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false) {
                         id: String(++count),
                         text: line.sentence,
                         question: line.question,
+                        checkIn: line.checkIn,
                         ops: [],
                         lines: [],
                     };

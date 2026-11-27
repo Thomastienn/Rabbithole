@@ -86,7 +86,7 @@ test('board: each sentence becomes the caption, reported as it shows, and leavin
     assert.deepEqual(board.reloads, ['c1'], 'the conversation reloads once the server has saved');
 });
 
-test('board: a question waiting for its answer stays in ink, and a no-answer turn adds no learner line', async (t) => {
+test('board: a question waiting for its answer stays in ink with the waiting cue, and a no-answer turn adds no learner line', async (t) => {
     const board = await mount(t, [], undefined, true);
     await board.type('Why?');
     await board.act(async () => button(board.container, 'Send').click());
@@ -106,6 +106,9 @@ test('board: a question waiting for its answer stays in ink, and a no-answer tur
         board.q('.board-caption') && !board.q('.board-caption.muted'),
         'the question stays in ink',
     );
+    assert.ok(board.q('.board-waiting'), 'the waiting cue shows while it waits');
+    await board.type('Zero');
+    assert.equal(board.q('.board-waiting'), null, 'typing an answer ends the waiting cue');
     await board.act(async () =>
         board.socket.server({ type: 'state', state: 'thinking', user: null, reply: 'r2' }),
     );

@@ -302,4 +302,7 @@ test('the Board page has Voice language, English by default, push-to-talk off an
     assert.equal(mode('Tutor-guided').getAttribute('aria-checked'), 'true');
     assert.match(text(), /gives a hint if you stay quiet/, 'the hint describes the choice');
     assert.equal(window.localStorage.getItem('rabbithole.board-mode'), 'guided');
+    assert.equal(mode('Now and then').getAttribute('aria-checked'), 'true', 'check-ins default');
+    await page.act(async () => mode('Often').click());
+    assert.equal(window.localStorage.getItem('rabbithole.check-ins'), 'often');
 });

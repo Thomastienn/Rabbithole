@@ -7,6 +7,7 @@ import { Section } from './InterfaceSettings';
 import Choice from './Choice';
 import {
     savePreference,
+    savedCheckIns,
     savedPushToTalk,
     savedTutorGuided,
     savedVoiceLanguage,
@@ -25,11 +26,18 @@ const MODES = [
     { value: 'guided', label: 'Tutor-guided' },
 ];
 
+const CHECK_INS = [
+    { value: 'off', label: 'Off' },
+    { value: 'sometimes', label: 'Now and then' },
+    { value: 'often', label: 'Often' },
+];
+
 // The Board page (mockups Rabbithole-brd.12 and brd.13): how the tutor talks and listens on a board.
 export default function BoardSettings() {
     const [pushToTalk, setPushToTalk] = useState(savedPushToTalk);
     const [mode, setMode] = useState(() => (savedTutorGuided() ? 'guided' : 'learner'));
     const [lang, setLang] = useState(savedVoiceLanguage);
+    const [checkIns, setCheckIns] = useState<string>(savedCheckIns);
     // Whether the chosen language's speech models are on this computer; English needs no line either way.
     const [downloaded, setDownloaded] = useState(true);
     useEffect(() => {
@@ -94,7 +102,7 @@ export default function BoardSettings() {
                     />
                     <Text type="supporting" color="secondary">
                         {mode === 'guided'
-                            ? 'The tutor also checks in with short questions, and gives a hint if you stay quiet. Answers are never graded.'
+                            ? 'The tutor also asks short questions, and gives a hint if you stay quiet. Answers are never graded.'
                             : 'The tutor explains and keeps going. You ask whenever something is unclear.'}
                     </Text>
                     <Text type="supporting" color="secondary">
@@ -102,6 +110,16 @@ export default function BoardSettings() {
                         that board.
                     </Text>
                 </VStack>
+                <Choice
+                    label="Check-ins"
+                    description='The tutor asks whether you are following and waits for you; never a quiz. On any board, say or type "stop checking in" or "check on me more" to switch just that board.'
+                    value={checkIns}
+                    options={CHECK_INS}
+                    onChange={(next) => {
+                        setCheckIns(next);
+                        savePreference('check-ins', next);
+                    }}
+                />
             </Section>
         </>
     );

@@ -48,6 +48,62 @@ test('board: the board prompt says learner-led by default and tutor-guided when 
     assert.match(provider.boards[1].options.system, /This board is tutor-guided/);
 });
 
+test('board: the board prompt carries the check-ins level, with no check-in block for Off', async (t) => {
+    const provider = boardProvider([]);
+    const { env, connect } = await setup(t, provider);
+    const { csrf } = await (await env.get('/api/state')).json();
+    const systems = [];
+    for (const query of ['', '&check-ins=often', '&check-ins=off']) {
+        await opened(connect(`?csrf=${csrf}${query}`).ws);
+        await until(() => provider.boards[systems.length]?.opened);
+        systems.push(provider.boards[systems.length].options.system);
+    }
+    const [sometimes, often, off] = systems;
+    assert.match(sometimes, /\n~> /, 'the example has a check-in');
+    assert.match(sometimes, /Now and then, after a big idea/);
+    assert.match(often, /After each idea, you can check in/);
+    assert.doesNotMatch(off, /you can check in|A check-in is never a quiz/);
+    assert.match(off, /"check on me more"/, 'the learner can still ask for check-ins');
+});
+
+test('board: a check-in ends the reply and waits for the learner with no timer, and the answer is a learner message', async (t) => {
+    const provider = boardProvider([
+        ['> Six squares.\n~> Does that make sense so far?\n'],
+        ['> Good, on we go.\n'],
+    ]);
+    const quick = [];
+    provider.generate = async (tree, text, emit) => {
+        quick.push(tree.role);
+        return complete(emit, '[]');
+    };
+    const clock = fakeClock();
+    const { env, id, connect } = await setup(t, provider, {
+        app: { boardClock: clock, verdicts: true },
+    });
+    const board = connect();
+    await opened(board.ws);
+    board.send({ type: 'ask', text: 'What is area?' });
+    const asked = await played(board, 2);
+    assert.equal(asked.sentences.at(-1).text, 'Does that make sense so far?');
+    assert.equal(asked.idle.waiting, true, 'the check-in stays up while the board waits');
+    assert.equal(clock.timers.length, 0, 'no no-answer turn follows');
+    board.send({ type: 'ask', text: 'Yes' });
+    await played(board, 1);
+    assert.deepEqual(provider.boards[0].asked, ['What is area?', 'Yes']);
+    await env.app.settled();
+    assert.deepEqual(
+        messages(env, id).map((m) => [m.role, m.text]),
+        [
+            ['user', 'What is area?'],
+            ['assistant', 'Six squares.\nDoes that make sense so far?'],
+            ['user', 'Yes'],
+            ['assistant', 'Good, on we go.'],
+        ],
+    );
+    await until(() => quick.length === 2);
+    assert.deepEqual(quick, ['verdict', 'verdict'], 'the answer is familiarity evidence');
+});
+
 test('board: silence after a question brings one hint, then the explanation carries on, as system turns', async (t) => {
     const provider = boardProvider([
         ['> The hill climbs.\nt1 dot at 400,600\n?> What is the slope at the top?\n'],
