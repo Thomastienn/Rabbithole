@@ -55,10 +55,12 @@ test('board ops: a connector runs between the edges of the items it names', () =
         [308, 450],
         [892, 450],
     ]);
-    assert.deepEqual(board.read('bd line from b to d').item.points, [
+    const bd = board.read('bd line from b to d').item;
+    assert.deepEqual(bd.points, [
         [1000, 558],
         [1000, 778],
     ]);
+    assert.deepEqual(bd.names, ['b', 'd'], 'a connector names its two ends');
 });
 
 test('board ops: a malformed op or one naming an unknown id is skipped with its reason', () => {
@@ -101,6 +103,7 @@ test('board ops: math, highlight, pointer and erase name their items; an old cle
     assert.deepEqual(read('p1 pointer bat'), {
         id: 'p1',
         kind: 'pointer',
+        names: ['bat'],
         from: [800, 450],
         at: [432, 450],
     });
@@ -112,6 +115,7 @@ test('board ops: math, highlight, pointer and erase name their items; an old cle
     assert.deepEqual(read('h1 highlight bulb'), {
         id: 'h1',
         kind: 'highlight',
+        names: ['bulb'],
         at: [1240, 450],
         w: 180,
         h: 180,

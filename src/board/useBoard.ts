@@ -31,6 +31,16 @@ export type Mic = {
     levels?: number[];
 };
 const MIC_OFF: Mic = { status: 'off' };
+// What a sentence's ops draw or name, for the spotlight (docs/board-sketches-spec.md): a child names its component,
+// a highlight, pointer or connector its items too; an erase or a page names none.
+const litBy = (ops: Op[] = []) =>
+    ops.flatMap((op) =>
+        op.kind === 'erase' || op.top !== undefined
+            ? []
+            : op.on
+              ? [op.on]
+              : [op.id, ...(op.names ?? [])],
+    );
 const BLOCKED =
     'The browser blocked the microphone. Allow it for this page, then press the mic again.';
 const NO_MIC =
@@ -67,6 +77,8 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
     const restored = latest && { text: latest.text.trim().split('\n').at(-1) ?? '', muted: true };
     const [speed, setSpeed] = useState(savedBoardSpeed);
     const [paused, setPaused] = useState(false);
+    // The top-level items the latest sentence with ops drew or named; none shows the whole page.
+    const [lit, setLit] = useState<Set<string>>();
     const [turns, setTurns] = useState<Turn[]>([]);
     const question = useRef('');
     const socket = useRef<WebSocket>(undefined);
@@ -94,6 +106,7 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         setAsked(true);
         setMarks(0);
         setNotice(undefined);
+        setLit(undefined);
         setCaption({ text, muted: true });
         // Asking returns to the latest board, which the new reply draws on.
         setStep(undefined);
@@ -108,6 +121,9 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         const player = boardPlayer(
             (s) => {
                 setCaption({ text: s.text, muted: false });
+                // A sentence that draws or names nothing keeps the lit set it inherited.
+                const names = litBy(s.ops);
+                if (names.length) setLit(new Set(names));
                 setTurns((all) =>
                     all.map((t, i) =>
                         i === all.length - 1 ? { ...t, said: [...t.said, s.text] } : t,
@@ -141,6 +157,7 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
             setPaused(false);
             setReady(false);
             setState('idle');
+            setLit(undefined);
             setCaption((c) => c && { ...c, muted: true });
             dropSilent();
             setNotice('The board disconnected. Turn Board off and on to reconnect.');
@@ -174,6 +191,7 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
                 if (m.state === 'idle') {
                     player.stop();
                     setPaused(false);
+                    setLit(undefined);
                     if (!m.waiting) setCaption((c) => c && { ...c, muted: true });
                     dropSilent();
                 }
@@ -346,6 +364,8 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         leave,
         speed,
         paused,
+        // The spotlight is on only while the tutor speaks on the latest board, unpaused.
+        lit: state === 'speaking' && !paused && step === undefined ? lit : undefined,
         changeSpeed,
         pause,
         mic,
