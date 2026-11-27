@@ -89,7 +89,10 @@ test('board speech gives up on a sentence whose first audio is late, and drops i
         () => new WebSocket(`ws://127.0.0.1:${server.address().port}`),
         50,
     );
-    const [peer] = await once(server, 'connection');
+    // Warmed first, so the timer runs only while the open socket sends nothing.
+    const connected = once(server, 'connection');
+    await client.warm();
+    const [peer] = await connected;
     const dropped = once(peer, 'close');
     await assert.rejects(
         client.speak('Silent.', () => {}),
