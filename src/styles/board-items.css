@@ -1,0 +1,222 @@
+/* Board items (mockup Rabbithole-brd.2), in board pixels: 7px marker strokes, round caps and joins, no fill.
+   Looks by role: none text-primary, focus rabbithole-paper, muted text-secondary, good text-success,
+   wrong text-error, new text-info. Each item enters by hand over its share of its sentence (--board-ms):
+   a stroke draws on, a dot grows, text writes in left to right; with reduced motion each one fades in.
+   Colours are theme tokens, so a theme or appearance switch redraws the board in the new colours. */
+.board-item {
+    color: var(--color-text-primary);
+}
+.board-item > * {
+    animation: var(--board-ms, 0ms) cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+.board-item.focus {
+    color: var(--rabbithole-paper);
+}
+.board-item.muted {
+    color: var(--color-text-secondary);
+}
+.board-item.good {
+    color: var(--color-text-success);
+}
+.board-item.wrong {
+    color: var(--color-text-error);
+}
+.board-item.new {
+    color: var(--color-text-info);
+}
+.board-stroke {
+    animation-name: board-draw;
+    stroke-dasharray: 1;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.board-dot {
+    animation-name: board-grow;
+    transform-box: fill-box;
+    transform-origin: center;
+    fill: currentColor;
+}
+/* With the pen on, a drag over the board draws; off, the board ignores the pointer. */
+.board.pen-on > svg {
+    cursor: crosshair;
+    touch-action: none;
+}
+/* Learner strokes: freehand, 6 board px, round caps, in the conversation's family ink so they never read as the tutor's. */
+.board-learner {
+    fill: none;
+    stroke: var(--ink);
+    stroke-width: 6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.board-tip {
+    fill: var(--ink);
+}
+/* An erased item fades out over its op's share of the sentence (--board-out). */
+.board-item.erased {
+    animation: board-leave var(--board-out) linear forwards;
+}
+.board-text {
+    animation-name: board-write;
+    fill: currentColor;
+    font: 500 44px var(--rabbithole-font-reading);
+    text-anchor: middle;
+    dominant-baseline: central;
+}
+.board-text.s {
+    font-size: 32px;
+}
+.board-text.l {
+    font-size: 64px;
+}
+/* Components (mockup Rabbithole-brd.5): axes and number lines are 4px muted strokes with 26px muted numbers, a plot
+   is a 6px marker stroke, a point an 11px dot with a 36px label 50px above it, or 60px higher on a 3px muted leader.
+   The axes draw over the first 60% of their share, then their numbers fade in; a point's dot grows over the first
+   half, then its label writes in. A reflowed label slides to its new row. */
+.board-axis {
+    stroke: var(--color-text-secondary);
+    stroke-width: 4;
+    animation-duration: calc(var(--board-ms, 0ms) * 0.6);
+}
+.board-ticks {
+    animation-name: board-enter;
+    animation-delay: calc(var(--board-ms, 0ms) * 0.6);
+    animation-duration: calc(var(--board-ms, 0ms) * 0.4);
+}
+.board-tick {
+    fill: var(--color-text-secondary);
+    font: 26px var(--rabbithole-font-reading);
+    text-anchor: middle;
+}
+.board-tick.end {
+    text-anchor: end;
+}
+.board-plot {
+    stroke-width: 6;
+}
+.board-leader {
+    stroke: var(--color-text-secondary);
+    stroke-width: 3;
+}
+.board-point {
+    animation-duration: calc(var(--board-ms, 0ms) * 0.5);
+}
+.board-point-label {
+    animation-name: board-write;
+    animation-delay: calc(var(--board-ms, 0ms) * 0.5);
+    animation-duration: calc(var(--board-ms, 0ms) * 0.5);
+    fill: currentColor;
+    font: 36px var(--rabbithole-font-reading);
+    text-anchor: middle;
+    transition: translate 400ms cubic-bezier(0.65, 0, 0.35, 1);
+}
+/* Flows, trees, tables and Venn diagrams (mockup Rabbithole-brd.6): 5px boxes and circles with 18px corners, 4px
+   muted arrows and edges, a 3px border-emphasized rule and 2px border seams under a table's 600 28px muted headings,
+   32px child text and muted set names. A reflowed part slides and resizes to its new place. */
+.board-part-box,
+.board-part-circle {
+    stroke-width: 5;
+}
+.board-part-edge {
+    stroke: var(--color-text-secondary);
+    stroke-width: 4;
+}
+.board-part-rule {
+    stroke: var(--color-border-emphasized);
+    stroke-width: 3;
+}
+.board-part-seam {
+    stroke: var(--color-border);
+    stroke-width: 2;
+}
+.board-part-box,
+.board-part-edge,
+.board-part-seam,
+.board-part-text {
+    transition-property: x, y, width, height, d, translate;
+    transition-duration: 400ms;
+    transition-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+}
+.board-part-text {
+    animation-name: board-write;
+    fill: currentColor;
+    font: 32px var(--rabbithole-font-reading);
+    text-anchor: middle;
+}
+.board-part-text.head {
+    fill: var(--color-text-secondary);
+    font-weight: 600;
+    font-size: 28px;
+}
+.board-part-text.set {
+    fill: var(--color-text-secondary);
+}
+.board-part-text.sm {
+    font-size: 30px;
+}
+.board-part-text.start {
+    text-anchor: start;
+}
+.board-part-text.end {
+    text-anchor: end;
+}
+@keyframes board-draw {
+    from {
+        stroke-dashoffset: 1;
+    }
+}
+@keyframes board-grow {
+    from {
+        transform: scale(0);
+    }
+}
+@keyframes board-write {
+    from {
+        clip-path: inset(0 100% 0 0);
+    }
+    /* An end shape, since inset() cannot blend into none and would pop in halfway. */
+    to {
+        clip-path: inset(0 0 0 0);
+    }
+}
+@keyframes board-enter {
+    from {
+        opacity: 0;
+    }
+}
+@keyframes board-leave {
+    to {
+        opacity: 0;
+    }
+}
+/* The waiting cue: shows at once as a question is sent, then breathes until the tutor speaks. */
+.board-waiting {
+    fill: var(--rabbithole-paper);
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: board-pulse 1.6s ease-in-out infinite;
+}
+@keyframes board-pulse {
+    50% {
+        opacity: 0.35;
+        transform: scale(1.6);
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .board-waiting {
+        animation: board-enter 200ms ease-out;
+    }
+    .board-item > * {
+        animation-name: board-enter;
+    }
+    .board-point-label,
+    .board-part-box,
+    .board-part-edge,
+    .board-part-seam,
+    .board-part-text {
+        transition: none;
+    }
+}
