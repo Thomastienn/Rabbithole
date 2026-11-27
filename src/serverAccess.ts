@@ -30,6 +30,14 @@ export function serverFetch(
     );
 }
 
+// A board's socket; a browser cannot set headers on one, so the CSRF token rides in its address.
+export function boardSocket(conversation: string) {
+    const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    return new WebSocket(
+        `${scheme}://${window.location.host}/api/trees/${conversation}/board?csrf=${encodeURIComponent(csrf)}`,
+    );
+}
+
 // GET without a body, otherwise a JSON POST; keepalive lets a write outlive the page that sends it.
 export async function request(path: string, body?: unknown, keepalive = false) {
     const response = await serverFetch(

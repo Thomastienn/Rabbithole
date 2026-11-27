@@ -67,11 +67,12 @@ export function boardSession(ctx, id, socket) {
         : null;
     // A failed start fails the first question instead.
     ready?.catch(() => {});
-    if (!ready)
+    const unavailable = () =>
         send({
             type: 'notice',
             notice: 'The board needs a Claude chat model for now. Choose Claude for this conversation, then open the board again.',
         });
+    if (!ready) unavailable();
     const shownText = (current) =>
         current.sentences
             .slice(0, current.shown)
@@ -151,12 +152,16 @@ export function boardSession(ctx, id, socket) {
     };
     const ask = (text) => {
         // A question waits for the tutor to finish; cutting in comes with interruptions.
-        if (turn || closed || !ready) return;
-        if (ctx.jobs.get('reply', id))
-            return send({
-                type: 'notice',
-                notice: 'Wait for the chat reply to finish, then ask again.',
-            });
+        if (turn || closed) return;
+        if (!ready || ctx.jobs.get('reply', id)) {
+            if (!ready) unavailable();
+            else
+                send({
+                    type: 'notice',
+                    notice: 'Wait for the chat reply to finish, then ask again.',
+                });
+            return send({ type: 'state', state: 'idle' });
+        }
         const user = store.message(id, 'user', text, 'completed');
         const reply = store.message(id, 'assistant', '', 'streaming');
         store.onBoard(user);

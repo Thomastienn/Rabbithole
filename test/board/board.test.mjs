@@ -1,0 +1,115 @@
+import '../support/tsx.mjs';
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createElement as h } from 'react';
+import { render } from '../support/render.mjs';
+import { ui, button } from '../support/ui.mjs';
+const { default: Board } = await import('../../src/board/Board.tsx');
+
+// The board session's socket, driven by the test: it records what the board sends and plays what the server says.
+class FakeSocket {
+    static OPEN = 1;
+    static last;
+    readyState = 0;
+    sent = [];
+    constructor(url) {
+        this.url = url;
+        FakeSocket.last = this;
+    }
+    send(data) {
+        this.sent.push(JSON.parse(data));
+    }
+    close() {
+        this.readyState = 3;
+        this.onclose?.();
+    }
+    open() {
+        this.readyState = 1;
+        this.onopen?.();
+    }
+    server(message) {
+        this.onmessage?.({ data: JSON.stringify(message) });
+    }
+}
+
+async function mount(t, messages = []) {
+    const reloads = [];
+    const saved = globalThis.WebSocket;
+    globalThis.WebSocket = FakeSocket;
+    t.after(() => (globalThis.WebSocket = saved));
+    const view = await render(
+        h(Board, { conversation: 'c1', messages, reload: () => reloads.push('c1') }),
+        (w) => ui(w),
+    );
+    t.after(view.cleanup);
+    const socket = FakeSocket.last;
+    await view.act(async () => socket.open());
+    const q = (selector) => view.container.querySelector(selector);
+    // The composer input is contenteditable: typing replaces its text and fires input.
+    const type = async (text) => {
+        const input = q('[contenteditable=true]');
+        await view.act(async () => {
+            input.textContent = text;
+            input.dispatchEvent(new window.Event('input', { bubbles: true }));
+        });
+    };
+    return { ...view, socket, q, type, reloads };
+}
+
+test('board: an empty board waits for a typed question with the mic off, then shows it was heard', async (t) => {
+    const board = await mount(t);
+    assert.match(board.socket.url, /\/api\/trees\/c1\/board\?csrf=/);
+    assert.ok(board.q('.board-empty'), 'the hint shows before the first board question');
+    const mic = button(board.container, 'Turn mic on');
+    assert.ok(mic.disabled);
+    assert.equal(mic.getAttribute('aria-pressed'), 'false');
+    await board.type('How does a hypha grow?');
+    await board.act(async () => button(board.container, 'Send').click());
+    assert.deepEqual(board.socket.sent, [{ type: 'ask', text: 'How does a hypha grow?' }]);
+    assert.equal(board.q('.board-empty'), null);
+    assert.equal(board.q('.board-caption').textContent, 'How does a hypha grow?');
+    assert.ok(board.q('.board-caption.muted'), 'the question shows muted while the tutor thinks');
+    assert.equal(board.q('[role=status]').textContent, 'Thinking');
+    assert.ok(button(board.container, 'Send').disabled, 'Send waits for the tutor');
+    assert.equal(board.q('[contenteditable=true]').textContent, '', 'the composer clears');
+});
+
+test('board: each sentence becomes the caption, reported as it shows, and leaving asks the server to save', async (t) => {
+    const board = await mount(t);
+    await board.type('Why?');
+    await board.act(async () => button(board.container, 'Send').click());
+    await board.act(async () => {
+        board.socket.server({ type: 'state', state: 'speaking' });
+        board.socket.server({ type: 'sentence', id: '1', text: 'A hypha grows at its tip.' });
+        board.socket.server({ type: 'sentence', id: '2', text: 'Vesicles carry wall forward.' });
+    });
+    assert.equal(board.q('.board-caption').textContent, 'A hypha grows at its tip.');
+    assert.equal(board.q('.board-caption.muted'), null);
+    assert.equal(board.q('[role=status]').textContent, 'Speaking');
+    assert.deepEqual(board.socket.sent.at(-1), { type: 'progress', sentence: '1', phase: 'start' });
+    await board.act(async () => board.socket.server({ type: 'notice', notice: 'Stopped.' }));
+    assert.equal(board.q('[role=alert]').textContent, 'Stopped.');
+    await board.act(async () => board.socket.server({ type: 'state', state: 'idle' }));
+    assert.ok(board.q('.board-caption.muted'), 'the reply’s last caption is held, muted');
+    assert.equal(board.q('[role=status]').textContent, '');
+    await board.cleanup();
+    assert.deepEqual(board.socket.sent.at(-1), { type: 'leave' });
+    board.socket.close();
+    assert.deepEqual(board.reloads, ['c1'], 'the conversation reloads once the server has saved');
+});
+
+test('board: reopened, it holds the latest board reply’s last sentence and no hint', async (t) => {
+    const board = await mount(t, [
+        { id: 'q', role: 'user', text: 'Why?', status: 'completed', board: true },
+        {
+            id: 'r',
+            role: 'assistant',
+            text: 'A hypha grows at its tip. Then the new wall hardens.',
+            status: 'completed',
+            board: true,
+        },
+    ]);
+    assert.equal(board.q('.board-empty'), null);
+    assert.equal(board.q('.board-caption.muted').textContent, 'Then the new wall hardens.');
+    assert.equal(board.q('[role=status]').textContent, '');
+});

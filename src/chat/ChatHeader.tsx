@@ -2,6 +2,7 @@ import { Fragment } from 'react';
 import { HStack } from '@astryxdesign/core/Layout';
 import { Button } from '@astryxdesign/core/Button';
 import { IconButton } from '@astryxdesign/core/IconButton';
+import { Switch } from '@astryxdesign/core/Switch';
 import { DropdownMenu, DropdownMenuItem } from '@astryxdesign/core/DropdownMenu';
 import {
     ArrowUturnLeftIcon,
@@ -16,7 +17,7 @@ import { inkStyle } from '../map/treeList';
 
 type Conversation = { id: string; title: string };
 
-// One header row: back to parent, path breadcrumbs, token stats, map toggle, close and overflow.
+// One header row: back to parent, path breadcrumbs, the Board toggle, token stats, map toggle, close and overflow.
 export default function ChatHeadingRow({
     parentTitle,
     ancestors,
@@ -30,6 +31,8 @@ export default function ChatHeadingRow({
     toggleExpanded,
     returnToTree,
     rename,
+    board,
+    toggleBoard,
 }: {
     parentTitle?: string;
     ancestors: Conversation[];
@@ -43,6 +46,8 @@ export default function ChatHeadingRow({
     toggleExpanded: () => void;
     returnToTree: () => void;
     rename: () => void;
+    board: boolean;
+    toggleBoard: () => void;
 }) {
     return (
         <HStack gap={1} vAlign="center" className="chat-heading-row">
@@ -81,18 +86,28 @@ export default function ChatHeadingRow({
                     {current.title}
                 </strong>
             </nav>
-            <TokenStatsToggle open={statsOpen} toggle={toggleStats} />
-            <IconButton
-                className="expand-chat"
-                aria-pressed={!expanded}
-                aria-controls="learning-tree-map"
-                label={expanded ? 'Show map beside chat' : 'Expand chat'}
-                tooltip={expanded ? 'Show map beside chat' : 'Expand chat'}
-                icon={<ViewColumnsIcon />}
-                variant="ghost"
+            <Switch
+                className="board-toggle"
+                label="Board"
                 size="sm"
-                onClick={toggleExpanded}
+                value={board}
+                onChange={toggleBoard}
             />
+            <TokenStatsToggle open={statsOpen} toggle={toggleStats} />
+            {/* The board takes the full width with the map hidden, so there is no map to give way to. */}
+            {!board && (
+                <IconButton
+                    className="expand-chat"
+                    aria-pressed={!expanded}
+                    aria-controls="learning-tree-map"
+                    label={expanded ? 'Show map beside chat' : 'Expand chat'}
+                    tooltip={expanded ? 'Show map beside chat' : 'Expand chat'}
+                    icon={<ViewColumnsIcon />}
+                    variant="ghost"
+                    size="sm"
+                    onClick={toggleExpanded}
+                />
+            )}
             <IconButton
                 label="Return to tree"
                 tooltip="Back to map (Esc)"

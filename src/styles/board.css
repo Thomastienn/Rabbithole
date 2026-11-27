@@ -1,0 +1,139 @@
+/* The board (mockup Rabbithole-brd.1): the conversation switched to a surface where the tutor talks and draws.
+   Mockup roles: --deep background-muted (the board), --mut text-secondary, --ink text-primary, --w rabbithole-paper,
+   --up popover, --seam2 border-emphasized, --fail text-error over error-muted. */
+
+/* While a board is open the map is hidden and the board column takes all the width right of the band. */
+.tree-workspace:has(.board-column) :is(.overview, .chat-divider) {
+    display: none;
+}
+.tree-workspace:has(.board-column) .focused-chat {
+    flex: 1;
+    border-left: 0;
+}
+
+/* Board toggle: the switch and its word, first among the header's controls; muted when off, ink when on. */
+.board-toggle {
+    height: 36px;
+    padding: 0 10px;
+    margin-right: 4px;
+    border-radius: var(--radius-element);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+}
+.board-toggle:has(input:checked) {
+    color: var(--color-text-primary);
+}
+
+/* Fixed rows under the header: the board field, the 52px caption line and the composer. State never moves them. */
+.board-column {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) 52px auto;
+}
+.board-field {
+    container-type: size;
+    display: grid;
+    place-items: center;
+    padding: 16px 24px 0;
+    min-height: 0;
+}
+/* A fixed 1600x900 surface (ADR 0028), as large as the field allows, centred. */
+.board {
+    position: relative;
+    width: min(100cqw, 100cqh * 16 / 9);
+    aspect-ratio: 16 / 9;
+    background: var(--color-background-muted);
+    border-radius: var(--radius-container);
+    overflow: hidden;
+}
+.board > svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+.board-empty {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    display: grid;
+    place-items: center;
+    font: 15px/1.4 var(--font-family-body);
+    color: var(--color-text-secondary);
+}
+/* A notice: one line at the top centre, over the board, so nothing below moves. */
+.board-notice {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    translate: -50% 0;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border: 1.5px solid var(--color-border-emphasized);
+    border-radius: var(--radius-element);
+    background: color-mix(in srgb, var(--color-text-error) 15%, var(--color-background-popover));
+    font: 13px/1.4 var(--font-family-body);
+    color: var(--color-text-primary);
+    white-space: nowrap;
+}
+.board-notice svg {
+    width: 16px;
+    height: 16px;
+    flex: none;
+    color: var(--color-text-error);
+}
+
+/* Caption line: the session state at the left, the one-line caption centred. */
+.board-line {
+    display: grid;
+    grid-template-columns: 112px minmax(0, 1fr) 112px;
+    align-items: center;
+    gap: 12px;
+    padding: 0 24px;
+    min-width: 0;
+}
+.board-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font: 600 12px/1.2 var(--font-family-heading);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--color-text-secondary);
+}
+.board-state::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--color-text-secondary);
+}
+.board-state.speaking::before {
+    background: var(--rabbithole-paper);
+}
+.board-caption {
+    margin: 0;
+    font: 17px/1.5 var(--rabbithole-font-reading);
+    color: var(--color-text-primary);
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.board-caption.muted {
+    color: var(--color-text-secondary);
+}
+
+/* The chat composer, centred, without model, effort or attach controls; its tools hold the mic. */
+.board-foot {
+    padding: 8px 24px 20px;
+}
+.board-foot .board-composer {
+    max-width: 720px;
+    margin: 0 auto;
+}
