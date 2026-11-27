@@ -17,6 +17,7 @@ import { FreeBranches, Groundwork, NextQuestions, ReplyFeedback, ReplyUsage } fr
 import Passage from './Passage';
 import Reply from './Reply';
 import BranchForm from './BranchForm';
+import BoardSnapshot from '../board/BoardSnapshot';
 import type { Summary } from '../map/TreeOverview';
 import type { Tree } from './types';
 import { figureList } from './figures';
@@ -115,6 +116,9 @@ export default function ChatThread({
                 tree.messages
                     .filter((m) => m.role === 'assistant' && m.status === 'completed')
                     .indexOf(message) + 1,
+            partialBoardReply =
+                !overview && message.board && message.status === 'interrupted' && !!message.text,
+            copyable = message.status === 'completed' || partialBoardReply,
             visualCount =
                 message.role === 'assistant' &&
                 visualsReady(artifactsAt(tree.artifacts ?? [], tree.id, message.id));
@@ -134,14 +138,12 @@ export default function ChatThread({
                 metadata={
                     !overview &&
                     message.role === 'assistant' &&
-                    (message.status === 'completed' ||
-                        !!message.mediaUsage?.length ||
-                        !!visualCount) && (
+                    (copyable || !!message.mediaUsage?.length || !!visualCount) && (
                         <HStack gap={2} vAlign="center">
-                            {message.status === 'completed' && (
+                            {copyable && (
                                 <CopyButton
                                     text={withoutSketches(message.text)}
-                                    label={`Copy tutor reply ${index}`}
+                                    label={index ? `Copy tutor reply ${index}` : 'Copy tutor reply'}
                                     className="reply-copy"
                                 />
                             )}
@@ -334,6 +336,7 @@ export default function ChatThread({
                         )}
                     </>
                 )}
+                {message.snapshot && <BoardSnapshot items={message.snapshot} />}
 
                 {!overview &&
                     message.role === 'assistant' &&
@@ -385,16 +388,19 @@ export default function ChatThread({
                                 />
                             ),
                         )}
-                <ReplyFeedback
-                    message={message}
-                    suggestions={suggestions}
-                    overview={overview}
-                    active={active}
-                    latest={message === tree.messages.at(-1)}
-                    previous={tree.messages.at(-2)}
-                    compactionError={tree.compaction?.error}
-                    retry={(text) => void send(text, tree, true)}
-                />
+                {/* A board reply the learner left halfway shows no notice (mockup Rabbithole-brd.16, state 2). */}
+                {!(partialBoardReply && message.stopped === 'learner') && (
+                    <ReplyFeedback
+                        message={message}
+                        suggestions={suggestions}
+                        overview={overview}
+                        active={active}
+                        latest={message === tree.messages.at(-1)}
+                        previous={tree.messages.at(-2)}
+                        compactionError={tree.compaction?.error}
+                        retry={(text) => void send(text, tree, true)}
+                    />
+                )}
                 {/* An empty passage marks a free branch; its row sits between the reply and its next questions. */}
                 <FreeBranches
                     branches={trees
