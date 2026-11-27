@@ -6,6 +6,7 @@ import { holdEnter } from '../chat/Attachments';
 import type { Message } from '../chat/turn';
 import { useBoard } from './useBoard';
 import BoardItem from './BoardItem';
+import { labelRows } from './player';
 
 const STATES = { thinking: 'Thinking', speaking: 'Speaking' } as const;
 
@@ -23,6 +24,7 @@ export default function Board({
     const board = useBoard(conversation, messages, reload);
     const [draft, setDraft] = useState('');
     const busy = board.state !== 'idle' || !board.ready;
+    const rows = labelRows(board.items.map((drawn) => drawn.op));
     const submit = (text: string) => {
         if (busy || !text.trim()) return;
         if (board.ask(text.trim())) setDraft('');
@@ -33,7 +35,7 @@ export default function Board({
                 <div className="board">
                     <svg viewBox="0 0 1600 900" role="img" aria-label="Board">
                         {board.items.map(({ op, ms }) => (
-                            <BoardItem key={op.id} op={op} ms={ms} />
+                            <BoardItem key={op.id} op={op} ms={ms} row={rows.get(op.id)} />
                         ))}
                     </svg>
                     {!board.asked && <p className="board-empty">Ask a question to start.</p>}
