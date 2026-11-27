@@ -81,9 +81,34 @@ test('board: each sentence becomes the caption, reported as it shows, and leavin
     const thinking = board.q('[role=status]').textContent;
     await board.act(async () => {
         board.socket.server({ type: 'state', state: 'speaking' });
-        board.socket.server({ type: 'sentence', id: '1', text: 'A hypha grows at its tip.' });
-        board.socket.server({ type: 'sentence', id: '2', text: 'Vesicles carry wall forward.' });
+        board.socket.server({
+            type: 'sentence',
+            id: '1',
+            text: 'A hypha grows at its tip.',
+            ops: [{ id: 'tip', kind: 'circle', at: [800, 450], r: 60, look: 'focus' }],
+        });
+        board.socket.server({
+            type: 'sentence',
+            id: '2',
+            text: 'Vesicles carry wall forward.',
+            ops: [
+                {
+                    id: 'v1',
+                    kind: 'arrow',
+                    points: [
+                        [100, 100],
+                        [300, 100],
+                    ],
+                },
+            ],
+        });
     });
+    // The sentence on show draws its items at their board coordinates; the next one waits its turn.
+    const drawn = [...board.container.querySelectorAll('svg .board-item')];
+    assert.deepEqual(
+        drawn.map((g) => [g.getAttribute('class'), g.firstElementChild.getAttribute('cx')]),
+        [['board-item focus', '800']],
+    );
     assert.equal(board.q('.board-caption').textContent, 'A hypha grows at its tip.');
     assert.equal(board.q('.board-caption.muted'), null);
     assert.ok(board.q('[role=status]').textContent);

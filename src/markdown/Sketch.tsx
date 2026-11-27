@@ -64,7 +64,9 @@ function SketchDrawing({ sketch, live }: { sketch: Drawing; live: boolean }) {
                       } as CSSProperties)
                     : undefined
             }
-            aria-label={sketch.title ? `Sketch: ${sketch.title}` : 'Sketch'}
+            aria-label={[sketch.title ? `Sketch: ${sketch.title}` : 'Sketch', sketch.about]
+                .filter(Boolean)
+                .join(', ')}
         >
             {sketch.title && <figcaption aria-hidden="true">{sketch.title}</figcaption>}
             {/* The module escapes every label the tutor wrote. */}

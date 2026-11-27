@@ -254,3 +254,53 @@
         white-space: normal;
     }
 }
+
+/* Board items (mockup Rabbithole-brd.2), in board pixels: 7px marker strokes, round caps and joins, no fill.
+   Looks by role: none text-primary, focus rabbithole-paper, muted text-secondary, good text-success,
+   wrong text-error, new text-info. Each item fades in over its share of its sentence. */
+.board-item {
+    color: var(--color-text-primary);
+    animation: board-enter 0ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.board-item.focus {
+    color: var(--rabbithole-paper);
+}
+.board-item.muted {
+    color: var(--color-text-secondary);
+}
+.board-item.good {
+    color: var(--color-text-success);
+}
+.board-item.wrong {
+    color: var(--color-text-error);
+}
+.board-item.new {
+    color: var(--color-text-info);
+}
+.board-stroke {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.board-dot {
+    fill: currentColor;
+}
+.board-text {
+    fill: currentColor;
+    font: 500 44px var(--rabbithole-font-reading);
+    text-anchor: middle;
+    dominant-baseline: central;
+}
+.board-text.s {
+    font-size: 32px;
+}
+.board-text.l {
+    font-size: 64px;
+}
+@keyframes board-enter {
+    from {
+        opacity: 0;
+    }
+}

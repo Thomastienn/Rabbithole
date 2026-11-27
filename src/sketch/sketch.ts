@@ -1,19 +1,26 @@
 // Sketches: small diagrams the tutor writes as ```sketch <kind> blocks (ADR 0027).
 // The only place that knows the kinds. Plain: no React, no DOM, no model call.
 
+import { equation, grid, sequence } from './maths.ts';
+import { plot } from './plot.ts';
+import { cycle, parts, stack, timeline, tree } from './structure.ts';
+
 // The theme colours by role; the app passes CSS variables, tests pass hex values.
 export type Palette = { ground: string; ink: string; muted: string; seam: string; focus: string };
 // One per drawn element. `text` is what a screen reader hears for it.
 // `level` nests a tree's items for a screen reader; other kinds leave it out.
 export type SketchItem = { label: string; focus: boolean; text: string; level?: number };
-export type Sketch = { title: string; items: SketchItem[]; markup: string };
-type Drawing = { items: SketchItem[]; markup: string } | { error: string };
-type Line = { text: string; at: number; indent: number };
+// `about` is the frame of reference a screen reader hears after the title, such as a line's range.
+export type Sketch = { title: string; about: string; items: SketchItem[]; markup: string };
+export type Drawing = { items: SketchItem[]; markup: string; about?: string } | { error: string };
+export type Line = { text: string; at: number; indent: number };
+// A kind's drawing gets its item lines and, in the order its KINDS entry names them, its head lines.
+type Draw = (lines: Line[], palette: Palette, heads: Line[]) => Drawing;
 
-const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
-const plain = (s: string) => s.replace(/\*/g, '').trim();
-const isFocus = (s: string) => /\*[^*]+\*/.test(s);
-const quoted = (line: Line) => `line ${line.at} "${line.text}"`;
+export const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+export const plain = (s: string) => s.replace(/\*/g, '').trim();
+export const isFocus = (s: string) => /\*[^*]+\*/.test(s);
+export const quoted = (line: Line) => `line ${line.at} "${line.text}"`;
 const list = (parts: string[]) =>
     parts.length < 2 ? parts.join('') : `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}`;
 
@@ -22,8 +29,9 @@ export function drawSketch(
     body: string,
     palette: Palette,
 ): Sketch | { error: string } {
-    const draw = KINDS.get(kind.trim().toLowerCase());
-    if (!draw) return { error: `unknown kind "${kind.trim()}"` };
+    const entry = KINDS.get(kind.trim().toLowerCase());
+    if (!entry) return { error: `unknown kind "${kind.trim()}"` };
+    const [draw, syntaxes = []] = entry;
     const lines = body
         .split(/\r\n?|\n/)
         .map((text, i) => ({
@@ -34,21 +42,34 @@ export function drawSketch(
         .filter((l) => l.text);
     const title = lines[0] && /^title\s*:/i.test(lines[0].text) ? lines.shift()! : undefined;
     if (!lines.length) return { error: 'empty body' };
-    if (lines.length > 8) return { error: 'more than eight items' };
-    const drawing = draw(lines, palette);
+    const heads: Line[] = [];
+    for (const syntax of syntaxes) {
+        const key = syntax.slice(0, syntax.indexOf(':')),
+            at = lines.findIndex((l) => new RegExp(`^${key}\\s*:`, 'i').test(l.text));
+        if (at < 0) return { error: `no "${syntax}" line` };
+        heads.push(...lines.splice(at, 1));
+    }
+    if (!lines.length) return { error: 'no items' };
+    // A grid's rows are cells of one item, not items.
+    if (lines.length > 8 && draw !== grid) return { error: 'more than eight items' };
+    const drawing = draw(lines, palette, heads);
     return 'error' in drawing
         ? drawing
-        : { title: title ? plain(title.text.replace(/^title\s*:/i, '')) : '', ...drawing };
+        : {
+              title: title ? plain(title.text.replace(/^title\s*:/i, '')) : '',
+              about: '',
+              ...drawing,
+          };
 }
 
 // Flow: a small line diagram. Each rank is a column; a second child forks onto the next row down.
-const WIDTH = 640,
+export const WIDTH = 640,
     ROW = 84,
     LINE = 18,
     // shortcut: label width is estimated at 7px per character of the 14px reading face; measure text if labels clip.
     CHAR = 7;
 
-function wrap(label: string, width: number, measure = (s: string) => s.length * CHAR) {
+export function wrap(label: string, width: number, measure = (s: string) => s.length * CHAR) {
     const lines: string[] = [];
     for (const word of label.split(/\s+/)) {
         const last = lines.at(-1);
@@ -153,7 +174,9 @@ function flow(lines: Line[], p: Palette): Drawing {
             .map((r) =>
                 text((r.from + x(r.e.b)) / 2, y(r.e.b) - 16, r.e.label, `fill:${p.muted}`, true),
             );
-        const station = ring(x(n), y(n), f, p);
+        const station = f
+            ? `<circle cx="${x(n)}" cy="${y(n)}" r="7" style="fill:${p.focus};stroke:${p.focus}"/>`
+            : `<circle cx="${x(n)}" cy="${y(n)}" r="6" style="fill:${p.ground};stroke:${p.muted}"/>`;
         const labels = wrap(n, column - 24).map((l, i) => {
             const baseline = y(n) + (notesAbove ? 28 : 26) + LINE * i;
             bottom = Math.max(bottom, baseline);
@@ -189,6 +212,9 @@ function flow(lines: Line[], p: Palette): Drawing {
     return { items, markup };
 }
 
+// A number as written at the start of a value: 1,000 and .5 read, 1.2.3 does not.
+const NUMBER = /^-?(?:(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?(?![\d.,])/i;
+
 // Bars: one row per item, `label: number` with an optional unit after the number.
 function bars(lines: Line[], p: Palette): Drawing {
     const rows = [];
@@ -196,10 +222,7 @@ function bars(lines: Line[], p: Palette): Drawing {
         const colon = line.text.lastIndexOf(':'),
             label = plain(line.text.slice(0, Math.max(colon, 0))),
             value = plain(line.text.slice(colon + 1)),
-            number =
-                /^-?(?:(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?(?![\d.,])/i.exec(
-                    value,
-                )?.[0];
+            number = NUMBER.exec(value)?.[0];
         if (colon < 1 || !label) return { error: `${quoted(line)} is not label: number` };
         if (number === undefined) return { error: `${quoted(line)} has no number` };
         const n = Number(number.replace(/,/g, ''));
@@ -231,316 +254,274 @@ function bars(lines: Line[], p: Palette): Drawing {
     return { items, markup };
 }
 
-// The structure kinds (mockup Rabbithole-skt.2): rings on 3px lines, rows 28px apart.
-const STEP = 28;
-// Advance widths of printable ASCII in the 14px reading face, in tenths of a pixel.
-const ADVANCE =
-    '39,40,42,91,83,129,102,22,42,42,68,85,29,51,29,54,91,57,77,81,86,82,84,71,86,83,29,29,77,88,77,67,109,88,86,90,94,80,77,97,97,55,72,88,76,115,97,100,83,101,86,83,78,97,83,120,87,80,85,44,54,48,77,52,34,73,79,68,79,75,44,78,77,35,34,69,37,118,77,77,79,80,49,66,46,76,65,96,67,63,64,48,33,48,78'
-        .split(',')
-        .map(Number);
-// shortcut: widths come from a weight-400 table, focus words 5% wider and other characters 7px; measure in the DOM if labels clip.
-const width = (raw: string) =>
-    raw
-        .split(/\*([^*]+)\*/)
-        .reduce(
-            (sum, part, i) =>
-                sum +
-                [...part.replace(/\*/g, '')].reduce(
-                    (w, c) => w + (ADVANCE[c.charCodeAt(0) - 32] ?? 70) / 10,
-                    0,
-                ) *
-                    (i % 2 ? 1.05 : 1),
-            0,
-        );
-// A label wrapped to a width in as few, evenly long lines as fit, each starred run split per word so
-// its focus survives a line break.
-function fit(raw: string, w: number) {
-    const words = raw.replace(/\*([^*]+)\*/g, (_, run: string) =>
-        run
-            .trim()
-            .split(/\s+/)
-            .map((word) => `*${word}*`)
-            .join(' '),
-    );
-    let lines = wrap(words, w, width);
-    for (let narrower = w - 4; lines.length > 1 && narrower > 0; narrower -= 4) {
-        const next = wrap(words, narrower, width);
-        if (next.length > lines.length) break;
-        lines = next;
-    }
-    return lines;
-}
-// A label's text with only its starred words in the focus colour at weight 600.
-const rich = (raw: string, p: Palette, tag = 'tspan') =>
-    raw
-        .replace(/\* \*/g, ' ')
-        .split(/\*([^*]+)\*/)
-        .map((part, i) =>
-            i % 2
-                ? `<${tag} style="${tag === 'tspan' ? 'fill' : 'color'}:${p.focus};font-weight:600">${esc(part)}</${tag}>`
-                : esc(part.replace(/\*/g, '')),
-        )
-        .join('');
-const label = (x: number, y: number, words: string[], p: Palette, anchor: string, note = false) =>
-    words
-        .map(
-            (line, i) =>
-                `<text${note ? ' class="sketch-note"' : ''} x="${x}" y="${y + LINE * i}" style="fill:${note ? p.muted : p.ink};text-anchor:${anchor}">${rich(line, p)}</text>`,
-        )
-        .join('');
-const ring = (x: number, y: number, focus: boolean, p: Palette) =>
-    focus
-        ? `<circle cx="${x}" cy="${y}" r="7" style="fill:${p.focus};stroke:${p.focus}"/>`
-        : `<circle cx="${x}" cy="${y}" r="6" style="fill:${p.ground};stroke:${p.muted}"/>`;
-// One item's elements; `--i` is its place in the sketch's build.
-const group = (k: number, body: string) => `<g style="--i:${k}">${body}</g>`;
-const svg = (kind: string, height: number, d: string, body: string, p: Palette) =>
-    `<svg class="sketch-${kind}" viewBox="0 0 ${WIDTH} ${height}">` +
-    `<path class="sketch-line" style="stroke:${p.seam}" d="${d}"/>${body}</svg>`;
-const item = (raw: string, text: string, level?: number): SketchItem => ({
-    label: plain(raw),
-    focus: isFocus(raw),
-    text: isFocus(raw) ? `${text}, focus` : text,
-    ...(level === undefined ? {} : { level }),
-});
-// `left: right` at the first colon not followed by a digit, so a time like 10:30 stays whole.
-const pair = (text: string) => {
-    const m = /^(.*?):(?!\d)(.*)$/.exec(text);
-    return m && plain(m[1]) && plain(m[2]) ? [m[1].trim(), m[2].trim()] : undefined;
+// Shared by line, quadrant and spectrum: a 592px run from x 24 to 616 in a 640px view.
+const LEFT = 24,
+    RUN = 592;
+const after = (l: Line) => l.text.slice(l.text.indexOf(':') + 1).trim();
+// `low .. high` from a head line, or undefined when it has not two ends.
+const ends = (l: Line) => {
+    const parts = after(l)
+        .split(/\s*(?:\.\.+|…)\s*/)
+        .map(plain);
+    return parts.length === 2 && parts.every(Boolean) ? (parts as [string, string]) : undefined;
 };
+const minus = (s: string) => s.replace(/^-(?=[\d.])/, '−');
+const at = (n: number) => +n.toFixed(1);
+const write = (x: number, y: number, words: string, style: string, cls = '') =>
+    `<text${cls ? ` class="${cls}"` : ''} x="${at(x)}" y="${at(y)}" style="${style}">${esc(words)}</text>`;
+const tone = (p: Palette, focus: boolean) =>
+    focus ? `fill:${p.focus};font-weight:600` : `fill:${p.ink}`;
+export const ring = (x: number, y: number, focus: boolean, p: Palette) =>
+    focus
+        ? `<circle cx="${at(x)}" cy="${at(y)}" r="7" style="fill:${p.focus};stroke:${p.focus}"/>`
+        : `<circle cx="${at(x)}" cy="${at(y)}" r="6" style="fill:${p.ground};stroke:${p.muted}"/>`;
+const leader = (x: number, from: number, to: number, p: Palette) =>
+    `<path class="sketch-leader" style="stroke:${p.seam}" d="M${at(x)} ${at(from)}V${at(to)}"/>`;
+// One group per item, in the items' order; `--i` is its place in the sketch's build.
+export const group = (k: number, parts: string) => `<g style="--i:${k}">${parts}</g>`;
+const withFocus = (parts: string[], focus: boolean) =>
+    [...parts, ...(focus ? ['focus'] : [])].join(', ');
 
-// Cycle: a loop with two rows 84px apart, the first half of the stages along the top, the rest back along the bottom.
-function cycle(lines: Line[], p: Palette): Drawing {
-    const n = lines.length,
-        top = Math.ceil(n / 2);
-    if (n < 2) return { error: '1 stage; a cycle needs at least 2' };
-    const stages = lines.map((line, i) => {
-        const row = i < top ? 0 : 1,
-            column = WIDTH / (row ? n - top : top),
-            k = row ? i - top : i;
-        return {
-            raw: line.text,
-            row,
-            x: row ? WIDTH - column * (k + 0.5) : column * (k + 0.5),
-            words: fit(line.text, column - 48),
-        };
-    });
-    // Top labels sit inside the loop; past three lines each pushes the bottom row down.
-    const deep = Math.max(...stages.filter((s) => !s.row).map((s) => s.words.length)),
-        ys = [24, ROW + 24 + LINE * Math.max(0, deep - 3)],
-        [y0, y1] = ys,
-        mid = (y0 + y1) / 2;
-    const chevrons = stages.map((s, i) => {
-        const t = stages[(i + 1) % n],
-            way = s.row ? -1 : 1;
-        if (s.row === t.row) {
-            const tip = (s.x + t.x) / 2 + 2 * way,
-                y = ys[s.row];
-            return `M${tip - 5 * way} ${y - 5}L${tip} ${y}L${tip - 5 * way} ${y + 5}`;
-        }
-        const x = s.row ? 16 : WIDTH - 16,
-            tip = mid + 2 * way;
-        return `M${x - 5} ${tip - 5 * way}L${x} ${tip}L${x + 5} ${tip - 5 * way}`;
-    });
-    const bottom = Math.max(...stages.map((s) => ys[s.row] + 26 + LINE * (s.words.length - 1)));
-    const markup = svg(
-        'cycle',
-        bottom + 10,
-        `M32 ${y0}H${WIDTH - 32}L${WIDTH - 16} ${y0 + 16}V${y1 - 16}L${WIDTH - 32} ${y1}H32L16 ${y1 - 16}V${y0 + 16}Z`,
-        `<path class="sketch-arrow" style="stroke:${p.muted}" d="${chevrons.join('')}"/>` +
-            stages
-                .map((s, k) =>
-                    group(
-                        k,
-                        ring(s.x, ys[s.row], isFocus(s.raw), p) +
-                            label(s.x, ys[s.row] + 26, s.words, p, 'middle'),
-                    ),
-                )
-                .join(''),
-        p,
-    );
-    const items = stages.map((s, i) =>
-        item(
-            s.raw,
-            `${plain(s.raw)}, leads ${i + 1 < n ? '' : 'back '}to ${plain(stages[(i + 1) % n].raw)}`,
-        ),
-    );
-    return { items, markup };
-}
-
-// Stack: one layer per line, top first, `name: note`, each on its own shelf.
-function stack(lines: Line[], p: Palette): Drawing {
-    const layers: string[][] = [];
-    for (const line of lines) {
-        const layer = pair(line.text);
-        if (!layer) return { error: `${quoted(line)} has no ": note"` };
-        layers.push(layer);
+// Line: a number line, `range: min..max` then `value: label`; a label crowding its neighbour rises a row.
+function line(lines: Line[], p: Palette, [range]: Line[]): Drawing {
+    const written = ends(range),
+        bounds = written?.map((e) => ({ e, m: NUMBER.exec(e.replace(/^−/, '-'))?.[0] }));
+    const [lo, hi] = bounds?.map((b) => Number(b.m?.replace(/,/g, '') ?? NaN)) ?? [];
+    if (!bounds || !(lo < hi) || !Number.isFinite(hi - lo))
+        return { error: `${quoted(range)} is not range: min..max` };
+    const values = [];
+    let unit = '';
+    for (const l of lines) {
+        const colon = l.text.indexOf(':'),
+            raw = plain(l.text.slice(0, Math.max(colon, 0))),
+            label = plain(l.text.slice(colon + 1)),
+            number = NUMBER.exec(raw.replace(/^−/, '-'))?.[0];
+        if (colon < 1 || number === undefined || !label)
+            return { error: `${quoted(l)} is not value: label` };
+        const n = Number(number.replace(/,/g, ''));
+        if (!(n >= lo && n <= hi)) return { error: `${quoted(l)} is outside ${after(range)}` };
+        unit ||= raw.slice(number.length);
+        values.push({ n, value: minus(raw), label, focus: isFocus(l.text) });
     }
+    values.sort((a, b) => a.n - b.n);
+    // shortcut: text width is estimated at 0.6em (8.4px) per character, as the mockup does; measure text if labels collide.
+    const span = (x: number, words: string) => {
+        const w = words.length * 8.4,
+            c = Math.min(Math.max(x, w / 2), 640 - w / 2);
+        return { c, x0: c - w / 2, x1: c + w / 2 };
+    };
+    const placed: { x: number; c: number; x0: number; x1: number; row: number }[] = [];
+    for (const v of values) {
+        const x = LEFT + ((v.n - lo) / (hi - lo)) * RUN,
+            s = span(x, v.label);
+        // A row is free when no label on it comes within 12px and no leader crosses a label.
+        const fits = (row: number) =>
+            placed.every((o) =>
+                o.row === row
+                    ? o.x1 + 12 <= s.x0 || s.x1 + 12 <= o.x0
+                    : o.row < row
+                      ? x < o.x0 || x > o.x1
+                      : o.x < s.x0 || o.x > s.x1,
+            );
+        // shortcut: a fourth crowded label shares the top row; the tutor rule keeps lines short.
+        placed.push({ x, ...s, row: [0, 1, 2].find(fits) ?? 2 });
+    }
+    const axis = 34 + 22 * Math.max(...placed.map((o) => o.row)),
+        under = axis + 26;
+    const marks = values.map((v, i) => {
+        const o = placed[i],
+            top = axis - 18 - 22 * o.row;
+        return group(
+            i,
+            (o.row ? leader(o.x, top + 6, axis - 9, p) : '') +
+                ring(o.x, axis, v.focus, p) +
+                write(o.c, top, v.label, tone(p, v.focus)) +
+                write(span(o.x, v.value).c, under, v.value, `fill:${p.muted}`, 'sketch-note'),
+        );
+    });
+    // Each range end is written under its tick unless a value comes within 12px of it.
+    const [low, high] = bounds.map((b) => minus(b.e) + (b.e.length > b.m!.length ? '' : unit));
+    const spans = values.map((v, i) => span(placed[i].x, v.value)),
+        endMarks = [
+            spans.every((s) => s.x0 >= LEFT + low.length * CHAR + 12)
+                ? write(LEFT, under, low, `fill:${p.muted}`, 'sketch-note sketch-start')
+                : '',
+            spans.every((s) => s.x1 <= LEFT + RUN - high.length * CHAR - 12)
+                ? write(LEFT + RUN, under, high, `fill:${p.muted}`, 'sketch-note sketch-end')
+                : '',
+        ];
     const markup =
-        `<ol class="sketch-stack" style="color:${p.ink}">` +
-        layers
-            .map(
-                ([name, note], k) =>
-                    `<li style="--i:${k};--shelf:${isFocus(name + note) ? p.focus : p.seam}"><b>${rich(name, p, 'strong')}</b>` +
-                    `<span style="color:${p.muted}">${rich(note, p, 'strong')}</span></li>`,
+        `<svg class="sketch-line-kind" viewBox="0 0 640 ${axis + 32}">` +
+        `<path class="sketch-line" style="stroke:${p.seam}" d="M${LEFT} ${axis}H${LEFT + RUN}"/>` +
+        `<path class="sketch-arrow" style="stroke:${p.muted}" d="M${LEFT} ${axis - 7}V${axis + 7}M${LEFT + RUN} ${axis - 7}V${axis + 7}"/>` +
+        marks.join('') +
+        endMarks.join('') +
+        '</svg>';
+    const items = values.map((v) => ({
+        label: v.label,
+        focus: v.focus,
+        text: withFocus([v.label, v.value], v.focus),
+    }));
+    return { items, markup, about: `from ${low} to ${high}` };
+}
+
+// Quadrant: `x: low .. high`, `y: low .. high`, then `item: x, y` on a 400 x 240 field from 0 to 10.
+function quadrant(lines: Line[], p: Palette, heads: Line[]): Drawing {
+    const [xs, ys] = heads.map(ends);
+    for (const [i, axis] of [xs, ys].entries())
+        if (!axis) return { error: `${quoted(heads[i])} is not ${'xy'[i]}: low .. high` };
+    const spots = new Map<
+        string,
+        { x: number; y: number; names: { label: string; focus: boolean; k: number }[] }
+    >();
+    const items = [];
+    for (const l of lines) {
+        const colon = l.text.lastIndexOf(':'),
+            label = plain(l.text.slice(0, Math.max(colon, 0))),
+            xy = /^(\S+)\s*,\s*(\S+)$/.exec(plain(l.text.slice(colon + 1)));
+        if (colon < 1 || !label || !xy || !xy.slice(1).every((v) => Number.isFinite(+v)))
+            return { error: `${quoted(l)} is not item: x, y` };
+        for (const [i, v] of xy.slice(1).entries()) {
+            if (+v < 0) return { error: `${quoted(l)} has ${'xy'[i]} ${v}, below 0` };
+            if (+v > 10) return { error: `${quoted(l)} has ${'xy'[i]} ${v}, above 10` };
+        }
+        const [x, y] = [+xy[1], +xy[2]],
+            focus = isFocus(l.text),
+            spot = spots.get(`${x},${y}`) ?? { x, y, names: [] };
+        spots.set(`${x},${y}`, spot);
+        spot.names.push({ label, focus, k: items.length });
+        items.push({ label, focus, text: withFocus([label, `x ${xy[1]}`, `y ${xy[2]}`], focus) });
+    }
+    const X = (v: number) => 120 + v * 40,
+        Y = (v: number) => 276 - v * 24,
+        note = `fill:${p.muted}`;
+    // Items at one spot share a station; their labels stack 20px apart, upward past the field's bottom.
+    const marks = [...spots.values()].map((s) => {
+        const rows = s.names.flatMap((n) => wrap(n.label, 150).map((words) => ({ ...n, words }))),
+            right = s.x > 7,
+            first = Math.min(Y(s.y) + 5, 281 - 20 * (rows.length - 1));
+        const texts = rows.map((r, i) => ({
+            k: r.k,
+            markup: write(
+                X(s.x) + (right ? -12 : 12),
+                first + 20 * i,
+                r.words,
+                tone(p, r.focus),
+                right ? 'sketch-end' : 'sketch-start',
+            ),
+        }));
+        // The spot's first item brings the shared station.
+        return s.names
+            .map((n, j) =>
+                group(
+                    n.k,
+                    (j
+                        ? ''
+                        : ring(
+                              X(s.x),
+                              Y(s.y),
+                              s.names.some((m) => m.focus),
+                              p,
+                          )) +
+                        texts
+                            .filter((t) => t.k === n.k)
+                            .map((t) => t.markup)
+                            .join(''),
+                ),
             )
+            .join('');
+    });
+    const side = (words: string, x: number, cls: string) => {
+        const rows = wrap(words, 88);
+        return rows
+            .map((r, i) =>
+                write(x, 160 - 8 * (rows.length - 1) + 16 * i, r, note, `sketch-note ${cls}`),
+            )
+            .join('');
+    };
+    const markup =
+        `<svg class="sketch-quadrant" viewBox="0 0 640 308" style="stroke:${p.ground}">` +
+        `<path class="sketch-line" style="stroke:${p.seam}" d="M120 156H520M320 276V36"/>` +
+        `<path class="sketch-arrow" style="stroke:${p.muted}" d="M515 151L520 156L515 161M315 41L320 36L325 41"/>` +
+        write(320, 22, ys![1], note, 'sketch-note') +
+        write(320, 300, ys![0], note, 'sketch-note') +
+        side(xs![0], 108, 'sketch-end') +
+        side(xs![1], 532, 'sketch-start') +
+        marks.join('') +
+        '</svg>';
+    return { items, markup, about: `across ${xs![0]} to ${xs![1]}, up ${ys![0]} to ${ys![1]}` };
+}
+
+// Spectrum: `ends: low .. high`, then `item: note` in order, evenly spaced; from five, every second drops a row.
+function spectrum(lines: Line[], p: Palette, [head]: Line[]): Drawing {
+    const sides = ends(head);
+    if (!sides) return { error: `${quoted(head)} is not ends: low .. high` };
+    const rows: { name: string; note: string; focus: boolean }[] = [];
+    for (const l of lines) {
+        const colon = l.text.indexOf(':'),
+            name = plain(colon < 0 ? l.text : l.text.slice(0, colon)),
+            note = colon < 0 ? '' : plain(l.text.slice(colon + 1));
+        if (!name) return { error: `${quoted(l)} has no name` };
+        rows.push({ name, note, focus: isFocus(l.text) });
+    }
+    const n = rows.length,
+        slot = RUN / n,
+        two = n >= 5,
+        width = (two ? 2 * slot : slot) - 16,
+        sideRows = sides.map((s) => wrap(s, 220)),
+        axis = 30 + 16 * (Math.max(...sideRows.map((r) => r.length)) - 1),
+        x = (i: number) => LEFT + slot * (i + 0.5),
+        note = `fill:${p.muted}`;
+    let bottom = 0;
+    // The name's first line sits at `top`; the note follows 17px under the name's last line.
+    const block = (i: number, top: number) => {
+        const r = rows[i],
+            names = wrap(r.name, width),
+            notes = r.note ? wrap(r.note, width) : [],
+            noteTop = top + 18 * (names.length - 1) + 17;
+        bottom = Math.max(bottom, notes.length ? noteTop + 16 * (notes.length - 1) : noteTop - 17);
+        return (
+            names.map((w, j) => write(x(i), top + 18 * j, w, tone(p, r.focus))).join('') +
+            notes.map((w, j) => write(x(i), noteTop + 16 * j, w, note, 'sketch-note')).join('')
+        );
+    };
+    const upper = rows.map((_, i) => (two && i % 2 ? '' : block(i, axis + 30))),
+        lowerTop = bottom + 32,
+        lower = rows.map((_, i) =>
+            two && i % 2 ? leader(x(i), axis + 9, lowerTop - 18, p) + block(i, lowerTop) : '',
+        );
+    const markup =
+        `<svg class="sketch-spectrum" viewBox="0 0 640 ${at(bottom + 10)}">` +
+        `<path class="sketch-line" style="stroke:${p.seam}" d="M${LEFT} ${axis}H${LEFT + RUN}"/>` +
+        sideRows[0]
+            .map((w, j) => write(LEFT, 16 + 16 * j, w, note, 'sketch-note sketch-start'))
             .join('') +
-        '</ol>';
-    const items = layers.map(([name, note], i) =>
-        item(
-            name + note,
-            `${plain(name)}${i === 0 ? ', top layer' : i === layers.length - 1 ? ', bottom layer' : ''}: ${plain(note)}`,
-        ),
-    );
-    return { items, markup };
+        sideRows[1]
+            .map((w, j) => write(LEFT + RUN, 16 + 16 * j, w, note, 'sketch-note sketch-end'))
+            .join('') +
+        rows.map((r, i) => group(i, lower[i] + ring(x(i), axis, r.focus, p) + upper[i])).join('') +
+        '</svg>';
+    const items = rows.map((r) => ({
+        label: r.name,
+        focus: r.focus,
+        text: withFocus([r.name, ...(r.note ? [r.note] : [])], r.focus),
+    }));
+    return { items, markup, about: `from ${sides[0]} to ${sides[1]}` };
 }
 
-// Tree: an indented outline, two spaces per level, each child branching off its parent's line at 45 degrees.
-function tree(lines: Line[], p: Palette): Drawing {
-    // A line nests one level below the nearest line above it with a smaller depth, as the outline reads.
-    const open: number[] = [];
-    let y = 12;
-    const rows = lines.map((line) => {
-        const depth = Math.floor(line.indent / 2);
-        while (open.length && open.at(-1)! >= depth) open.pop();
-        const level = open.push(depth) - 1,
-            x = 10 + 24 * level,
-            words = fit(line.text, WIDTH - x - 16),
-            row = { raw: line.text, level, x, y, words };
-        y += STEP + LINE * (words.length - 1);
-        return row;
-    });
-    const d = rows
-        .flatMap((r, i) => {
-            const kids = [];
-            for (const k of rows.slice(i + 1)) {
-                if (k.level <= r.level) break;
-                if (k.level === r.level + 1) kids.push(k);
-            }
-            return kids.length
-                ? [
-                      `M${r.x} ${r.y}V${kids.at(-1)!.y - 24}`,
-                      ...kids.map((k) => `M${r.x} ${k.y - 24}L${k.x} ${k.y}`),
-                  ]
-                : [];
-        })
-        .join('');
-    const last = rows.at(-1)!;
-    const markup = svg(
-        'tree',
-        last.y + 12 + LINE * (last.words.length - 1),
-        d,
-        rows
-            .map((r, k) =>
-                group(
-                    k,
-                    ring(r.x, r.y, isFocus(r.raw), p) +
-                        label(r.x + 16, r.y + 5, r.words, p, 'start'),
-                ),
-            )
-            .join(''),
-        p,
-    );
-    return { items: rows.map((r) => item(r.raw, plain(r.raw), r.level)), markup };
-}
-
-// Timeline: `when: event` down one straight line, in the order written; the app never sorts or spaces by date.
-function timeline(lines: Line[], p: Palette): Drawing {
-    const events: string[][] = [];
-    for (const line of lines) {
-        const event = pair(line.text);
-        if (!event) return { error: `${quoted(line)} has no "when:"` };
-        events.push(event);
-    }
-    const when = Math.min(192, Math.max(...events.map(([w]) => width(w)))),
-        x = Math.round(when) + 18;
-    let y = 12;
-    const rows = events.map(([w, e]) => {
-        const row = { w, e, y, ws: fit(w, when), es: fit(e, WIDTH - x - 18) };
-        y += STEP + LINE * (Math.max(row.ws.length, row.es.length) - 1);
-        return row;
-    });
-    const last = rows.at(-1)!;
-    const markup = svg(
-        'timeline',
-        last.y + 12 + LINE * (Math.max(last.ws.length, last.es.length) - 1),
-        `M${x} 12V${last.y}`,
-        rows
-            .map((r, k) =>
-                group(
-                    k,
-                    ring(x, r.y, isFocus(r.w + r.e), p) +
-                        label(x - 18, r.y + 5, r.ws, p, 'end') +
-                        label(x + 18, r.y + 5, r.es, p, 'start'),
-                ),
-            )
-            .join(''),
-        p,
-    );
-    return { items: rows.map((r) => item(r.w + r.e, `${plain(r.w)}: ${plain(r.e)}`)), markup };
-}
-
-// Parts: the whole on the left, its line into a bus that each part leaves at 90 degrees.
-function parts(lines: Line[], p: Palette): Drawing {
-    const head = /^whole\s*:(.*)$/i.exec(lines[0].text);
-    if (!head || !plain(head[1])) return { error: `line ${lines[0].at} is not "whole: name"` };
-    if (lines.length < 2) return { error: 'no parts after the whole' };
-    const rows: string[][] = [];
-    for (const line of lines.slice(1)) {
-        const part = pair(line.text);
-        if (!part) return { error: `${quoted(line)} has no ": what it does"` };
-        rows.push(part);
-    }
-    // shortcut: a whole that wraps to more lines than its parts have rows draws past the top; give it room if tutors write long wholes.
-    const whole = head[1].trim(),
-        wholes = fit(whole, 192),
-        hub = Math.round(Math.max(...wholes.map(width))) + 16,
-        bus = hub + 24,
-        at = bus + 24,
-        name = at + 16,
-        note = name + Math.round(Math.max(...rows.map(([n]) => width(n)))) + 16,
-        ys = rows.map((_, i) => 12 + STEP * i),
-        last = ys.at(-1)!,
-        middle = (12 + last) / 2;
-    const markup = svg(
-        'parts',
-        last + 12,
-        `M${at} 12H${bus}V${last}H${at}` +
-            ys
-                .slice(1, -1)
-                .map((y) => `M${bus} ${y}H${at}`)
-                .join('') +
-            `M${hub} ${middle}H${bus}`,
-        group(
-            0,
-            ring(hub, middle, isFocus(whole), p) +
-                label(hub - 16, middle + 5 - (LINE * (wholes.length - 1)) / 2, wholes, p, 'end'),
-        ) +
-            rows
-                .map(([n, d], i) =>
-                    group(
-                        i + 1,
-                        ring(at, ys[i], isFocus(n + d), p) +
-                            label(name, ys[i] + 5, [n], p, 'start') +
-                            label(note, ys[i] + 5, [d], p, 'start', true),
-                    ),
-                )
-                .join(''),
-        p,
-    );
-    const items = [
-        item(whole, `${plain(whole)}, made of ${rows.length} part${rows.length > 1 ? 's' : ''}`),
-        ...rows.map(([n, d]) => item(n + d, `${plain(n)}: ${plain(d)}`)),
-    ];
-    return { items, markup };
-}
-
-const KINDS = new Map([
-    ['flow', flow],
-    ['bars', bars],
-    ['cycle', cycle],
-    ['stack', stack],
-    ['tree', tree],
-    ['timeline', timeline],
-    ['parts', parts],
+const KINDS = new Map<string, [Draw, string[]?]>([
+    ['flow', [flow]],
+    ['bars', [bars]],
+    ['cycle', [cycle]],
+    ['stack', [stack]],
+    ['tree', [tree]],
+    ['timeline', [timeline]],
+    ['parts', [parts]],
+    ['line', [line, ['range: min..max']]],
+    ['quadrant', [quadrant, ['x: low .. high', 'y: low .. high']]],
+    ['spectrum', [spectrum, ['ends: low .. high']]],
+    ['plot', [plot]],
+    ['sequence', [sequence]],
+    ['equation', [equation]],
+    ['grid', [grid]],
 ]);
