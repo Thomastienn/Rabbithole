@@ -215,19 +215,27 @@ A small diagram the tutor writes in its reply from a fixed set of kinds, such as
 _Avoid_: Mini visual, quick visual, diagram
 
 **Board**:
-The surface a conversation can switch to, where the tutor talks the learner through an idea aloud while drawing it, one small change at a time in step with its words. What the tutor says is its reply in the conversation; the board shows ideas as pictures, with as little text as possible. The learner cuts in by voice or typing whenever they want and can draw on it with a pen to show what they mean. A conversation has at most one board.
+The surface a conversation can switch to, where the tutor talks the learner through an idea aloud while drawing it, one small change at a time in step with its words. What the tutor says is its reply in the conversation; the board shows ideas as pictures, with as little text as possible. The learner cuts in by voice or typing whenever they want and can draw on it with a pen to show what they mean. A conversation has at most one board, which holds a pool of board pages.
 _Avoid_: Whiteboard, canvas, interactive mode, lesson
 
+**Board page**:
+One titled space on a board, the size of the whole board, where the tutor explains one idea. The tutor opens a new board page when a side question would crowd or derail the one it is on, goes back to the page it came from once the side question is clear, and opens an earlier board page again when it already explains what the learner asks. Board pages are a pool the tutor and the learner move between, not a sequence, and each remembers the page it came from. Only the tutor makes them, and they last as long as the conversation.
+_Avoid_: Area, slide, tab, side board, sheet
+
 **Board item**:
-One drawn thing on a board, such as a shape, a short label or one step of a flow, which the tutor names and the learner can circle with the pen.
+One drawn thing on a board page, such as a shape, a short label or one step of a flow, which the tutor names and the learner can circle with the pen.
 _Avoid_: Element, object, mark, part
 
+**Check-in**:
+A moment on a board where the tutor asks, in its own words, whether the learner is following, usually after a big idea or before going back from a side page, and then waits for the learner however long they take. A check-in is never a quiz and never graded. The learner chooses how often the tutor checks in, and it happens in every way a board runs.
+_Avoid_: Comprehension check, quiz, question
+
 **Learner-led**:
-The default way a board runs: the tutor explains and keeps going, and the learner asks whenever something is unclear; the tutor does not ask the learner questions.
+The default way a board runs: the tutor explains and keeps going with check-ins now and then, and the learner asks whenever something is unclear; the tutor never quizzes the learner.
 _Avoid_: Passive mode, lecture mode
 
 **Tutor-guided**:
-The other way a board runs, which the learner chooses: the tutor also checks in along the way and asks the learner short questions, never graded.
+The other way a board runs, which the learner chooses: on top of its check-ins, the tutor asks the learner short questions after each part, never graded.
 _Avoid_: Quiz mode, interactive mode, active mode
 
 **Step**:

@@ -2,6 +2,8 @@
 
 Decided with the project owner on 2026-11-26 (brainstorm and grilling session). Terms follow `GLOSSARY.md`: learner, tutor, conversation, focused chat, branch, passage, reply, chat model, quick thinking model, tutor style, skill, tutor tool, familiarity, memory note, reads images, board, board item, learner-led, tutor-guided. Decision: ADR 0028 (board items are placed by coordinates).
 
+`docs/board-pages-and-check-ins-spec.md` (ADR 0029) changes parts of this spec: board pages replace `clear`'s stacked areas, and check-ins come in every mode.
+
 The evidence is on three local branches. Each has a README with its method, results and the decisions it settled:
 
 - `prototype/edge-tts-latency`: edge-tts first byte, pipelining and failures.
