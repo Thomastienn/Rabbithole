@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { boardSocket } from '../serverAccess';
 import type { Message } from '../chat/turn';
 import { boardPlayer, type Op } from './player';
+import { streamedVoice } from './voice';
 
 export type BoardState = 'idle' | 'thinking' | 'speaking';
 type Caption = { text: string; muted: boolean };
@@ -47,9 +48,15 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
             (op, ms) =>
                 op.kind === 'erase'
                     ? erase(op.ids ?? [], ms)
-                    : setItems((drawn) => [...drawn, { op, ms }]),
+                    : setItems((drawn) =>
+                          drawn.some((item) => item.op.id === op.id)
+                              ? drawn.map((item) => (item.op.id === op.id ? { op, ms } : item))
+                              : [...drawn, { op, ms }],
+                      ),
             (s, phase) => send({ type: 'progress', sentence: s.id, phase }),
+            streamedVoice(),
         );
+        ws.binaryType = 'arraybuffer';
         ws.onopen = () => setReady(true);
         ws.onclose = () => {
             player.stop();
@@ -59,6 +66,12 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
             setNotice('The board disconnected. Turn Board off and on to reconnect.');
         };
         ws.onmessage = (event) => {
+            // A speech chunk: one byte of sentence id length, the id, then the audio.
+            if (event.data instanceof ArrayBuffer) {
+                const bytes = new Uint8Array(event.data);
+                const id = new TextDecoder().decode(bytes.subarray(1, 1 + bytes[0]));
+                return player.chunk(id, bytes.subarray(1 + bytes[0]));
+            }
             const m = JSON.parse(event.data);
             if (m.type === 'state') {
                 setState(m.state);
@@ -71,6 +84,7 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
             // The saved board shows at once, without entry.
             if (m.type === 'board') setItems(m.items.map((op: Op) => ({ op, ms: 0 })));
             if (m.type === 'sentence') player.add(m);
+            if (m.type === 'audio-end') player.audioEnd(m.id);
             if (m.type === 'stroke') {
                 setItems((drawn) => [...drawn, { op: m.item, ms: 0 }]);
                 if (m.mark) setMarks((n) => n + 1);

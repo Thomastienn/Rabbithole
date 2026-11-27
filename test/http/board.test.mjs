@@ -1,104 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
-import WebSocket from 'ws';
+import { existsSync } from 'node:fs';
 import sharp from 'sharp';
-import { complete, open, until } from '../support/diagram-kit.mjs';
-import { notify } from '../support/events.mjs';
-
-// A Claude-like provider whose board process plays scripted output: each ask streams the next script in chunks.
-function boardProvider(scripts, { status = 'completed' } = {}) {
-    const provider = {
-        boards: [],
-        models: async () => [{ model: 'sonnet', efforts: ['low'] }],
-        model: async (tree) => tree.model ?? 'sonnet',
-        board(options) {
-            const board = {
-                options,
-                opened: 0,
-                closed: false,
-                asked: [],
-                images: [],
-                signals: [],
-                thread: 'board-session',
-                open: () => (board.opened++, notify()),
-                close: () => ((board.closed = true), notify()),
-                async ask(text, emit, signal, images = []) {
-                    board.asked.push(text);
-                    // The files last only for the turn, so the test keeps their bytes.
-                    board.images.push(images.map((i) => ({ ...i, bytes: readFileSync(i.path) })));
-                    board.signals.push(signal);
-                    for (const chunk of scripts.shift() ?? []) {
-                        if (signal.aborted) return { status: 'interrupted' };
-                        emit({ type: 'delta', text: chunk });
-                        await new Promise((resolve) => setImmediate(resolve));
-                    }
-                    // A script ending in a held promise waits there until the learner leaves.
-                    if (board.hold)
-                        await Promise.race([
-                            board.hold,
-                            new Promise((resolve) =>
-                                signal.addEventListener('abort', resolve, { once: true }),
-                            ),
-                        ]);
-                    if (signal.aborted)
-                        return { status: 'interrupted', usage: board.interruptedUsage };
-                    return {
-                        status,
-                        usage: { input: 10, output: 20, cacheRead: 5, thinking: 0 },
-                    };
-                },
-            };
-            provider.boards.push(board);
-            return board;
-        },
-    };
-    return provider;
-}
-
-async function setup(t, provider, { providerName = 'claude', app = {} } = {}) {
-    const logs = [];
-    const env = await open(
-        { models: async () => [], generate: async () => {} },
-        {
-            providers: { claude: provider },
-            log: (line) => {
-                logs.push(line);
-                notify();
-            },
-            ...app,
-        },
-    );
-    t.after(env.close);
-    const { csrf } = await (await env.get('/api/state')).json();
-    const id = env.store.create('What are hyphae?', providerName, 'sonnet').id;
-    const connect = (query = `?csrf=${csrf}`, origin = env.origin) => {
-        const ws = new WebSocket(
-            `${env.origin.replace('http', 'ws')}/api/trees/${id}/board${query}`,
-            {
-                origin,
-            },
-        );
-        const events = [];
-        ws.on('error', () => {});
-        ws.on('message', (data) => {
-            events.push(JSON.parse(data));
-            notify();
-        });
-        t.after(() => ws.terminate());
-        const next = async (type, match = () => true) => {
-            await until(() => events.some((e) => e.type === type && match(e)));
-            const index = events.findIndex((e) => e.type === type && match(e));
-            return events.splice(0, index + 1).at(-1);
-        };
-        return { ws, events, next, send: (m) => ws.send(JSON.stringify(m)) };
-    };
-    return { env, id, logs, connect };
-}
-
-const opened = (ws) =>
-    new Promise((resolve, reject) => ws.once('open', resolve).once('error', reject));
-const messages = (env, id) => env.store.tree(id).messages;
+import { complete, until } from '../support/diagram-kit.mjs';
+import { boardProvider, messages, opened, setup } from '../support/board-kit.mjs';
 
 test('board: a typed question gets its sentences one at a time and saves as a learner message and a reply', async (t) => {
     const provider = boardProvider([
@@ -464,7 +369,23 @@ test('board: leaving mid-reply saves only shown sentences and keeps any usage th
 
 test('board: a process that ends on its own leaves a notice and the reply up to the caption shown', async (t) => {
     const provider = boardProvider([['> One.\n> Two.\n']], { status: 'failed' });
-    const { env, id, connect } = await setup(t, provider);
+    const speech = Promise.withResolvers();
+    const { env, id, connect } = await setup(t, provider, {
+        app: {
+            speech: () => ({
+                warm() {},
+                async speak(_text, chunk, signal) {
+                    chunk(Buffer.from('first bytes'));
+                    const aborted = new Promise((resolve) =>
+                        signal.addEventListener('abort', resolve, { once: true }),
+                    );
+                    speech.resolve({ signal, chunk });
+                    await aborted;
+                },
+                close() {},
+            }),
+        },
+    });
     const board = connect();
     await opened(board.ws);
     await until(() => provider.boards[0]?.opened);
@@ -472,11 +393,27 @@ test('board: a process that ends on its own leaves a notice and the reply up to 
     provider.boards[0].hold = dies.promise; // the process dies while the first caption shows
     board.send({ type: 'ask', text: 'Why?' });
     const first = await board.next('sentence');
+    await board.next('audio');
+    const { signal, chunk } = await speech.promise;
     board.send({ type: 'progress', sentence: first.id, phase: 'start' });
     await until(() => messages(env, id)[1]?.text === 'One.');
     dies.resolve();
     assert.ok((await board.next('notice')).notice);
     assert.equal((await board.next('state')).state, 'idle');
+    assert.equal(
+        signal.aborted,
+        true,
+        'the next turn can use speech without old synthesis running',
+    );
+    chunk(Buffer.from('late bytes'));
+    board.send({ type: 'ask', text: 'What else?' });
+    await until(() =>
+        board.events.some((event) => event.type === 'state' && event.state === 'thinking'),
+    );
+    assert.ok(
+        board.events.every((event) => event.id !== first.id),
+        'no late audio or end marker',
+    );
     assert.deepEqual(
         { text: messages(env, id)[1].text, status: messages(env, id)[1].status },
         { text: 'One.', status: 'failed' },
