@@ -68,6 +68,8 @@ them here.
   changes and check it asserts the criterion's observable outcome, not a mock
   of the code under test or its internals. Rewrite a test that would stay
   green without the change.
+  Do not ask for tests of the look (layout, sizes, colours) a mockup pair
+  already proves.
 - **Mockup**: a task with a `Mockup:` line matches its structure exactly, in theme colours, proved by the
   paired screenshots `docs/agents/mockups.md` requires; check them as its
   Reviewing section says.

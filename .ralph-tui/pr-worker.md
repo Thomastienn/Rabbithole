@@ -10,7 +10,8 @@ pushes to your branch and Beads updates are authorized (AGENTS.md).
 1. **Read.** `bd show <task> --json` gives the description, acceptance
    criteria and notes. Read `AGENTS.md` and the docs it links for the areas you
    touch. A `Mockup:` line in the description names the design whose structure to match exactly;
-   follow `docs/agents/mockups.md`.
+   follow `docs/agents/mockups.md`. Read code narrowly: find it with `grep`,
+   then read only the line ranges you need, never whole folders or long files.
    When `gh pr view <branch>` finds a PR, you are resuming: read the PR, its
    checks and the task notes, and continue from there.
 2. **Implement** every acceptance criterion. For routine decisions choose the
@@ -19,7 +20,8 @@ pushes to your branch and Beads updates are authorized (AGENTS.md).
    breaks gets a test at the cheapest level, committed with the code: extend
    the existing test of that behaviour before adding a file, and follow
    "Writing a test" and "Banned tests" in `docs/agents/testing.md`. Refactors,
-   constants, copy, config and docs need no new test; when a change makes a
+   constants, copy, config, docs and the look a mockup pair proves (layout,
+   sizes, colours) need no new test; when a change makes a
    test obsolete, delete or rewrite it in the same commit. A criterion no test
    can prove gets cited from the code in the PR body instead.
 3. **Check cheaply.** The owner's machine also runs the other workers, so keep

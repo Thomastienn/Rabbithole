@@ -33,22 +33,24 @@ selected, error) with realistic data.
    `scripts/capture-finish.mjs` does (`createApp({ assets: '<tmp>' })`), with
    data shaped like the mockup's: the same number of items, every drawn state
    filled. Capture the mockup (`file://`) and the app with `agent-browser` at
-   1440x900 in dark and light, the same state in each pair; add 390x844 when
-   the mockup has a narrow view.
-3. **Compare** region by region and fix every structural difference and
-   every colour used in the wrong role. A colour that differs only because the
-   theme differs is a match. Try a CSS change live first by injecting the rule
-   with `agent-browser eval`, then write it to the file. Each image costs
-   context, so keep the loop lean:
-   check sizes, spacing and fonts as text first (computed styles via
-   `agent-browser eval`), screenshot only the region you are fixing
-   (`agent-browser screenshot <selector>`), and iterate in one scheme. Take
-   the full-page pairs in every scheme once, at the end. The step is done
-   when each final pair matches side by side.
-4. **Record** the final pairs as WebP (`cwebp`) under
-   `docs/verification/<issue-id>/`, named `<state>-<scheme>-mockup.webp` and
-   `<state>-<scheme>-app.webp`, commit them with the code, and list them in
-   the PR body (sequential runs: the issue notes).
+   1440x900 in the dark scheme, the same state in each pair; add 390x844 when
+   the mockup has a narrow view. Check the light scheme as text only: its
+   computed colours use the light theme tokens of the same roles.
+3. **Compare as text first.** Read sizes, spacing, fonts and colours of both
+   pages with `agent-browser eval` (computed styles, bounding boxes) and fix
+   every structural difference and every colour used in the wrong role. A
+   colour that differs only because the theme differs is a match. Try a CSS
+   change live first by injecting the rule with `agent-browser eval`, then
+   write it to the file. Images cost a lot of context: open one only for a
+   region the numbers cannot settle, screenshot only that region
+   (`agent-browser screenshot <selector>`), never open a full-page capture,
+   and open at most 6 images in the whole task. The step is done when the
+   computed values match.
+4. **Record** one full-page pair per drawn state, dark scheme only, as WebP
+   (`cwebp`) under `docs/verification/<issue-id>/`, named
+   `<state>-dark-mockup.webp` and `<state>-dark-app.webp`. Write them without
+   opening them, commit them with the code, and list them in the PR body
+   (sequential runs: the issue notes).
 5. **Escalate** a difference you cannot remove (data the app does not have, a
    behaviour the mockup assumes, a conflict with an acceptance criterion): it
    is an owner decision, never a default. Name the region, what the mockup
@@ -58,6 +60,7 @@ selected, error) with realistic data.
 
 ## Reviewing
 
-Open each mockup page and the committed pairs side by side, region by region.
+Open the committed pairs side by side, region by region; do not capture
+again. Check light-scheme colours as text, from the CSS the diff adds.
 A missing pair, a structural difference, or a colour in the wrong role that
 neither the ticket nor the owner approved is a Must fix.
