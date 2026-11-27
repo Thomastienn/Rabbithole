@@ -1,7 +1,7 @@
 // Board op lines (docs/board-spec.md, Op language): `<id> <kind> <args> [key=value]` on a fixed
 // 1600×900 board (ADR 0028). Tokens follow prototype/board-placement.
 import katex from 'katex';
-import { COMPONENTS, component, child, layout } from './components.mjs';
+import { COMPONENTS, PARENTS, component, child, layout } from './components.mjs';
 
 const KINDS = new Set([
     'circle',
@@ -10,10 +10,8 @@ const KINDS = new Set([
     'line',
     'arrow',
     'text',
-    'axes',
-    'plot',
-    'numberline',
-    'point',
+    ...COMPONENTS,
+    ...Object.keys(PARENTS),
     'math',
     'highlight',
     'pointer',
@@ -56,7 +54,7 @@ function tokens(line) {
         else if (w === 'at') {
             op.at = point(rest[++i]?.w);
             if (!op.at) return { error: 'at needs X,Y' };
-        } else if (w === 'from' || w === 'to' || w === 'on' || w === 'in') {
+        } else if (w === 'from' || w === 'to' || w === 'on' || w === 'in' || w === 'under') {
             const key = w === 'in' ? 'on' : w;
             op[key] = rest[++i]?.w;
             if (!op[key]) return { error: `${w} needs an id` };
@@ -268,13 +266,13 @@ export function boardOps() {
             const unknown = op.refs.find((ref) => !target(ref, op.kind));
             if (unknown) return { error: `unknown id ${unknown}` };
             if (op.kind === 'erase') {
-                // Erasing a component erases what is on it too.
-                const ids = [...items.values()]
-                    .filter((o) => op.refs.includes(o.on) && !erased.has(o.id))
-                    .map((o) => o.id);
-                ids.unshift(...op.refs);
-                for (const id of ids) erased.add(id);
-                return { item: { ...item, ids } };
+                // A component's children go with it, and a tree node's subtree with the node. Items come in
+                // drawing order, after their parents, so one pass reaches every descendant.
+                const gone = new Set(op.refs);
+                for (const i of items.values())
+                    if (!erased.has(i.id) && (gone.has(i.on) || gone.has(i.under))) gone.add(i.id);
+                for (const id of gone) erased.add(id);
+                return { item: { ...item, ids: [...gone] } };
             }
             if (op.refs.length > 1) return { error: `${op.kind} takes one id` };
             const b = bounds(items.get(op.refs[0]));
@@ -303,8 +301,10 @@ export function boardOps() {
             else return { error: `${op.kind} needs two points or from ID to ID` };
             return { item };
         }
-        if (op.on || op.kind === 'plot' || op.kind === 'point') {
-            const error = child(op, item, target(op.on));
+        if (op.on || Object.hasOwn(PARENTS, op.kind)) {
+            // Erased items stay in `items` for replay, so a node's parent is looked for among the rest.
+            const live = new Map([...items].filter(([id]) => !erased.has(id)));
+            const error = child(op, item, target(op.on), live);
             return error ? { error } : { item };
         }
         if (!op.at) return { error: 'at needs X,Y' };

@@ -462,6 +462,56 @@
     text-anchor: middle;
     transition: translate 400ms cubic-bezier(0.65, 0, 0.35, 1);
 }
+/* Flows, trees, tables and Venn diagrams (mockup Rabbithole-brd.6): 5px boxes and circles with 18px corners, 4px
+   muted arrows and edges, a 3px border-emphasized rule and 2px border seams under a table's 600 28px muted headings,
+   32px child text and muted set names. A reflowed part slides and resizes to its new place. */
+.board-part-box,
+.board-part-circle {
+    stroke-width: 5;
+}
+.board-part-edge {
+    stroke: var(--color-text-secondary);
+    stroke-width: 4;
+}
+.board-part-rule {
+    stroke: var(--color-border-emphasized);
+    stroke-width: 3;
+}
+.board-part-seam {
+    stroke: var(--color-border);
+    stroke-width: 2;
+}
+.board-part-box,
+.board-part-edge,
+.board-part-seam,
+.board-part-text {
+    transition-property: x, y, width, height, d, translate;
+    transition-duration: 400ms;
+    transition-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+}
+.board-part-text {
+    animation-name: board-write;
+    fill: currentColor;
+    font: 32px var(--rabbithole-font-reading);
+    text-anchor: middle;
+}
+.board-part-text.head {
+    fill: var(--color-text-secondary);
+    font-weight: 600;
+    font-size: 28px;
+}
+.board-part-text.set {
+    fill: var(--color-text-secondary);
+}
+.board-part-text.sm {
+    font-size: 30px;
+}
+.board-part-text.start {
+    text-anchor: start;
+}
+.board-part-text.end {
+    text-anchor: end;
+}
 @keyframes board-draw {
     from {
         stroke-dashoffset: 1;
@@ -497,7 +547,11 @@
             board-enter 400ms linear both,
             board-fade 500ms linear max(0ms, var(--board-ms) - 500ms) forwards;
     }
-    .board-point-label {
+    .board-point-label,
+    .board-part-box,
+    .board-part-edge,
+    .board-part-seam,
+    .board-part-text {
         transition: none;
     }
 }

@@ -14,6 +14,7 @@ import { useBoard, type Drawn } from './useBoard';
 import BoardItem, { strokePath } from './BoardItem';
 import { follow } from './camera';
 import { labelRows } from './player';
+import { componentParts } from './layout';
 import { inkStyle } from '../map/treeList';
 
 type Point = [number, number];
@@ -70,6 +71,7 @@ export default function Board({
         if (scroller.current) return follow(scroller.current, board.items.at(-1));
     }, [board.items.length, board.at]);
     const rows = labelRows(board.items.map((drawn) => drawn.op));
+    const parts = componentParts(scene.shown.map((drawn) => drawn.op));
     const submit = (text: string) => {
         if (busy || !text.trim()) return;
         if (board.ask(text.trim())) setDraft('');
@@ -111,6 +113,7 @@ export default function Board({
                                     ms={ms}
                                     gone={scene.erased.get(op.id)}
                                     row={rows.get(op.id)}
+                                    parts={parts.get(op.id)}
                                 />
                             ))}
                             {line && (
