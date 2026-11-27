@@ -230,6 +230,10 @@ _Avoid_: Element, object, mark, part
 A moment on a board where the tutor asks, in its own words, whether the learner is following, usually after a big idea or before going back from a side page, and then waits for the learner however long they take. A check-in is never a quiz and never graded. The learner chooses how often the tutor checks in, and it happens in every way a board runs.
 _Avoid_: Comprehension check, quiz, question
 
+**Spotlight**:
+How a board shows the learner where to look while the tutor speaks: the board items the tutor is talking about stay bright and the rest of the board page dims. The whole page comes back whenever the tutor stops and waits, or the learner pauses or cuts in. The spotlight only changes what is shown, never what is drawn or saved.
+_Avoid_: Focus (a look), highlight (an op), dimming mode
+
 **Learner-led**:
 The default way a board runs: the tutor explains and keeps going with check-ins now and then, and the learner asks whenever something is unclear; the tutor never quizzes the learner.
 _Avoid_: Passive mode, lecture mode
