@@ -79,8 +79,12 @@ export function boardSession(ctx, id, socket) {
         send({ type: 'audio-end', id: 'filler' });
     };
     // The items drawn on this board so far, across its turns.
-    const board = boardOps();
-    store.boardOpLines(id).forEach((line) => board.read(line));
+    let board;
+    const load = () => {
+        board = boardOps();
+        store.boardOpLines(id).forEach((line) => board.read(line));
+    };
+    load();
     if (board.items().length) send({ type: 'board', items: board.items() });
     const ended = Promise.withResolvers();
     // A newer board for the same conversation replaces this one; deleting it or stopping the app ends it too.
@@ -183,6 +187,11 @@ export function boardSession(ctx, id, socket) {
         } else if (current.sentences.length) {
             // Claude may have stored text the learner never saw. Replay the saved discussion next time.
             store.forgetThread(id);
+        }
+        // Ops of sentences that never played leave the board; pen strokes waiting for the next question stay.
+        if (status !== 'completed' && !closed) {
+            load();
+            pending.forEach((s) => board.read(s.line));
         }
         if (turn === current) turn = null;
         ctx.jobs.remove(current.job);

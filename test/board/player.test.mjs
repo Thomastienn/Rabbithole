@@ -63,7 +63,7 @@ test('board player: stopping drops the sentences and ops not yet shown and finis
     );
     player.add({
         id: '1',
-        text: 'One.',
+        text: 'One sentence that runs a while.',
         ops: [
             { id: 'a', kind: 'dot' },
             { id: 'b', kind: 'dot' },
@@ -76,7 +76,7 @@ test('board player: stopping drops the sentences and ops not yet shown and finis
     assert.deepEqual(reports, ['1 start']);
     assert.deepEqual(
         drawn,
-        ['a 133', 'a 200'],
+        ['a 1033', 'a 200'],
         'a, 50 ms into its entry, ends 150 ms after the stop; the rest is dropped',
     );
 });

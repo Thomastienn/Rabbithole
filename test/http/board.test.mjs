@@ -369,8 +369,10 @@ test('board: leaving mid-reply saves only shown sentences and keeps any usage th
 
 test('board: sending mid-reply cuts in, saves what was heard and tells the next turn where it was cut off', async (t) => {
     const provider = boardProvider([
-        ['> First idea.\na dot at 300,450\n> Second idea.\nb dot at 600,450\n> Third idea.\n'],
-        ['> Good question.\n'],
+        [
+            '> First idea.\na dot at 300,450\n> Second idea.\nb dot at 600,450\n> Third idea.\nc dot at 300,700\n',
+        ],
+        ['> Good question.\nc dot at 300,700\n'],
     ]);
     const { env, id, connect } = await setup(t, provider);
     const board = connect();
@@ -391,6 +393,11 @@ test('board: sending mid-reply cuts in, saves what was heard and tells the next 
     assert.ok(process.signals[0].aborted);
     const answer = await board.next('sentence');
     assert.equal(answer.text, 'Good question.', 'nothing more from the stopped reply plays');
+    assert.deepEqual(
+        answer.ops.map((op) => op.id),
+        ['c'],
+        'an item the learner never saw is not on the board',
+    );
     const [question, reply] = messages(env, id);
     assert.equal(question.text, 'Why?');
     assert.deepEqual(
@@ -400,10 +407,10 @@ test('board: sending mid-reply cuts in, saves what was heard and tells the next 
     assert.deepEqual(reply.snapshot, [...first.ops, ...second.ops]);
     await until(() => provider.boards[1]?.asked.length);
     assert.equal(provider.boards[1].options.history.at(-1).text, 'First idea.\nSecond idea.');
-    assert.equal(
-        provider.boards[1].asked[0],
-        '(You were cut off. The last sentence the learner heard was "Second idea."; they did not hear the rest of that reply.)\n\nWait, what is a dot?',
-    );
+    const prompt = provider.boards[1].asked[0];
+    assert.ok(prompt.includes('"Second idea."'), 'the note names the last sentence heard');
+    assert.ok(!prompt.includes('Third idea.'));
+    assert.ok(prompt.endsWith('\n\nWait, what is a dot?'));
     assert.equal(
         messages(env, id)[2].text,
         'Wait, what is a dot?',

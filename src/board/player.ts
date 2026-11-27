@@ -269,7 +269,7 @@ export function boardPlayer(
         stop() {
             const now = clock.now();
             drawing?.entries.forEach(
-                (e, i) => e.end > now && draw(drawing!.ops[i], now - e.start + 150),
+                (e, i) => e.end > now + 150 && draw(drawing!.ops[i], now - e.start + 150),
             );
             drawing = undefined;
             paused = false;
