@@ -155,7 +155,10 @@ test('board: reopened, it holds the latest board reply’s last sentence and its
     );
     const drawn = [...board.container.querySelectorAll('svg .board-item')];
     assert.deepEqual(
-        drawn.map((g) => [g.firstElementChild.getAttribute('cx'), g.style.animationDuration]),
+        drawn.map((g) => [
+            g.firstElementChild.getAttribute('cx'),
+            g.style.getPropertyValue('--board-ms'),
+        ]),
         [
             ['800', '0ms'],
             ['900', '0ms'],
@@ -193,5 +196,5 @@ test('board snapshot: a board reply in chat shows its board still, read as one i
     assert.equal(figure.getAttribute('aria-label'), 'Board at this reply: hypha, soft wall');
     assert.equal(figure.querySelectorAll('.board-item').length, 3);
     for (const item of figure.querySelectorAll('.board-item'))
-        assert.equal(item.style.animationDuration, '0ms', 'drawn still');
+        assert.equal(item.style.getPropertyValue('--board-ms'), '0ms', 'drawn still');
 });

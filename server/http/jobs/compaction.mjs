@@ -1,6 +1,8 @@
 import { compactionMessages } from '../../media/compaction-messages.mjs';
 import { anchored } from '../../suggestions.mjs';
 import { partTrail, visualMessage, visualPassage } from '../../../src/media/artifacts.ts';
+import { sketchDrawnAt } from '../../../src/markdown/markdownText.ts';
+import { sketchPassage } from '../../../src/sketch/itemPassage.ts';
 
 // A free branch has no passage, so its prompt drops the two passage sentences.
 const COMPACT = (free) =>
@@ -113,6 +115,21 @@ export const anchorOf = (tree, body, live = false) => {
             text: visualPassage(visual, { ...part, trail }),
             question: body.question,
         };
+    } else if (body && 'sketch' in body) {
+        // A sketch item: start..end is its sketch block in the reply, the label one of its drawn items.
+        const sketch = source && sketchDrawnAt(source.text, body.start, body.end),
+            label = body.sketch?.label;
+        if (!sketch || !sketch.items.some((item) => item.label === label) || 'suggestion' in body)
+            return { error: 'Choose an item of a sketch.' };
+        anchor = {
+            messageId: body.messageId,
+            start: body.start,
+            end: body.end,
+            label,
+            text: sketchPassage(sketch.title, label),
+            sketch: true,
+            question: body.question,
+        };
     } else if (body && 'groundwork' in body) {
         const concept = tree.suggestions
             ?.find((s) => s.message === body.messageId && s.status === 'ready')
@@ -127,7 +144,8 @@ export const anchorOf = (tree, body, live = false) => {
             question: `What is ${concept}?`,
         };
     }
-    return source && (anchor.artifactId || anchor.groundwork || anchored(source.text, anchor))
+    return source &&
+        (anchor.artifactId || anchor.groundwork || anchor.sketch || anchored(source.text, anchor))
         ? anchor
         : null;
 };
@@ -145,6 +163,7 @@ export const freeAnchorOf = (tree, body) => {
             'artifactId',
             'line',
             'suggestion',
+            'sketch',
         ].some((key) => key in body)
     )
         return { error: 'Ask on the side takes only a question, with no passage.' };

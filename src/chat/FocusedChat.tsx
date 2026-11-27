@@ -30,6 +30,8 @@ import {
 import type { Tree } from './types';
 import type { ChatState } from './useChatState';
 import type { ChatModel } from './useChatModel';
+import { sketchDrawnAt } from '../markdown/markdownText';
+import { sketchItemOf } from '../sketch/itemPassage';
 import type { LearningTrees } from './useLearningTrees';
 import type { ReplyStream } from './useReplyStream';
 import type { BranchFormState } from './useBranchForm';
@@ -162,7 +164,12 @@ export default function FocusedChat({
                       )
                     : source.start >= 0 &&
                       source.end > source.start &&
-                      m.text.slice(source.start, source.end) === source.text),
+                      (m.text.slice(source.start, source.end) === source.text ||
+                          // A sketch item: its span is the whole sketch, its text the title and label.
+                          sketchItemOf(
+                              sketchDrawnAt(m.text, source.start, source.end),
+                              source.text,
+                          ) >= 0)),
         );
     // Keyed on ids so streaming text does not rebuild the rail's scroll listener.
     const questionIds =
