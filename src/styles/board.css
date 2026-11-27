@@ -359,13 +359,13 @@
     right: 8px;
     bottom: 3px;
     height: 3px;
-    border-radius: 2px;
+    border-radius: var(--radius-full);
     background: var(--color-border);
 }
 .board-mic-bar b {
     display: block;
     height: 3px;
-    border-radius: 2px;
+    border-radius: var(--radius-full);
     background: var(--rabbithole-paper);
 }
 /* Hearing: four 3px level bars, 2px apart, 16px tall at most, centred in the button's 20px label line. */
@@ -378,7 +378,7 @@
 }
 .board-level s {
     width: 3px;
-    border-radius: 2px;
+    border-radius: var(--radius-full);
     background: currentColor;
 }
 .board-state.listening::before {
