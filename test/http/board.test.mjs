@@ -183,7 +183,6 @@ test('board: chat cannot start before the queued board captions finish or are st
     const board = connect();
     await opened(board.ws);
     board.send({ type: 'ask', text: 'Why?' });
-    const thinking = await board.next('state');
     const first = await board.next('sentence');
     await board.next('sentence');
     board.send({ type: 'progress', sentence: first.id, phase: 'start' });
@@ -407,7 +406,6 @@ test('board: a process that ends on its own leaves a notice and the reply up to 
     const dies = Promise.withResolvers();
     provider.boards[0].hold = dies.promise; // the process dies while the first caption shows
     board.send({ type: 'ask', text: 'Why?' });
-    const thinking = await board.next('state');
     const first = await board.next('sentence');
     await board.next('audio');
     const { signal, chunk } = await speech.promise;

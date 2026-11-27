@@ -3,7 +3,7 @@ import { IconButton } from '@astryxdesign/core/IconButton';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import Passage from '../chat/Passage';
 import BranchForm from '../chat/BranchForm';
-import type { ThreadProps } from '../chat/ChatThread';
+import { passageBranches, type ThreadProps } from '../chat/ChatThread';
 import type { Message } from '../chat/turn';
 import { rawRange } from '../markdown/markdown';
 
@@ -93,24 +93,7 @@ export default function TranscriptRail({
                                 message={m}
                                 addresses={addresses}
                                 index={replies.indexOf(m) + 1}
-                                branched={trees.flatMap((t) =>
-                                    t.parent === conversation &&
-                                    t.messageId === m.id &&
-                                    !t.artifactId &&
-                                    t.start !== null &&
-                                    t.end !== null &&
-                                    t.passage !== null
-                                        ? [
-                                              {
-                                                  start: t.start,
-                                                  end: t.end,
-                                                  text: t.passage,
-                                                  child: t.id,
-                                                  title: t.title,
-                                              },
-                                          ]
-                                        : [],
-                                )}
+                                branched={passageBranches(trees, conversation, m.id)}
                                 onBranch={(anchor, origin) =>
                                     thread.startBranch(conversation, anchor, origin)
                                 }
