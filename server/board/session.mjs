@@ -519,14 +519,8 @@ export function boardSession(ctx, id, socket) {
         Array.isArray(p) &&
         p.length === 2 &&
         p.every((v) => Number.isFinite(v) && Math.abs(v) < 1e5);
-    const mic = boardMic(ctx.hearing, {
-        send,
-        log,
-        ask,
-        busy: () => turn,
-        cut: () => stop(turn),
-        closed: () => closed,
-    });
+    const busy = () => turn;
+    const mic = boardMic(ctx.hearing, { send, log, ask, stop, busy, closed: () => closed });
     socket.on('message', (data, binary) => {
         if (binary) return mic.audio(data);
         let m;

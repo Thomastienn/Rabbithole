@@ -8,7 +8,7 @@ const SPEECH_UNAVAILABLE = 'Voice questions are unavailable here, so type your q
 // A board session's mic: off as the board opens; on once the learner asks for it and the speech models are ready.
 // It listens while the tutor thinks or speaks (busy): about 150 ms of speech cuts the tutor off.
 // The tutor's own voice from the speakers is left to the browser's echo cancellation (src/board/mic.ts).
-export function boardMic(hearing, { send, log, ask, busy, cut, closed }) {
+export function boardMic(hearing, { send, log, ask, stop, busy, closed }) {
     let ears = null,
         mic = null,
         scoring = Promise.resolve(),
@@ -56,7 +56,7 @@ export function boardMic(hearing, { send, log, ask, busy, cut, closed }) {
                     if (mic !== current || recognizing) return;
                     const said = current.cut.push(frame, (await current.score(frame)) > 0.5);
                     if (said === 'start') return send({ type: 'hearing', on: true });
-                    if (said === 'speech') return busy() && cut();
+                    if (said === 'speech') return busy() && stop(busy());
                     if (!said) return;
                     send({ type: 'hearing', on: false });
                     if (said === 'end') return;
