@@ -167,6 +167,28 @@ test('board: reopened, it holds the latest board reply’s last sentence and its
     );
 });
 
+test('board: a number line point arriving later moves a crowded label up onto a leader', async (t) => {
+    const board = await mount(t, []);
+    const line = {
+        id: 'n1',
+        kind: 'numberline',
+        at: [800, 500],
+        w: 1300,
+        h: 240,
+        d: 'M200 520H1400',
+    };
+    const point = (id, x, text) => ({ id, kind: 'point', on: 'n1', at: [x, 520], text });
+    const send = (ops) => board.act(async () => board.socket.server({ type: 'board', items: ops }));
+    const label = () => board.q('.board-point-label');
+    await send([line, point('q1', 1040, '0.7')]);
+    assert.equal(label().style.translate, '0 0px');
+    assert.equal(board.q('.board-leader'), null);
+    await send([line, point('q1', 1040, '0.7'), point('q2', 1000, '2/3')]);
+    assert.equal(label().textContent, '0.7');
+    assert.equal(label().style.translate, '0 -60px', 'the same label slides to the second row');
+    assert.equal(board.q('.board-leader').getAttribute('d'), 'M1040 420V500');
+});
+
 test('board: disconnecting holds the last caption and keeps a typed draft', async (t) => {
     const board = await mount(t);
     await board.type('Keep this draft');
@@ -181,4 +203,79 @@ test('board: disconnecting holds the last caption and keeps a typed draft', asyn
     assert.equal(board.q('.board-caption.muted').textContent, 'The visible caption.');
     assert.ok(button(board.container, 'Send').disabled);
     assert.equal(board.q('[contenteditable=true]').textContent, 'Keep this draft');
+});
+
+test('board: the pen draws a stroke that waits for the question, and an erase op fades it out', async (t) => {
+    const board = await mount(t);
+    const pen = button(board.container, 'Pen');
+    assert.equal(pen.getAttribute('aria-pressed'), 'false', 'the pen is off when a board opens');
+    const svg = board.q('.board > svg');
+    svg.getBoundingClientRect = () => ({ left: 0, top: 0, width: 800, height: 450 });
+    const drag = (type, x, y) =>
+        board.act(async () =>
+            svg.dispatchEvent(
+                new window.PointerEvent(type, {
+                    bubbles: true,
+                    clientX: x,
+                    clientY: y,
+                    pointerId: 1,
+                    pointerType: 'mouse',
+                }),
+            ),
+        );
+    await drag('pointerdown', 10, 10);
+    await drag('pointerup', 10, 10);
+    assert.deepEqual(board.socket.sent, [], 'with the pen off the board ignores the pointer');
+
+    await board.act(async () => pen.click());
+    assert.equal(pen.getAttribute('aria-pressed'), 'true');
+    assert.ok(board.q('.board.pen-on'));
+    await drag('pointerdown', 100, 100);
+    await drag('pointermove', 101, 100);
+    await drag('pointermove', 150, 120);
+    assert.ok(board.q('.board-tip'), 'the stroke follows the pointer with a dot at the tip');
+    await drag('pointerup', 150, 120);
+    assert.deepEqual(
+        board.socket.sent,
+        [
+            {
+                type: 'stroke',
+                points: [
+                    [200, 200],
+                    [300, 240],
+                ],
+            },
+        ],
+        'the stroke goes up in board pixels; drawing sends no question',
+    );
+    assert.equal(board.q('.board-tip'), null);
+
+    const stroke = (id) => ({
+        type: 'stroke',
+        item: { id, kind: 'stroke', points: [[200, 200]] },
+        mark: { verb: 'circled', ids: ['t1'] },
+    });
+    await board.act(async () => board.socket.server(stroke('p1')));
+    assert.equal(board.q('.board-marks').textContent, '1 mark goes with your question');
+    await board.act(async () => board.socket.server(stroke('p2')));
+    assert.equal(board.q('.board-marks').textContent, '2 marks go with your question');
+    assert.equal(board.container.querySelectorAll('.board-learner').length, 2);
+
+    await board.type('What is this?');
+    await board.act(async () => button(board.container, 'Send').click());
+    assert.deepEqual(board.socket.sent.at(-1), { type: 'ask', text: 'What is this?' });
+    assert.equal(board.q('.board-marks'), null, 'sending clears the pill');
+    assert.equal(pen.getAttribute('aria-pressed'), 'true', 'the pen stays as the learner left it');
+
+    await board.act(async () =>
+        board.socket.server({
+            type: 'sentence',
+            id: '1',
+            text: 'Ok.',
+            ops: [{ id: 'e1', kind: 'erase', ids: ['p1'] }],
+        }),
+    );
+    assert.equal(board.container.querySelectorAll('.board-item.erased').length, 1);
+    await board.act(() => new Promise((resolve) => setTimeout(resolve, 300)));
+    assert.equal(board.container.querySelectorAll('.board-learner').length, 1, 'p1 left the board');
 });

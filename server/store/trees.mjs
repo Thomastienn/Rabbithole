@@ -178,7 +178,6 @@ export const trees = {
         const { layout, ...tree } = this.header(id) ?? {};
         // The board as it stood after each reply: the replay of every op line up to it.
         const replay = boardOps();
-        let drawn = [];
         return (
             tree.id && {
                 ...tree,
@@ -189,12 +188,10 @@ export const trees = {
                     )
                     .all(id)
                     .map(({ usage, stopped, questions, memory, board, ops, ...m }) => {
-                        for (const line of ops ? JSON.parse(ops) : []) {
-                            const { item } = replay.read(line);
-                            if (item) drawn = [...drawn, item];
-                        }
+                        for (const line of ops ? JSON.parse(ops) : []) replay.read(line);
                         if (board) m.board = true;
-                        if (board && m.role === 'assistant' && drawn.length) m.snapshot = drawn;
+                        const drawn = board && m.role === 'assistant' ? replay.items() : [];
+                        if (drawn.length) m.snapshot = drawn;
                         if (m.role !== 'assistant') {
                             const attachments = this.attachments(id, m.id);
                             return attachments.length ? { ...m, attachments } : m;

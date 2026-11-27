@@ -218,16 +218,56 @@
     padding: 0;
     font-size: 15px;
 }
-.board-composer :is(.astryx-chat-send-button, .board-mic) {
+.board-composer :is(.astryx-chat-send-button, .board-mic, .board-pen) {
     width: 36px;
     height: 36px;
 }
-.board-composer :is(.astryx-chat-send-button, .board-mic) svg {
+.board-composer :is(.astryx-chat-send-button, .board-mic, .board-pen) :is(svg, span:has(> svg)) {
     width: 20px;
     height: 20px;
 }
-.board-mic {
+/* The board's tool group: the mic, then the pen (mockup Rabbithole-brd.14). */
+.board-tools {
+    display: flex;
+    gap: 2px;
     margin-inline-start: -8px;
+}
+/* Off, the pen is a muted icon like the mockup's; pressed, it fills porcelain with its icon in the porcelain text colour. */
+.board-composer .board-pen {
+    color: var(--color-text-secondary);
+}
+.board-composer .board-pen:hover {
+    color: var(--color-text-primary);
+}
+.board-composer .board-pen[aria-pressed='true'] {
+    background: var(--rabbithole-paper);
+    color: var(--rabbithole-paper-ink);
+}
+/* Marks waiting for the next question: one pill above the composer text, with a short line in the learner's ink. */
+.board-tray {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-block-end: 8px;
+}
+.board-marks {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 30px;
+    padding: 0 10px;
+    border-radius: var(--radius-inner);
+    background: var(--color-background-gray);
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+.board-marks > span {
+    flex: none;
+    width: 14px;
+    height: 4px;
+    border-radius: var(--radius-full);
+    background: var(--ink);
 }
 .focused-chat .board-composer .board-send-busy:disabled {
     opacity: 0.45;
@@ -296,6 +336,26 @@
     transform-origin: center;
     fill: currentColor;
 }
+/* With the pen on, a drag over the board draws; off, the board ignores the pointer. */
+.board.pen-on > svg {
+    cursor: crosshair;
+    touch-action: none;
+}
+/* Learner strokes: freehand, 6 board px, round caps, in the conversation's family ink so they never read as the tutor's. */
+.board-learner {
+    fill: none;
+    stroke: var(--ink);
+    stroke-width: 6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.board-tip {
+    fill: var(--ink);
+}
+/* An erased item fades out over its op's share of the sentence (--board-out). */
+.board-item.erased {
+    animation: board-leave var(--board-out) linear forwards;
+}
 .board-text {
     animation-name: board-write;
     fill: currentColor;
@@ -308,6 +368,47 @@
 }
 .board-text.l {
     font-size: 64px;
+}
+/* Components (mockup Rabbithole-brd.5): axes and number lines are 4px muted strokes with 26px muted numbers, a plot
+   is a 6px marker stroke, a point an 11px dot with a 36px label 50px above it, or 60px higher on a 3px muted leader.
+   The axes draw over the first 60% of their share, then their numbers fade in; a point's dot grows over the first
+   half, then its label writes in. A reflowed label slides to its new row. */
+.board-axis {
+    stroke: var(--color-text-secondary);
+    stroke-width: 4;
+    animation-duration: calc(var(--board-ms, 0ms) * 0.6);
+}
+.board-ticks {
+    animation-name: board-enter;
+    animation-delay: calc(var(--board-ms, 0ms) * 0.6);
+    animation-duration: calc(var(--board-ms, 0ms) * 0.4);
+}
+.board-tick {
+    fill: var(--color-text-secondary);
+    font: 26px var(--rabbithole-font-reading);
+    text-anchor: middle;
+}
+.board-tick.end {
+    text-anchor: end;
+}
+.board-plot {
+    stroke-width: 6;
+}
+.board-leader {
+    stroke: var(--color-text-secondary);
+    stroke-width: 3;
+}
+.board-point {
+    animation-duration: calc(var(--board-ms, 0ms) * 0.5);
+}
+.board-point-label {
+    animation-name: board-write;
+    animation-delay: calc(var(--board-ms, 0ms) * 0.5);
+    animation-duration: calc(var(--board-ms, 0ms) * 0.5);
+    fill: currentColor;
+    font: 36px var(--rabbithole-font-reading);
+    text-anchor: middle;
+    transition: translate 400ms cubic-bezier(0.65, 0, 0.35, 1);
 }
 @keyframes board-draw {
     from {
@@ -333,9 +434,17 @@
         opacity: 0;
     }
 }
+@keyframes board-leave {
+    to {
+        opacity: 0;
+    }
+}
 @media (prefers-reduced-motion: reduce) {
     .board-item > * {
         animation-name: board-enter;
+    }
+    .board-point-label {
+        transition: none;
     }
 }
 

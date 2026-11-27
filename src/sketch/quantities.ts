@@ -27,9 +27,9 @@ const ends = (l: Line) => {
     return parts.length === 2 && parts.every(Boolean) ? (parts as [string, string]) : undefined;
 };
 const minus = (s: string) => s.replace(/^-(?=[\d.])/, '−');
-const write = (x: number, y: number, words: string, style: string, cls = '') =>
+export const write = (x: number, y: number, words: string, style: string, cls = '') =>
     `<text${cls ? ` class="${cls}"` : ''} x="${at(x)}" y="${at(y)}" style="${style}">${esc(words)}</text>`;
-const tone = (p: Palette, focus: boolean) =>
+export const tone = (p: Palette, focus: boolean) =>
     focus ? `fill:${p.focus};font-weight:600` : `fill:${p.ink}`;
 const leader = (x: number, from: number, to: number, p: Palette) =>
     `<path class="sketch-leader" style="stroke:${p.seam}" d="M${at(x)} ${at(from)}V${at(to)}"/>`;
