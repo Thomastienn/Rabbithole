@@ -29,6 +29,8 @@ test('board: a typed question gets its sentences one at a time and saves as a le
 
     board.send({ type: 'ask', text: 'How does a hypha grow at its tip?' });
     assert.equal((await board.next('state')).state, 'thinking');
+    // A tree started on the board is named from its first question; this one has no quick model, so it keeps its title.
+    await until(() => logs.some((l) => /task="title"/.test(l)));
     assert.equal((await board.next('state')).state, 'speaking');
     const first = await board.next('sentence');
     const second = await board.next('sentence');

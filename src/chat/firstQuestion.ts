@@ -13,11 +13,14 @@ export async function firstQuestion<T extends { id: string }>(
         open: (tree: T) => Promise<void>;
         send: (question: string, tree: T) => Promise<void>;
     },
+    board = false,
 ) {
     const next: T = await api('/api/trees', selection);
     await refresh();
     await open(next);
     await send(question, next);
+    // The board saves its question over its socket after this returns.
+    if (board) return { id: next.id, empty: false };
     // A first send the server never saved would leave an empty tree in the library.
     const saved = await api(`/api/trees/${next.id}`);
     const empty = !saved.messages.length;

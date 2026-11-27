@@ -14,6 +14,7 @@ import {
     pendingPlaceholder,
     useAttach,
 } from './Attachments';
+import { BoardToggle } from './ChatHeader';
 
 export function FirstQuestion({
     draft,
@@ -29,6 +30,8 @@ export function FirstQuestion({
     noModels,
     needsModel,
     openSettings,
+    board,
+    toggleBoard,
 }: {
     draft: string;
     setDraft: (draft: string) => void;
@@ -43,6 +46,9 @@ export function FirstQuestion({
     noModels: boolean;
     needsModel: boolean;
     openSettings: (opener: HTMLElement) => void;
+    // On: the question starts the tree on the board instead of in chat.
+    board: boolean;
+    toggleBoard: () => void;
 }) {
     const attach = useAttach(files, setFiles, busy);
     return (
@@ -56,8 +62,9 @@ export function FirstQuestion({
                 onChange={setDraft}
                 footerActions={
                     <>
-                        <AttachButton add={attach.add} isDisabled={busy} />
+                        {!board && <AttachButton add={attach.add} isDisabled={busy} />}
                         {modelMenu}
+                        <BoardToggle board={board} toggleBoard={toggleBoard} />
                     </>
                 }
                 sendButton={
@@ -68,7 +75,7 @@ export function FirstQuestion({
                             variant="primary"
                             isDisabled
                         />
-                    ) : files.length && !draft.trim() ? (
+                    ) : files.length && !draft.trim() && !board ? (
                         // The composer's own send needs text; files alone are a question too.
                         <IconButton
                             label="Send"

@@ -77,3 +77,26 @@ test('failed create never opens/sends; retry creates once; unsaved first send re
         'refresh',
     ]);
 });
+
+test('a first question asked on the board keeps its still-empty tree for the board to fill', async (t) => {
+    const calls = [];
+    fakeServer(t, (path, body) => {
+        calls.push([path, body]);
+        return path === '/api/trees' ? { id: 'board' } : { messages: [] };
+    });
+    const services = {
+        refresh: async () => {},
+        open: async () => {},
+        send: async (text) => {
+            calls.push(['send', text]);
+        },
+    };
+    assert.deepEqual(await firstQuestion('Draw me a cell', {}, services, true), {
+        id: 'board',
+        empty: false,
+    });
+    assert.deepEqual(calls, [
+        ['/api/trees', {}],
+        ['send', 'Draw me a cell'],
+    ]);
+});

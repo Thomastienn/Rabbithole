@@ -51,6 +51,8 @@ export function useReplyStream(
     // Pending composer files, keyed like drafts: a conversation id, or 'first' for the first question.
     const [pendingFiles, setPendingFiles] = useState<Record<string, File[]>>({});
     const [busy, setBusy] = useState(false);
+    // A first question asked on the board: its conversation opens with the board on and asks it there.
+    const [boardStart, setBoardStart] = useState<{ id: string; question: string }>();
     const streams = useRef(new Map<string, AbortController>());
     const turns = trees.live;
     const setDraft = (id: string, value: string) => setDrafts((d) => ({ ...d, [id]: value }));
@@ -205,7 +207,7 @@ export function useReplyStream(
             await refresh();
         }
     };
-    async function create(question: string) {
+    async function create(question: string, board = false) {
         if (busy) return;
         setBusy(true);
         setError('');
@@ -217,7 +219,10 @@ export function useReplyStream(
                 firstModel && currentModel ? { ...firstModel, model: currentModel.model } : {},
                 {
                     refresh,
-                    send: (question, next) => send(question, next, false, files),
+                    send: async (question, next) =>
+                        board
+                            ? setBoardStart({ id: next.id, question })
+                            : send(question, next, false, files),
                     open: async (next) => {
                         overviewOrigin.current = undefined;
                         focusNext();
@@ -226,10 +231,15 @@ export function useReplyStream(
                         c.setOverview(false);
                         c.setExpanded(false);
                         await select(next.id);
-                        setDrafts((d) => ({ ...d, first: '', [next.id]: d.first || question }));
+                        setDrafts((d) => ({
+                            ...d,
+                            first: '',
+                            [next.id]: board ? '' : d.first || question,
+                        }));
                         setPendingFiles((p) => ({ ...p, first: [], [next.id]: files }));
                     },
                 },
+                board,
             );
             if (result.empty) {
                 // Keep send's error on screen; only drop the selection so the blank composer returns.
@@ -250,6 +260,8 @@ export function useReplyStream(
         }
     }
     return {
+        boardStart,
+        setBoardStart,
         drafts,
         setDraft,
         pendingFiles,

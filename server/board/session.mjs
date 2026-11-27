@@ -349,6 +349,8 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false) {
                 });
             return send({ type: 'state', state: 'idle' });
         }
+        // A tree started on the board is named from its first question, as a chat's first send is.
+        if (!noAnswer && !tree.messages.length && !tree.title_renamed) ctx.startTitle(id, text);
         const user = noAnswer ? null : store.message(id, 'user', text, 'completed');
         const reply = store.message(id, 'assistant', '', 'streaming');
         if (user) store.onBoard(user);

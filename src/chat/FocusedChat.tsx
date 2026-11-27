@@ -73,6 +73,8 @@ export default function FocusedChat({
     finishRename,
     askOnSide,
     reloadTree,
+    boardStart,
+    setBoardStart,
 }: {
     tree: Tree;
     active: boolean;
@@ -94,7 +96,16 @@ export default function FocusedChat({
     | 'mobile'
     | 'transitionBox'
 > &
-    Pick<ReplyStream, 'drafts' | 'setDraft' | 'pendingFiles' | 'setFiles' | 'stop'> &
+    Pick<
+        ReplyStream,
+        | 'drafts'
+        | 'setDraft'
+        | 'pendingFiles'
+        | 'setFiles'
+        | 'stop'
+        | 'boardStart'
+        | 'setBoardStart'
+    > &
     Pick<
         ChatModel,
         | 'modelNotice'
@@ -116,6 +127,10 @@ export default function FocusedChat({
     const [board, setBoard] = useState<string>();
     const boardOpen = board === tree.id && !overview;
     const toggleBoard = () => setBoard(boardOpen ? undefined : tree.id);
+    const first = boardStart?.id === tree.id ? boardStart.question : undefined;
+    useEffect(() => {
+        if (first !== undefined) setBoard(tree.id);
+    }, [first, tree.id]);
     useEffect(() => {
         if (!statsOpen) return;
         const frame = requestAnimationFrame(() =>
@@ -266,6 +281,8 @@ export default function FocusedChat({
                     reload={reloadTree}
                     thread={thread}
                     ink={addresses.get(tree.id)?.ink ?? 0}
+                    first={first}
+                    askedFirst={() => setBoardStart(undefined)}
                 />
             ) : (
                 <ChatLayout

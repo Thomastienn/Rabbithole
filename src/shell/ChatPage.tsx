@@ -54,6 +54,8 @@ export default function ChatPage({
     const searchFromDrawer = useRef(false);
     // Only this boolean is stored, per browser and app origin; unreadable storage means off.
     const [vim, setVim] = useState(savedVim);
+    // The first-question composer's Board switch: on, a new tree starts on the board.
+    const [firstBoard, setFirstBoard] = useState(false);
     const trees = useLearningTrees(c);
     const { state, tree, loading, layout, changeView, returnToTree } = trees;
     const model = useChatModel(c, trees);
@@ -241,7 +243,9 @@ export default function ChatPage({
             busy={busy}
             available={!!currentModel}
             modelMenu={modelMenu}
-            submit={(text) => void create(text)}
+            submit={(text) => void create(text, firstBoard)}
+            board={firstBoard}
+            toggleBoard={() => setFirstBoard((on) => !on)}
             modelError={modelError}
             loadModels={() => void loadModels()}
             noModels={!!models && !models.length}
@@ -369,6 +373,8 @@ export default function ChatPage({
                                             finishRename={actions.finishRename}
                                             askOnSide={branchForm.askOnSide}
                                             reloadTree={trees.reloadOpen}
+                                            boardStart={stream.boardStart}
+                                            setBoardStart={stream.setBoardStart}
                                         />
                                     ) : (
                                         <VStack gap={0} className="overview">

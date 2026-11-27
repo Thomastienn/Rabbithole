@@ -62,14 +62,22 @@ export default function Board({
     reload,
     thread,
     ink = 0,
+    first,
+    askedFirst,
 }: {
     conversation: string;
     messages: Message[];
     reload: () => void;
     thread: ThreadProps;
     ink?: number;
+    // A tree started on the board: its first question, asked once the board connects.
+    first?: string;
+    askedFirst?: () => void;
 }) {
     const board = useBoard(conversation, messages, reload);
+    useEffect(() => {
+        if (first && board.ready && board.ask(first)) askedFirst?.();
+    }, [first, board.ready]);
     const [draft, setDraft] = useState('');
     // Typing an answer holds a tutor's question open (mockup Rabbithole-brd.13).
     const changeDraft = (text: string) => {
