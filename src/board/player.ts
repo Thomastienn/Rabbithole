@@ -160,7 +160,15 @@ export function boardPlayer(
             next();
         },
         // The sentence's speech streams in chunks; its first chunk starts it.
+        // A filler plays only while no sentence does, and the first sentence's speech cuts it off.
         chunk(id: string, bytes: Uint8Array) {
+            if (id === 'filler') {
+                if (current || playing || !voice) return;
+                playing = id;
+                const over = () => playing === id && (playing = undefined);
+                voice.chunk(id, bytes);
+                return voice.play(id, { duration() {}, ended: over, failed: over });
+            }
             const audio = pending.get(id);
             if (playing !== id && (!audio || audio === 'silent')) return;
             voice?.chunk(id, bytes);
