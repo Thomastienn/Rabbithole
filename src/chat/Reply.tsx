@@ -150,9 +150,9 @@ const Reply = memo(function Reply({
                                             (() => action.current!(v.id, 'previous'))
                                         }
                                         onShowSketch={
-                                            onArtifactAction &&
-                                            v.sketch &&
-                                            (() => action.current!(v.id, 'sketch'))
+                                            onArtifactAction && v.sketch
+                                                ? () => action.current!(v.id, 'sketch')
+                                                : undefined
                                         }
                                     />
                                 ),
