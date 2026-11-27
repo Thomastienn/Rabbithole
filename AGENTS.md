@@ -3,7 +3,10 @@
 Planning sessions grill, write docs (glossary, ADRs, specs), then create
 tickets, in that order, each step only when the owner asks for it. They follow
 the invoked skill's steps as written, including publishing tickets with
-`ready-for-agent`, and leave the code untouched. Before publishing a ticket for
+`ready-for-agent`, and leave the code untouched. They keep every prototype and
+benchmark as evidence for later decisions: commit it, with a README of its
+results and the decisions it settled, to a local `prototype/<topic>` branch
+that stays unmerged. Before publishing a ticket for
 a new screen, panel or component, or a visual redesign, remind the owner to
 make a mockup at `docs/mockups/<issue-id>.html` or `.png`; label the ticket
 `new-ui`, link the mockup with a `Mockup:` line in its description and add the

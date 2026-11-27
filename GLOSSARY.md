@@ -210,6 +210,22 @@ _Avoid_: Part (alone), component, element
 A ready-made control the app gives every visual, such as a button, slider, switch, readout or legend, so the controls of every visual look and work the same. A visual picks a control and its variant instead of building and styling its own. Visual controls are not visual parts.
 _Avoid_: Widget, component, input
 
+**Sketch**:
+A small diagram the tutor writes in its reply from a fixed set of kinds, such as flow, stack, bars or sequence, drawn instantly by the app in its theme. Sketches show the smaller points inside a section, beside the visuals that carry its main ideas. Each drawn item can be asked about the way a visual part can, and a sketch can be expanded into a visual in its place. Sketches are not figures.
+_Avoid_: Mini visual, quick visual, diagram
+
+**Board**:
+The surface a conversation can switch to, where the tutor talks the learner through an idea aloud while drawing it, one small change at a time in step with its words. What the tutor says is its reply in the conversation; the board shows ideas as pictures, with as little text as possible. The learner cuts in by voice or typing whenever they want and can draw on it with a pen to show what they mean. A conversation has at most one board.
+_Avoid_: Whiteboard, canvas, interactive mode, lesson
+
+**Learner-led**:
+The default way a board runs: the tutor explains and keeps going, and the learner asks whenever something is unclear; the tutor does not ask the learner questions.
+_Avoid_: Passive mode, lecture mode
+
+**Tutor-guided**:
+The other way a board runs, which the learner chooses: the tutor also checks in along the way and asks the learner short questions, never graded.
+_Avoid_: Quiz mode, interactive mode, active mode
+
 **Step**:
 One stage of a visual that the learner moves through with Previous and Next, or watches in order with Play, which moves slowly enough to follow and pauses briefly on each step. Each step either continues the previous step's scene, changing what is already drawn in place, or changes to a new scene; one visual may mix both. A step animates what it changes, so the learner sees what moved and how, rather than a jump to the new picture. A visual that shows every stage at once has no steps.
 _Avoid_: Slide, frame, page
@@ -266,7 +282,7 @@ A single review of one written cut by the smart model, from its code and still f
 _Avoid_: Final pass, whole-video audit
 
 **Visual frequency**:
-The learner's one app-wide choice of how readily the tutor draws visuals: Sparing, Often, the default, or Only when asked. Often encourages a visual for each distinct concept a picture helps, never forcing one; Only when asked draws one only at the learner's request. It does not affect videos.
+The learner's one app-wide choice of how readily the tutor draws visuals and sketches: Sparing, Often, the default, or Only when asked. Often encourages a visual for each distinct concept a picture helps, never forcing one, with sketches added wherever a section has a shape; Only when asked draws either only at the learner's request. It does not affect videos.
 _Avoid_: Visual mode, diagram setting
 
 **Install folder**:
