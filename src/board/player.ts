@@ -20,12 +20,28 @@ export type Op = {
         | 'numberline'
         | 'plot'
         | 'point'
+        | 'flow'
+        | 'step'
+        | 'tree'
+        | 'node'
+        | 'table'
+        | 'row'
+        | 'venn'
+        | 'item'
         | 'stroke'
         | 'erase';
     // A component's child names its component; components and plots carry their own path and numbers.
     on?: string;
     d?: string;
     labels?: { at: [number, number]; text: string; end?: boolean }[];
+    // Flow, tree, table and Venn fields (server/board/components.mjs); src/board/layout.ts draws them.
+    dir?: 'right' | 'down';
+    cols?: string[];
+    cells?: string[];
+    under?: string;
+    sets?: string[];
+    // A Venn item's region: the indices of the sets it is in.
+    region?: number[];
     look?: Look;
     at?: [number, number];
     r?: number;

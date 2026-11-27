@@ -1,6 +1,6 @@
 import { createInterface } from 'node:readline';
 import { randomUUID } from 'node:crypto';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { launchArgs } from './findCli.mjs';
 
@@ -90,8 +90,9 @@ export class ClaudeBoard {
         this.timer = setTimeout(() => this.end(), this.idle);
         this.timer.unref?.();
     }
-    // One learner turn: emits the text as it streams and resolves with its status, usage and any reason it failed.
-    ask(text, emit, signal) {
+    // One learner turn, with any images ({ type, path }) after its text: emits the text as it streams and resolves
+    // with its status, usage and any reason it failed.
+    ask(text, emit, signal, images = []) {
         this.open();
         const child = this.child;
         if (!child)
@@ -157,8 +158,21 @@ export class ClaudeBoard {
             };
             if (signal.aborted) return done({ status: 'interrupted' });
             signal.addEventListener('abort', stop, { once: true });
+            const content = images.length
+                ? [
+                      { type: 'text', text: prompt },
+                      ...images.map((image) => ({
+                          type: 'image',
+                          source: {
+                              type: 'base64',
+                              media_type: image.type,
+                              data: readFileSync(image.path).toString('base64'),
+                          },
+                      })),
+                  ]
+                : prompt;
             child.stdin.write(
-                JSON.stringify({ type: 'user', message: { role: 'user', content: prompt } }) + '\n',
+                JSON.stringify({ type: 'user', message: { role: 'user', content } }) + '\n',
             );
         });
     }

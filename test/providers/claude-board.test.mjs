@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { PassThrough } from 'node:stream';
 import { createInterface } from 'node:readline';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Claude } from '../../server/providers/claude.mjs';
@@ -98,6 +98,22 @@ test('Claude board: one warm process for the whole board, resuming the conversat
     assert.deepEqual(first.usage, { input: 103, output: 7, cacheRead: 40, thinking: 3 });
     assert.equal(second.status, 'completed');
     assert.equal(b.thread, 'chat-session');
+    const image = join(mkdtempSync(join(tmpdir(), 'tt-board-image-')), 'p1.png');
+    writeFileSync(image, 'png bytes');
+    await b.ask('Look.', () => {}, new AbortController().signal, [
+        { type: 'image/png', path: image },
+    ]);
+    assert.deepEqual(run.sent[2], [
+        { type: 'text', text: 'Look.' },
+        {
+            type: 'image',
+            source: {
+                type: 'base64',
+                media_type: 'image/png',
+                data: Buffer.from('png bytes').toString('base64'),
+            },
+        },
+    ]);
 });
 
 test('Claude board: a fresh conversation gets the saved chat once and keeps its new session', async (t) => {

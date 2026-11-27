@@ -1,3 +1,6 @@
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import sharp from 'sharp';
 import { formatLog, errorCause } from '../log.mjs';
 import { validUsage } from '../store/usage.mjs';
 import { scriptReader } from './script.mjs';
@@ -7,6 +10,24 @@ import { conversationHistory } from '../providers/conversationHistory.mjs';
 
 const STOPPED = 'The tutor stopped. Ask again to carry on.';
 const VOICE_UNAVAILABLE = 'The voice is unavailable, so the tutor carries on in captions.';
+// A free-space stroke goes to the tutor as this much of the board around it, in board pixels.
+const MARGIN = 40;
+
+// The PNG of a free-space stroke: its area of the 1600×900 board, dark ink on white; null when it lies off the board.
+// shortcut: draws only the learner's ink, not board items reaching into the crop; draw those too if tutors misread sketches.
+function strokeImage(points) {
+    const [xs, ys] = [points.map((p) => p[0]), points.map((p) => p[1])];
+    const [x, y] = [Math.max(0, Math.min(...xs) - MARGIN), Math.max(0, Math.min(...ys) - MARGIN)];
+    const [w, h] = [
+        Math.min(1600, Math.max(...xs) + MARGIN) - x,
+        Math.min(900, Math.max(...ys) + MARGIN) - y,
+    ];
+    if (w <= 0 || h <= 0) return null;
+    // A lone point still draws as a dot under the round cap.
+    const d = `M${points[0]}` + points.map((p) => `L${p}`).join('');
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="${x} ${y} ${w} ${h}"><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#fff"/><path d="${d}" fill="none" stroke="#111" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    return sharp(Buffer.from(svg)).png().toBuffer();
+}
 
 // One board session per open board: the conversation's own model process, its turns and their saving.
 // Up: { type: 'ask', text }, { type: 'stroke', points } as the learner finishes a pen stroke, { type: 'progress', sentence, phase: 'start' | 'end' } as each caption shows and ends, { type: 'leave' }.
@@ -146,7 +167,26 @@ export function boardSession(ctx, id, socket) {
         current.ended.resolve();
         send({ type: 'state', state: 'idle' });
     };
-    const run = async (current, tree, text, signal) => {
+    // Free-space strokes as images, only for a chat model that reads images; the files go once the turn ends.
+    const sketches = async (current, tree, free) => {
+        if (!free.length || !(await ctx.readsImages({ provider: tree.provider, model }))) return [];
+        const drawn = [];
+        for (const s of free) {
+            const png = await strokeImage(s.points);
+            if (png) drawn.push({ id: s.line.split(' ')[0], png });
+        }
+        if (!drawn.length) return [];
+        await mkdir(ctx.dir, { recursive: true, mode: 0o700 });
+        current.files = await mkdtemp(join(ctx.dir, 'board-'));
+        return Promise.all(
+            drawn.map(async ({ id, png }) => {
+                const path = join(current.files, `${id}.png`);
+                await writeFile(path, png, { mode: 0o600 });
+                return { id, type: 'image/png', path };
+            }),
+        );
+    };
+    const run = async (current, tree, text, free, signal) => {
         const started = performance.now();
         const reader = scriptReader();
         // A sentence goes down with its ops once they are all written: when the next sentence starts or the reply ends.
@@ -194,11 +234,18 @@ export function boardSession(ctx, id, socket) {
             if (!signal.aborted) await warm(tree, signal);
             if (signal.aborted) result = { status: 'interrupted' };
             else {
+                const images = await sketches(current, tree, free);
+                const prompt = images.length
+                    ? `${text} · images of ${images.map((i) => i.id).join(', ')} attached`
+                    : text;
                 selection = { provider: tree.provider, model };
-                result = await process.ask(text, (e) => add(reader.feed(e.text)), signal);
+                result = await process.ask(prompt, (e) => add(reader.feed(e.text)), signal, images);
             }
         } catch (error) {
             result = { status: 'failed', cause: error };
+        } finally {
+            if (current.files)
+                await rm(current.files, { recursive: true, force: true }).catch(() => {});
         }
         if (result.status === 'completed') add(reader.end(), true);
         const usage = result.usage;
@@ -282,6 +329,7 @@ export function boardSession(ctx, id, socket) {
         const prompt = strokes.length
             ? `${text}\n\npen: ${[...marks, `strokes ${strokes.join(', ')}`].join(' · ')}`
             : text;
+        const free = pending.filter((s) => !s.mark);
         pending = [];
         const current = {
             reply,
@@ -305,7 +353,7 @@ export function boardSession(ctx, id, socket) {
                 signal.addEventListener('abort', () => finish(current, 'interrupted'), {
                     once: true,
                 });
-                return run(current, tree, prompt, signal).then(() => current.ended.promise);
+                return run(current, tree, prompt, free, signal).then(() => current.ended.promise);
             },
             { settle: false },
         );
@@ -403,7 +451,7 @@ export function boardSession(ctx, id, socket) {
             .filter(Boolean)
             .join(' ');
         const { item } = board.read(line);
-        pending.push({ line, mark });
+        pending.push({ line, mark, points });
         send({ type: 'stroke', item, mark });
     };
     const isPoint = (p) =>
