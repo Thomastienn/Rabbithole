@@ -77,3 +77,79 @@ test('board: pages and opens are saved as op lines and reopen on the page the la
         'BOARD PAGES (* marks the open page)\nfirst "Page 1": f1\ns1 "Friction" parent=first from=f1: r1\n* n1 "Page 3" parent=first: d1',
     );
 });
+
+// The learner's view (ADR 0029): opening a page sends nothing to the model; asking from it saves an open op with
+// the question, names the page, and the tutor answers there, also after reopening.
+test('board: asking from a page the learner opened answers on that page', async (t) => {
+    const provider = boardProvider([
+        ['> Forces push.\nf1 box at 400,450\n> Friction first.\ns1 page "Friction" from=f1\n'],
+        ['> On the forces page.\na1 dot at 800,450\n'],
+        ['> Still here.\na2 dot at 1200,450\n'],
+    ]);
+    const { env, id, connect } = await setup(t, provider);
+    const board = connect();
+    await opened(board.ws);
+    await until(() => provider.boards[0]?.opened);
+    const play = async (sentence) => {
+        for (const phase of ['start', 'end'])
+            board.send({ type: 'progress', sentence: sentence.id, phase });
+    };
+    board.send({ type: 'ask', text: 'Why does it stop?' });
+    for (let i = 0; i < 2; i++) await play(await board.next('sentence'));
+    await board.next('state', (e) => e.state === 'idle');
+
+    // Opened, back to the tutor's page, then opened again: only the last open waits with the strokes.
+    for (const page of ['first', 's1', 'first']) board.send({ type: 'view', page });
+    for (const top of [0, 900, 0]) assert.equal((await board.next('stroke')).item.top, top);
+    // The pen marks only items on the page on screen.
+    board.send({
+        type: 'stroke',
+        points: [
+            [600, 300],
+            [545, 450],
+        ],
+    });
+    assert.deepEqual((await board.next('stroke')).mark, { verb: 'pointed at', ids: ['f1'] });
+    assert.equal(provider.boards[0].asked.length, 1, 'a view alone sends nothing');
+
+    board.send({ type: 'ask', text: 'And here?' });
+    const sentence = await board.next('sentence');
+    assert.deepEqual(sentence.ops[0].at, [800, 450], 'the reply lands on the page asked from');
+    assert.equal(
+        provider.boards[0].asked[1],
+        'And here?\n\npen: pointed at f1 · strokes p4\npage: first',
+    );
+    assert.deepEqual(
+        env.store
+            .boardReplies(id)
+            .find((m) => m.role === 'user' && m.lines.length)
+            .lines.map((line) => line.split(' ').slice(0, 2).join(' ')),
+        ['p3 open', 'p4 stroke'],
+    );
+    // Mid-reply the view waits for the reply to end, so the tutor's items stay on its page.
+    board.send({ type: 'view', page: 's1' });
+    await play(sentence);
+    assert.deepEqual((await board.next('stroke')).item, {
+        id: 'p5',
+        kind: 'open',
+        page: 's1',
+        top: 900,
+    });
+    await board.next('state', (e) => e.state === 'idle');
+    board.send({ type: 'ask', text: 'Why?' });
+    await play(await board.next('sentence'));
+    await board.next('state', (e) => e.state === 'idle');
+    assert.equal(provider.boards[0].asked[2], 'Why?\n\npage: s1');
+
+    board.send({ type: 'leave' });
+    const replies = (await connect().next('board')).replies;
+    assert.deepEqual(
+        replies.map((r) => [r.page, r.items.map((i) => i.at?.join() ?? i.id)]),
+        [
+            // The learner's ops join the board they were made on.
+            ['first', ['400,450', 's1', 'p3', 'p4']],
+            ['s1', ['800,450', 'p5']],
+            ['s1', ['1200,1350']],
+        ],
+    );
+});

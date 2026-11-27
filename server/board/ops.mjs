@@ -425,11 +425,12 @@ export function boardOps() {
                 .sort((a, b) => +(b.kind === 'highlight') - +(a.kind === 'highlight')),
         // What a learner stroke marks (docs/board-spec.md, Learner pen): a closed loop circles the items whose
         // centres it encloses; otherwise it points at the item nearest its end, within 40 board pixels.
-        mark(points) {
-            // Only items still on the open page with a place to circle or point at; a plot is a path inside its axes.
+        // `page` is the page on the learner's screen, the open page unless they opened another mid-reply.
+        mark(points, page = open) {
+            // Only items still on that page with a place to circle or point at; a plot is a path inside its axes.
             const targets = [...items.values()].filter(
                 (i) =>
-                    where.get(i.id) === open &&
+                    where.get(i.id) === page &&
                     i.kind !== 'stroke' &&
                     !MARKS.has(i.kind) &&
                     !erased.has(i.id) &&

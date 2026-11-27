@@ -51,3 +51,114 @@
     stroke: var(--color-border);
     stroke-width: 2;
 }
+/* The page strip (mockup Rabbithole-pgs.4): its own 36px row above the board, 8px from it, as wide as the board,
+   kept on an empty board too so the board never moves when the first page opens. */
+.board-stack {
+    display: grid;
+    grid-template-rows: 36px auto;
+    gap: 8px;
+    width: min(100cqw, (100cqh - 44px) * 16 / 9);
+}
+.board-stack > .board {
+    width: 100%;
+}
+.page-strip {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+/* A mask reads only alpha, so any opaque token stands for the shown part. */
+.page-strip.more-r {
+    mask-image: linear-gradient(to right, var(--color-text-primary) calc(100% - 48px), transparent);
+}
+.page-strip.more-l {
+    mask-image: linear-gradient(to right, transparent, var(--color-text-primary) 48px);
+}
+.page-strip.more-l.more-r {
+    mask-image: linear-gradient(
+        to right,
+        transparent,
+        var(--color-text-primary) 48px,
+        var(--color-text-primary) calc(100% - 48px),
+        transparent
+    );
+}
+.page-tab {
+    position: relative;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 200px;
+    height: 30px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: var(--radius-inner);
+    background: none;
+    font: 500 13px/1.4 var(--font-family-body);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+}
+.page-tab span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.page-tab svg {
+    flex: none;
+    width: 14px;
+    height: 14px;
+}
+.page-tab:hover {
+    background: var(--color-overlay-hover);
+    color: var(--color-text-primary);
+}
+.page-tab[aria-current='page'] {
+    color: var(--color-text-primary);
+    font-weight: 600;
+}
+.page-tab[aria-current='page']::after {
+    content: '';
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    bottom: 0;
+    height: 2px;
+    border-radius: var(--radius-full);
+    background: var(--rabbithole-paper);
+}
+/* The back chip: top left over the board, 36px tall like the reply stepper at the top right. */
+.board-back {
+    position: absolute;
+    top: 12px;
+    left: 16px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 45%;
+    height: 36px;
+    padding: 0 12px 0 10px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-element);
+    background: var(--color-background-popover);
+    font: 500 13px/1.4 var(--font-family-body);
+    color: var(--color-text-primary);
+    cursor: pointer;
+}
+.board-back span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.board-back svg {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    color: var(--color-text-secondary);
+}
+.board-back:hover {
+    background: var(--color-overlay-hover);
+}

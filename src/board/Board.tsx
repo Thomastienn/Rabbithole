@@ -24,7 +24,8 @@ import type { ThreadProps } from '../chat/ChatThread';
 import TranscriptRail from './TranscriptRail';
 import { useBoard, type Drawn } from './useBoard';
 import BoardItem, { strokePath } from './BoardItem';
-import { follow, openTop } from './camera';
+import { follow, slide } from './camera';
+import PageStrip, { BackChip, pagesOf } from './PageStrip';
 import { labelRows } from './player';
 import { DEFAULT_SPEED } from './voice';
 import { BOARD_SPEEDS } from '../shell/preferences';
@@ -41,6 +42,8 @@ function boardPoint(e: PointerEvent<SVGSVGElement>): Point {
 
 const STATES = { thinking: 'Thinking', speaking: 'Speaking' } as const;
 const MB = (bytes = 0) => Math.round(bytes / 1e6);
+// How long a page the learner opens takes to slide in.
+const VIEW_MS = 400;
 
 // The board column (mockup Rabbithole-brd.1): the board field, the caption line and the board's composer.
 // The tutor's sentences show one at a time as the caption while their ops draw (mockup Rabbithole-brd.2).
@@ -108,11 +111,27 @@ export default function Board({
     // Stepping through replies waits for the tutor to finish.
     const tutoring = board.state !== 'idle' || !board.ready;
     const scene = sceneOf(board.items);
+    // The page on screen: the one the learner opened, else the open page (mockup Rabbithole-pgs.4).
+    const { pages, open } = pagesOf(board.items.map((drawn) => drawn.op));
+    const onScreen = pages.find((p) => p.id === board.view) ?? pages.find((p) => p.id === open);
+    const top = onScreen?.top ?? 0;
+    const parent = pages.find((p) => p.id === onScreen?.parent);
     const scroller = useRef<HTMLDivElement>(null);
-    // The view follows the page the tutor draws on (src/board/camera.ts).
+    const followed = useRef<number>(undefined);
+    // The view follows the page the tutor draws on (src/board/camera.ts); an item that moves no page leaves it be,
+    // so a slide the learner started runs on.
     useLayoutEffect(() => {
-        if (scroller.current) return follow(scroller.current, board.items.at(-1), scene.top);
+        const last = board.items.at(-1);
+        if (!scroller.current || (top === followed.current && !last?.ms)) return;
+        followed.current = top;
+        return follow(scroller.current, last, top);
     }, [board.items.length, board.at]);
+    // A page the learner opens slides in as a tutor's open does.
+    useLayoutEffect(() => {
+        if (!scroller.current || !board.view) return;
+        followed.current = top;
+        return slide(scroller.current, top, VIEW_MS);
+    }, [board.view]);
     const rows = labelRows(board.items.map((drawn) => drawn.op));
     const parts = componentParts(scene.shown.map((drawn) => drawn.op));
     const { mic } = board;
@@ -220,96 +239,104 @@ export default function Board({
             style={inkStyle(ink)}
         >
             <div className="board-field">
-                <div className={`board${pen ? ' pen-on' : ''}${board.paused ? ' paused' : ''}`}>
-                    <div className="board-scroller" ref={scroller}>
-                        <svg
-                            ref={svg}
-                            viewBox={`0 0 1600 ${scene.areas * 900}`}
-                            role="img"
-                            aria-label={
-                                board.stepped ? `Board after reply ${board.at + 1}` : 'Board'
-                            }
-                            onPointerDown={penDown}
-                            onPointerMove={penMove}
-                            onPointerUp={penUp}
-                            onPointerCancel={penUp}
-                        >
-                            {Array.from({ length: scene.areas - 1 }, (_, i) => (
-                                <path
-                                    key={i}
-                                    className="board-seam"
-                                    d={`M0 ${(i + 1) * 900}H1600`}
-                                />
-                            ))}
-                            {scene.shown.map(({ op, ms }) => (
-                                <BoardItem
-                                    key={op.id}
-                                    op={op}
-                                    ms={ms}
-                                    gone={scene.erased.get(op.id)}
-                                    row={rows.get(op.id)}
-                                    parts={parts.get(op.id)}
-                                />
-                            ))}
-                            {/* The tutor heard, or waits for the learner's answer: a soft pulse in the corner of the open page, which board items rarely use. */}
-                            {(board.state === 'thinking' || board.waiting) && (
-                                <circle
-                                    className="board-waiting"
-                                    cx={1544}
-                                    cy={scene.top + 844}
-                                    r={10}
-                                />
-                            )}
-                            {line && (
-                                <g className="board-item">
-                                    <path className="board-learner" d={strokePath(line)} />
-                                    <circle
-                                        className="board-tip"
-                                        cx={line.at(-1)![0]}
-                                        cy={line.at(-1)![1]}
-                                        r={8}
+                <div className="board-stack">
+                    <PageStrip pages={pages} current={onScreen?.id} open={board.openPage} />
+                    <div className={`board${pen ? ' pen-on' : ''}${board.paused ? ' paused' : ''}`}>
+                        <div className="board-scroller" ref={scroller}>
+                            <svg
+                                ref={svg}
+                                viewBox={`0 0 1600 ${scene.areas * 900}`}
+                                role="img"
+                                aria-label={
+                                    board.stepped ? `Board after reply ${board.at + 1}` : 'Board'
+                                }
+                                onPointerDown={penDown}
+                                onPointerMove={penMove}
+                                onPointerUp={penUp}
+                                onPointerCancel={penUp}
+                            >
+                                {Array.from({ length: scene.areas - 1 }, (_, i) => (
+                                    <path
+                                        key={i}
+                                        className="board-seam"
+                                        d={`M0 ${(i + 1) * 900}H1600`}
                                     />
-                                </g>
-                            )}
-                        </svg>
-                    </div>
-                    {board.replies > 1 && (
-                        <div className="board-steps" role="group" aria-label="Board at each reply">
-                            <IconButton
-                                label="Board after the previous reply"
-                                icon={<ChevronLeftIcon />}
-                                variant="ghost"
-                                size="sm"
-                                isDisabled={tutoring || board.at === 0}
-                                onClick={() => board.go(board.at - 1)}
-                            />
-                            <span>
-                                Reply {board.at + 1} of {board.replies}
-                            </span>
-                            <IconButton
-                                label="Board after the next reply"
-                                icon={<ChevronRightIcon />}
-                                variant="ghost"
-                                size="sm"
-                                isDisabled={tutoring || !board.stepped}
-                                onClick={() => board.go(board.at + 1)}
-                            />
+                                ))}
+                                {scene.shown.map(({ op, ms }) => (
+                                    <BoardItem
+                                        key={op.id}
+                                        op={op}
+                                        ms={ms}
+                                        gone={scene.erased.get(op.id)}
+                                        row={rows.get(op.id)}
+                                        parts={parts.get(op.id)}
+                                    />
+                                ))}
+                                {/* The tutor heard, or waits for the learner's answer: a soft pulse in the corner of the open page, which board items rarely use. */}
+                                {(board.state === 'thinking' || board.waiting) && (
+                                    <circle
+                                        className="board-waiting"
+                                        cx={1544}
+                                        cy={top + 844}
+                                        r={10}
+                                    />
+                                )}
+                                {line && (
+                                    <g className="board-item">
+                                        <path className="board-learner" d={strokePath(line)} />
+                                        <circle
+                                            className="board-tip"
+                                            cx={line.at(-1)![0]}
+                                            cy={line.at(-1)![1]}
+                                            r={8}
+                                        />
+                                    </g>
+                                )}
+                            </svg>
                         </div>
-                    )}
-                    {!board.asked && <p className="board-empty">Ask a question to start.</p>}
-                    {loading && !board.notice && (
-                        <p className="board-notice info" role="status">
-                            <InformationCircleIcon aria-hidden />
-                            Getting voice ready: {MB(mic.loaded)} of {MB(mic.total)} MB. Your voice
-                            stays on this computer.
-                        </p>
-                    )}
-                    {board.notice && (
-                        <p className="board-notice" role="alert">
-                            <ExclamationTriangleIcon aria-hidden />
-                            {board.notice}
-                        </p>
-                    )}
+                        {parent && <BackChip parent={parent} open={board.openPage} />}
+                        {board.replies > 1 && (
+                            <div
+                                className="board-steps"
+                                role="group"
+                                aria-label="Board at each reply"
+                            >
+                                <IconButton
+                                    label="Board after the previous reply"
+                                    icon={<ChevronLeftIcon />}
+                                    variant="ghost"
+                                    size="sm"
+                                    isDisabled={tutoring || board.at === 0}
+                                    onClick={() => board.go(board.at - 1)}
+                                />
+                                <span>
+                                    Reply {board.at + 1} of {board.replies}
+                                </span>
+                                <IconButton
+                                    label="Board after the next reply"
+                                    icon={<ChevronRightIcon />}
+                                    variant="ghost"
+                                    size="sm"
+                                    isDisabled={tutoring || !board.stepped}
+                                    onClick={() => board.go(board.at + 1)}
+                                />
+                            </div>
+                        )}
+                        {!board.asked && <p className="board-empty">Ask a question to start.</p>}
+                        {loading && !board.notice && (
+                            <p className="board-notice info" role="status">
+                                <InformationCircleIcon aria-hidden />
+                                Getting voice ready: {MB(mic.loaded)} of {MB(mic.total)} MB. Your
+                                voice stays on this computer.
+                            </p>
+                        )}
+                        {board.notice && (
+                            <p className="board-notice" role="alert">
+                                <ExclamationTriangleIcon aria-hidden />
+                                {board.notice}
+                            </p>
+                        )}
+                    </div>
                 </div>
             </div>
             <div className="board-line">
@@ -504,7 +531,7 @@ export default function Board({
 }
 
 // What the board shows of its items: highlights under the rest, erased items fading out (or gone when replayed),
-// no pointer once its moment has passed, and one 1600×900 space per page, with the open page's top edge.
+// no pointer once its moment has passed, and one 1600×900 space per page.
 function sceneOf(items: Drawn[]) {
     const erased = new Map(
         items.flatMap(({ op, ms }) => (op.ids ?? []).map((id) => [id, ms] as const)),
@@ -515,7 +542,6 @@ function sceneOf(items: Drawn[]) {
             return erased.get(op.id) !== 0 && (op.kind !== 'pointer' || ms > 0);
         })
         .sort((a, b) => +(b.op.kind === 'highlight') - +(a.op.kind === 'highlight'));
-    const ops = items.map(({ op }) => op);
-    const areas = 1 + Math.max(0, ...ops.map((op) => (op.top ?? 0) / 900));
-    return { shown, erased, areas, top: openTop(ops) };
+    const areas = 1 + Math.max(0, ...items.map(({ op }) => (op.top ?? 0) / 900));
+    return { shown, erased, areas };
 }
