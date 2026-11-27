@@ -84,7 +84,7 @@ test('board ops: a malformed op or one naming an unknown id is skipped with its 
     assert.ok(board.read('bl text "bulb" at 1460,450').item, 'a skipped id stays free');
 });
 
-test('board ops: math, highlight, pointer and erase name their items; clear moves on to a fresh area below', () => {
+test('board ops: math, highlight, pointer and erase name their items; an old clear opens a fresh untitled page below', () => {
     const board = boardOps();
     const read = (line) => board.read(line).item;
     board.read('bat box at 360,450 w=120 h=220');
@@ -118,7 +118,13 @@ test('board ops: math, highlight, pointer and erase name their items; clear move
     });
     assert.deepEqual(read('x1 erase e1 h1'), { id: 'x1', kind: 'erase', ids: ['e1', 'h1'] });
     assert.match(board.read('p3 pointer e1').error, /unknown id e1/, 'erased items are gone');
-    assert.deepEqual(read('n1 clear'), { id: 'n1', kind: 'clear' });
+    assert.deepEqual(read('n1 clear'), {
+        id: 'n1',
+        kind: 'clear',
+        top: 900,
+        title: 'Page 2',
+        parent: 'first',
+    });
     assert.deepEqual(read('ohm math "I = \\frac{V}{R}" at 800,330').at, [800, 1230]);
     assert.deepEqual(read('a1 arrow 680,620 -> 900,620').points, [
         [680, 1520],
@@ -127,17 +133,68 @@ test('board ops: math, highlight, pointer and erase name their items; clear move
     assert.match(
         board.read('p4 pointer bat').error,
         /unknown id bat/,
-        'marks stay on the area in view',
+        'marks stay on the page in view',
     );
     assert.deepEqual(
         read('p4 pointer ohm').from,
         [800, 1350],
-        'the pointer starts a fresh area at its centre',
+        'the pointer starts a fresh page at its centre',
     );
-    assert.deepEqual(read('x3 erase bat').ids, ['bat'], 'erase still reaches earlier areas');
+    assert.deepEqual(read('x3 erase bat').ids, ['bat'], 'erase still reaches earlier pages');
     assert.match(board.read('m3 math "P = \\frac{V^2}{" at 800,780').error, /KaTeX parse error/);
     for (const line of ['h2 highlight', 'h3 highlight bat bulb', 'x2 erase nope', 'p5 pointer x1'])
         assert.ok(board.read(line).error, line);
+});
+
+test('board ops: page and open move between titled pages, each its own space that only erase reaches out of', () => {
+    const board = boardOps();
+    const read = (line) => board.read(line).item;
+    assert.deepEqual(read('f1 box at 400,450 w=200 h=200'), {
+        id: 'f1',
+        kind: 'box',
+        at: [400, 450],
+        w: 200,
+        h: 200,
+    });
+    assert.deepEqual(
+        read('s1 page "Friction" from=f1'),
+        { id: 's1', kind: 'page', top: 900, title: 'Friction', parent: 'first', origin: 'f1' },
+        'the first drawing started an untitled page; this one is made from f1 on it',
+    );
+    assert.deepEqual(
+        read('g1 box at 400,450 w=200 h=200').at,
+        [400, 1350],
+        'the guard leaves it be: f1 is on another page',
+    );
+    assert.deepEqual(read('t1 pointer g1').from, [800, 1350], 'the pointer starts at its centre');
+    for (const line of ['h1 highlight f1', 'c1 arrow from g1 to f1', 's9 page from=nope'])
+        assert.match(board.read(line).error, /unknown id/, line);
+    assert.deepEqual(read('s2 page'), {
+        id: 's2',
+        kind: 'page',
+        top: 1800,
+        title: 'Page 3',
+        parent: 's1',
+    });
+    assert.deepEqual(read('o1 open first'), { id: 'o1', kind: 'open', page: 'first', top: 0 });
+    assert.deepEqual(read('p1 pointer f1').from, [800, 450]);
+    assert.equal(board.open(), 'first');
+    assert.deepEqual(read('x1 erase g1').ids, ['g1'], 'erase reaches any page');
+    for (const line of ['o2 open nope', 'o3 open f1', 'o4 open', 's1 page "Again"', 'first page'])
+        assert.ok(board.read(line).error, `${line} is skipped`);
+    assert.equal(board.open(), 'first');
+    assert.deepEqual(read('o5 open s1').top, 900);
+});
+
+test('board ops: a board that starts with a page makes no untitled one first', () => {
+    const board = boardOps();
+    assert.deepEqual(board.read('m1 page "Main"').item, {
+        id: 'm1',
+        kind: 'page',
+        top: 0,
+        title: 'Main',
+    });
+    assert.deepEqual(board.read('b1 box at 400,450').item.at, [400, 450]);
 });
 
 test('board ops: erase removes the items it names, and a learner stroke marks what it circles or points at', () => {
@@ -335,7 +392,7 @@ test('board ops: marks name top-level items in view, and erasing a component era
     assert.deepEqual(board.read('x1 erase a1').item.ids, ['a1', 'p1']);
     board.read('b1 axes at 680,480 w=1080 h=680 x=0..5 y=0..32');
     board.read('n1 clear');
-    assert.equal(board.read('p2 plot on b1 y=x').error, 'unknown parent b1', 'b1 is an area up');
+    assert.equal(board.read('p2 plot on b1 y=x').error, 'unknown parent b1', 'b1 is a page up');
 });
 
 test('board ops: plot math keeps precedence, unary minus and implicit products', () => {

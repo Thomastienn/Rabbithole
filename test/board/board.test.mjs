@@ -292,7 +292,7 @@ test('board: the learner steps back to the board after an earlier reply, and ask
                         { id: 'h1', kind: 'highlight', at: [1240, 450], w: 180, h: 180 },
                         { id: 'p1', kind: 'pointer', from: [800, 450], at: [432, 450] },
                         { id: 'x1', kind: 'erase', ids: ['e1'] },
-                        { id: 'n1', kind: 'clear' },
+                        { id: 'n1', kind: 'clear', top: 900, title: 'Page 2', parent: 'first' },
                         {
                             id: 'ohm',
                             kind: 'math',
@@ -308,7 +308,7 @@ test('board: the learner steps back to the board after an earlier reply, and ask
     const steps = board.q('[aria-label="Board at each reply"]');
     assert.equal(steps.textContent, 'Reply 2 of 2');
     assert.ok(button(board.container, 'Board after the next reply').disabled);
-    // The latest board: the wash under the bulb, the erased dot and the passed pointer gone, a second area below.
+    // The latest board: the wash under the bulb, the erased dot and the passed pointer gone, a second page below.
     assert.deepEqual(ids(), ['rect', '1240', 'foreignObject']);
     assert.equal(
         [...board.q('.board-math').querySelectorAll('.board-term')].length,
@@ -316,14 +316,13 @@ test('board: the learner steps back to the board after an earlier reply, and ask
         'the formula writes in as three terms',
     );
     assert.equal(board.q('svg').getAttribute('viewBox'), '0 0 1600 1800');
-    assert.ok(board.q('.board-seam') && board.q('.board-thumb'));
+    assert.ok(board.q('.board-seam'));
 
     await board.act(async () => button(board.container, 'Board after the previous reply').click());
     assert.equal(steps.textContent, 'Reply 1 of 2');
     assert.equal(board.q('svg').getAttribute('aria-label'), 'Board after reply 1');
     assert.deepEqual(ids(), ['1240', '560'], 'the board as it stood, the erased dot back');
     assert.equal(board.q('svg').getAttribute('viewBox'), '0 0 1600 900');
-    assert.equal(board.q('.board-thumb'), null);
     assert.equal(board.q('.board-caption.muted').textContent, 'The bulb glows.');
     assert.ok(button(board.container, 'Board after the previous reply').disabled);
 

@@ -89,7 +89,11 @@ test('board: a typed question gets its sentences one at a time and saves as a le
     board.send({ type: 'leave' });
     const again = connect();
     assert.deepEqual((await again.next('board')).replies, [
-        { caption: 'Tiny sacs carry new wall forward.', items: [...first.ops, ...second.ops] },
+        {
+            caption: 'Tiny sacs carry new wall forward.',
+            items: [...first.ops, ...second.ops],
+            page: 'first',
+        },
     ]);
     again.send({ type: 'ask', text: 'And then?' });
     const joined = await again.next('sentence');

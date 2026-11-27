@@ -92,6 +92,8 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
                 replies.at(-1).items.push(...items);
             } else if (text.trim())
                 replies.push({ caption: text.trim().split('\n').at(-1), items });
+            // The page open at the end of each reply (ADR 0029).
+            if (replies.length) replies.at(-1).page = board.open();
         }
         return replies;
     };
