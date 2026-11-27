@@ -140,36 +140,34 @@ function flow(lines: Line[], p: Palette): Drawing {
     let bottom = 0;
     const text = (tx: number, ty: number, words: string, style: string, note = false) =>
         `<text${note ? ' class="sketch-note"' : ''} x="${tx}" y="${ty}" style="${style}">${esc(words)}</text>`;
-    const labels = names.flatMap((n) =>
-        wrap(n, column - 24).map((l, i) => {
+    // One group per item, in the items' order; `--i` is its place in the sketch's build.
+    const groups = names.map((n, k) => {
+        const f = focus.has(n);
+        const notes = runs
+            .filter((r) => r.e.label && r.e.b === n)
+            .map((r) =>
+                text((r.from + x(r.e.b)) / 2, y(r.e.b) - 16, r.e.label, `fill:${p.muted}`, true),
+            );
+        const station = f
+            ? `<circle cx="${x(n)}" cy="${y(n)}" r="7" style="fill:${p.focus};stroke:${p.focus}"/>`
+            : `<circle cx="${x(n)}" cy="${y(n)}" r="6" style="fill:${p.ground};stroke:${p.muted}"/>`;
+        const labels = wrap(n, column - 24).map((l, i) => {
             const baseline = y(n) + (notesAbove ? 28 : 26) + LINE * i;
             bottom = Math.max(bottom, baseline);
-            const f = focus.has(n);
             return text(
                 x(n),
                 baseline,
                 l,
                 `fill:${f ? p.focus : p.ink}${f ? ';font-weight:600' : ''}`,
             );
-        }),
-    );
-    const arrowLabels = runs
-        .filter((r) => r.e.label)
-        .map((r) =>
-            text((r.from + x(r.e.b)) / 2, y(r.e.b) - 16, r.e.label, `fill:${p.muted}`, true),
-        );
-    const stations = names.map((n) =>
-        focus.has(n)
-            ? `<circle cx="${x(n)}" cy="${y(n)}" r="7" style="fill:${p.focus};stroke:${p.focus}"/>`
-            : `<circle cx="${x(n)}" cy="${y(n)}" r="6" style="fill:${p.ground};stroke:${p.muted}"/>`,
-    );
+        });
+        return `<g style="--i:${k}">${notes.join('')}${station}${labels.join('')}</g>`;
+    });
     const markup =
         `<svg class="sketch-flow" viewBox="0 0 ${WIDTH} ${bottom + (notesAbove ? 10 : 8)}">` +
         `<path class="sketch-line" style="stroke:${p.seam}" d="${runs.map((r) => r.d).join('')}"/>` +
         `<path class="sketch-arrow" style="stroke:${p.muted}" d="${[...chevrons].join('')}"/>` +
-        arrowLabels.join('') +
-        stations.join('') +
-        labels.join('') +
+        groups.join('') +
         '</svg>';
     const items = names.map((n) => {
         const next = edges
@@ -210,11 +208,13 @@ function bars(lines: Line[], p: Palette): Drawing {
     const markup =
         `<dl class="sketch-bars" style="color:${p.ink}">` +
         rows
-            .map((r) => {
-                const f = r.focus ? ` class="focus" style="color:${p.focus}"` : '';
+            .map((r, k) => {
+                const f = r.focus
+                    ? ` class="focus" style="--i:${k};color:${p.focus}"`
+                    : ` style="--i:${k}"`;
                 return (
                     `<dt${f}>${esc(r.label)}</dt>` +
-                    `<dd${r.focus ? ` class="focus"` : ''} style="--v:${+(r.n / max).toFixed(4)}${r.focus ? `;color:${p.focus}` : ''}">` +
+                    `<dd${r.focus ? ` class="focus"` : ''} style="--i:${k};--v:${+(r.n / max).toFixed(4)}${r.focus ? `;color:${p.focus}` : ''}">` +
                     `<s style="background:${r.focus ? p.focus : p.seam}"></s>${esc(r.value)}</dd>`
                 );
             })

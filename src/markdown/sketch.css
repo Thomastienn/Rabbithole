@@ -73,3 +73,13 @@
     background: var(--color-skeleton);
     opacity: 0.6;
 }
+/* Building in: each item fades after the one before it (Sketch sets --step; the module sets each item's --i). */
+.sketch-build :is(svg > *, .sketch-bars > *) {
+    animation: sketch-in 200ms ease-out both;
+    animation-delay: calc(var(--i, 0) * var(--step));
+}
+@keyframes sketch-in {
+    from {
+        opacity: 0;
+    }
+}

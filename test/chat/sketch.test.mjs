@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { JSDOM } from 'jsdom';
 import { drawSketch } from '../../src/sketch/sketch.ts';
 import { renderMarkdown } from '../../src/markdown/markdown.ts';
+import Sketch from '../../src/markdown/Sketch.tsx';
 import { previewText } from '../../src/markdown/markdownText.ts';
 import ChatThread from '../../src/chat/ChatThread.tsx';
 import { render } from '../support/render.mjs';
@@ -148,7 +149,7 @@ test('only tutor sketches draw, waiting on a real closing fence while the reply 
     }
     const copied = [];
     const { container, act, cleanup } = await render(h(Fixture), (window) => {
-        ui(window);
+        ui(window).media('(prefers-reduced-motion: reduce)', false);
         Object.defineProperty(window.navigator, 'clipboard', {
             value: { writeText: async (text) => void copied.push(text) },
         });
@@ -162,6 +163,7 @@ test('only tutor sketches draw, waiting on a real closing fence while the reply 
     await act(async () => update({ text: closed, status: 'streaming' }));
     assert.equal(reply().querySelector('.sketch-wait'), null);
     assert.ok(reply().querySelector('figure.sketch').textContent.includes('465 m/s'));
+    assert.ok(reply().querySelector('figure.sketch-build'), 'it builds in as the reply reaches it');
     await act(async () => update({ text: closed, status: 'completed' }));
     await act(async () => reply().querySelector('.reply-copy').click());
     assert.equal(copied[0].trimEnd(), intro);
@@ -193,4 +195,34 @@ test('a broken sketch shows nothing from its source and is logged with its kind 
         previewText('Before.\n\n```sketch bars\nPressure push: strong', 'assistant'),
         'Before.',
     );
+});
+
+test('a streamed sketch builds in item by item over about half a second; saved or with reduced motion it shows at once', async () => {
+    const start = (el) => Number(el.style.getPropertyValue('--i'));
+    for (const [kind, body, items] of [
+        ['bars', speeds, 'dd'],
+        ['flow', freezing, 'svg > g'],
+    ]) {
+        const { container, cleanup } = await render(
+            h(Sketch, { kind, body, fence: 'closed', live: true }),
+            (window) => ui(window).media('(prefers-reduced-motion: reduce)', false),
+        );
+        const figure = container.querySelector('figure.sketch-build'),
+            order = [...figure.querySelectorAll(items)].map(start),
+            step = parseFloat(figure.style.getPropertyValue('--step'));
+        assert.deepEqual(
+            order,
+            drawSketch(kind, body, dark).items.map((_, i) => i),
+        );
+        // The last item starts at 300 ms and fades for 200 ms (sketch.css).
+        assert.equal(step * order.at(-1) + 200, 500);
+        await cleanup();
+    }
+    const reduced = await render(
+        h(Sketch, { kind: 'bars', body: speeds, fence: 'closed', live: true }),
+        (window) => ui(window),
+    );
+    assert.equal(reduced.container.querySelector('.sketch-build'), null);
+    await reduced.cleanup();
+    assert.equal(page(`\`\`\`sketch bars\n${speeds}\n\`\`\``).querySelector('.sketch-build'), null);
 });

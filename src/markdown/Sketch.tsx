@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { drawSketch, type Palette } from '../sketch/sketch';
 import './sketch.css';
 
@@ -12,15 +12,21 @@ const THEME: Palette = {
 };
 
 // A sketch block in a reply: a placeholder while its fence is open, nothing (logged) when it cannot draw.
+// One that arrives in a streaming reply builds in item by item, like the text around it; a saved reply's shows at once.
 export default function Sketch({
     kind,
     body,
     fence,
+    live,
 }: {
     kind: string;
     body: string;
     fence: 'open' | 'closed' | 'unfinished';
+    live: boolean;
 }) {
+    const [build] = useState(
+        () => live && !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    );
     const sketch = useMemo(
         () => (fence === 'closed' ? drawSketch(kind, body, THEME) : undefined),
         [kind, body, fence],
@@ -38,7 +44,18 @@ export default function Sketch({
         return <div className="sketch-wait" role="status" aria-label="Drawing a sketch" />;
     if (!sketch || 'error' in sketch) return null;
     return (
-        <figure className="sketch" aria-label={sketch.title ? `Sketch: ${sketch.title}` : 'Sketch'}>
+        <figure
+            className={build ? 'sketch sketch-build' : 'sketch'}
+            // The items share about 0.5 s: 0.3 s of staggered starts, then each fades for 0.2 s.
+            style={
+                build
+                    ? ({
+                          '--step': `${300 / Math.max(sketch.items.length - 1, 1)}ms`,
+                      } as CSSProperties)
+                    : undefined
+            }
+            aria-label={sketch.title ? `Sketch: ${sketch.title}` : 'Sketch'}
+        >
             {sketch.title && <figcaption aria-hidden="true">{sketch.title}</figcaption>}
             {/* The module escapes every label the tutor wrote. */}
             <div aria-hidden="true" dangerouslySetInnerHTML={{ __html: sketch.markup }} />
