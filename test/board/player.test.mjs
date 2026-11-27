@@ -24,7 +24,7 @@ function fakeClock() {
     };
 }
 
-test('board player: each sentence holds the caption for 15 characters per second at 1.5×, in order', () => {
+test('board player: each sentence holds the caption for 15 characters per second at 1.5×, in order, a beat apart', () => {
     const clock = fakeClock();
     const shown = [],
         reports = [];
@@ -42,10 +42,19 @@ test('board player: each sentence holds the caption for 15 characters per second
     clock.advance(3866);
     assert.deepEqual(reports, ['1 start']);
     clock.advance(1);
+    assert.deepEqual(
+        reports,
+        ['1 start', '1 end'],
+        'the reply’s last sentence so far ends without a trailing pause',
+    );
+    clock.advance(299);
+    assert.deepEqual(shown, [long], 'a 300 ms beat after each sentence');
+    clock.advance(1);
     assert.deepEqual(shown, [long, 'Then it hardens.']);
     assert.deepEqual(reports, ['1 start', '1 end', '2 start']);
     clock.advance(1100);
     assert.deepEqual(reports.at(-1), '2 end');
+    clock.advance(300);
     player.add({ id: '3', text: 'Late sentence.' });
     assert.equal(shown.at(-1), 'Late sentence.', 'a sentence after a quiet gap shows at once');
 });
@@ -108,14 +117,15 @@ test('board player: a sentence’s ops share its time equally, in order', () => 
     assert.deepEqual(drawn, [['bat', 0, 1900]], 'the first op enters with its sentence');
     advance(1900);
     advance(1900);
+    advance(300);
     advance(934);
     advance(933);
     assert.deepEqual(drawn, [
         ['bat', 0, 1900],
         ['bt', 1900, 1900],
-        ['w1', 3800, 933],
-        ['w2', 4734, 933],
-        ['w3', 5667, 933],
+        ['w1', 4100, 933],
+        ['w2', 5034, 933],
+        ['w3', 5967, 933],
     ]);
     player.stop();
 });
@@ -189,13 +199,19 @@ test('board player: a voiced sentence starts on its first audio chunk and lasts 
     assert.deepEqual([...new Set(drawn.map(([id]) => id))], ['a', 'b', 'c']);
     assert.deepEqual(reports, ['1 start', '1 end'], 'the next waits for its own speech');
     player.audioEnd('2');
-    assert.deepEqual(reports, ['1 start', '1 end', '2 start']);
+    advance(300);
+    assert.deepEqual(
+        reports,
+        ['1 start', '1 end', '2 start'],
+        'a caption-only sentence keeps the beat',
+    );
     assert.equal(voice.playing.length, 1, 'speech that ended without audio plays by its estimate');
     assert.deepEqual(voice.ends, ['1'], 'a silent sentence has no clip to finish');
     advance(1267);
     assert.deepEqual(reports.at(-1), '2 end');
     player.add({ id: '3', text: 'The audio fails.', voiced: true });
     player.chunk('3', new Uint8Array(1));
+    advance(300);
     voice.playing[1].failed();
     player.chunk('3', new Uint8Array(10));
     player.audioEnd('3');
@@ -326,6 +342,67 @@ test('board player: a speed change retimes the sentence mid-way, and pause holds
     advance(1999);
     assert.deepEqual(reports, ['1 start'], 'resume continues the same sentence where it stopped');
     advance(1);
+    assert.deepEqual(reports, ['1 start', '1 end']);
+    advance(600); // the 300 ms beat at half speed
     assert.deepEqual(reports, ['1 start', '1 end', '2 start'], 'the queued sentence plays next');
     assert.deepEqual(shown.at(-1), 'Then it hardens.');
+});
+
+test('board player: a sentence opening a page or a component waits 900 ms, scaled by speed and held by pause', () => {
+    const clock = fakeClock();
+    const reports = [];
+    const player = boardPlayer(
+        () => {},
+        () => {},
+        (s, phase) => reports.push(`${s.id} ${phase}`),
+        undefined,
+        clock,
+    );
+    const last = () => reports.at(-1);
+    // Four characters each: 267 ms.
+    player.add({ id: '1', text: 'One.' });
+    player.add({ id: '2', text: 'Two.', ops: [{ id: 'p', kind: 'page' }] });
+    player.add({
+        id: '3',
+        text: 'Six.',
+        ops: [
+            { id: 'o', kind: 'open', page: 'p' },
+            { id: 'f', kind: 'flow' },
+        ],
+    });
+    player.add({ id: '4', text: 'Ten.', ops: [{ id: 's', kind: 'step', on: 'f' }] });
+    clock.advance(267);
+    clock.advance(899);
+    assert.equal(last(), '1 end');
+    clock.advance(1);
+    assert.equal(last(), '2 start', 'a new page waits 900 ms');
+    clock.advance(267);
+    player.speed(3); // twice the default: the 900 ms pause takes 450 ms
+    clock.advance(200);
+    player.pause(true);
+    clock.advance(10000);
+    player.pause(false);
+    clock.advance(249);
+    assert.equal(last(), '2 end', 'resume keeps the remaining pause');
+    clock.advance(1);
+    assert.equal(last(), '3 start', 'a page and a component together wait 900 ms, not the sum');
+    player.speed(1.5);
+    clock.advance(267);
+    clock.advance(299);
+    assert.equal(last(), '3 end');
+    clock.advance(1);
+    assert.equal(last(), '4 start', 'a component’s child is only a beat');
+    clock.advance(267);
+    player.add({ id: '5', text: 'Cut.' });
+    player.stop();
+    clock.advance(10000);
+    assert.equal(last(), '4 end', 'cutting in drops the pending pause with its sentence');
+    player.add({ id: '6', text: 'Answer.', ops: [{ id: 't', kind: 'table' }] });
+    assert.equal(last(), '6 start', 'the answer starts at once');
+});
+
+test('board player: its component kinds are the board’s', async () => {
+    const { COMPONENT_KINDS } = await import('../../src/board/player.ts');
+    const { COMPONENTS } = await import('../../server/board/components.mjs');
+    assert.deepEqual([...COMPONENT_KINDS].sort(), [...COMPONENTS].sort());
 });

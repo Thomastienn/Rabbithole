@@ -28,6 +28,11 @@ tests are never the check for a routine ticket.
 4. **Browser (E2E).** These are the smoke scripts in `scripts/verify/`, which drive a real
    Chromium. Run them only for release tickets, or when the acceptance names one.
 
+Every agent browser run is muted, including scratch scripts: `~/.agent-browser/config.json`
+launches Chromium with `--mute-audio`. Never unmute it or pass `--args` without
+`--mute-audio`, even for a sound ticket: check playback through media events such as `playing`.
+When a sound ticket needs a human to listen, ask the owner to try it with `npm start`.
+
 ## Real models
 
 Tickets never call a real model: their tests use fake providers. Model quality (prompt wording,
