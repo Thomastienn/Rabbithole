@@ -114,14 +114,6 @@ export function boardSession(ctx, id, socket) {
                 cacheRead: current.usage.cacheRead,
                 reasoning: current.usage.thinking,
             });
-        // Usage history counts a board turn as a chat reply, like reply-turn.mjs does.
-        if (current.called)
-            store.record(
-                `chat:${current.reply}`,
-                'chat',
-                { provider: store.header(id)?.provider, model },
-                current.usage,
-            );
         if (status === 'completed') {
             store.thread(id, process.thread, model);
             store.finishModel(id, true);
@@ -181,19 +173,28 @@ export function boardSession(ctx, id, socket) {
             }
             if (ended || reader.nextSentence()) flush();
         };
-        let result;
+        let result, selection;
         try {
             await ready;
             if (!signal.aborted) await warm(tree, signal);
-            current.called = !signal.aborted;
-            result = signal.aborted
-                ? { status: 'interrupted' }
-                : await process.ask(text, (e) => add(reader.feed(e.text)), signal);
+            if (signal.aborted) result = { status: 'interrupted' };
+            else {
+                selection = { provider: tree.provider, model };
+                result = await process.ask(text, (e) => add(reader.feed(e.text)), signal);
+            }
         } catch (error) {
             result = { status: 'failed', cause: error };
         }
         if (result.status === 'completed') add(reader.end(), true);
         const usage = result.usage;
+        // Account for the call even if playback stopped before the provider reported its totals.
+        if (selection)
+            store.record(
+                `chat:${current.reply}`,
+                'chat',
+                selection,
+                usage && { ...usage, reasoning: usage.thinking },
+            );
         const status = signal.aborted ? 'interrupted' : result.status;
         const failed = status === 'failed' || (status === 'completed' && !current.sentences.length);
         // Thinking above 0 is a latency regression to investigate (docs/board-spec.md).

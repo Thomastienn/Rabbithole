@@ -36,7 +36,8 @@ function boardProvider(scripts, { status = 'completed' } = {}) {
                                 signal.addEventListener('abort', resolve, { once: true }),
                             ),
                         ]);
-                    if (signal.aborted) return { status: 'interrupted' };
+                    if (signal.aborted)
+                        return { status: 'interrupted', usage: board.interruptedUsage };
                     return {
                         status,
                         usage: { input: 10, output: 20, cacheRead: 5, thinking: 0 },
@@ -160,13 +161,10 @@ test('board: a typed question gets its sentences one at a time and saves as a le
     assert.deepEqual(reply.snapshot, [...first.ops, ...second.ops]);
     assert.equal(question.snapshot, undefined);
     // Usage history counts the board turn as a chat reply under the conversation's model.
+    const [usage] = env.store.usageEvents().events.filter((event) => event.task === 'chat');
     assert.deepEqual(
-        {
-            ...env.store.db
-                .prepare('SELECT task,provider,model,output FROM usage_events WHERE id=?')
-                .get(`chat:${reply.id}`),
-        },
-        { task: 'chat', provider: 'claude', model: 'sonnet', output: 20 },
+        [usage.provider, usage.model, usage.tree, usage.output, usage.reasoning],
+        ['claude', 'sonnet', id, 20, 0],
     );
     // The board turn joined the conversation's provider session, so the next chat turn resumes it.
     assert.equal(env.store.header(id).thread, 'board-session');
@@ -185,6 +183,12 @@ test('board: a typed question gets its sentences one at a time and saves as a le
         joined.ops.map((op) => op.id),
         ['j1'],
     );
+    for (const phase of ['start', 'end'])
+        again.send({ type: 'progress', sentence: joined.id, phase });
+    await again.next('state', (event) => event.state === 'idle');
+    const [, earlier, , latest] = messages(env, id);
+    assert.deepEqual(earlier.snapshot, [...first.ops, ...second.ops]);
+    assert.deepEqual(latest.snapshot, [...earlier.snapshot, ...joined.ops]);
 });
 
 test('board: a finished board reply records familiarity and concepts, with no marks or next questions', async (t) => {
@@ -282,8 +286,12 @@ test('board: chat cannot start before the queued board captions finish or are st
     assert.equal(reply.text, 'One.');
 });
 
-test('board: leaving mid-reply stops the tutor at once and saves the reply up to the sentence shown', async (t) => {
-    const provider = boardProvider([['> First idea.\n> Second idea.\n> Third idea.\n']]);
+test('board: leaving mid-reply saves only shown sentences and keeps any usage the provider reports', async (t) => {
+    const provider = boardProvider([
+        [
+            '> First idea.\na dot at 300,450\n> Second idea.\nb dot at 600,450\n> Third idea.\nc dot at 900,450\n',
+        ],
+    ]);
     const { env, id, logs, connect } = await setup(t, provider);
     env.store.thread(id, 'old-session', 'sonnet');
     const board = connect();
@@ -291,6 +299,7 @@ test('board: leaving mid-reply stops the tutor at once and saves the reply up to
     await until(() => provider.boards[0]?.opened);
     const process = provider.boards[0];
     process.hold = new Promise(() => {}); // still generating when the learner leaves
+    process.interruptedUsage = { input: 10, output: 14, cacheRead: 5, thinking: 3 };
     board.send({ type: 'ask', text: 'Why?' });
     const first = await board.next('sentence');
     const second = await board.next('sentence');
@@ -302,12 +311,18 @@ test('board: leaving mid-reply stops the tutor at once and saves the reply up to
     await until(() => process.closed);
     assert.ok(process.signals[0].aborted, 'the running turn stops');
     await until(() =>
-        logs.some((line) => /model interrupted.*task="board".*thinking="unreported"/.test(line)),
+        logs.some((line) => /model interrupted.*task="board".*thinking=3/.test(line)),
     );
     const reply = messages(env, id)[1];
     assert.deepEqual(
         { text: reply.text, status: reply.status, stopped: reply.stopped },
         { text: 'First idea.\nSecond idea.', status: 'interrupted', stopped: 'learner' },
+    );
+    assert.deepEqual(reply.snapshot, [...first.ops, ...second.ops]);
+    const calls = env.store.usageEvents().events.filter((event) => event.task === 'chat');
+    assert.deepEqual(
+        calls.map(({ tree, output, reasoning }) => [tree, output, reasoning]),
+        [[id, 14, 3]],
     );
     await opened(connect().ws);
     await until(() => provider.boards[1]?.opened);

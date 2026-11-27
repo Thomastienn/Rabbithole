@@ -195,6 +195,42 @@ test('chat details show per-reply media and task totals, including running and u
     assert.doesNotMatch(container.textContent, /\$|price/i);
 });
 
+test('an interrupted board reply shows its saved text and snapshot in chat and can be copied', async (t) => {
+    const { default: ChatThread } = await import('../../src/chat/ChatThread.tsx');
+    const text = 'Pressure pushes the soft tip outward.';
+    const message = {
+        id: 'reply',
+        role: 'assistant',
+        status: 'interrupted',
+        stopped: 'learner',
+        text,
+        board: true,
+        snapshot: [
+            { id: 'a', kind: 'text', at: [400, 400], text: 'soft tip' },
+            { id: 'b', kind: 'text', at: [800, 400], text: 'pressure' },
+        ],
+    };
+    const copied = [];
+    const { container, act, cleanup } = await render(
+        h(ChatThread, threadProps({ tree: { id: 'tree', messages: [message] } })),
+        (window) => {
+            ui(window);
+            Object.defineProperty(window.navigator, 'clipboard', {
+                value: { writeText: async (value) => copied.push(value) },
+            });
+        },
+    );
+    t.after(cleanup);
+    const reply = container.querySelector('[data-chat-message="reply"]');
+    assert.ok(reply.textContent.includes(text));
+    assert.match(
+        reply.querySelector('[role=img]').getAttribute('aria-label'),
+        /soft tip, pressure$/,
+    );
+    await act(async () => button(reply, 'Copy tutor reply').click());
+    assert.deepEqual(copied, [text]);
+});
+
 test('the reply usage line sits behind a closed Usage button, including while the reply is still streaming, and a memory write opens the note', async (t) => {
     const { default: ChatThread } = await import('../../src/chat/ChatThread.tsx');
     const counts = { input: 10, output: 2, cacheRead: 1 };
