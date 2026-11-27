@@ -199,7 +199,8 @@ function flow(lines: Line[], p: Palette): Drawing {
 }
 
 // `label: number`, with an optional unit after the number (bars and pie).
-function quantity(line: Line) {
+type Quantity = { label: string; value: string; number: string; n: number; focus: boolean };
+function quantity(line: Line): Quantity | { error: string } {
     const colon = line.text.lastIndexOf(':'),
         label = plain(line.text.slice(0, Math.max(colon, 0))),
         value = plain(line.text.slice(colon + 1)),
@@ -215,7 +216,7 @@ function quantity(line: Line) {
 
 // Bars: one row per item.
 function bars(lines: Line[], p: Palette): Drawing {
-    const rows = [];
+    const rows: Quantity[] = [];
     for (const line of lines) {
         const row = quantity(line);
         if ('error' in row) return row;
@@ -388,7 +389,7 @@ function venn(lines: Line[], p: Palette): Drawing {
 
 // Pie: `label: number`, shares of one whole, clockwise from 12 o'clock in the order written.
 function pie(lines: Line[], p: Palette): Drawing {
-    const rows = [];
+    const rows: Quantity[] = [];
     for (const line of lines) {
         const row = quantity(line);
         if ('error' in row) return row;
@@ -401,7 +402,7 @@ function pie(lines: Line[], p: Palette): Drawing {
     const asWritten =
         rows.every((r) => /^\s*%?$/.test(r.value.slice(r.number.length))) &&
         Math.abs(total - 100) < 1e-6;
-    const share = (r: (typeof rows)[number]) =>
+    const share = (r: Quantity) =>
         asWritten
             ? `${r.number}%`
             : r.n && r.n / total < 0.01
