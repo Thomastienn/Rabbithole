@@ -29,14 +29,14 @@ export const NO_ANSWER = [
 // from its op lines with the reply's last sentence as its caption,
 // { type: 'mic', status: 'loading' | 'on' | 'off', loaded, total } as the speech models download and the mic turns on or off,
 // { type: 'hearing', on } as the learner starts and stops speaking, and { type: 'heard', text } as a spoken question is sent.
-// guided: the learner chose tutor-guided boards in Settings.
-export function boardSession(ctx, id, socket, guided = false) {
+// lang: the board's Voice language; guided: the learner chose tutor-guided boards in Settings.
+export function boardSession(ctx, id, socket, lang = 'en', guided = false) {
     const { store, log } = ctx;
     const send = (event) => {
         if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(event));
     };
-    // ctx.speech makes the session's edge-tts client (server/board/speech.mjs); off in tests.
-    const speech = ctx.speech?.() ?? null;
+    // ctx.speech makes the session's edge-tts client for its Voice language (server/board/speech.mjs); off in tests.
+    const speech = ctx.speech?.(lang) ?? null;
     const sendAudio = (id, chunk) => {
         if (socket.readyState === socket.OPEN)
             socket.send(Buffer.concat([Buffer.from([id.length]), Buffer.from(id), chunk]));
@@ -54,7 +54,7 @@ export function boardSession(ctx, id, socket, guided = false) {
         // The filler played last, so the next turn's filler differs.
         lastFiller = -1;
     // Filler clips load as the board opens, so the first slow turn has them ready.
-    const fillers = speech && ctx.fillers ? ctx.fillers() : null;
+    const fillers = speech && ctx.fillers ? ctx.fillers(lang) : null;
     const clock = ctx.boardClock;
     // The turn's first audio has started (or its first sentence has none): no filler from now on.
     const heard = (current) => {
@@ -139,6 +139,7 @@ export function boardSession(ctx, id, socket, guided = false) {
                 tutorStyle: store.tutorStyle(),
                 memoryNote: store.memoryNote(),
                 neighbourhood,
+                lang,
                 guided,
             }),
             history: conversationHistory(tree),
@@ -485,7 +486,7 @@ export function boardSession(ctx, id, socket, guided = false) {
         p.length === 2 &&
         p.every((v) => Number.isFinite(v) && Math.abs(v) < 1e5);
     const busy = () => turn;
-    const mic = boardMic(ctx.hearing, {
+    const mic = boardMic(ctx.hearing, lang, {
         send: (event) => (event.type === 'hearing' && event.on && answering(), send(event)),
         log,
         ask,

@@ -1,9 +1,9 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 // The board's speech models, each from one pinned commit, their files checked against these SHA-256 hashes and sizes.
-// Moonshine base at int8 recognizes English; Silero detects voice (docs/board-spec.md).
+// Moonshine base at int8 recognizes English, Whisper base at int8 every other Voice language; Silero detects voice (docs/board-spec.md).
 export const MODELS = {
     'onnx-community/moonshine-base-ONNX': {
         revision: 'b1e9b6aae3c3c7298f10c3798393fdf38e8fbbad',
@@ -35,6 +35,39 @@ export const MODELS = {
             'onnx/decoder_model_merged_int8.onnx': [
                 '45febab0347ffbe1326459e092ae20a2cfda10ca33ab018b3c299247284de61b',
                 42427261,
+            ],
+        },
+    },
+    'onnx-community/whisper-base': {
+        revision: '27a07b4b52b3a4c5886134bb4320e93e1a4bbc7c',
+        files: {
+            'config.json': [
+                'f4d0608f7d918166da7edb3e188de5ef1bfe70d9802e785d271fd88111e9cf4b',
+                2243,
+            ],
+            'generation_config.json': [
+                '61070cf8de25b1e9256e8e102ded49d8d24a8369ed36ef84fdf21549e68125a0',
+                3832,
+            ],
+            'preprocessor_config.json': [
+                'a6a76d28c93edb273669eb9e0b0636a2bddbb1272c3261e47b7ca6dfdbac1b8d',
+                339,
+            ],
+            'tokenizer.json': [
+                '27fc476bfe7f17299480be2273fc0608e4d5a99aba2ab5dec5374b4482d1a566',
+                2480466,
+            ],
+            'tokenizer_config.json': [
+                '2e036e4dbacfdeb7242c7d4ec4149f4a16e86026048f94d1637e3a8ee9c6a573',
+                282682,
+            ],
+            'onnx/encoder_model_int8.onnx': [
+                'ca6177401f86a2c6b4dc5f7fc02fbca680678906bd0c22f6d89f0b80f124253f',
+                23201297,
+            ],
+            'onnx/decoder_model_merged_int8.onnx': [
+                'fa3ef9902734ce5ae6f9ef2bdb2ba9a6c4b5785b09f4f420ce036573dc9d090b',
+                53693315,
             ],
         },
     },
@@ -111,28 +144,36 @@ export async function speechFiles(root, progress, download = fetchFile, models =
     return root;
 }
 
-// The local ears: load(progress) resolves to { detector(), recognize(audio) } once the models are ready.
+const VAD = 'onnx-community/silero-vad';
+// The recognizer for a Voice language.
+const recognizer = (lang) =>
+    lang === 'en' ? 'onnx-community/moonshine-base-ONNX' : 'onnx-community/whisper-base';
+const modelsFor = (asrModel) => ({ [asrModel]: MODELS[asrModel], [VAD]: MODELS[VAD] });
+
+// The local ears: load(progress, lang) resolves to { detector(), recognize(audio) } once the models for that
+// Voice language are ready; load.downloaded(lang) says whether they are on this computer, by size, without hashing.
 // A detector scores one FRAME of 16 kHz audio for voice, 0 to 1, keeping its own state across frames.
 // Loading is shared by every board; a failure is retried on the next load.
 export function localHearing(dir, download) {
-    let loading;
-    const listeners = new Set();
-    const load = async () => {
-        const root = await speechFiles(
-            join(dir, 'models'),
+    const root = join(dir, 'models');
+    const loads = new Map();
+    const load = async (asrModel, listeners) => {
+        await speechFiles(
+            root,
             (loaded, total) => listeners.forEach((l) => l(loaded, total)),
             download,
+            modelsFor(asrModel),
         );
         const { pipeline, AutoModel, Tensor, env } = await import('@huggingface/transformers');
         env.allowRemoteModels = false;
         env.localModelPath = root;
         env.useFSCache = false;
         const [vad, asr] = await Promise.all([
-            AutoModel.from_pretrained('onnx-community/silero-vad', {
+            AutoModel.from_pretrained(VAD, {
                 config: { model_type: 'custom' },
                 dtype: 'int8',
             }),
-            pipeline('automatic-speech-recognition', 'onnx-community/moonshine-base-ONNX', {
+            pipeline('automatic-speech-recognition', asrModel, {
                 dtype: { encoder_model: 'int8', decoder_model_merged: 'int8' },
             }),
         ]);
@@ -150,17 +191,47 @@ export function localHearing(dir, download) {
                     return out.output.data[0];
                 };
             },
-            recognize: async (audio) => (await asr(audio)).text.trim(),
+            asr,
         };
     };
-    return (progress) => {
+    const hearing = (progress, lang = 'en') => {
+        const asrModel = recognizer(lang);
+        if (!loads.has(asrModel)) {
+            const listeners = new Set();
+            const loading = load(asrModel, listeners).catch((error) => {
+                loads.delete(asrModel);
+                throw error;
+            });
+            loads.set(asrModel, { loading, listeners });
+        }
+        const { loading, listeners } = loads.get(asrModel);
         listeners.add(progress);
-        loading ??= load().catch((error) => {
-            loading = undefined;
-            throw error;
-        });
-        return loading.finally(() => listeners.delete(progress));
+        return loading
+            .then(({ detector, asr }) => ({
+                detector,
+                // Whisper is told the language, so it neither guesses nor translates; it hears 30 s at a
+                // time, and a push-to-talk question may run to 60 s.
+                recognize: async (audio) =>
+                    (
+                        await asr(
+                            audio,
+                            lang === 'en'
+                                ? {}
+                                : { language: lang, task: 'transcribe', chunk_length_s: 30 },
+                        )
+                    ).text.trim(),
+            }))
+            .finally(() => listeners.delete(progress));
     };
+    hearing.downloaded = async (lang) => {
+        for (const [model, { files }] of Object.entries(modelsFor(recognizer(lang))))
+            for (const [name, [, size]] of Object.entries(files)) {
+                const found = await stat(join(root, model, name)).catch(() => null);
+                if (found?.size !== size) return false;
+            }
+        return true;
+    };
+    return hearing;
 }
 
 // Cuts a stream of scored frames into utterances: push(frame, speech) returns 'start' as speech begins,

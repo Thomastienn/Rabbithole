@@ -71,6 +71,17 @@ export function savedTutorGuided() {
     }
 }
 
+// The board's Voice languages, English first: the keys of the server's voice table (server/board/speech.mjs).
+export const VOICE_LANGUAGES = ['en', 'zh', 'nl', 'fr', 'de', 'it', 'ja', 'pt', 'es'];
+export function savedVoiceLanguage() {
+    try {
+        const lang = localStorage.getItem('rabbithole.voice-language') ?? '';
+        return VOICE_LANGUAGES.includes(lang) ? lang : 'en';
+    } catch {
+        return 'en';
+    }
+}
+
 export function savePreference(
     key:
         | 'appearance'
@@ -83,6 +94,7 @@ export function savePreference(
         | 'board-speed'
         | 'push-to-talk'
         | 'board-mode'
+        | 'voice-language'
         | 'reading-font'
         | 'interface-font',
     value: string,

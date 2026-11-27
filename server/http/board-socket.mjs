@@ -1,6 +1,7 @@
 import http from 'node:http';
 import { WebSocketServer } from 'ws';
 import { boardSession } from '../board/session.mjs';
+import { VOICES } from '../board/speech.mjs';
 
 // One WebSocket per open board at /api/trees/<id>/board (docs/board-spec.md); chat replies stay on server-sent events.
 export function boardSockets(ctx, server) {
@@ -23,8 +24,12 @@ export function boardSockets(ctx, server) {
         )
             return refuse(403);
         if (!ctx.store.header(id)) return refuse(404);
+        // The board's Voice language from Settings, English unless it names one in the voice table.
+        const lang = Object.hasOwn(VOICES, url.searchParams.get('lang'))
+            ? url.searchParams.get('lang')
+            : 'en';
         sockets.handleUpgrade(req, socket, head, (ws) =>
-            boardSession(ctx, id, ws, url.searchParams.get('mode') === 'guided'),
+            boardSession(ctx, id, ws, lang, url.searchParams.get('mode') === 'guided'),
         );
     });
 }

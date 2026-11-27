@@ -230,12 +230,60 @@ test('the desktop app shows the Discord status switch and reports its choice', a
     assert.deepEqual(choices, [false]);
 });
 
-test('the Board page has push-to-talk off and learner-led by default, and keeps the choices for boards', async (t) => {
-    fakeServer(t, () => ({ first: null, events: [] }));
-    const page = await render(settings(), ui);
+test('the Board page has Voice language, English by default, push-to-talk off and learner-led by default, keeping the choices for boards', async (t) => {
+    let downloaded = false;
+    const calls = fakeServer(t, (path) =>
+        path.startsWith('/api/settings/voice-models')
+            ? { downloaded }
+            : { first: null, events: [] },
+    );
+    let dom;
+    const page = await render(settings(), (w) => (dom = ui(w)));
     t.after(page.cleanup);
     await page.act(async () => document.getElementById('settings-board').click());
     assert.equal(document.getElementById('settings-section-board').textContent, 'Board');
+    const section = () => document.querySelector('[aria-labelledby="settings-section-board"]');
+
+    const lang = [...section().querySelectorAll('[role=combobox]')].find(
+        (b) => b.labels?.[0]?.textContent === 'Voice language',
+    );
+    assert.equal(lang.textContent, 'English');
+    assert.doesNotMatch(section().textContent, /larger speech model/);
+    await page.act(async () => lang.click());
+    await page.act(async () => dom.frames());
+    const options = [
+        ...document
+            .getElementById(lang.getAttribute('aria-controls'))
+            .querySelectorAll('[role=option]'),
+    ];
+    assert.deepEqual(
+        options.map((o) => o.textContent.trim()),
+        [
+            'English',
+            'Chinese',
+            'Dutch',
+            'French',
+            'German',
+            'Italian',
+            'Japanese',
+            'Portuguese',
+            'Spanish',
+        ],
+    );
+    await page.act(async () => options.find((o) => o.textContent.trim() === 'German').click());
+    await page.act(async () => dom.frames());
+    assert.equal(window.localStorage.getItem('rabbithole.voice-language'), 'de');
+    assert.ok(calls.some((c) => c.path === '/api/settings/voice-models?lang=de'));
+    assert.match(
+        section().textContent,
+        /German needs a larger speech model, about 77 MB\. It downloads the next time you press the mic on a board\./,
+    );
+    // Once the model is on this computer, the line goes away.
+    downloaded = true;
+    await page.act(async () => document.getElementById('settings-interface').click());
+    await page.act(async () => document.getElementById('settings-board').click());
+    assert.doesNotMatch(section().textContent, /larger speech model/);
+
     const ptt = [...page.container.querySelectorAll('[role=switch]')].find(
         (s) => s.labels[0]?.textContent === 'Push-to-talk',
     );

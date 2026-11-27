@@ -6,7 +6,18 @@ const { Constants } = require('@andresaya/edge-tts');
 const protocol = require('@andresaya/edge-tts/dist/core/protocol.js');
 
 // One fixed voice per Voice language (docs/board-spec.md); videos keep their own voice.
-export const VOICES = { en: 'en-US-AriaNeural' };
+// The keys are also the Settings list (src/shell/preferences.ts VOICE_LANGUAGES).
+export const VOICES = {
+    en: 'en-US-AriaNeural',
+    zh: 'zh-CN-XiaoxiaoNeural',
+    nl: 'nl-NL-ColetteNeural',
+    fr: 'fr-FR-DeniseNeural',
+    de: 'de-DE-KatjaNeural',
+    it: 'it-IT-ElsaNeural',
+    ja: 'ja-JP-NanamiNeural',
+    pt: 'pt-BR-FranciscaNeural',
+    es: 'es-ES-ElviraNeural',
+};
 // Firefox's MediaSource plays WebM Opus but not MP3 (src/board/voice.ts).
 const FORMAT = 'webm-24khz-16bit-mono-opus';
 // edge-tts fails in bursts with sockets that open but send nothing (docs/board-spec.md).

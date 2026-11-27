@@ -74,9 +74,9 @@ export function createApp({
     videoNarrate,
     videoManim,
     videoEmbed = null,
-    // Makes a board session's speech client (server/board/speech.mjs); off in tests, so boards play captions only.
+    // Makes a board session's speech client for a Voice language (server/board/speech.mjs); off in tests, so boards play captions only.
     speech = null,
-    // The board's filler clips, a promise of audio buffers (server/board/fillers.mjs); off in tests like speech.
+    // The board's filler clips for a Voice language, a promise of audio buffers or null (server/board/fillers.mjs); off in tests like speech.
     fillers = null,
     // Loads the board's speech models for voice questions (server/board/hearing.mjs); tests pass a fake one.
     hearing = null,
