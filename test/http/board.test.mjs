@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { existsSync, readFileSync } from 'node:fs';
 import WebSocket from 'ws';
+import sharp from 'sharp';
 import { complete, open, until } from '../support/diagram-kit.mjs';
 import { notify } from '../support/events.mjs';
 
@@ -16,12 +18,15 @@ function boardProvider(scripts, { status = 'completed' } = {}) {
                 opened: 0,
                 closed: false,
                 asked: [],
+                images: [],
                 signals: [],
                 thread: 'board-session',
                 open: () => (board.opened++, notify()),
                 close: () => ((board.closed = true), notify()),
-                async ask(text, emit, signal) {
+                async ask(text, emit, signal, images = []) {
                     board.asked.push(text);
+                    // The files last only for the turn, so the test keeps their bytes.
+                    board.images.push(images.map((i) => ({ ...i, bytes: readFileSync(i.path) })));
                     board.signals.push(signal);
                     for (const chunk of scripts.shift() ?? []) {
                         if (signal.aborted) return { status: 'interrupted' };
@@ -288,6 +293,7 @@ test('board: pen strokes wait for the next question, which names what they mark,
         provider.boards[0].asked[1],
         'Why here?\n\npen: circled t1 · pointed at t2 · strokes p1, p2, p3',
     );
+    assert.deepEqual(provider.boards[0].images[1], [], 'a model that reads no images gets none');
     const question = messages(env, id)[2];
     assert.equal(question.text, 'Why here?', 'the learner message keeps their own words');
 
@@ -298,6 +304,39 @@ test('board: pen strokes wait for the next question, which names what they mark,
         (await again.next('board')).items.map((i) => i.id),
         ['t1', 't2', 'p2', 'p3'],
     );
+});
+
+test('board: a stroke in free space goes with the next question as a cropped image when the model reads images', async (t) => {
+    const provider = boardProvider([['> I see your sketch.\n']]);
+    provider.readsImages = true;
+    const { connect } = await setup(t, provider);
+    const board = connect();
+    await opened(board.ws);
+    await until(() => provider.boards[0]?.opened);
+    board.send({
+        type: 'stroke',
+        points: [
+            [1400, 100],
+            [1500, 160],
+        ],
+    });
+    assert.equal((await board.next('stroke')).mark, null);
+    board.send({ type: 'ask', text: 'Like this?' });
+    const sentence = await board.next('sentence');
+    for (const phase of ['start', 'end'])
+        board.send({ type: 'progress', sentence: sentence.id, phase });
+    await board.next('state', (e) => e.state === 'idle');
+    const [asked] = provider.boards[0].asked;
+    assert.equal(asked, 'Like this?\n\npen: strokes p1 · images of p1 attached');
+    const [image] = provider.boards[0].images[0];
+    assert.equal(image.type, 'image/png');
+    const meta = await sharp(image.bytes).metadata();
+    assert.deepEqual(
+        [meta.format, meta.width, meta.height],
+        ['png', 180, 140],
+        'the stroke plus 40 px around it',
+    );
+    assert.equal(existsSync(image.path), false, 'the file goes once the turn ends');
 });
 
 test('board: a stroke drawn after an erase that was never shown keeps its own id and comes back on reopen', async (t) => {
