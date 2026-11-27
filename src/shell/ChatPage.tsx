@@ -367,6 +367,7 @@ export default function ChatPage({
                                             rename={actions.rename}
                                             finishRename={actions.finishRename}
                                             askOnSide={branchForm.askOnSide}
+                                            reloadTree={trees.reloadOpen}
                                         />
                                     ) : (
                                         <VStack gap={0} className="overview">

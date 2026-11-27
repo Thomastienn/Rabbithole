@@ -204,7 +204,11 @@ try {
             await home();
             await nav();
             await b('click', '.tree-search');
-            await b('fill', 'dialog[open][aria-label="Search inside conversations"] input', 'fungi');
+            await b(
+                'fill',
+                'dialog[open][aria-label="Search inside conversations"] input',
+                'fungi',
+            );
             await wait(
                 `document.querySelectorAll('dialog[open][aria-label="Search inside conversations"] [role=option]').length > 0`,
             );

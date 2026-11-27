@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Text, Heading } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
@@ -16,8 +16,9 @@ import TurnRail from './TurnRail';
 import { inkStyle } from '../map/treeList';
 import OriginStrip, { backTarget } from './OriginStrip';
 import TitleEditor from './TitleEditor';
-import ChatHeadingRow from './ChatHeader';
+import ChatHeadingRow, { BoardToggle } from './ChatHeader';
 import ChatThread, { type ThreadProps } from './ChatThread';
+import Board from '../board/Board';
 import {
     AttachButton,
     PendingAttachments,
@@ -69,9 +70,12 @@ export default function FocusedChat({
     rename,
     finishRename,
     askOnSide,
+    reloadTree,
 }: {
     tree: Tree;
     active: boolean;
+    // Brings the conversation up to date after its board closes.
+    reloadTree: () => void;
     modelMenu: React.ReactNode;
     // Passed on to the thread; the header and composer read its conversations and send too.
     thread: ThreadProps;
@@ -106,6 +110,10 @@ export default function FocusedChat({
     const files = pendingFiles[tree.id] ?? [];
     const setFiles = (next: File[]) => setPending(tree.id, next);
     const attach = useAttach(files, setFiles, active || (!!models && !models.length));
+    // The conversation whose board is on; another conversation, or the map, shows normal chat and stops the tutor.
+    const [board, setBoard] = useState<string>();
+    const boardOpen = board === tree.id && !overview;
+    const toggleBoard = () => setBoard(boardOpen ? undefined : tree.id);
     useEffect(() => {
         if (!statsOpen) return;
         const frame = requestAnimationFrame(() =>
@@ -171,9 +179,12 @@ export default function FocusedChat({
     );
     return (
         <>
-            <header className="chat-header">
+            <header className={boardOpen ? 'chat-header board-header' : 'chat-header'}>
                 <VStack paddingInline={2} paddingBlock={1} gap={1}>
                     {/* Narrow (mockup narrow.html): the title sits under the app bar; the origin line, drawer and Esc navigate. */}
+                    {mobile && !overview && (
+                        <BoardToggle board={boardOpen} toggleBoard={toggleBoard} />
+                    )}
                     {!mobile && (
                         <ChatHeadingRow
                             parentTitle={
@@ -193,6 +204,8 @@ export default function FocusedChat({
                             toggleExpanded={toggleExpanded}
                             returnToTree={returnToTree}
                             rename={() => setRenaming({ id: tree.id, place: 'header' })}
+                            board={boardOpen}
+                            toggleBoard={toggleBoard}
                         />
                     )}
                     {modelNotice && (
@@ -238,197 +251,212 @@ export default function FocusedChat({
                     Saved source passage is unavailable. No replacement passage was selected.
                 </Text>
             )}
-            <ChatLayout
-                density="balanced"
-                composer={
-                    <ChatComposer
-                        className={`attachment-composer${attach.dropping ? ' is-dropping' : ''}`}
-                        {...attach.zone}
-                        elevation="none"
-                        sendButton={
-                            models && !models.length && !active ? (
-                                <IconButton
-                                    label="Send"
-                                    icon={<ArrowUpIcon />}
-                                    variant="primary"
-                                    isDisabled
-                                />
-                            ) : files.length && !(drafts[tree.id] ?? '').trim() && !active ? (
-                                // The composer's own send needs text; files alone are a question too.
-                                <IconButton
-                                    label="Send"
-                                    icon={<ArrowUpIcon />}
-                                    variant="primary"
-                                    onClick={() => {
-                                        attach.clear();
-                                        void send('', tree, false, files);
-                                    }}
-                                />
-                            ) : undefined
-                        }
-                        sendActions={
-                            replied && (
-                                <Button
-                                    className="ask-side"
-                                    label="Ask on the side"
-                                    variant="secondary"
-                                    size="md"
-                                    icon={
-                                        <svg viewBox="0 0 16 16" aria-hidden className="fork-icon">
-                                            <path d="M2 8H6L10 4H14M6 8L10 12H14" />
-                                        </svg>
-                                    }
-                                    tooltip={
-                                        sideBlocked ??
-                                        'Opens a new branch with this question, keeping this conversation clean'
-                                    }
-                                    isDisabled={!!sideBlocked || branching}
-                                    onClick={() => void askOnSide(draft)}
-                                />
-                            )
-                        }
-                        footerActions={
-                            <>
-                                <AttachButton
-                                    add={attach.add}
-                                    isDisabled={active || (!!models && !models.length)}
-                                />
-                                {modelMenu}
-                            </>
-                        }
-                        value={drafts[tree.id] ?? ''}
-                        onChange={(value) => setDraft(tree.id, value)}
-                        onSubmit={(text) => {
-                            if (models && !models.length) return;
-                            attach.clear();
-                            void send(text, tree, false, files);
-                        }}
-                        isStopShown={active}
-                        onStop={() => stop(tree.id)}
-                        input={
-                            // Tray and notices go in the input slot so they sit inside the composer's frame.
-                            <>
-                                <PendingAttachments
-                                    files={files}
-                                    remove={(i) => setFiles(files.filter((_, j) => j !== i))}
-                                />
-                                {models && !models.length && noModelNote}
-                                {attach.notices}
-                                <ChatComposerInput
-                                    handleRef={composer}
-                                    onFiles={attach.add}
-                                    label="Your question"
-                                    maxRows={4}
-                                    value={drafts[tree.id] ?? ''}
-                                    onChange={(value) => setDraft(tree.id, value)}
-                                    // Typing stays open during a reply; only Enter waits for it to end.
-                                    onKeyDown={(e) => active && holdEnter(e)}
-                                    isDisabled={!!models && !models.length}
-                                    placeholder={
-                                        models && !models.length
-                                            ? 'Sign in to a provider to ask'
-                                            : files.length
-                                              ? pendingPlaceholder(files.length)
-                                              : 'What would you like to understand?'
-                                    }
-                                />
-                            </>
-                        }
-                    />
-                }
-            >
-                <ChatMessageList gap={2} align="top" isStreaming={active}>
-                    <VStack gap={0} className="chat-title conv-title">
-                        {renaming?.id === tree.id && renaming.place === 'header' ? (
-                            <TitleEditor
-                                key={tree.id}
-                                title={tree.title}
-                                save={(title) => rename(tree.id, title)}
-                                cancel={finishRename}
-                            />
-                        ) : (
-                            <Button
-                                id="rename-conversation"
-                                className="rename-title"
-                                label="Rename conversation"
-                                tooltip={tree.title}
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setRenaming({ id: tree.id, place: 'header' })}
-                            >
-                                <span
-                                    className="address-chip title-chip"
-                                    aria-hidden
-                                    style={inkStyle(addresses.get(tree.id)?.ink ?? 0)}
-                                >
-                                    {addresses.get(tree.id)?.address}
-                                </span>
-                                <Heading
-                                    level={2}
-                                    style={{
-                                        viewTransitionName:
-                                            !overview && transitionBox ? 'conversation' : undefined,
-                                    }}
-                                >
-                                    {tree.title}
-                                </Heading>
-                            </Button>
-                        )}
-                    </VStack>
-                    <TokenStats
-                        open={statsOpen}
-                        panel={statsPanel}
-                        messages={tree.messages}
-                        suggestions={tree.suggestions}
-                    />
-                    {tree.branch && (
-                        <OriginStrip
-                            branch={tree.branch}
-                            // The thread's first bubble already shows the question; the origin line shows it only when no question is saved.
-                            question={
-                                tree.messages.some((m) => m.role === 'user')
-                                    ? undefined
-                                    : tree.branch.question
+            {boardOpen ? (
+                <Board
+                    key={tree.id}
+                    conversation={tree.id}
+                    messages={tree.messages}
+                    reload={reloadTree}
+                />
+            ) : (
+                <ChatLayout
+                    density="balanced"
+                    composer={
+                        <ChatComposer
+                            className={`attachment-composer${attach.dropping ? ' is-dropping' : ''}`}
+                            {...attach.zone}
+                            elevation="none"
+                            sendButton={
+                                models && !models.length && !active ? (
+                                    <IconButton
+                                        label="Send"
+                                        icon={<ArrowUpIcon />}
+                                        variant="primary"
+                                        isDisabled
+                                    />
+                                ) : files.length && !(drafts[tree.id] ?? '').trim() && !active ? (
+                                    // The composer's own send needs text; files alone are a question too.
+                                    <IconButton
+                                        label="Send"
+                                        icon={<ArrowUpIcon />}
+                                        variant="primary"
+                                        onClick={() => {
+                                            attach.clear();
+                                            void send('', tree, false, files);
+                                        }}
+                                    />
+                                ) : undefined
                             }
-                            parentAddress={addresses.get(tree.branch.parent)?.address ?? ''}
-                            parentTitle={
-                                trees.find((t) => t.id === tree.branch!.parent)?.title ??
-                                'parent conversation'
-                            }
-                            openParent={(source) =>
-                                void openConversation(
-                                    tree.branch!.parent,
-                                    source,
-                                    undefined,
-                                    tree.branch!.messageId,
+                            sendActions={
+                                replied && (
+                                    <Button
+                                        className="ask-side"
+                                        label="Ask on the side"
+                                        variant="secondary"
+                                        size="md"
+                                        icon={
+                                            <svg
+                                                viewBox="0 0 16 16"
+                                                aria-hidden
+                                                className="fork-icon"
+                                            >
+                                                <path d="M2 8H6L10 4H14M6 8L10 12H14" />
+                                            </svg>
+                                        }
+                                        tooltip={
+                                            sideBlocked ??
+                                            'Opens a new branch with this question, keeping this conversation clean'
+                                        }
+                                        isDisabled={!!sideBlocked || branching}
+                                        onClick={() => void askOnSide(draft)}
+                                    />
                                 )
                             }
+                            footerActions={
+                                <>
+                                    <AttachButton
+                                        add={attach.add}
+                                        isDisabled={active || (!!models && !models.length)}
+                                    />
+                                    {modelMenu}
+                                </>
+                            }
+                            value={drafts[tree.id] ?? ''}
+                            onChange={(value) => setDraft(tree.id, value)}
+                            onSubmit={(text) => {
+                                if (models && !models.length) return;
+                                attach.clear();
+                                void send(text, tree, false, files);
+                            }}
+                            isStopShown={active}
+                            onStop={() => stop(tree.id)}
+                            input={
+                                // Tray and notices go in the input slot so they sit inside the composer's frame.
+                                <>
+                                    <PendingAttachments
+                                        files={files}
+                                        remove={(i) => setFiles(files.filter((_, j) => j !== i))}
+                                    />
+                                    {models && !models.length && noModelNote}
+                                    {attach.notices}
+                                    <ChatComposerInput
+                                        handleRef={composer}
+                                        onFiles={attach.add}
+                                        label="Your question"
+                                        maxRows={4}
+                                        value={drafts[tree.id] ?? ''}
+                                        onChange={(value) => setDraft(tree.id, value)}
+                                        // Typing stays open during a reply; only Enter waits for it to end.
+                                        onKeyDown={(e) => active && holdEnter(e)}
+                                        isDisabled={!!models && !models.length}
+                                        placeholder={
+                                            models && !models.length
+                                                ? 'Sign in to a provider to ask'
+                                                : files.length
+                                                  ? pendingPlaceholder(files.length)
+                                                  : 'What would you like to understand?'
+                                        }
+                                    />
+                                </>
+                            }
                         />
-                    )}
-                    <InheritedContext
-                        branch={tree.branch}
-                        parentAddress={addresses.get(tree.branch?.parent ?? '')?.address ?? ''}
-                    />
-                    {!tree.messages.length && (
-                        <VStack gap={3} padding={6}>
-                            <Heading level={3}>What are you curious about?</Heading>
-                            <Text color="secondary">
-                                Ask about a concept, work through an example, or pick up a question
-                                you have been carrying.
-                            </Text>
+                    }
+                >
+                    <ChatMessageList gap={2} align="top" isStreaming={active}>
+                        <VStack gap={0} className="chat-title conv-title">
+                            {renaming?.id === tree.id && renaming.place === 'header' ? (
+                                <TitleEditor
+                                    key={tree.id}
+                                    title={tree.title}
+                                    save={(title) => rename(tree.id, title)}
+                                    cancel={finishRename}
+                                />
+                            ) : (
+                                <Button
+                                    id="rename-conversation"
+                                    className="rename-title"
+                                    label="Rename conversation"
+                                    tooltip={tree.title}
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setRenaming({ id: tree.id, place: 'header' })}
+                                >
+                                    <span
+                                        className="address-chip title-chip"
+                                        aria-hidden
+                                        style={inkStyle(addresses.get(tree.id)?.ink ?? 0)}
+                                    >
+                                        {addresses.get(tree.id)?.address}
+                                    </span>
+                                    <Heading
+                                        level={2}
+                                        style={{
+                                            viewTransitionName:
+                                                !overview && transitionBox
+                                                    ? 'conversation'
+                                                    : undefined,
+                                        }}
+                                    >
+                                        {tree.title}
+                                    </Heading>
+                                </Button>
+                            )}
                         </VStack>
-                    )}
-                    <ChatThread
-                        {...thread}
-                        tree={tree}
-                        overview={overview}
-                        active={active}
-                        source={source}
-                        validSource={validSource}
-                    />
-                </ChatMessageList>
-            </ChatLayout>
-            {!mobile && !overview && questions.length > 1 && (
+                        <TokenStats
+                            open={statsOpen}
+                            panel={statsPanel}
+                            messages={tree.messages}
+                            suggestions={tree.suggestions}
+                        />
+                        {tree.branch && (
+                            <OriginStrip
+                                branch={tree.branch}
+                                // The thread's first bubble already shows the question; the origin line shows it only when no question is saved.
+                                question={
+                                    tree.messages.some((m) => m.role === 'user')
+                                        ? undefined
+                                        : tree.branch.question
+                                }
+                                parentAddress={addresses.get(tree.branch.parent)?.address ?? ''}
+                                parentTitle={
+                                    trees.find((t) => t.id === tree.branch!.parent)?.title ??
+                                    'parent conversation'
+                                }
+                                openParent={(source) =>
+                                    void openConversation(
+                                        tree.branch!.parent,
+                                        source,
+                                        undefined,
+                                        tree.branch!.messageId,
+                                    )
+                                }
+                            />
+                        )}
+                        <InheritedContext
+                            branch={tree.branch}
+                            parentAddress={addresses.get(tree.branch?.parent ?? '')?.address ?? ''}
+                        />
+                        {!tree.messages.length && (
+                            <VStack gap={3} padding={6}>
+                                <Heading level={3}>What are you curious about?</Heading>
+                                <Text color="secondary">
+                                    Ask about a concept, work through an example, or pick up a
+                                    question you have been carrying.
+                                </Text>
+                            </VStack>
+                        )}
+                        <ChatThread
+                            {...thread}
+                            tree={tree}
+                            overview={overview}
+                            active={active}
+                            source={source}
+                            validSource={validSource}
+                        />
+                    </ChatMessageList>
+                </ChatLayout>
+            )}
+            {!boardOpen && !mobile && !overview && questions.length > 1 && (
                 <TurnRail questions={questions} jump={(message) => jump(tree.id, message)} />
             )}
         </>

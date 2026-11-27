@@ -177,10 +177,11 @@ export const trees = {
                 branch: this.branchOf(id),
                 messages: this.db
                     .prepare(
-                        'SELECT id,role,text,status,stopped,usage,questions,memory FROM messages WHERE tree=? ORDER BY seq',
+                        'SELECT id,role,text,status,stopped,usage,questions,memory,board FROM messages WHERE tree=? ORDER BY seq',
                     )
                     .all(id)
-                    .map(({ usage, stopped, questions, memory, ...m }) => {
+                    .map(({ usage, stopped, questions, memory, board, ...m }) => {
+                        if (board) m.board = true;
                         if (m.role !== 'assistant') {
                             const attachments = this.attachments(id, m.id);
                             return attachments.length ? { ...m, attachments } : m;
@@ -450,6 +451,10 @@ export const trees = {
         });
         // Citations are rebuilt once the reply settles, not on every streamed save.
         if (status !== 'streaming') this.cite(id, text);
+    },
+    // Marks a message as asked or said on the board.
+    onBoard(id) {
+        this.db.prepare('UPDATE messages SET board=1 WHERE id=?').run(id);
     },
     nextQuestions(id, questions) {
         this.db

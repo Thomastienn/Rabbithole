@@ -16,7 +16,17 @@ import { inkStyle } from '../map/treeList';
 
 type Conversation = { id: string; title: string };
 
-// One header row: back to parent, path breadcrumbs, token stats, map toggle, close and overflow.
+export function BoardToggle({ board, toggleBoard }: { board: boolean; toggleBoard: () => void }) {
+    return (
+        <label className="board-toggle">
+            <input type="checkbox" role="switch" checked={board} onChange={toggleBoard} />
+            <span aria-hidden />
+            Board
+        </label>
+    );
+}
+
+// One header row: back to parent, path breadcrumbs, the Board toggle, token stats, map toggle, close and overflow.
 export default function ChatHeadingRow({
     parentTitle,
     ancestors,
@@ -30,6 +40,8 @@ export default function ChatHeadingRow({
     toggleExpanded,
     returnToTree,
     rename,
+    board,
+    toggleBoard,
 }: {
     parentTitle?: string;
     ancestors: Conversation[];
@@ -43,10 +55,12 @@ export default function ChatHeadingRow({
     toggleExpanded: () => void;
     returnToTree: () => void;
     rename: () => void;
+    board: boolean;
+    toggleBoard: () => void;
 }) {
     return (
         <HStack gap={1} vAlign="center" className="chat-heading-row">
-            {parentTitle && (
+            {!board && parentTitle && (
                 <IconButton
                     label="Return to parent conversation"
                     tooltip={`Back to ${parentTitle}`}
@@ -57,20 +71,22 @@ export default function ChatHeadingRow({
                 />
             )}
             <nav className="crumbs" aria-label="Path in this learning tree">
-                {ancestors.map((t) => (
-                    <Fragment key={t.id}>
-                        <Button
-                            className="crumb"
-                            label={`${addresses.get(t.id)?.address ?? ''} ${t.title}`.trim()}
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => open(t.id)}
-                        >
-                            <span className="addr">{addresses.get(t.id)?.address}</span> {t.title}
-                        </Button>
-                        <ChevronRightIcon className="crumb-sep" aria-hidden />
-                    </Fragment>
-                ))}
+                {!board &&
+                    ancestors.map((t) => (
+                        <Fragment key={t.id}>
+                            <Button
+                                className="crumb"
+                                label={`${addresses.get(t.id)?.address ?? ''} ${t.title}`.trim()}
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => open(t.id)}
+                            >
+                                <span className="addr">{addresses.get(t.id)?.address}</span>{' '}
+                                {t.title}
+                            </Button>
+                            <ChevronRightIcon className="crumb-sep" aria-hidden />
+                        </Fragment>
+                    ))}
                 <strong aria-current="location">
                     <span
                         className="addr address-chip"
@@ -81,22 +97,26 @@ export default function ChatHeadingRow({
                     {current.title}
                 </strong>
             </nav>
+            <BoardToggle board={board} toggleBoard={toggleBoard} />
             <TokenStatsToggle open={statsOpen} toggle={toggleStats} />
-            <IconButton
-                className="expand-chat"
-                aria-pressed={!expanded}
-                aria-controls="learning-tree-map"
-                label={expanded ? 'Show map beside chat' : 'Expand chat'}
-                tooltip={expanded ? 'Show map beside chat' : 'Expand chat'}
-                icon={<ViewColumnsIcon />}
-                variant="ghost"
-                size="sm"
-                onClick={toggleExpanded}
-            />
+            {/* The board takes the full width with the map hidden, so there is no map to give way to. */}
+            {!board && (
+                <IconButton
+                    className="expand-chat"
+                    aria-pressed={!expanded}
+                    aria-controls="learning-tree-map"
+                    label={expanded ? 'Show map beside chat' : 'Expand chat'}
+                    tooltip={expanded ? 'Show map beside chat' : 'Expand chat'}
+                    icon={<ViewColumnsIcon />}
+                    variant="ghost"
+                    size="sm"
+                    onClick={toggleExpanded}
+                />
+            )}
             <IconButton
                 label="Return to tree"
                 tooltip="Back to map (Esc)"
-                icon={<XMarkIcon />}
+                icon={board ? <ArrowUturnLeftIcon /> : <XMarkIcon />}
                 variant="ghost"
                 size="sm"
                 onClick={returnToTree}

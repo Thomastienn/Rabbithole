@@ -11,7 +11,8 @@ test('chat header row: return to parent, path crumbs, stats and map toggles, clo
     let dom;
     function Fixture({ parentTitle }) {
         const [statsOpen, setStats] = useState(false),
-            [expanded, setExpanded] = useState(false);
+            [expanded, setExpanded] = useState(false),
+            [board, setBoard] = useState(false);
         return h(ChatHeadingRow, {
             parentTitle,
             ancestors: [{ id: 'root', title: 'Mutex basics' }],
@@ -28,6 +29,8 @@ test('chat header row: return to parent, path crumbs, stats and map toggles, clo
             toggleExpanded: () => setExpanded((v) => !v),
             returnToTree: () => calls.push(['map']),
             rename: () => calls.push(['rename']),
+            board,
+            toggleBoard: () => setBoard((v) => !v),
         });
     }
     const { container, act, cleanup } = await render(
@@ -72,5 +75,19 @@ test('chat header row: return to parent, path crumbs, stats and map toggles, clo
     await menuItem('Hide token stats');
     assert.equal(button(container, 'Token stats').getAttribute('aria-pressed'), 'false');
     await menuItem('Rename conversation');
+    // The Board toggle switches the conversation to its board, which has no map to give way to.
+    const boardSwitch = container.querySelector('[role=switch]');
+    assert.ok(boardSwitch && !boardSwitch.checked);
+    await act(async () => boardSwitch.click());
+    assert.ok(container.querySelector('[role=switch]').checked);
+    assert.equal(button(container, 'Show map beside chat'), undefined);
+    assert.equal(button(container, 'Return to parent conversation'), undefined);
+    assert.equal(
+        nav.querySelectorAll('button').length,
+        0,
+        'the board header shows only the current title',
+    );
+    await act(async () => container.querySelector('[role=switch]').click());
+    assert.ok(button(container, 'Show map beside chat'), 'off again, the map toggle returns');
     assert.deepEqual(calls, [['parent'], ['open', 'root'], ['map'], ['rename']]);
 });

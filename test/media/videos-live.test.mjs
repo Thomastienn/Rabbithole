@@ -143,7 +143,7 @@ test('a video plays live once cuts 1 and 2 are ready while later cuts are pendin
                 v.live,
                 v.origin,
             ]),
-            [[id, tree.id, 'Video']],
+            [[id, tree.id, '1 · Video']],
         );
         await release('third');
         await until(async () => (await artifact()).status === 'ready');
