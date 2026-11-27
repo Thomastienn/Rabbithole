@@ -71,20 +71,26 @@ test('board: a filler plays only when a turn’s first audio is over 1 s late, n
         clearTimeout: (run) => timers.includes(run) && timers.splice(timers.indexOf(run), 1),
     };
     const fillers = Promise.resolve([Buffer.from('hmm'), Buffer.from('okay'), Buffer.from('ah')]);
+    // A fixed pick: without the no-repeat rule both slow turns would play 'hmm'.
+    t.mock.method(Math, 'random', () => 0);
     const { env, id, connect } = await setup(t, provider, {
         app: { speech: () => client, fillers: () => fillers, boardClock },
     });
     const board = connect();
     await opened(board.ws);
+    // Every filler frame the board receives, which board.next would otherwise splice away.
+    const played = [];
+    board.ws.on('message', (data, binary) => {
+        if (binary && data.subarray(1, 1 + data[0]).toString() === 'filler')
+            played.push(data.subarray(1 + data[0]).toString());
+    });
     const turn = async (question, slow) => {
         board.send({ type: 'ask', text: question });
         await board.next('state', (e) => e.state === 'thinking');
         const sentence = await board.next('sentence');
         if (!slow) await board.next('audio-end', (e) => e.id === sentence.id);
         timers.splice(0).forEach((run) => run());
-        let filler;
         if (slow) {
-            filler = await board.next('audio', (e) => e.id === 'filler');
             await board.next('audio-end', (e) => e.id === 'filler');
             release.resolve();
             release = Promise.withResolvers();
@@ -93,14 +99,15 @@ test('board: a filler plays only when a turn’s first audio is over 1 s late, n
         board.send({ type: 'progress', sentence: sentence.id, phase: 'start' });
         board.send({ type: 'progress', sentence: sentence.id, phase: 'end' });
         await board.next('state', (e) => e.state === 'idle');
-        return filler?.audio;
     };
-    const first = await turn('Why?', true);
-    const second = await turn('And then?', true);
-    assert.ok(first && second);
-    assert.notEqual(second, first, 'the same filler never plays twice in a row');
-    assert.equal(await turn('Last?', false), undefined, 'no filler once audio has started');
-    assert.ok(!board.events.some((e) => e.id === 'filler'), 'nothing late from the third turn');
+    await turn('Why?', true);
+    await turn('And then?', true);
+    await turn('Last?', false);
+    assert.deepEqual(
+        played,
+        ['hmm', 'okay'],
+        'one filler per slow turn, never the same twice in a row, none once audio has started',
+    );
     assert.deepEqual(
         messages(env, id)
             .filter((m) => m.role === 'assistant')
