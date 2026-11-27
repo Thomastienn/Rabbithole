@@ -112,7 +112,7 @@
     grid-column: 1 / -1;
     inset: -3px -6px;
     border: 2px dotted transparent;
-    border-radius: 4px;
+    border-radius: var(--radius-inner);
     transition: border-color 120ms;
 }
 /* A tap on a touch screen leaves :hover on the tapped item, which is the one its box opens on. */
