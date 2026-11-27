@@ -149,3 +149,14 @@
 .sketch-pie .share {
     font-size: 13px;
 }
+@media (prefers-reduced-motion: no-preference) {
+    .sketch-build :is(svg > *, .sketch-bars > *, .sketch-compare > *, .sketch-pie dl > *) {
+        animation: sketch-in var(--fade) ease-out both;
+        animation-delay: calc(var(--i, 0) * var(--step));
+    }
+}
+@keyframes sketch-in {
+    from {
+        opacity: 0;
+    }
+}

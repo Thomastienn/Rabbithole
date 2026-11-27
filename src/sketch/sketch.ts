@@ -150,36 +150,34 @@ function flow(lines: Line[], p: Palette): Drawing {
     let bottom = 0;
     const text = (tx: number, ty: number, words: string, style: string, note = false) =>
         `<text${note ? ' class="sketch-note"' : ''} x="${tx}" y="${ty}" style="${style}">${esc(words)}</text>`;
-    const labels = names.flatMap((n) =>
-        wrap(n, column - 24).map((l, i) => {
+    // One group per item, in the items' order; `--i` is its place in the sketch's build.
+    const groups = names.map((n, k) => {
+        const f = focus.has(n);
+        const notes = runs
+            .filter((r) => r.e.label && r.e.b === n)
+            .map((r) =>
+                text((r.from + x(r.e.b)) / 2, y(r.e.b) - 16, r.e.label, `fill:${p.muted}`, true),
+            );
+        const station = f
+            ? `<circle cx="${x(n)}" cy="${y(n)}" r="7" style="fill:${p.focus};stroke:${p.focus}"/>`
+            : `<circle cx="${x(n)}" cy="${y(n)}" r="6" style="fill:${p.ground};stroke:${p.muted}"/>`;
+        const labels = wrap(n, column - 24).map((l, i) => {
             const baseline = y(n) + (notesAbove ? 28 : 26) + LINE * i;
             bottom = Math.max(bottom, baseline);
-            const f = focus.has(n);
             return text(
                 x(n),
                 baseline,
                 l,
                 `fill:${f ? p.focus : p.ink}${f ? ';font-weight:600' : ''}`,
             );
-        }),
-    );
-    const arrowLabels = runs
-        .filter((r) => r.e.label)
-        .map((r) =>
-            text((r.from + x(r.e.b)) / 2, y(r.e.b) - 16, r.e.label, `fill:${p.muted}`, true),
-        );
-    const stations = names.map((n) =>
-        focus.has(n)
-            ? `<circle cx="${x(n)}" cy="${y(n)}" r="7" style="fill:${p.focus};stroke:${p.focus}"/>`
-            : `<circle cx="${x(n)}" cy="${y(n)}" r="6" style="fill:${p.ground};stroke:${p.muted}"/>`,
-    );
+        });
+        return `<g style="--i:${k}">${notes.join('')}${station}${labels.join('')}</g>`;
+    });
     const markup =
         `<svg class="sketch-flow" viewBox="0 0 ${WIDTH} ${bottom + (notesAbove ? 10 : 8)}">` +
         `<path class="sketch-line" style="stroke:${p.seam}" d="${runs.map((r) => r.d).join('')}"/>` +
         `<path class="sketch-arrow" style="stroke:${p.muted}" d="${[...chevrons].join('')}"/>` +
-        arrowLabels.join('') +
-        stations.join('') +
-        labels.join('') +
+        groups.join('') +
         '</svg>';
     const items = names.map((n) => {
         const next = edges
@@ -227,11 +225,13 @@ function bars(lines: Line[], p: Palette): Drawing {
     const markup =
         `<dl class="sketch-bars" style="color:${p.ink}">` +
         rows
-            .map((r) => {
-                const f = r.focus ? ` class="focus" style="color:${p.focus}"` : '';
+            .map((r, k) => {
+                const f = r.focus
+                    ? ` class="focus" style="--i:${k};color:${p.focus}"`
+                    : ` style="--i:${k}"`;
                 return (
                     `<dt${f}>${esc(r.label)}</dt>` +
-                    `<dd${r.focus ? ` class="focus"` : ''} style="--v:${+(r.n / max).toFixed(4)}${r.focus ? `;color:${p.focus}` : ''}">` +
+                    `<dd${r.focus ? ` class="focus"` : ''} style="--i:${k};--v:${+(r.n / max).toFixed(4)}${r.focus ? `;color:${p.focus}` : ''}">` +
                     `<s style="background:${r.focus ? p.focus : p.seam}"></s>${esc(r.value)}</dd>`
                 );
             })
@@ -265,11 +265,12 @@ function compare(lines: Line[], p: Palette): Drawing {
         rows.push(cells);
     }
     if (!rows.length) return { error: 'no aspect lines' };
-    const cell = (raw: string, role: 'name' | 'aspect' | 'value') => {
+    // `--i` is the cell's place in the sketch's build: a row's cells come together, the names with the first.
+    const cell = (raw: string, role: 'name' | 'aspect' | 'value', k = 0) => {
         const f = isFocus(raw),
             color = f ? p.focus : role === 'aspect' ? p.muted : '';
         return (
-            `<span${f ? ' class="focus"' : ''}${color ? ` style="color:${color}"` : ''}>${esc(plain(raw))}` +
+            `<span${f ? ' class="focus"' : ''} style="--i:${k}${color ? `;color:${color}` : ''}">${esc(plain(raw))}` +
             (role === 'name' ? `<s style="background:${f ? p.focus : p.seam}"></s>` : '') +
             '</span>'
         );
@@ -278,7 +279,9 @@ function compare(lines: Line[], p: Palette): Drawing {
     const markup =
         `<div class="sketch-compare" style="color:${p.ink};border-color:${p.hairline}"><span></span>` +
         names.map((n) => cell(n, 'name')).join('') +
-        rows.map(([k, x, y]) => cell(k, 'aspect') + cell(x, 'value') + cell(y, 'value')).join('') +
+        rows
+            .map(([k, x, y], i) => cell(k, 'aspect', i) + cell(x, 'value', i) + cell(y, 'value', i))
+            .join('') +
         '</div>';
     const items = rows.map((r) => {
         const [aspect, x, y] = r.map(plain),
@@ -367,14 +370,18 @@ function venn(lines: Line[], p: Palette): Drawing {
                 ),
             )
             .join('') +
+        // One group per item, in the items' order; the rings and names come with the first.
         laid
             .flatMap((s) =>
-                s.blocks.flatMap((block, i) =>
-                    block.map((words, j) =>
-                        text(s.x, cy + s.tops[i][j] + 15, words, isFocus(s.items[i])),
-                    ),
+                s.blocks.map((block, i) =>
+                    block
+                        .map((words, j) =>
+                            text(s.x, cy + s.tops[i][j] + 15, words, isFocus(s.items[i])),
+                        )
+                        .join(''),
                 ),
             )
+            .map((g, k) => `<g style="--i:${k}">${g}</g>`)
             .join('') +
         '</svg>';
     const items = stacks.flatMap((s) =>
@@ -421,7 +428,7 @@ function pie(lines: Line[], p: Palette): Drawing {
         const tone = r.focus ? p.focus : p.seam,
             half = !r.focus && i % 2 ? ';fill-opacity:0.5' : '';
         return r.n
-            ? `<path class="sketch-slice" style="fill:${tone};stroke:${p.ground}${half}" d="${d}"/>`
+            ? `<path class="sketch-slice" style="--i:${i};fill:${tone};stroke:${p.ground}${half}" d="${d}"/>`
             : '';
     });
     const markup =
@@ -430,11 +437,11 @@ function pie(lines: Line[], p: Palette): Drawing {
         rows
             .map((r, i) => {
                 const f = r.focus ? ' class="focus"' : '',
-                    ink = r.focus ? ` style="color:${p.focus}"` : '';
+                    ink = ` style="--i:${i}${r.focus ? `;color:${p.focus}` : ''}"`;
                 return (
                     `<dt${f}${ink}><s style="background:${r.focus ? p.focus : p.seam}${!r.focus && i % 2 ? ';opacity:0.5' : ''}"></s>${esc(r.label)}</dt>` +
                     (asWritten ? '' : `<dd${f}${ink}>${esc(r.value)}</dd>`) +
-                    `<dd class="share${r.focus ? ' focus' : ''}" style="color:${p.muted}">${esc(share(r))}</dd>`
+                    `<dd class="share${r.focus ? ' focus' : ''}" style="--i:${i};color:${p.muted}">${esc(share(r))}</dd>`
                 );
             })
             .join('') +
