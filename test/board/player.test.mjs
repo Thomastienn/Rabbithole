@@ -7,6 +7,7 @@ function fakeClock() {
     let now = 0;
     const timers = [];
     return {
+        now: () => now,
         setTimeout: (run, ms) => {
             const timer = { at: now + ms, run };
             timers.push(timer);
@@ -31,6 +32,7 @@ test('board player: each sentence holds the caption for 15 characters per second
         (s) => shown.push(s.text),
         () => {},
         (s, phase) => reports.push(`${s.id} ${phase}`),
+        undefined,
         clock,
     );
     const long = 'Tiny sacs called vesicles carry new wall material forward.'; // 58 characters
@@ -56,6 +58,7 @@ test('board player: stopping drops the sentences and ops not yet shown', () => {
         () => {},
         (op) => drawn.push(op.id),
         (s, phase) => reports.push(`${s.id} ${phase}`),
+        undefined,
         clock,
     );
     player.add({
@@ -82,6 +85,7 @@ test('board player: a sentence’s ops share its time equally, in order', () => 
         () => {},
         (op, ms) => drawn.push([op.id, at, Math.round(ms)]),
         () => {},
+        undefined,
         clock,
     );
     const op = (id) => ({ id, kind: 'line' });
@@ -109,4 +113,86 @@ test('board player: a sentence’s ops share its time equally, in order', () => 
         ['w3', 5667, 933],
     ]);
     player.stop();
+});
+
+// A voice driven by the test: it records what the player plays and lets the test end or fail the audio.
+function fakeVoice() {
+    const voice = { chunks: [], ends: [], playing: [], stopped: 0 };
+    return Object.assign(voice, {
+        chunk: (id, bytes) => voice.chunks.push([id, bytes.length]),
+        end: (id) => voice.ends.push(id),
+        play: (id, on) => voice.playing.push({ id, ...on }),
+        stop: () => voice.stopped++,
+    });
+}
+
+test('board player: a voiced sentence starts on its first audio chunk and lasts as long as its audio', () => {
+    const clock = fakeClock();
+    const voice = fakeVoice();
+    const shown = [],
+        reports = [],
+        drawn = [];
+    let at = 0;
+    const advance = (ms) => ((at += ms), clock.advance(ms));
+    const player = boardPlayer(
+        (s) => shown.push(s.text),
+        (op, ms) => drawn.push([op.id, at, Math.round(ms)]),
+        (s, phase) => reports.push(`${s.id} ${phase}`),
+        voice,
+        clock,
+    );
+    const op = (id) => ({ id, kind: 'dot' });
+    // 30 characters: an estimated 2 s, so each of three ops would get 667 ms.
+    player.add({
+        id: '1',
+        text: 'A hypha grows only at its tip.',
+        ops: [op('a'), op('b'), op('c')],
+        voiced: true,
+    });
+    player.add({ id: '2', text: 'No chunk ever came.', voiced: true });
+    advance(500);
+    assert.deepEqual(shown, [], 'a voiced sentence waits for its speech');
+    player.chunk('1', new Uint8Array(3));
+    assert.deepEqual(shown, ['A hypha grows only at its tip.']);
+    assert.deepEqual(
+        voice.playing.map((p) => p.id),
+        ['1'],
+        'speech plays from the first chunk',
+    );
+    assert.deepEqual(voice.chunks, [['1', 3]]);
+    assert.deepEqual(
+        drawn,
+        [['a', 500, 667]],
+        'the estimate times ops until the audio length is known',
+    );
+    advance(300);
+    player.chunk('1', new Uint8Array(2));
+    player.audioEnd('1');
+    voice.playing[0].duration(3000); // the whole clip is in: 3 s at 1.5×
+    advance(700);
+    assert.deepEqual(drawn.at(-1), ['b', 1500, 1000], 'the rest share the audio’s time');
+    advance(2000);
+    assert.deepEqual(
+        reports,
+        ['1 start'],
+        'the sentence outlasts its estimate while its audio plays',
+    );
+    voice.playing[0].ended();
+    assert.deepEqual(
+        drawn.map(([id]) => id),
+        ['a', 'b', 'c'],
+    );
+    assert.deepEqual(reports, ['1 start', '1 end'], 'the next waits for its own speech');
+    player.audioEnd('2');
+    assert.deepEqual(reports, ['1 start', '1 end', '2 start']);
+    assert.equal(voice.playing.length, 1, 'speech that ended without audio plays by its estimate');
+    advance(1267);
+    assert.deepEqual(reports.at(-1), '2 end');
+    player.add({ id: '3', text: 'The audio fails.', voiced: true });
+    player.chunk('3', new Uint8Array(1));
+    voice.playing[1].failed();
+    advance(1067);
+    assert.deepEqual(reports.at(-1), '3 end', 'audio that cannot play falls back to the estimate');
+    player.stop();
+    assert.equal(voice.stopped, 1, 'stopping silences the voice');
 });

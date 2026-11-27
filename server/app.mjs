@@ -74,6 +74,8 @@ export function createApp({
     videoNarrate,
     videoManim,
     videoEmbed = null,
+    // Makes a board session's speech client (server/board/speech.mjs); off in tests, so boards play captions only.
+    speech = null,
     // Renders library piece stills; off unless the server passes the sandbox snapshot, like suggestions in tests.
     pieceSnapshot = null,
     log = stdoutLog,
@@ -114,6 +116,7 @@ export function createApp({
         videoNarrate,
         videoManim,
         videoEmbed,
+        speech,
         neighbourhood: (text, signal) => retrieveNeighbourhood(store, videoEmbed, text, signal),
         log,
         suggestions,

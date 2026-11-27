@@ -50,12 +50,13 @@ function boardProvider(scripts, { status = 'completed' } = {}) {
     return provider;
 }
 
-async function setup(t, provider, { providerName = 'claude' } = {}) {
+async function setup(t, provider, { providerName = 'claude', speech } = {}) {
     const logs = [];
     const env = await open(
         { models: async () => [], generate: async () => {} },
         {
             providers: { claude: provider },
+            speech,
             log: (line) => {
                 logs.push(line);
                 notify();
@@ -74,8 +75,17 @@ async function setup(t, provider, { providerName = 'claude' } = {}) {
         );
         const events = [];
         ws.on('error', () => {});
-        ws.on('message', (data) => {
-            events.push(JSON.parse(data));
+        ws.on('message', (data, binary) => {
+            // A speech frame: one byte of sentence id length, the id, then the audio.
+            events.push(
+                binary
+                    ? {
+                          type: 'audio',
+                          id: data.subarray(1, 1 + data[0]).toString(),
+                          audio: data.subarray(1 + data[0]).toString(),
+                      }
+                    : JSON.parse(data),
+            );
             notify();
         });
         t.after(() => ws.terminate());
@@ -155,6 +165,55 @@ test('board: a typed question gets its sentences one at a time and saves as a le
         logs.some((l) => /task="board"/.test(l) && /thinking=0/.test(l)),
         'the request logs its thinking tokens',
     );
+});
+
+test('board: each sentence is spoken in chunks tagged with its id, one sentence ahead of playback', async (t) => {
+    const provider = boardProvider([['> One.\n> Two.\n> Three.\n']]);
+    const speech = { warmed: 0, spoken: [], closed: 0 };
+    const client = {
+        warm: () => speech.warmed++,
+        async speak(text, chunk) {
+            speech.spoken.push(text);
+            notify();
+            chunk(Buffer.from(`${text} a`));
+            chunk(Buffer.from(`${text} b`));
+        },
+        close: () => (speech.closed++, notify()),
+    };
+    const { connect } = await setup(t, provider, { speech: () => client });
+    const board = connect();
+    await opened(board.ws);
+    board.send({ type: 'ask', text: 'Why?' });
+    const of = (type, id) => board.events.filter((e) => e.type === type && (!id || e.id === id));
+    await until(() => of('sentence').length === 3);
+    const sentences = of('sentence');
+    assert.equal(speech.warmed, 1, 'the socket opens as the turn starts');
+    assert.ok(sentences.every((s) => s.voiced));
+    const [one, two, three] = sentences.map((s) => s.id);
+    const heard = async (id) => {
+        await until(() => of('audio-end', id).length);
+        return of('audio', id);
+    };
+    assert.deepEqual(await heard(one), [
+        { type: 'audio', id: one, audio: 'One. a' },
+        { type: 'audio', id: one, audio: 'One. b' },
+    ]);
+    assert.deepEqual(speech.spoken, ['One.'], 'the next sentence waits for this one to play');
+    board.send({ type: 'progress', sentence: one, phase: 'start' });
+    assert.deepEqual(
+        (await heard(two)).map((e) => e.audio),
+        ['Two. a', 'Two. b'],
+    );
+    assert.deepEqual(speech.spoken, ['One.', 'Two.']);
+    board.send({ type: 'progress', sentence: two, phase: 'start' });
+    await heard(three);
+    for (const id of [one, two, three])
+        board.send({ type: 'progress', sentence: id, phase: 'end' });
+    board.send({ type: 'progress', sentence: three, phase: 'start' });
+    board.send({ type: 'progress', sentence: three, phase: 'end' });
+    await board.next('state', (e) => e.state === 'idle');
+    board.ws.close();
+    await until(() => speech.closed);
 });
 
 test('board: opening during chat shares the finished conversation in both directions', async (t) => {
