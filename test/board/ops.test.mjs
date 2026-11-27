@@ -232,3 +232,42 @@ test('board ops: ticks keep exact values and skip a 0 an axis runs through', () 
         '2',
     ]);
 });
+
+test('board ops: flow, tree, table and venn children keep their words and are checked against their parent', () => {
+    const board = boardOps();
+    assert.deepEqual(board.read('f1 flow at 800,430 w=1400 h=260').item, {
+        id: 'f1',
+        kind: 'flow',
+        at: [800, 430],
+        w: 1400,
+        h: 260,
+        dir: 'right',
+    });
+    assert.deepEqual(board.read('s1 step "Grapes" in f1').item, {
+        id: 's1',
+        kind: 'step',
+        on: 'f1',
+        text: 'Grapes',
+    });
+    board.read('t1 tree at 800,450 w=1200 h=640');
+    board.read('c0 node "Cats" in t1');
+    assert.equal(board.read('c1 node "Big cats" in t1 under c0').item.under, 'c0');
+    assert.equal(board.read('c2 node "Small cats" in t1 under=c0').item.under, 'c0');
+    board.read('p1 table at 800,450 w=1100 h=420 cols="Planet|One spin|One year"');
+    assert.deepEqual(board.read('r1 row "Earth|1 day" in p1').item.cells, ['Earth', '1 day', '']);
+    board.read('v1 venn at 800,470 w=1100 h=620 sets="Birds|Can fly"');
+    assert.deepEqual(board.read('i1 item "Sparrow" in v1 set="can fly+Birds"').item.region, [0, 1]);
+    for (const [line, cause] of [
+        ['f2 flow at 800,800 dir=up', 'dir is right or down'],
+        ['p2 table at 300,800 w=200 h=100', 'table needs cols="A|B|C"'],
+        ['v2 venn at 300,800 w=200 h=100 sets="A"', 'venn needs sets="A|B" or "A|B|C"'],
+        ['s2 step in f1', 'step needs a "label"'],
+        ['s3 step "Wine" in t1', 'step needs flow, not tree t1'],
+        ['c3 node "Dogs" in t1', 't1 already has a root; give under NODE_ID'],
+        ['c4 node "Lion" in t1 under c9', 'unknown node c9 on t1'],
+        ['r2 row "Mars|1 day|687 days|x" in p1', 'row has more cells than p1 has cols'],
+        ['i2 item "Bat" in v1 set=Fish', 'item needs set=Birds+Can fly or some of those'],
+        ['i3 item "Bat" in v1', 'item needs set=Birds+Can fly or some of those'],
+    ])
+        assert.equal(board.read(line).error, cause, line);
+});
