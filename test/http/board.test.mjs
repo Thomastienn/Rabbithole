@@ -300,6 +300,29 @@ test('board: pen strokes wait for the next question, which names what they mark,
     );
 });
 
+test('board: a stroke drawn after an erase that was never shown keeps its own id and comes back on reopen', async (t) => {
+    // The reply fails before its erase sentence shows, so the erase of p1 is never saved.
+    const provider = boardProvider([['> One.\n> Gone.\ne1 erase p1\n'], []], { status: 'failed' });
+    const { connect } = await setup(t, provider);
+    const board = connect();
+    await opened(board.ws);
+    await until(() => provider.boards[0]?.opened);
+    const strokeAndAsk = async (text) => {
+        board.send({ type: 'stroke', points: [[1500, 100]] });
+        const { item } = await board.next('stroke');
+        board.send({ type: 'ask', text });
+        await board.next('state', (e) => e.state === 'idle');
+        return item.id;
+    };
+    assert.equal(await strokeAndAsk('First?'), 'p1');
+    assert.equal(await strokeAndAsk('Second?'), 'p2');
+    board.send({ type: 'leave' });
+    assert.deepEqual(
+        (await connect().next('board')).items.map((i) => i.id),
+        ['p1', 'p2'],
+    );
+});
+
 test('board: leaving mid-reply stops the tutor at once and saves the reply up to the sentence shown', async (t) => {
     const provider = boardProvider([['> First idea.\n> Second idea.\n> Third idea.\n']]);
     const { env, id, logs, connect } = await setup(t, provider);

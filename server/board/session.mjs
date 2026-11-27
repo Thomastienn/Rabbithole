@@ -25,7 +25,9 @@ export function boardSession(ctx, id, socket) {
         closed = false,
         count = 0,
         // The learner's strokes since the last question, as op lines and what each marks; they go with the next one.
-        pending = [];
+        pending = [],
+        // The last pen id handed out; never reused in a session, since an erase may be applied but not saved.
+        pen = 0;
     // The items drawn on this board so far, across its turns.
     const board = boardOps();
     store.boardOpLines(id).forEach((line) => board.read(line));
@@ -309,8 +311,8 @@ export function boardSession(ctx, id, socket) {
     }
     // A pen stroke becomes a board item of its own, `p<n>`, and its line waits for the next question.
     const stroke = (points) => {
-        let n = 0;
-        while (board.has(`p${++n}`));
+        while (board.has(`p${++pen}`));
+        const n = pen;
         const mark = board.mark(points);
         const line = [
             `p${n} stroke`,
