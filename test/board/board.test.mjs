@@ -147,15 +147,23 @@ test('board: reopened, it holds the latest board reply’s last sentence and its
     await board.act(async () =>
         board.socket.server({
             type: 'board',
-            items: [
-                { id: 'tip', kind: 'circle', at: [800, 450], r: 60 },
-                { id: 'v1', kind: 'dot', at: [900, 450] },
+            replies: [
+                {
+                    caption: 'Dr. Lin explains how.',
+                    items: [
+                        { id: 'tip', kind: 'circle', at: [800, 450], r: 60 },
+                        { id: 'v1', kind: 'dot', at: [900, 450] },
+                    ],
+                },
             ],
         }),
     );
     const drawn = [...board.container.querySelectorAll('svg .board-item')];
     assert.deepEqual(
-        drawn.map((g) => [g.firstElementChild.getAttribute('cx'), g.style.animationDuration]),
+        drawn.map((g) => [
+            g.firstElementChild.getAttribute('cx'),
+            g.style.getPropertyValue('--board-ms'),
+        ]),
         [
             ['800', '0ms'],
             ['900', '0ms'],
@@ -178,4 +186,85 @@ test('board: disconnecting holds the last caption and keeps a typed draft', asyn
     assert.equal(board.q('.board-caption.muted').textContent, 'The visible caption.');
     assert.ok(button(board.container, 'Send').disabled);
     assert.equal(board.q('[contenteditable=true]').textContent, 'Keep this draft');
+});
+
+test('board: the learner steps back to the board after an earlier reply, and asking returns to the latest', async (t) => {
+    const board = await mount(t, [
+        { id: 'r', role: 'assistant', text: 'The bulb glows.', status: 'completed', board: true },
+    ]);
+    const ids = () =>
+        [...board.container.querySelectorAll('svg .board-item')].map(
+            (g) => g.firstElementChild.getAttribute('cx') ?? g.firstElementChild.tagName,
+        );
+    await board.act(async () =>
+        board.socket.server({
+            type: 'board',
+            replies: [
+                {
+                    caption: 'The bulb glows.',
+                    items: [
+                        { id: 'bulb', kind: 'circle', at: [1240, 450], r: 70 },
+                        { id: 'e1', kind: 'dot', at: [560, 180] },
+                    ],
+                },
+                {
+                    caption: 'More push, more current.',
+                    items: [
+                        { id: 'h1', kind: 'highlight', at: [1240, 450], w: 180, h: 180 },
+                        { id: 'p1', kind: 'pointer', from: [800, 450], at: [432, 450] },
+                        { id: 'x1', kind: 'erase', ids: ['e1'] },
+                        { id: 'n1', kind: 'clear' },
+                        {
+                            id: 'ohm',
+                            kind: 'math',
+                            at: [800, 1230],
+                            size: 'l',
+                            text: 'I = \\frac{V}{R}',
+                        },
+                    ],
+                },
+            ],
+        }),
+    );
+    const steps = board.q('[aria-label="Board at each reply"]');
+    assert.equal(steps.textContent, 'Reply 2 of 2');
+    assert.ok(button(board.container, 'Board after the next reply').disabled);
+    // The latest board: the wash under the bulb, the erased dot and the passed pointer gone, a second area below.
+    assert.deepEqual(ids(), ['rect', '1240', 'foreignObject']);
+    assert.equal(
+        [...board.q('.board-math').querySelectorAll('.board-term')].length,
+        3,
+        'the formula writes in as three terms',
+    );
+    assert.equal(board.q('svg').getAttribute('viewBox'), '0 0 1600 1800');
+    assert.ok(board.q('.board-seam') && board.q('.board-thumb'));
+
+    await board.act(async () => button(board.container, 'Board after the previous reply').click());
+    assert.equal(steps.textContent, 'Reply 1 of 2');
+    assert.equal(board.q('svg').getAttribute('aria-label'), 'Board after reply 1');
+    assert.deepEqual(ids(), ['1240', '560'], 'the board as it stood, the erased dot back');
+    assert.equal(board.q('svg').getAttribute('viewBox'), '0 0 1600 900');
+    assert.equal(board.q('.board-thumb'), null);
+    assert.equal(board.q('.board-caption.muted').textContent, 'The bulb glows.');
+    assert.ok(button(board.container, 'Board after the previous reply').disabled);
+
+    await board.type('Why?');
+    await board.act(async () => button(board.container, 'Send').click());
+    assert.equal(board.q('svg').getAttribute('aria-label'), 'Board');
+    assert.equal(steps.textContent, 'Reply 3 of 3');
+    assert.ok(
+        button(board.container, 'Board after the previous reply').disabled,
+        'off while the tutor speaks',
+    );
+    await board.act(async () =>
+        board.socket.server({
+            type: 'sentence',
+            id: '9',
+            text: 'The wash can go now.',
+            ops: [{ id: 'x2', kind: 'erase', ids: ['h1'] }],
+        }),
+    );
+    const wash = board.q('.board-wash').parentElement;
+    assert.ok(wash.classList.contains('board-gone'), 'an erase fades its items out over its share');
+    assert.notEqual(wash.style.getPropertyValue('--gone-ms'), '0ms');
 });

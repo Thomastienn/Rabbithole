@@ -82,3 +82,53 @@ test('board ops: a malformed op or one naming an unknown id is skipped with its 
     assert.ok(board.read('c5 line 0,0 -> 10,10').item, 'the board carries on');
     assert.ok(board.read('bl text "bulb" at 1460,450').item, 'a skipped id stays free');
 });
+
+test('board ops: math, highlight, pointer and erase name their items; clear moves on to a fresh area below', () => {
+    const board = boardOps();
+    const read = (line) => board.read(line).item;
+    board.read('bat box at 360,450 w=120 h=220');
+    board.read('bulb circle at 1240,450 r=70');
+    board.read('e1 dot at 560,180');
+    assert.deepEqual(read('v math "V" at 490,450 size=l look=focus'), {
+        id: 'v',
+        kind: 'math',
+        look: 'focus',
+        at: [490, 450],
+        size: 'l',
+        text: 'V',
+    });
+    assert.deepEqual(read('p1 pointer bat'), {
+        id: 'p1',
+        kind: 'pointer',
+        from: [800, 450],
+        at: [432, 450],
+    });
+    assert.deepEqual(
+        read('p2 pointer bulb').from,
+        [432, 450],
+        'it glides on from where it stopped',
+    );
+    assert.deepEqual(read('h1 highlight bulb'), {
+        id: 'h1',
+        kind: 'highlight',
+        at: [1240, 450],
+        w: 180,
+        h: 180,
+    });
+    assert.deepEqual(read('x1 erase e1 h1'), { id: 'x1', kind: 'erase', ids: ['e1', 'h1'] });
+    assert.match(board.read('p3 pointer e1').error, /unknown id e1/, 'erased items are gone');
+    assert.deepEqual(read('n1 clear'), { id: 'n1', kind: 'clear' });
+    assert.deepEqual(read('ohm math "I = \\frac{V}{R}" at 800,330').at, [800, 1230]);
+    assert.deepEqual(read('a1 arrow 680,620 -> 900,620').points, [
+        [680, 1520],
+        [900, 1520],
+    ]);
+    assert.deepEqual(
+        read('p4 pointer bat').from,
+        [800, 1350],
+        'the pointer starts a fresh area at its centre',
+    );
+    assert.match(board.read('m3 math "P = \\frac{V^2}{" at 800,780').error, /KaTeX parse error/);
+    for (const line of ['h2 highlight', 'h3 highlight bat bulb', 'x2 erase nope', 'p5 pointer x1'])
+        assert.ok(board.read(line).error, line);
+});

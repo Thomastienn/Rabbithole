@@ -116,11 +116,56 @@
     border-radius: var(--radius-container);
     overflow: hidden;
 }
-.board > svg {
+/* One tall surface, one 1600x900 area per clear, scrolled one area at a time (mockup Rabbithole-brd.4). */
+.board-scroller {
     position: absolute;
     inset: 0;
+    overflow-y: auto;
+    scrollbar-width: none;
+}
+.board-scroller > svg {
+    display: block;
     width: 100%;
-    height: 100%;
+    height: auto;
+}
+/* The thin thumb at the right edge, one area tall, 4px in from the board's corners. */
+.board-thumb {
+    position: absolute;
+    right: 4px;
+    width: 6px;
+    height: calc(100% / var(--areas) - 6px);
+    top: calc(4px + var(--scrolled) * (100% - 8px - (100% / var(--areas) - 6px)));
+    border-radius: 3px;
+    background: var(--color-border-emphasized);
+    pointer-events: none;
+}
+/* The reply stepper at the top right, over the board. */
+.board-steps {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-element);
+    background: var(--color-background-popover);
+    font: 13px/1.4 var(--font-family-body);
+}
+.board-steps button {
+    width: 30px;
+    height: 30px;
+}
+.board-steps button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+.board-steps span {
+    padding: 0 6px;
+    color: var(--color-text-primary);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
 }
 .board-empty {
     position: absolute;
@@ -309,6 +354,69 @@
 .board-text.l {
     font-size: 64px;
 }
+/* Math: KaTeX's faces at 32, 44 or 64px in the look's colour, centred on its point; terms write in one by one. */
+.board-math-box {
+    overflow: visible;
+}
+.board-math {
+    display: grid;
+    place-items: center;
+    height: 100%;
+    color: currentColor;
+}
+.board-math .katex-display {
+    margin: 0;
+}
+.board-math .katex {
+    font-size: 44px;
+}
+.board-math.s .katex {
+    font-size: 32px;
+}
+.board-math.l .katex {
+    font-size: 64px;
+}
+.board-math .board-term {
+    display: inline-block;
+    animation: board-write calc(var(--board-ms) / var(--terms)) cubic-bezier(0.65, 0, 0.35, 1)
+        calc(var(--board-ms) * var(--term) / var(--terms)) both;
+}
+/* Highlight: a porcelain wash under its item that sweeps in left to right and stays. */
+.board-wash {
+    animation-name: board-write;
+    fill: color-mix(in srgb, var(--rabbithole-paper) 22%, transparent);
+}
+/* Pointer: a porcelain cursor edged in the board's ground. It glides in over the first half of its share
+   from where it last stopped, rests, and fades over the last 0.5s. */
+.board-item > .board-pointer {
+    animation:
+        board-glide calc(var(--board-ms) / 2) cubic-bezier(0.65, 0, 0.35, 1) both,
+        board-fade 500ms linear max(0ms, var(--board-ms) - 500ms) forwards;
+    fill: var(--rabbithole-paper);
+    stroke: var(--color-background-muted);
+    stroke-width: 3;
+    stroke-linejoin: round;
+}
+/* Erase fades the named items out together over its share. */
+.board-item.board-gone {
+    animation: board-fade var(--gone-ms) linear forwards;
+}
+/* Where one 1600x900 area ends and the next begins. */
+.board-seam {
+    fill: none;
+    stroke: var(--color-border);
+    stroke-width: 2;
+}
+@keyframes board-glide {
+    from {
+        translate: var(--dx) var(--dy);
+    }
+}
+@keyframes board-fade {
+    to {
+        opacity: 0;
+    }
+}
 @keyframes board-draw {
     from {
         stroke-dashoffset: 1;
@@ -334,7 +442,14 @@
     }
 }
 @media (prefers-reduced-motion: reduce) {
-    .board-item > * {
+    .board-item > *,
+    .board-math .board-term {
         animation-name: board-enter;
+    }
+    /* The pointer fades in at its item instead of gliding, rests, then fades out. */
+    .board-item > .board-pointer {
+        animation:
+            board-enter 400ms linear both,
+            board-fade 500ms linear max(0ms, var(--board-ms) - 500ms) forwards;
     }
 }

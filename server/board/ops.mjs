@@ -1,6 +1,24 @@
 // Board op lines (docs/board-spec.md, Op language): `<id> <kind> <args> [key=value]` on a fixed
-// 1600×900 board (ADR 0028). Tokens follow prototype/board-placement. Kinds so far: shapes and text.
-const KINDS = new Set(['circle', 'box', 'dot', 'line', 'arrow', 'text']);
+// 1600×900 board (ADR 0028). Tokens follow prototype/board-placement.
+import katex from 'katex';
+
+const KINDS = new Set([
+    'circle',
+    'box',
+    'dot',
+    'line',
+    'arrow',
+    'text',
+    'math',
+    'highlight',
+    'pointer',
+    'erase',
+    'clear',
+]);
+// Kinds that name other items instead of placing one; they cannot be named themselves.
+const MARKS = new Set(['highlight', 'pointer', 'erase', 'clear']);
+// Each clear moves on to a fresh 1600×900 area this far below the last (mockup Rabbithole-brd.4).
+const AREA = 900;
 const LOOKS = new Set(['focus', 'muted', 'good', 'wrong', 'new']);
 // Label font sizes in board pixels (mockup Rabbithole-brd.2).
 const TEXT_SIZES = { s: 32, m: 44, l: 64 };
@@ -16,7 +34,7 @@ const point = (word) => {
 };
 
 function tokens(line) {
-    const op = { strs: [], pts: [], opts: {} };
+    const op = { strs: [], pts: [], refs: [], opts: {} };
     const words = [...line.matchAll(TOKEN)].map((m) =>
         m[1] ? { k: m[1], v: m[2] } : m[3] !== undefined ? { s: m[3] } : { w: m[4] },
     );
@@ -37,6 +55,7 @@ function tokens(line) {
             if (!op[w]) return { error: `${w} needs an id` };
         } else if (point(w)) op.pts.push(point(w));
         else if (/^\w+=\S+$/.test(w)) op.opts[w.split('=')[0]] = w.slice(w.indexOf('=') + 1);
+        else if (MARKS.has(op.kind) && ID.test(w)) op.refs.push(w);
         else return { error: `unexpected token "${w}"` };
     }
     return { op };
@@ -61,6 +80,16 @@ function bounds(item) {
         const fs = TEXT_SIZES[item.size];
         return { c: item.at, w: item.text.length * fs * 0.56 + 8, h: fs * 1.2 };
     }
+    if (item.kind === 'math') {
+        // shortcut: sized from the LaTeX with each command as one glyph; measure KaTeX's layout if highlights miss.
+        const fs = TEXT_SIZES[item.size];
+        const glyphs = item.text.replace(/\\[a-zA-Z]+/g, 'x').replace(/[\s{}^_]/g, '').length;
+        return {
+            c: item.at,
+            w: glyphs * fs * 0.6 + 8,
+            h: fs * (/\\frac/.test(item.text) ? 2.4 : 1.2),
+        };
+    }
     return { c: item.at, w: item.w, h: item.h };
 }
 
@@ -78,6 +107,16 @@ function edge(b, to) {
 // The board's items so far; `read` turns one op line into a drawable item or the reason it was skipped.
 export function boardOps() {
     const items = new Map();
+    // Clears so far, and where the pointer last stopped (a fresh area starts it at its centre).
+    let area = 0,
+        pointer = [800, 450];
+    const erased = new Set();
+    // An item still on the board that ops can name; erase can also name a highlight.
+    const target = (id, kind) => {
+        const item = items.get(id);
+        const named = !MARKS.has(item?.kind) || (kind === 'erase' && item.kind === 'highlight');
+        return item && named && !erased.has(id) ? item : undefined;
+    };
     const positive = (value, fallback) =>
         value === undefined ? fallback : Number(value) > 0 ? Number(value) : NaN;
     function build(op) {
@@ -87,30 +126,65 @@ export function boardOps() {
             if (!LOOKS.has(op.opts.look)) return { error: `unknown look "${op.opts.look}"` };
             item.look = op.opts.look;
         }
+        if (op.kind === 'clear') {
+            area += 1;
+            pointer = [800, 450 + area * AREA];
+            return { item };
+        }
+        if (MARKS.has(op.kind)) {
+            if (!op.refs.length) return { error: `${op.kind} needs an id` };
+            const unknown = op.refs.find((ref) => !target(ref, op.kind));
+            if (unknown) return { error: `unknown id ${unknown}` };
+            if (op.kind === 'erase') {
+                for (const ref of op.refs) erased.add(ref);
+                return { item: { ...item, ids: op.refs } };
+            }
+            if (op.refs.length > 1) return { error: `${op.kind} takes one id` };
+            const b = bounds(items.get(op.refs[0]));
+            const [w, h] = b.round ? [2 * b.r, 2 * b.r] : [b.w, b.h];
+            // A highlight washes 20px past its item's box; the pointer's tip stops 12px right of it, at its middle.
+            if (op.kind === 'highlight')
+                return { item: { ...item, at: b.c, w: w + 40, h: h + 40 } };
+            item.from = pointer;
+            pointer = item.at = [b.c[0] + w / 2 + 12, b.c[1]];
+            return { item };
+        }
+        // Points in a fresh area start at its top left.
+        const placed = ([x, y]) => [x, y + area * AREA];
         if (op.kind === 'line' || op.kind === 'arrow') {
             if (op.from || op.to) {
-                const [a, b] = [items.get(op.from), items.get(op.to)];
+                const [a, b] = [target(op.from), target(op.to)];
                 if (!a || !b) return { error: `unknown id ${a ? op.to : op.from}` };
                 const [ba, bb] = [bounds(a), bounds(b)];
                 item.points = [edge(ba, bb.c), edge(bb, ba.c)];
-            } else if (op.pts.length >= 2) item.points = op.pts;
+            } else if (op.pts.length >= 2) item.points = op.pts.map(placed);
             else return { error: `${op.kind} needs two points or from ID to ID` };
             return { item };
         }
         if (!op.at) return { error: 'at needs X,Y' };
-        item.at = op.at;
+        item.at = placed(op.at);
         if (op.kind === 'circle') item.r = positive(op.opts.r, 90);
         if (op.kind === 'box')
             [item.w, item.h] = [positive(op.opts.w, 280), positive(op.opts.h, 160)];
         if ([item.r, item.w, item.h].some(Number.isNaN)) return { error: 'sizes must be positive' };
-        if (op.kind === 'text') {
-            if (!op.strs[0]?.trim()) return { error: 'text needs a "label"' };
+        if (op.kind === 'text' || op.kind === 'math') {
+            if (!op.strs[0]?.trim()) return { error: `${op.kind} needs a "label"` };
             item.size = op.opts.size ?? 'm';
             if (!Object.hasOwn(TEXT_SIZES, item.size))
                 return { error: `unknown size "${item.size}"` };
         }
         // A circle or box may carry a short label inside it.
         if (op.strs[0]?.trim()) item.text = op.strs[0].trim();
+        if (op.kind === 'math')
+            try {
+                katex.renderToString(item.text, {
+                    displayMode: true,
+                    throwOnError: true,
+                    strict: 'ignore',
+                });
+            } catch (error) {
+                return { error: error.message };
+            }
         return { item };
     }
     return {

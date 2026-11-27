@@ -160,7 +160,9 @@ test('board: a typed question gets its sentences one at a time and saves as a le
     // Reopened, the board replays its saved op lines at once, and the tutor can still join their ids.
     board.send({ type: 'leave' });
     const again = connect();
-    assert.deepEqual((await again.next('board')).items, [...first.ops, ...second.ops]);
+    assert.deepEqual((await again.next('board')).replies, [
+        { caption: 'Tiny sacs carry new wall forward.', items: [...first.ops, ...second.ops] },
+    ]);
     again.send({ type: 'ask', text: 'And then?' });
     const joined = await again.next('sentence');
     assert.deepEqual(

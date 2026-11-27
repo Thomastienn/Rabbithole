@@ -11,7 +11,8 @@ const STOPPED = 'The tutor stopped. Ask again to carry on.';
 // Up: { type: 'ask', text }, { type: 'progress', sentence, phase: 'start' | 'end' } as each caption shows and ends, { type: 'leave' }.
 // Down: { type: 'state', state: 'idle' | 'thinking' | 'speaking' }, { type: 'notice', notice },
 // { type: 'sentence', id, text, ops } with the drawable ops written under it (server/board/ops.mjs),
-// { type: 'board', items } once on open: the saved board, replayed from every board reply's op lines.
+// { type: 'board', replies: [{ caption, items }] } once on open: the saved board, each reply's items replayed
+// from its op lines with the reply's last sentence as its caption.
 export function boardSession(ctx, id, socket) {
     const { store, log } = ctx;
     const send = (event) => {
@@ -25,8 +26,12 @@ export function boardSession(ctx, id, socket) {
         count = 0;
     // The items drawn on this board so far, across its turns.
     const board = boardOps();
-    const items = store.boardOpLines(id).flatMap((line) => board.read(line).item ?? []);
-    if (items.length) send({ type: 'board', items });
+    const replies = store.boardReplies(id).flatMap(({ text, lines }) => {
+        const items = lines.flatMap((line) => board.read(line).item ?? []);
+        // A reply that said nothing is not a step of the board.
+        return text.trim() ? [{ caption: text.trim().split('\n').at(-1), items }] : [];
+    });
+    if (replies.length) send({ type: 'board', replies });
     const ended = Promise.withResolvers();
     // A newer board for the same conversation replaces this one; deleting it or stopping the app ends it too.
     ctx.jobs.get('board', id)?.controller.abort();

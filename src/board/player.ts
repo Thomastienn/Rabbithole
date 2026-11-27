@@ -6,7 +6,18 @@ export type Look = 'focus' | 'muted' | 'good' | 'wrong' | 'new';
 // A drawable op as the board session sends it (server/board/ops.mjs), in board pixels.
 export type Op = {
     id: string;
-    kind: 'circle' | 'box' | 'dot' | 'line' | 'arrow' | 'text';
+    kind:
+        | 'circle'
+        | 'box'
+        | 'dot'
+        | 'line'
+        | 'arrow'
+        | 'text'
+        | 'math'
+        | 'highlight'
+        | 'pointer'
+        | 'erase'
+        | 'clear';
     look?: Look;
     at?: [number, number];
     r?: number;
@@ -15,6 +26,9 @@ export type Op = {
     size?: 's' | 'm' | 'l';
     text?: string;
     points?: [number, number][];
+    // A pointer glides from here; an erase names the items it fades out.
+    from?: [number, number];
+    ids?: string[];
 };
 export type Sentence = { id: string; text: string; ops?: Op[] };
 type Clock = {

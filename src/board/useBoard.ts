@@ -7,6 +7,10 @@ export type BoardState = 'idle' | 'thinking' | 'speaking';
 type Caption = { text: string; muted: boolean };
 // A drawn board item and how long its entry takes.
 export type Drawn = { op: Op; ms: number };
+// One board reply: the items it drew and its last sentence.
+type Reply = { items: Drawn[]; caption: string };
+const still = (replies: Reply[]) =>
+    replies.map((r) => ({ ...r, items: r.items.map((d) => ({ ...d, ms: 0 })) }));
 
 // One open board: its socket to the board session, the caption line and the session state.
 export function useBoard(conversation: string, messages: Message[], reload: () => void) {
@@ -18,7 +22,13 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
     const [notice, setNotice] = useState<string>();
     const [asked, setAsked] = useState(false);
     const [caption, setCaption] = useState<Caption>();
-    const [items, setItems] = useState<Drawn[]>([]);
+    const [replies, setReplies] = useState<Reply[]>([]);
+    // The earlier reply the learner stepped back to; none shows the latest board.
+    const [step, setStep] = useState<number>();
+    // A reply that said nothing is not a step of the board.
+    const dropSilent = () => setReplies((rs) => (rs.at(-1)?.caption ? rs : rs.slice(0, -1)));
+    const onLast = (change: (reply: Reply) => Reply) =>
+        setReplies((rs) => [...rs.slice(0, -1), change(rs.at(-1) ?? { items: [], caption: '' })]);
     const restored = latest && { text: latest.text.trim().split('\n').at(-1) ?? '', muted: true };
     const socket = useRef<WebSocket>(undefined);
     useEffect(() => {
@@ -28,8 +38,11 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
             if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(message));
         };
         const player = boardPlayer(
-            (s) => setCaption({ text: s.text, muted: false }),
-            (op, ms) => setItems((drawn) => [...drawn, { op, ms }]),
+            (s) => {
+                setCaption({ text: s.text, muted: false });
+                onLast((r) => ({ ...r, caption: s.text }));
+            },
+            (op, ms) => onLast((r) => ({ ...r, items: [...r.items, { op, ms }] })),
             (s, phase) => send({ type: 'progress', sentence: s.id, phase }),
         );
         ws.onopen = () => setReady(true);
@@ -38,6 +51,7 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
             setReady(false);
             setState('idle');
             setCaption((c) => c && { ...c, muted: true });
+            dropSilent();
             setNotice('The board disconnected. Turn Board off and on to reconnect.');
         };
         ws.onmessage = (event) => {
@@ -48,10 +62,17 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
                 if (m.state === 'idle') {
                     player.stop();
                     setCaption((c) => c && { ...c, muted: true });
+                    dropSilent();
                 }
             }
             // The saved board shows at once, without entry.
-            if (m.type === 'board') setItems(m.items.map((op: Op) => ({ op, ms: 0 })));
+            if (m.type === 'board')
+                setReplies(
+                    m.replies.map((r: { caption: string; items: Op[] }) => ({
+                        caption: r.caption,
+                        items: r.items.map((op) => ({ op, ms: 0 })),
+                    })),
+                );
             if (m.type === 'sentence') player.add(m);
             if (m.type === 'notice') setNotice(m.notice);
         };
@@ -82,15 +103,32 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         // The sent question shows muted until the tutor speaks, so the learner sees it was heard.
         setCaption({ text, muted: true });
         setState('thinking');
+        // Asking returns to the latest board, which the new reply draws on.
+        setStep(undefined);
+        setReplies((rs) => [...rs, { items: [], caption: '' }]);
         return true;
+    };
+    const at = step ?? replies.length - 1;
+    // Stepping replays the stored items at once, and so does coming back to the latest board.
+    const go = (to: number) => {
+        setReplies(still);
+        setStep(to < replies.length - 1 ? to : undefined);
     };
     return {
         state,
         ready,
         notice,
         asked: asked || messages.some((m) => m.board),
-        caption: caption ?? restored,
-        items,
+        caption:
+            step === undefined
+                ? (caption ?? restored)
+                : { text: replies[step].caption, muted: true },
+        items: replies.slice(0, at + 1).flatMap((r) => r.items),
+        replies: replies.length,
+        // The reply on show, from 0, and whether it is an earlier one.
+        at,
+        stepped: step !== undefined,
+        go,
         ask,
     };
 }

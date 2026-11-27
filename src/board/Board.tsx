@@ -1,11 +1,17 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { ChatComposer, ChatComposerInput, ChatSendButton } from '@astryxdesign/core/Chat';
-import { ExclamationTriangleIcon, MicrophoneIcon } from '@heroicons/react/24/outline';
+import {
+    ChevronLeftIcon,
+    ChevronRightIcon,
+    ExclamationTriangleIcon,
+    MicrophoneIcon,
+} from '@heroicons/react/24/outline';
 import { holdEnter } from '../chat/Attachments';
 import type { Message } from '../chat/turn';
-import { useBoard } from './useBoard';
+import { useBoard, type Drawn } from './useBoard';
 import BoardItem from './BoardItem';
+import { follow } from './camera';
 
 const STATES = { thinking: 'Thinking', speaking: 'Speaking' } as const;
 
@@ -23,6 +29,13 @@ export default function Board({
     const board = useBoard(conversation, messages, reload);
     const [draft, setDraft] = useState('');
     const busy = board.state !== 'idle' || !board.ready;
+    const scene = sceneOf(board.items);
+    const scroller = useRef<HTMLDivElement>(null);
+    const [scrolled, setScrolled] = useState(0);
+    // The view follows the area the tutor draws in (src/board/camera.ts).
+    useLayoutEffect(() => {
+        if (scroller.current) return follow(scroller.current, board.items.at(-1));
+    }, [board.items.length, board.at]);
     const submit = (text: string) => {
         if (busy || !text.trim()) return;
         if (board.ask(text.trim())) setDraft('');
@@ -31,11 +44,69 @@ export default function Board({
         <section className="board-column" aria-label="Board">
             <div className="board-field">
                 <div className="board">
-                    <svg viewBox="0 0 1600 900" role="img" aria-label="Board">
-                        {board.items.map(({ op, ms }) => (
-                            <BoardItem key={op.id} op={op} ms={ms} />
-                        ))}
-                    </svg>
+                    <div
+                        className="board-scroller"
+                        ref={scroller}
+                        onScroll={(e) => {
+                            const el = e.currentTarget;
+                            setScrolled(el.scrollTop / (el.scrollHeight - el.clientHeight || 1));
+                        }}
+                    >
+                        <svg
+                            viewBox={`0 0 1600 ${scene.areas * 900}`}
+                            role="img"
+                            aria-label={
+                                board.stepped ? `Board after reply ${board.at + 1}` : 'Board'
+                            }
+                        >
+                            {Array.from({ length: scene.areas - 1 }, (_, i) => (
+                                <path
+                                    key={i}
+                                    className="board-seam"
+                                    d={`M0 ${(i + 1) * 900}H1600`}
+                                />
+                            ))}
+                            {scene.shown.map(({ op, ms }) => (
+                                <BoardItem
+                                    key={op.id}
+                                    op={op}
+                                    ms={ms}
+                                    gone={scene.erased.get(op.id)}
+                                />
+                            ))}
+                        </svg>
+                    </div>
+                    {scene.areas > 1 && (
+                        <span
+                            className="board-thumb"
+                            style={
+                                { '--areas': scene.areas, '--scrolled': scrolled } as CSSProperties
+                            }
+                        />
+                    )}
+                    {board.replies > 1 && (
+                        <div className="board-steps" role="group" aria-label="Board at each reply">
+                            <IconButton
+                                label="Board after the previous reply"
+                                icon={<ChevronLeftIcon />}
+                                variant="ghost"
+                                size="sm"
+                                isDisabled={busy || board.at === 0}
+                                onClick={() => board.go(board.at - 1)}
+                            />
+                            <span>
+                                Reply {board.at + 1} of {board.replies}
+                            </span>
+                            <IconButton
+                                label="Board after the next reply"
+                                icon={<ChevronRightIcon />}
+                                variant="ghost"
+                                size="sm"
+                                isDisabled={busy || !board.stepped}
+                                onClick={() => board.go(board.at + 1)}
+                            />
+                        </div>
+                    )}
                     {!board.asked && <p className="board-empty">Ask a question to start.</p>}
                     {board.notice && (
                         <p className="board-notice" role="alert">
@@ -95,4 +166,19 @@ export default function Board({
             </div>
         </section>
     );
+}
+
+// What the board shows of its items: highlights under the rest, erased items fading out (or gone when replayed),
+// no pointer once its moment has passed, and one 1600×900 area per clear.
+function sceneOf(items: Drawn[]) {
+    const erased = new Map(
+        items.flatMap(({ op, ms }) => (op.ids ?? []).map((id) => [id, ms] as const)),
+    );
+    const shown = items
+        .filter(({ op, ms }) => {
+            if (op.kind === 'erase' || op.kind === 'clear') return false;
+            return erased.get(op.id) !== 0 && (op.kind !== 'pointer' || ms > 0);
+        })
+        .sort((a, b) => +(b.op.kind === 'highlight') - +(a.op.kind === 'highlight'));
+    return { shown, erased, areas: 1 + items.filter(({ op }) => op.kind === 'clear').length };
 }
