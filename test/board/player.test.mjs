@@ -401,6 +401,38 @@ test('board player: a sentence opening a page or a component waits 900 ms, scale
     assert.equal(last(), '6 start', 'the answer starts at once');
 });
 
+test('board player: a key sentence is followed by 900 ms, and a slower rate holds the caption longer, scaled by speed', () => {
+    const clock = fakeClock();
+    const reports = [];
+    const player = boardPlayer(
+        () => {},
+        () => {},
+        (s, phase) => reports.push(`${s.id} ${phase}`),
+        undefined,
+        clock,
+    );
+    const last = () => reports.at(-1);
+    // Four characters: 267 ms at +0%, 314 ms at -15% and 296 ms at -10%.
+    player.add({ id: '1', text: 'Key.', key: true, rate: -15 });
+    player.add({ id: '2', text: 'Two.', key: true, rate: -10, ops: [{ id: 'p', kind: 'page' }] });
+    player.add({ id: '3', text: 'Six.' });
+    clock.advance(313);
+    assert.equal(last(), '1 start', 'a key sentence is said slower');
+    clock.advance(1);
+    assert.equal(last(), '1 end');
+    clock.advance(899);
+    assert.equal(last(), '1 end', 'a key sentence is followed by the longer pause');
+    clock.advance(1);
+    assert.equal(last(), '2 start', 'a key sentence before a page waits 900 ms, not the sum');
+    player.speed(3); // twice the default: 296 ms of board time takes about 148 ms
+    clock.advance(149);
+    assert.equal(last(), '2 end', 'the learner’s speed still scales a slower sentence');
+    clock.advance(449);
+    assert.equal(last(), '2 end');
+    clock.advance(1);
+    assert.equal(last(), '3 start');
+});
+
 test('board player: its component kinds are the board’s', async () => {
     const { COMPONENT_KINDS } = await import('../../src/board/player.ts');
     const { COMPONENTS } = await import('../../server/board/components.mjs');

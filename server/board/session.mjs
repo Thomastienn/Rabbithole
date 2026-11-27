@@ -31,6 +31,16 @@ export const NO_ANSWER = [
 // { type: 'hearing', on } as the learner starts and stops speaking, and { type: 'heard', text } as a spoken question is sent.
 // lang: the board's Voice language; guided: the learner chose tutor-guided boards in Settings;
 // checkIns: how often the tutor checks in, 'off' | 'sometimes' | 'often'.
+// A sentence's prosody rate in percent (docs/board-sketches-spec.md, Pacing): a key sentence and one drawing math
+// are said slower, the slower of the two when both apply; the client stretches its caption estimate to match.
+const KEY_RATE = -15;
+const MATH_RATE = -10;
+export const sentenceRate = (sentence) =>
+    Math.min(
+        sentence.key ? KEY_RATE : 0,
+        sentence.ops.some((op) => op.kind === 'math') ? MATH_RATE : 0,
+    );
+
 export function boardSession(ctx, id, socket, lang = 'en', guided = false, checkIns = 'sometimes') {
     const { store, log } = ctx;
     const send = (event) => {
@@ -231,6 +241,7 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
         let writing = null;
         const flush = () => {
             if (!writing) return;
+            writing.rate = sentenceRate(writing);
             current.sentences.push(writing);
             if (current.sentences.length === 1) send({ type: 'state', state: 'speaking' });
             const { lines, ...sentence } = writing;
@@ -248,6 +259,7 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
                         text: line.sentence,
                         question: line.question,
                         checkIn: line.checkIn,
+                        key: line.key,
                         ops: [],
                         lines: [],
                     };
@@ -431,6 +443,7 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
                     sendAudio(sentence.id, chunk);
                 },
                 signal,
+                sentence.rate,
             );
         (current.silent
             ? Promise.resolve()

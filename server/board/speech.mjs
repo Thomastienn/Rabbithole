@@ -70,7 +70,8 @@ export function edgeSpeech(
     return {
         // Opens the socket while the model writes its first sentence.
         warm: () => connect().catch(() => {}),
-        async speak(text, chunk, signal) {
+        // rate: the prosody rate in percent, slower below 0 (docs/board-sketches-spec.md, Pacing).
+        async speak(text, chunk, signal, rate = 0) {
             const late = new AbortController();
             const timer = setTimeout(
                 () => late.abort(new Error(`edge-tts sent no audio within ${firstByte} ms`)),
@@ -116,7 +117,13 @@ export function edgeSpeech(
                         protocol.buildSSMLMessage(
                             protocol.generateUUID(),
                             stamp(),
-                            protocol.buildSSML(text, voice, '+0Hz', '+0%', '+0%'),
+                            protocol.buildSSML(
+                                text,
+                                voice,
+                                '+0Hz',
+                                `${rate < 0 ? '' : '+'}${rate}%`,
+                                '+0%',
+                            ),
                         ),
                     );
                 });

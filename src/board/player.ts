@@ -85,7 +85,15 @@ export function labelRows(ops: Op[]) {
     return rows;
 }
 // voiced: the sentence's audio follows on the socket, so it waits for its first chunk or its audio end.
-export type Sentence = { id: string; text: string; ops?: Op[]; voiced?: boolean };
+// key: a `!> ` sentence, followed by the longer pause; rate: its prosody rate in percent, slower below 0.
+export type Sentence = {
+    id: string;
+    text: string;
+    ops?: Op[];
+    voiced?: boolean;
+    key?: boolean;
+    rate?: number;
+};
 type Clock = {
     now: () => number;
     setTimeout: (run: () => void, ms: number) => unknown;
@@ -136,12 +144,13 @@ function pacedClock(real: Clock) {
 }
 
 // Pauses between sentences, in board time (docs/board-sketches-spec.md, Pacing): a beat after each sentence, and a
-// longer one before a sentence that opens a page or starts a component; the longer applies, never the sum.
+// longer one after a key sentence or before one that opens a page or starts a component; the longer, never the sum.
 const BEAT_MS = 300;
 const CHANGE_MS = 900;
 // The board's component kinds; test/board/player.test.mjs keeps it equal to COMPONENTS in server/board/components.mjs.
 export const COMPONENT_KINDS = new Set(['axes', 'numberline', 'flow', 'tree', 'table', 'venn']);
-const pauseBefore = (sentence: Sentence) =>
+const pauseBefore = (sentence: Sentence, after: Sentence | undefined) =>
+    after?.key ||
     sentence.ops?.some(
         (op) =>
             op.kind === 'page' || op.kind === 'open' || (COMPONENT_KINDS.has(op.kind) && !op.on),
@@ -171,6 +180,7 @@ export function boardPlayer(
         ending: unknown,
         // When the last sentence ended, and the timer holding the next one for its pause.
         ended: number | undefined,
+        last: Sentence | undefined,
         gap: unknown,
         playing: string | undefined,
         // The sentence on show: its ops and when each entered and ends, so a stop can finish the one mid-entry.
@@ -181,7 +191,7 @@ export function boardPlayer(
         if (current || !sentence || paused) return;
         const audio = pending.get(sentence.id);
         if (audio === 'waiting' || gap) return;
-        const due = ended === undefined ? 0 : ended + pauseBefore(sentence) - clock.now();
+        const due = ended === undefined ? 0 : ended + pauseBefore(sentence, last) - clock.now();
         if (due > 0) {
             gap = clock.setTimeout(() => {
                 gap = undefined;
@@ -231,10 +241,13 @@ export function boardPlayer(
             current = undefined;
             playing = undefined;
             ended = clock.now();
+            last = sentence;
             report(sentence, 'end');
             next();
         };
-        const estimate = (sentence.text.length / CHARS_PER_SECOND) * 1000;
+        // A slower rate says the sentence longer, as edge-tts does.
+        const estimate =
+            (sentence.text.length / CHARS_PER_SECOND / (1 + (sentence.rate ?? 0) / 100)) * 1000;
         const byEstimate = () =>
             (ending = clock.setTimeout(end, Math.max(0, estimate - (clock.now() - started))));
         show(sentence);

@@ -493,3 +493,11 @@ test('board ops: the page index lists each page with the ids and texts still on 
         'BOARD PAGES (* marks the open page)\nfirst "Page 1": a1 "a^2+b^2", b1\n* p2 "Table" parent=first from=a1: tb "A|B", r1 "1|2", fl, s1 "add"',
     );
 });
+
+test('board ops: an eighth item on a page and a long label are still drawn', () => {
+    const board = boardOps();
+    for (let i = 0; i < 7; i++) assert.ok(board.read(`d${i} dot at ${100 + i * 200},100`).item);
+    assert.ok(board.read('d7 dot at 800,800').item, 'the eighth item');
+    const long = 'a label of many more words than a few';
+    assert.equal(board.read(`t1 text "${long}" at 800,450 size=s`).item?.text, long);
+});
