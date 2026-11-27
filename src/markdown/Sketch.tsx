@@ -10,6 +10,8 @@ import {
     type CSSProperties,
 } from 'react';
 import { HStack } from '@astryxdesign/core/Layout';
+import { Button } from '@astryxdesign/core/Button';
+import PhotoIcon from '@heroicons/react/24/outline/PhotoIcon';
 import {
     drawSketch,
     type Palette,
@@ -53,6 +55,7 @@ export const SketchAsk = createContext<{
 // A sketch block in a reply: a placeholder while its fence is open, nothing (logged) when it cannot draw.
 // One that arrives in a streaming reply builds in item by item, like the text around it; a saved reply's shows at once.
 // It draws at its own box's width (mockup Rabbithole-skt.5), so it fits whichever layout cell holds it.
+// A saved reply's sketch offers Expand into visual, or Show visual once its visual exists.
 export default function Sketch({
     kind,
     body,
@@ -61,6 +64,8 @@ export default function Sketch({
     start,
     end,
     reveal,
+    visual,
+    onExpand,
 }: {
     kind: string;
     body: string;
@@ -70,6 +75,8 @@ export default function Sketch({
     end: number;
     // The passage of the sketch item branch whose source is being revealed here.
     reveal?: string;
+    visual?: string;
+    onExpand?: () => void;
 }) {
     const [width, setWidth] = useState(640);
     const sketch = useMemo(
@@ -96,6 +103,8 @@ export default function Sketch({
             end={end}
             revealed={sketchItemOf(sketch, reveal)}
             onWidth={setWidth}
+            visual={visual}
+            onExpand={onExpand}
         />
     );
 }
@@ -107,6 +116,8 @@ function SketchDrawing({
     end,
     revealed,
     onWidth,
+    visual,
+    onExpand,
 }: {
     drawn: Drawing;
     live: boolean;
@@ -114,6 +125,8 @@ function SketchDrawing({
     end: number;
     revealed: number;
     onWidth: (width: number) => void;
+    visual?: string;
+    onExpand?: () => void;
 }) {
     const box = useRef<HTMLElement>(null);
     const [build, setBuild] = useState(
@@ -205,6 +218,7 @@ function SketchDrawing({
             aria-label={[drawn.title ? `Sketch: ${drawn.title}` : 'Sketch', drawn.about]
                 .filter(Boolean)
                 .join(', ')}
+            data-artifact={visual}
         >
             {drawn.title && <figcaption aria-hidden="true">{drawn.title}</figcaption>}
             {/* The module escapes every label the tutor wrote. A click on an item's hit area asks about it. */}
@@ -296,6 +310,17 @@ function SketchDrawing({
                             </button>
                         ))}
                 </HStack>
+            )}
+            {onExpand && (
+                <div className="visual-actions sketch-actions">
+                    <Button
+                        label={visual ? 'Show visual' : 'Expand into visual'}
+                        icon={<PhotoIcon />}
+                        variant="ghost"
+                        size="sm"
+                        onClick={onExpand}
+                    />
+                </div>
             )}
         </figure>
     );

@@ -14,6 +14,7 @@ export const media = {
     // Videos keep frozen input and an attempt; source holds their private plan and ordered cuts.
     // position: offset in the stored reply text where the request block was removed; null renders after the reply.
     // side: left or right beside the section after position (visuals); null sits in the flow.
+    // sketch: 'hidden' on a visual expanded from the sketch block starting at position.
     pendingArtifact(
         conversation,
         message,
@@ -23,11 +24,12 @@ export const media = {
         input = null,
         position = null,
         side = null,
+        sketch = null,
     ) {
         const id = randomUUID();
         const result = this.db
             .prepare(
-                "INSERT INTO artifacts(id,conversation,message,kind,status,title,description,created,input,attempt,position,side) SELECT ?,?,?,?,'pending',?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM messages WHERE id=? AND tree=? AND role='assistant')",
+                "INSERT INTO artifacts(id,conversation,message,kind,status,title,description,created,input,attempt,position,side,sketch) SELECT ?,?,?,?,'pending',?,?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM messages WHERE id=? AND tree=? AND role='assistant')",
             )
             .run(
                 id,
@@ -41,6 +43,7 @@ export const media = {
                 kind === 'video' ? randomUUID() : null,
                 position,
                 side,
+                sketch,
                 message,
                 conversation,
             );
@@ -181,6 +184,23 @@ export const media = {
             )
             .run(next, input, artifact.kind === 'video' ? randomUUID() : null, conversation, id);
         return result.changes ? this.artifact(conversation, next) : null;
+    },
+    // The visual expanded from a sketch and the sketch take turns in its place; the visual's row keeps which shows.
+    sketchVisual(conversation, message, position) {
+        return this.db
+            .prepare(
+                'SELECT * FROM artifacts WHERE conversation=? AND message=? AND position=? AND sketch IS NOT NULL',
+            )
+            .get(conversation, message, position);
+    },
+    switchSketch(conversation, id) {
+        return (
+            this.db
+                .prepare(
+                    "UPDATE artifacts SET sketch=CASE sketch WHEN 'hidden' THEN 'shown' ELSE 'hidden' END WHERE conversation=? AND id=? AND sketch IS NOT NULL RETURNING *",
+                )
+                .get(conversation, id) ?? null
+        );
     },
     // A video takes back its id and attempt so its cuts and usage follow it. Keep a version to switch back to only if it finished.
     switchVersion(conversation, id) {

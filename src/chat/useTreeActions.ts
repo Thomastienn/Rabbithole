@@ -46,6 +46,7 @@ export function useTreeActions(
     },
     { isLive, drop }: Pick<ReplyStream, 'isLive' | 'drop'>,
     branchForm: Pick<BranchFormState, 'drop'>,
+    theme: { name: string; mode: string },
 ) {
     const { setError, root, setTab, setOverview, setExpanded, renaming, setRenaming } = c;
     const { state, setState, setTree, setPreviews, refresh, select, openTree } = trees;
@@ -69,7 +70,7 @@ export function useTreeActions(
     async function videoAction(
         id: string,
         artifactId: string,
-        action: 'cancel' | 'retry' | 'regenerate' | 'install' | 'previous',
+        action: 'cancel' | 'retry' | 'regenerate' | 'install' | 'previous' | 'sketch',
         instruction?: string,
     ) {
         setError('');
@@ -95,11 +96,37 @@ export function useTreeActions(
                             )
                             ?.focus();
                 });
-            // A job that settled before this refresh never starts polling, so load its result once.
-            if (!(await refresh()).videos.includes(id) && !isLive(id))
-                await reload(id, (saved) => {
-                    if (!isLive(id)) setTree((t) => (t?.id === id ? saved : t));
-                });
+            await follow(id);
+        } catch (e) {
+            setError((e as Error).message);
+        }
+    }
+    // A job that settled before this refresh never starts polling, so load its result once.
+    async function follow(id: string) {
+        if (!(await refresh()).videos.includes(id) && !isLive(id))
+            await reload(id, (saved) => {
+                if (!isLive(id)) setTree((t) => (t?.id === id ? saved : t));
+            });
+    }
+    // Expand into visual: the new visual draws in the sketch's place and takes focus from its control.
+    async function expandSketch(id: string, message: string, at: number) {
+        setError('');
+        try {
+            const next: Artifact = await api(
+                `/api/trees/${id}/messages/${message}/sketches/${at}`,
+                { theme },
+            );
+            setTree((t) =>
+                t?.id === id
+                    ? { ...t, artifacts: [...t.artifacts.filter((a) => a.id !== next.id), next] }
+                    : t,
+            );
+            requestAnimationFrame(() =>
+                document
+                    .querySelector<HTMLElement>(`.focused-chat [data-artifact="${next.id}"]`)
+                    ?.focus(),
+            );
+            await follow(id);
         } catch (e) {
             setError((e as Error).message);
         }
@@ -257,6 +284,7 @@ export function useTreeActions(
         deleting,
         deleteError,
         videoAction,
+        expandSketch,
         newChat,
         finishRename,
         rename,

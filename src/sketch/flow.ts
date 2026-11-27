@@ -10,13 +10,12 @@ import {
     quoted,
     ring,
     ROW,
-    tone,
     wrap,
-    write,
     type Drawing,
     type Line,
     type Palette,
 } from './sketch.ts';
+import { tone, write } from './quantities.ts';
 
 // shortcut: 13px arrow labels are estimated at 6.4px per character; measure text if they clip.
 const noteWidth = (s: string) => s.length * 6.4;

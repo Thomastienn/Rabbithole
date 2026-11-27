@@ -51,7 +51,7 @@ export type ThreadProps = Pick<ChatModel, 'modelLabel'> &
         | 'pickPart'
         | 'startBranch'
     > &
-    Pick<TreeActions, 'videoAction'> & {
+    Pick<TreeActions, 'videoAction' | 'expandSketch'> & {
         trees: Summary[];
         openSettings: (section?: SettingsTab, focus?: string, opener?: HTMLElement | null) => void;
     };
@@ -71,6 +71,7 @@ export default function ChatThread({
     send,
     replyDiscussion,
     videoAction,
+    expandSketch,
     branch,
     setQuestion,
     selectingMessage,
@@ -223,6 +224,9 @@ export default function ChatThread({
                                 videoAction(tree.id, artifactId, action, instruction)
                             }
                             onDiscussionReply={replyDiscussion}
+                            onExpandSketch={
+                                overview ? undefined : (at) => expandSketch(tree.id, message.id, at)
+                            }
                             inlineArtifacts={
                                 overview
                                     ? undefined
