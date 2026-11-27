@@ -218,6 +218,10 @@ _Avoid_: Mini visual, quick visual, diagram
 The surface a conversation can switch to, where the tutor talks the learner through an idea aloud while drawing it, one small change at a time in step with its words. What the tutor says is its reply in the conversation; the board shows ideas as pictures, with as little text as possible. The learner cuts in by voice or typing whenever they want and can draw on it with a pen to show what they mean. A conversation has at most one board.
 _Avoid_: Whiteboard, canvas, interactive mode, lesson
 
+**Board item**:
+One drawn thing on a board, such as a shape, a short label or one step of a flow, which the tutor names and the learner can circle with the pen.
+_Avoid_: Element, object, mark, part
+
 **Learner-led**:
 The default way a board runs: the tutor explains and keeps going, and the learner asks whenever something is unclear; the tutor does not ask the learner questions.
 _Avoid_: Passive mode, lecture mode
