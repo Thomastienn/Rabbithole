@@ -46,6 +46,8 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
     const [notice, setNotice] = useState<string>();
     const [asked, setAsked] = useState(false);
     const [caption, setCaption] = useState<Caption>();
+    // The tutor's question or check-in waits for the learner: the waiting cue shows until they speak, type or send.
+    const [waiting, setWaiting] = useState(false);
     const [replies, setReplies] = useState<Reply[]>([]);
     // The earlier reply the learner stepped back to; none shows the latest board.
     const [step, setStep] = useState<number>();
@@ -142,6 +144,7 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
             if (m.type === 'state') {
                 cut.current = false;
                 setState(m.state);
+                setWaiting(!!m.waiting);
                 if (m.reply)
                     setTurns((all) => [
                         ...all,
@@ -188,6 +191,7 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
                     if (micOn.current && ptt.current && holding.current) sendHold(true);
                 }
             }
+            if (m.type === 'hearing' && m.on) setWaiting(false);
             if (m.type === 'hearing')
                 setMic((mic) =>
                     mic.status === 'on'
@@ -244,6 +248,7 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
     };
     // The learner started typing: a question's wait holds open until they send.
     const typing = () => {
+        setWaiting(false);
         const ws = socket.current;
         if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'typing' }));
     };
@@ -346,5 +351,6 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         ask,
         typing,
         draw,
+        waiting,
     };
 }

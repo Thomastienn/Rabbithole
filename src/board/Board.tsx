@@ -266,8 +266,8 @@ export default function Board({
                                     parts={parts.get(op.id)}
                                 />
                             ))}
-                            {/* The tutor heard: a soft pulse in the corner of the current area, which board items rarely use, until it speaks. */}
-                            {board.state === 'thinking' && (
+                            {/* The tutor heard, or waits for the learner's answer: a soft pulse in the corner of the current area, which board items rarely use. */}
+                            {(board.state === 'thinking' || board.waiting) && (
                                 <circle
                                     className="board-waiting"
                                     cx={1544}
