@@ -2,7 +2,7 @@ import { compactionMessages } from '../../media/compaction-messages.mjs';
 import { anchored } from '../../suggestions.mjs';
 import { partTrail, visualMessage, visualPassage } from '../../../src/media/artifacts.ts';
 import { sketchDrawnAt } from '../../../src/markdown/markdownText.ts';
-import { sketchPassage } from '../../../src/sketch/sketch.ts';
+import { sketchPassage } from '../../../src/sketch/itemPassage.ts';
 
 // A free branch has no passage, so its prompt drops the two passage sentences.
 const COMPACT = (free) =>

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createElement as h, useState } from 'react';
-import { sketchItemOf } from '../../src/sketch/sketch.ts';
+import { sketchItemOf } from '../../src/sketch/itemPassage.ts';
 import { sketchDrawnAt } from '../../src/markdown/markdownText.ts';
 import ChatThread from '../../src/chat/ChatThread.tsx';
 import { render } from '../support/render.mjs';

@@ -31,7 +31,7 @@ import type { Tree } from './types';
 import type { ChatState } from './useChatState';
 import type { ChatModel } from './useChatModel';
 import { sketchDrawnAt } from '../markdown/markdownText';
-import { sketchItemOf } from '../sketch/sketch';
+import { sketchItemOf } from '../sketch/itemPassage';
 import type { LearningTrees } from './useLearningTrees';
 import type { ReplyStream } from './useReplyStream';
 import type { BranchFormState } from './useBranchForm';

@@ -12,11 +12,11 @@ import {
 import { HStack } from '@astryxdesign/core/Layout';
 import {
     drawSketch,
-    sketchItemOf,
-    sketchPassage,
     type Palette,
     type Sketch as Drawing,
+    type SketchItem,
 } from '../sketch/sketch';
+import { sketchItemOf, sketchPassage } from '../sketch/itemPassage';
 import type { Anchor } from '../chat/branch';
 import { inkStyle } from '../map/treeList';
 import './sketch.css';
@@ -194,12 +194,12 @@ function SketchDrawing({
                 dangerouslySetInnerHTML={{ __html: drawn.markup }}
             />
             {/* The items, read in order; asking makes each one a button, the sketch one Tab stop that arrows move through. */}
-            <ul className="sr-only">
-                {drawn.items.map((item, i) => {
-                    const address = branchOf(item.label)?.address;
-                    return (
-                        <li key={i}>
-                            {context ? (
+            {context ? (
+                <ul className="sr-only">
+                    {drawn.items.map((item, i) => {
+                        const address = branchOf(item.label)?.address;
+                        return (
+                            <li key={i}>
                                 <button
                                     type="button"
                                     ref={(el) => {
@@ -235,13 +235,13 @@ function SketchDrawing({
                                 >
                                     {item.text}
                                 </button>
-                            ) : (
-                                item.text
-                            )}
-                        </li>
-                    );
-                })}
-            </ul>
+                            </li>
+                        );
+                    })}
+                </ul>
+            ) : (
+                <Items items={drawn.items} className="sr-only" />
+            )}
             {context && (
                 <span id={hint} hidden>
                     Press Enter to ask about it.
@@ -274,5 +274,25 @@ function SketchDrawing({
                 </HStack>
             )}
         </figure>
+    );
+}
+
+// The items in order; a tree's deeper items nest under the item above them.
+function Items({ items, className }: { items: SketchItem[]; className?: string }) {
+    const level = items[0].level ?? 0;
+    return (
+        <ul className={className}>
+            {items.map((item, i) => {
+                if ((item.level ?? 0) !== level) return null;
+                const end = items.findIndex((next, j) => j > i && (next.level ?? 0) <= level),
+                    kids = items.slice(i + 1, end < 0 ? undefined : end);
+                return (
+                    <li key={i}>
+                        {item.text}
+                        {kids.length > 0 && <Items items={kids} />}
+                    </li>
+                );
+            })}
+        </ul>
     );
 }
