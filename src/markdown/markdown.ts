@@ -387,6 +387,8 @@ export function renderMarkdown(
                         ...attrs,
                         kind: n.meta ?? '',
                         body: n.value ?? '',
+                        start: s,
+                        end: e,
                         fence: n.sketchClosed
                             ? 'closed'
                             : sketches === 'streaming'

@@ -182,6 +182,23 @@ export const parse = (text: string) =>
 
 export const isSketch = (node: MarkdownNode) => node.type === 'code' && node.lang === 'sketch';
 
+// The closed sketch block spanning exactly start..end of a reply, as its kind and body.
+export function sketchAt(raw: string, start: unknown, end: unknown) {
+    let found: { kind: string; body: string } | undefined;
+    const walk = (node: MarkdownNode) => {
+        if (
+            isSketch(node) &&
+            node.sketchClosed &&
+            node.position?.start.offset === start &&
+            node.position?.end.offset === end
+        )
+            found = { kind: node.meta ?? '', body: node.value ?? '' };
+        else node.children?.forEach(walk);
+    };
+    walk(parse(raw));
+    return found;
+}
+
 // The clipboard keeps reply Markdown and omits the syntax used to draw sketches.
 export function withoutSketches(raw: string) {
     if (!raw.includes('```') && !raw.includes('~~~')) return raw;
