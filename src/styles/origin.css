@@ -1,0 +1,107 @@
+/* Where a chat came from: the inherited context pill and the origin line under the title. */
+/* Inherited context: a compact raised pill that opens in place (mockup .inh). */
+.inherited-context {
+    align-self: flex-start;
+    margin-block-start: 20px;
+    width: fit-content;
+    max-width: 100%;
+    border-radius: var(--radius-container);
+    background: var(--color-background-surface);
+    padding-inline: 14px;
+    color: var(--color-text-primary);
+    font-size: 13px;
+}
+.inherited-context .astryx-collapsible-trigger {
+    width: auto;
+    gap: 10px;
+    padding: 10px 0;
+    color: var(--color-text-secondary);
+}
+.inherited-context .astryx-collapsible-trigger .astryx-text {
+    font-size: 13px;
+    line-height: 19px;
+}
+/* Mockup: 24px from the pill to the first question. */
+.focused-chat .inherited-context + .chat-question {
+    margin-block-start: 16px;
+}
+.inherited-context .astryx-collapsible-trigger strong {
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+.inherited-body {
+    margin: 0;
+    padding: 0 var(--rabbithole-module) calc(2 * var(--rabbithole-module));
+    display: grid;
+    gap: var(--spacing-1);
+    font-size: var(--font-size-sm);
+}
+.inherited-body dt {
+    color: var(--color-text-secondary);
+    font-weight: 500;
+    margin-block-start: var(--spacing-2);
+}
+.inherited-body dd:first-of-type {
+    color: var(--color-text-primary);
+}
+.inherited-body dd {
+    margin: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    color: var(--color-text-secondary);
+    font-family: var(--rabbithole-font-reading);
+    font-size: var(--font-size-base);
+    line-height: 1.7;
+}
+/* Origin line under the title (mockup .origin): a porcelain ring, then From <parent> at “passage”. */
+.origin-line {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    overflow-wrap: anywhere;
+}
+.origin-ring {
+    flex: none;
+    width: 13px;
+    height: 13px;
+    box-sizing: border-box;
+    align-self: center;
+    border: 3px solid var(--rabbithole-paper);
+    border-radius: 50%;
+    background: var(--color-background-body);
+}
+.origin-line .origin-chip {
+    display: inline;
+    height: auto;
+    min-height: 0;
+    padding: 0;
+    font-size: inherit;
+    font-weight: 400;
+    color: var(--color-text-primary);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    vertical-align: baseline;
+}
+.origin-source,
+.origin-question {
+    margin: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+.origin-question {
+    margin-block-start: var(--spacing-2);
+}
+.origin-source[data-clamped] {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+}
+.origin-question {
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
