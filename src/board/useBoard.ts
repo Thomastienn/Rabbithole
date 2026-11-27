@@ -7,8 +7,12 @@ import { savePreference, savedBoardSpeed } from '../shell/preferences';
 
 export type BoardState = 'idle' | 'thinking' | 'speaking';
 type Caption = { text: string; muted: boolean };
-// A drawn board item, how long its entry takes and, once erased, how long its fade takes.
-export type Drawn = { op: Op; ms: number; erased?: number };
+// A drawn board item and how long its entry takes.
+export type Drawn = { op: Op; ms: number };
+// One board reply: the items it drew and its last sentence.
+type Reply = { items: Drawn[]; caption: string };
+const still = (replies: Reply[]) =>
+    replies.map((r) => ({ ...r, items: r.items.map((d) => ({ ...d, ms: 0 })) }));
 // A question asked on this board and the sentences of its reply shown so far, under their saved message ids.
 export type Turn = { user: string; reply: string; question: string; said: string[] };
 
@@ -22,7 +26,13 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
     const [notice, setNotice] = useState<string>();
     const [asked, setAsked] = useState(false);
     const [caption, setCaption] = useState<Caption>();
-    const [items, setItems] = useState<Drawn[]>([]);
+    const [replies, setReplies] = useState<Reply[]>([]);
+    // The earlier reply the learner stepped back to; none shows the latest board.
+    const [step, setStep] = useState<number>();
+    // A reply that said nothing is not a step of the board.
+    const dropSilent = () => setReplies((rs) => (rs.at(-1)?.caption ? rs : rs.slice(0, -1)));
+    const onLast = (change: (reply: Reply) => Reply) =>
+        setReplies((rs) => [...rs.slice(0, -1), change(rs.at(-1) ?? { items: [], caption: '' })]);
     // Pen strokes over board items since the last question; they go with the next one.
     const [marks, setMarks] = useState(0);
     const restored = latest && { text: latest.text.trim().split('\n').at(-1) ?? '', muted: true };
@@ -32,24 +42,13 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
     const question = useRef('');
     const socket = useRef<WebSocket>(undefined);
     const playing = useRef<ReturnType<typeof boardPlayer>>(undefined);
+    // Set by a cut-in until the server answers it with a state: sentences of the stopped reply still on the wire are dropped.
+    const cut = useRef(false);
     useEffect(() => {
         const ws = boardSocket(conversation);
         socket.current = ws;
         const send = (message: object) => {
             if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(message));
-        };
-        // Erased items fade out over the op's share of its sentence, then leave the board.
-        const erase = (ids: string[], ms: number) => {
-            setItems((drawn) =>
-                drawn.map((d) => (ids.includes(d.op.id) ? { ...d, erased: ms } : d)),
-            );
-            player.wait(
-                () =>
-                    setItems((drawn) =>
-                        drawn.filter((d) => d.erased === undefined || !ids.includes(d.op.id)),
-                    ),
-                ms,
-            );
         };
         const player = boardPlayer(
             (s) => {
@@ -59,15 +58,16 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
                         i === all.length - 1 ? { ...t, said: [...t.said, s.text] } : t,
                     ),
                 );
+                onLast((r) => ({ ...r, caption: s.text }));
             },
+            // A retimed op comes again with its new entry time and replaces its first draw.
             (op, ms) =>
-                op.kind === 'erase'
-                    ? erase(op.ids ?? [], ms)
-                    : setItems((drawn) =>
-                          drawn.some((item) => item.op.id === op.id)
-                              ? drawn.map((item) => (item.op.id === op.id ? { op, ms } : item))
-                              : [...drawn, { op, ms }],
-                      ),
+                onLast((r) => ({
+                    ...r,
+                    items: r.items.some((item) => item.op.id === op.id)
+                        ? r.items.map((item) => (item.op.id === op.id ? { op, ms } : item))
+                        : [...r.items, { op, ms }],
+                })),
             (s, phase) => send({ type: 'progress', sentence: s.id, phase }),
             streamedVoice(),
         );
@@ -81,6 +81,7 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
             setReady(false);
             setState('idle');
             setCaption((c) => c && { ...c, muted: true });
+            dropSilent();
             setNotice('The board disconnected. Turn Board off and on to reconnect.');
         };
         ws.onmessage = (event) => {
@@ -92,6 +93,7 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
             }
             const m = JSON.parse(event.data);
             if (m.type === 'state') {
+                cut.current = false;
                 setState(m.state);
                 if (m.reply)
                     setTurns((all) => [
@@ -103,14 +105,22 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
                     player.stop();
                     setPaused(false);
                     setCaption((c) => c && { ...c, muted: true });
+                    dropSilent();
                 }
             }
             // The saved board shows at once, without entry.
-            if (m.type === 'board') setItems(m.items.map((op: Op) => ({ op, ms: 0 })));
-            if (m.type === 'sentence') player.add(m);
+            if (m.type === 'board')
+                setReplies(
+                    m.replies.map((r: { caption: string; items: Op[] }) => ({
+                        caption: r.caption,
+                        items: r.items.map((op) => ({ op, ms: 0 })),
+                    })),
+                );
+            if (m.type === 'sentence' && !cut.current) player.add(m);
             if (m.type === 'audio-end') player.audioEnd(m.id);
+            // A stroke joins the board it was drawn on, as the server replays it.
             if (m.type === 'stroke') {
-                setItems((drawn) => [...drawn, { op: m.item, ms: 0 }]);
+                onLast((r) => ({ ...r, items: [...r.items, { op: m.item, ms: 0 }] }));
                 if (m.mark) setMarks((n) => n + 1);
             }
             if (m.type === 'notice') setNotice(m.notice);
@@ -139,13 +149,28 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         if (ws?.readyState !== WebSocket.OPEN) return false;
         ws.send(JSON.stringify({ type: 'ask', text }));
         question.current = text;
+        // Sending mid-reply cuts in: the tutor stops here at once, without waiting on the server.
+        if (state === 'speaking') {
+            cut.current = true;
+            playing.current?.stop();
+            setPaused(false);
+        }
         setAsked(true);
         setMarks(0);
         setNotice(undefined);
         // The sent question shows muted until the tutor speaks, so the learner sees it was heard.
         setCaption({ text, muted: true });
         setState('thinking');
+        // Asking returns to the latest board, which the new reply draws on.
+        setStep(undefined);
+        setReplies((rs) => [...rs, { items: [], caption: '' }]);
         return true;
+    };
+    const at = step ?? replies.length - 1;
+    // Stepping replays the stored items at once, and so does coming back to the latest board.
+    const go = (to: number) => {
+        setReplies(still);
+        setStep(to < replies.length - 1 ? to : undefined);
     };
     // A finished pen stroke, in board pixels; the server hit-tests it and sends it back as an item.
     const draw = (points: [number, number][]) => {
@@ -186,8 +211,16 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         ready,
         notice,
         asked: asked || messages.some((m) => m.board),
-        caption: caption ?? restored,
-        items,
+        caption:
+            step === undefined
+                ? (caption ?? restored)
+                : { text: replies[step].caption, muted: true },
+        items: replies.slice(0, at + 1).flatMap((r) => r.items),
+        replies: replies.length,
+        // The reply on show, from 0, and whether it is an earlier one.
+        at,
+        stepped: step !== undefined,
+        go,
         marks,
         ask,
         draw,

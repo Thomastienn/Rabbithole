@@ -51,16 +51,18 @@ selected, error) with realistic data.
    `<state>-dark-mockup.webp` and `<state>-dark-app.webp`. Write them without
    opening them, commit them with the code, and list them in the PR body
    (sequential runs: the issue notes).
-5. **Escalate** a difference you cannot remove (data the app does not have, a
-   behaviour the mockup assumes, a conflict with an acceptance criterion): it
-   is an owner decision, never a default. Name the region, what the mockup
-   shows, what the app can show, and the options. In PR mode add
-   `needs-human` with that note; in sequential runs record it in the notes and
-   end without the completion signal.
+5. **Record** a difference you cannot remove (data the app does not have, a
+   behaviour the mockup assumes, a conflict with an acceptance criterion):
+   build the closest the app can show, and name the region, what the mockup
+   shows, what the app shows, and the options. In PR mode list it under
+   `Owner decisions:` in the PR body and finish; the owner answers after the
+   merge. In sequential runs record it in the notes and finish.
 
 ## Reviewing
 
 Open the committed pairs side by side, region by region; do not capture
 again. Check light-scheme colours as text, from the CSS the diff adds.
 A missing pair, a structural difference, or a colour in the wrong role that
-neither the ticket nor the owner approved is a Must fix.
+neither the ticket nor the owner approved is a Must fix, unless it cannot be
+removed and the PR lists it under `Owner decisions:`; that one does not block
+approval.

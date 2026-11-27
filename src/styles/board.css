@@ -116,12 +116,6 @@
     border-radius: var(--radius-container);
     overflow: hidden;
 }
-.board > svg {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-}
 .board-empty {
     position: absolute;
     inset: 0;
@@ -324,50 +318,6 @@
     width: 20px;
     height: 20px;
 }
-/* The board's tool group: the mic, the pen (mockup Rabbithole-brd.14), then speed and pause (mockup Rabbithole-brd.8). */
-.board-tools {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    margin-inline-start: -8px;
-}
-/* Off, the pen is a muted icon like the mockup's; pressed, it fills porcelain with its icon in the porcelain text colour. */
-.board-composer .board-pen {
-    color: var(--color-text-secondary);
-}
-.board-composer .board-pen:hover {
-    color: var(--color-text-primary);
-}
-.board-composer .board-pen[aria-pressed='true'] {
-    background: var(--rabbithole-paper);
-    color: var(--rabbithole-paper-ink);
-}
-/* Marks waiting for the next question: one pill above the composer text, with a short line in the learner's ink. */
-.board-tray {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-block-end: 8px;
-}
-.board-marks {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    height: 30px;
-    padding: 0 10px;
-    border-radius: var(--radius-inner);
-    background: var(--color-background-gray);
-    font-size: 13px;
-    font-weight: 500;
-    white-space: nowrap;
-}
-.board-marks > span {
-    flex: none;
-    width: 14px;
-    height: 4px;
-    border-radius: var(--radius-full);
-    background: var(--ink);
-}
 /* Speed: the composer's 30px pill, showing the speed in tabular figures. */
 .board-composer .board-speed {
     min-width: 56px;
@@ -416,22 +366,4 @@
         max-width: calc(100% - 24px);
         white-space: normal;
     }
-}
-
-/* Board snapshot (mockup Rabbithole-brd.16): a board reply's board at its end, still, under the reply's text
-   in normal chat. 400px at 16:9, never wider than the column, on the board surface with no frame.
-   Margins give the mockup's drawn gaps (15px under the text, 14px to the copy button) inside the reply's 4px flex gap. */
-.board-snapshot {
-    width: 400px;
-    max-width: 100%;
-    aspect-ratio: 16 / 9;
-    margin: 11px 0 14px;
-    background: var(--color-background-muted);
-    border-radius: var(--radius-container);
-    overflow: hidden;
-}
-.board-snapshot svg {
-    display: block;
-    width: 100%;
-    height: 100%;
 }

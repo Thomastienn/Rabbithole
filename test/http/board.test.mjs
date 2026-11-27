@@ -86,7 +86,9 @@ test('board: a typed question gets its sentences one at a time and saves as a le
     // Reopened, the board replays its saved op lines at once, and the tutor can still join their ids.
     board.send({ type: 'leave' });
     const again = connect();
-    assert.deepEqual((await again.next('board')).items, [...first.ops, ...second.ops]);
+    assert.deepEqual((await again.next('board')).replies, [
+        { caption: 'Tiny sacs carry new wall forward.', items: [...first.ops, ...second.ops] },
+    ]);
     again.send({ type: 'ask', text: 'And then?' });
     const joined = await again.next('sentence');
     assert.deepEqual(
@@ -255,12 +257,12 @@ test('board: pen strokes wait for the next question, which names what they mark,
         ['t1', 't2', 'p2', 'p3'],
     );
 
-    // Reopened, the strokes saved with the question show again, except the one the tutor erased.
+    // Reopened, the strokes saved with the question show again on the board they were drawn on, and the erase.
     board.send({ type: 'leave' });
     const again = connect();
     assert.deepEqual(
-        (await again.next('board')).items.map((i) => i.id),
-        ['t1', 't2', 'p2', 'p3'],
+        (await again.next('board')).replies.map((r) => r.items.map((i) => i.id)),
+        [['t1', 't2', 'p1', 'p2', 'p3'], ['e1']],
     );
 });
 
@@ -315,7 +317,7 @@ test('board: a stroke drawn after an erase that was never shown keeps its own id
     assert.equal(await strokeAndAsk('Second?'), 'p2');
     board.send({ type: 'leave' });
     assert.deepEqual(
-        (await connect().next('board')).items.map((i) => i.id),
+        (await connect().next('board')).replies.flatMap((r) => r.items.map((i) => i.id)),
         ['p1', 'p2'],
     );
 });
@@ -379,6 +381,57 @@ test('board: leaving mid-reply saves only shown sentences and keeps any usage th
         role: 'assistant',
         text: 'First idea.\nSecond idea.',
     });
+});
+
+test('board: sending mid-reply cuts in, saves what was heard and tells the next turn where it was cut off', async (t) => {
+    const provider = boardProvider([
+        [
+            '> First idea.\na dot at 300,450\n> Second idea.\nb dot at 600,450\n> Third idea.\nc dot at 300,700\n',
+        ],
+        ['> Good question.\nc dot at 300,700\n'],
+    ]);
+    const { env, id, connect } = await setup(t, provider);
+    const board = connect();
+    await opened(board.ws);
+    await until(() => provider.boards[0]?.opened);
+    const process = provider.boards[0];
+    process.hold = new Promise(() => {});
+    board.send({ type: 'ask', text: 'Why?' });
+    const first = await board.next('sentence');
+    const second = await board.next('sentence');
+    board.send({ type: 'progress', sentence: first.id, phase: 'start' });
+    board.send({ type: 'progress', sentence: first.id, phase: 'end' });
+    board.send({ type: 'progress', sentence: second.id, phase: 'start' });
+    await until(() => messages(env, id)[1]?.text === 'First idea.\nSecond idea.');
+    board.send({ type: 'ask', text: 'Wait, what is a dot?' });
+    assert.equal((await board.next('state')).state, 'idle', 'the reply stops');
+    assert.equal((await board.next('state')).state, 'thinking');
+    assert.ok(process.signals[0].aborted);
+    const answer = await board.next('sentence');
+    assert.equal(answer.text, 'Good question.', 'nothing more from the stopped reply plays');
+    assert.deepEqual(
+        answer.ops.map((op) => op.id),
+        ['c'],
+        'an item the learner never saw is not on the board',
+    );
+    const [question, reply] = messages(env, id);
+    assert.equal(question.text, 'Why?');
+    assert.deepEqual(
+        { text: reply.text, status: reply.status, stopped: reply.stopped },
+        { text: 'First idea.\nSecond idea.', status: 'interrupted', stopped: 'learner' },
+    );
+    assert.deepEqual(reply.snapshot, [...first.ops, ...second.ops]);
+    await until(() => provider.boards[1]?.asked.length);
+    assert.equal(provider.boards[1].options.history.at(-1).text, 'First idea.\nSecond idea.');
+    const prompt = provider.boards[1].asked[0];
+    assert.ok(prompt.includes('"Second idea."'), 'the note names the last sentence heard');
+    assert.ok(!prompt.includes('Third idea.'));
+    assert.ok(prompt.endsWith('\n\nWait, what is a dot?'));
+    assert.equal(
+        messages(env, id)[2].text,
+        'Wait, what is a dot?',
+        'the saved question has no note',
+    );
 });
 
 test('board: a process that ends on its own leaves a notice and the reply up to the caption shown', async (t) => {
