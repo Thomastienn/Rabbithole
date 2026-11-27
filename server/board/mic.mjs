@@ -57,9 +57,10 @@ export function boardMic(hearing, { send, log, ask, stop, busy, closed }) {
         send({ type: 'heard', text });
         ask(text);
     };
+    // Held audio never meets voice detection, even while the last question is still recognized.
     const hold = (down) => {
         const current = mic;
-        if (!current || recognizing) return;
+        if (!current) return;
         if (down) {
             if (held) return;
             held = [];
@@ -78,13 +79,14 @@ export function boardMic(hearing, { send, log, ask, stop, busy, closed }) {
     // Mic audio: 16 kHz mono float32 samples, cut into Silero frames and scored one at a time.
     const listen = (samples) => {
         const current = mic;
-        if (!current || recognizing) return;
+        if (!current) return;
         // A hold keeps at most a minute of speech.
         if (held) {
             if (heldSamples + samples.length > 60 * 16000) return;
             heldSamples += samples.length;
             return void held.push(samples.slice());
         }
+        if (recognizing) return;
         const all = new Float32Array(rest.length + samples.length);
         all.set(rest);
         all.set(samples, rest.length);

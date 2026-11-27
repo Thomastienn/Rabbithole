@@ -116,6 +116,14 @@ export default function Board({
     const ptt = board.pushToTalk;
     const held = ptt && !!mic.hearing;
     const column = useRef<HTMLElement>(null);
+    const holdHandlers = {
+        onPointerDown: (e: PointerEvent<HTMLElement>) => {
+            e.currentTarget.setPointerCapture?.(e.pointerId);
+            board.hold(true);
+        },
+        onPointerUp: () => board.hold(false),
+        onPointerCancel: () => board.hold(false),
+    };
     const hold = useRef(board.hold);
     hold.current = board.hold;
     // Push-to-talk: Space holds to talk unless focus is in a text field or the board is out of sight.
@@ -356,12 +364,7 @@ export default function Board({
                                     icon={<MicrophoneIcon />}
                                     variant="ghost"
                                     isDisabled={!board.ready}
-                                    onPointerDown={(e: PointerEvent<HTMLElement>) => {
-                                        e.currentTarget.setPointerCapture?.(e.pointerId);
-                                        board.hold(true);
-                                    }}
-                                    onPointerUp={() => board.hold(false)}
-                                    onPointerCancel={() => board.hold(false)}
+                                    {...holdHandlers}
                                 >
                                     {held ? (
                                         <>
@@ -392,7 +395,8 @@ export default function Board({
                                     isIconOnly={!loading && !mic.hearing}
                                     variant="ghost"
                                     isDisabled={!board.ready}
-                                    onClick={board.toggleMic}
+                                    // Downloading on a first hold, it is still held, never toggled.
+                                    {...(ptt ? holdHandlers : { onClick: board.toggleMic })}
                                 >
                                     {loading ? (
                                         <>

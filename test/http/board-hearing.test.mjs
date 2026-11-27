@@ -222,3 +222,29 @@ test('board: holding push-to-talk stops the tutor at once, and letting go asks e
         ],
     );
 });
+
+test('board: a hold pressed again while the last one is recognized keeps its audio from voice detection', async (t) => {
+    const provider = boardProvider([['> Because it is lit.\n']]);
+    const recognized = Promise.withResolvers();
+    const hearing = fakeHearing({ held: recognized.promise });
+    const { connect } = await setup(t, provider, { app: { hearing } });
+    const board = connect();
+    await opened(board.ws);
+    board.send({ type: 'mic', on: true });
+    await board.next('mic', (m) => m.status === 'on');
+    board.send({ type: 'hold', on: true });
+    speak(board, 4, 0);
+    board.send({ type: 'hold', on: false });
+    await until(() => hearing.heard.length);
+    board.send({ type: 'hold', on: true });
+    // The mic answers in order, so the hold has reached the server before recognition ends.
+    board.send({ type: 'mic', on: true });
+    await board.next('mic', (m) => m.status === 'on');
+    recognized.resolve();
+    await board.next('heard');
+    // Speech and a long pause while still held: voice detection would end the question on its own.
+    speak(board, 8, 12);
+    board.send({ type: 'hold', on: false });
+    await until(() => hearing.heard.length === 2);
+    assert.deepEqual(hearing.heard, [4 * FRAME, 20 * FRAME]);
+});

@@ -134,3 +134,32 @@ test('board: with push-to-talk on, only speech while the mic or Space is held go
     await space('keydown', board.q('[contenteditable=true]'));
     assert.equal(board.socket.sent.length, sent + 2);
 });
+
+test('board: with push-to-talk on, letting go of the mic while the models download neither turns it off nor records once they are ready', async (t) => {
+    const mic = fakeMic(t);
+    const install = mic.install;
+    mic.install = (w) => {
+        install(w);
+        w.localStorage.setItem('rabbithole.push-to-talk', 'on');
+    };
+    const board = await mount(t, [], undefined, false, mic);
+    const fire = (type) =>
+        board.act(async () =>
+            board
+                .q('.board-mic')
+                .dispatchEvent(
+                    Object.assign(new window.MouseEvent(type, { bubbles: true }), { pointerId: 1 }),
+                ),
+        );
+    await fire('pointerdown');
+    await board.act(async () =>
+        board.socket.server({ type: 'mic', status: 'loading', loaded: 26e6, total: 64e6 }),
+    );
+    // A browser follows pointerup with a click on the same button.
+    await fire('pointerup');
+    await fire('click');
+    assert.deepEqual(board.socket.sent, [{ type: 'mic', on: true }]);
+    await board.act(async () => board.socket.server({ type: 'mic', status: 'on' }));
+    assert.deepEqual(board.socket.sent, [{ type: 'mic', on: true }], 'nothing is held');
+    assert.equal(board.q('.board-mic').getAttribute('aria-pressed'), 'false');
+});
