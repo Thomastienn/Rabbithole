@@ -9,13 +9,17 @@ const protocol = require('@andresaya/edge-tts/dist/core/protocol.js');
 export const VOICES = { en: 'en-US-AriaNeural' };
 // Firefox's MediaSource plays WebM Opus but not MP3 (src/board/voice.ts).
 const FORMAT = 'webm-24khz-16bit-mono-opus';
+// edge-tts fails in bursts with sockets that open but send nothing (docs/board-spec.md).
+const FIRST_BYTE_MS = 2500;
 
 // A small edge-tts client that keeps one socket for a board session's sentences: the library opens a socket
 // per request and returns whole clips, and reusing one cut the first byte from about 350 ms to 80 ms.
 // speak() streams one sentence's audio chunks and resolves at its turn.end; one sentence at a time.
+// It rejects when the first audio chunk takes longer than firstByte ms.
 export function edgeSpeech(
     voice = VOICES.en,
     open = (url, options) => new WebSocket(url, options),
+    firstByte = FIRST_BYTE_MS,
 ) {
     let socket = null;
     const stamp = () => new Date().toUTCString();
@@ -45,50 +49,68 @@ export function edgeSpeech(
             socket = null;
             throw error;
         }));
+    const close = () => {
+        socket?.then((ws) => ws.close()).catch(() => {});
+        socket = null;
+    };
     return {
         // Opens the socket while the model writes its first sentence.
         warm: () => connect().catch(() => {}),
         async speak(text, chunk, signal) {
-            const ws = await connect();
-            signal?.throwIfAborted();
-            await new Promise((resolve, reject) => {
-                const done = (error) => {
-                    ws.off('message', message);
-                    ws.off('close', closed);
-                    signal?.removeEventListener('abort', abort);
-                    if (error) reject(error);
-                    else resolve();
-                };
-                const message = (data, binary) => {
-                    if (!binary)
-                        return (
-                            protocol.parseTextFrame(data.toString()).path === 'turn.end' && done()
-                        );
-                    const frame = protocol.parseBinaryFrame(new Uint8Array(data));
-                    if (frame.path === 'audio' && frame.body.length) chunk(frame.body);
-                };
-                const closed = () => done(new Error('edge-tts closed the socket'));
-                // A stopped sentence's late frames would reach the next one, so its socket goes.
-                const abort = () => {
-                    socket = null;
-                    ws.close();
-                    done(signal.reason);
-                };
-                ws.on('message', message);
-                ws.on('close', closed);
-                signal?.addEventListener('abort', abort, { once: true });
-                ws.send(
-                    protocol.buildSSMLMessage(
-                        protocol.generateUUID(),
-                        stamp(),
-                        protocol.buildSSML(text, voice, '+0Hz', '+0%', '+0%'),
+            const late = new AbortController();
+            const timer = setTimeout(
+                () => late.abort(new Error(`edge-tts sent no audio within ${firstByte} ms`)),
+                firstByte,
+            );
+            const stop = signal ? AbortSignal.any([signal, late.signal]) : late.signal;
+            // A stopped or late sentence's frames would reach the next one, so its socket goes.
+            stop.addEventListener('abort', close, { once: true });
+            try {
+                stop.throwIfAborted();
+                const ws = await Promise.race([
+                    connect(),
+                    new Promise((_, reject) =>
+                        stop.addEventListener('abort', () => reject(stop.reason), { once: true }),
                     ),
-                );
-            });
+                ]);
+                stop.throwIfAborted();
+                await new Promise((resolve, reject) => {
+                    const done = (error) => {
+                        ws.off('message', message);
+                        ws.off('close', closed);
+                        stop.removeEventListener('abort', abort);
+                        if (error) reject(error);
+                        else resolve();
+                    };
+                    const message = (data, binary) => {
+                        if (!binary)
+                            return (
+                                protocol.parseTextFrame(data.toString()).path === 'turn.end' &&
+                                done()
+                            );
+                        const frame = protocol.parseBinaryFrame(new Uint8Array(data));
+                        if (frame.path !== 'audio' || !frame.body.length) return;
+                        clearTimeout(timer);
+                        chunk(frame.body);
+                    };
+                    const closed = () => done(new Error('edge-tts closed the socket'));
+                    const abort = () => done(stop.reason);
+                    ws.on('message', message);
+                    ws.on('close', closed);
+                    stop.addEventListener('abort', abort, { once: true });
+                    ws.send(
+                        protocol.buildSSMLMessage(
+                            protocol.generateUUID(),
+                            stamp(),
+                            protocol.buildSSML(text, voice, '+0Hz', '+0%', '+0%'),
+                        ),
+                    );
+                });
+            } finally {
+                clearTimeout(timer);
+                stop.removeEventListener('abort', close);
+            }
         },
-        close() {
-            socket?.then((ws) => ws.close()).catch(() => {});
-            socket = null;
-        },
+        close,
     };
 }

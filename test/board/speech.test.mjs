@@ -76,3 +76,24 @@ test('board speech warms one socket, streams before the clip ends, and closes on
     await closed;
     await fresh();
 });
+
+test('board speech gives up on a sentence whose first audio is late, and drops its socket', async (t) => {
+    const server = new WebSocketServer({ host: '127.0.0.1', port: 0 });
+    t.after(() => {
+        for (const socket of server.clients) socket.terminate();
+        return new Promise((resolve) => server.close(resolve));
+    });
+    await once(server, 'listening');
+    const client = edgeSpeech(
+        undefined,
+        () => new WebSocket(`ws://127.0.0.1:${server.address().port}`),
+        50,
+    );
+    const [peer] = await once(server, 'connection');
+    const dropped = once(peer, 'close');
+    await assert.rejects(
+        client.speak('Silent.', () => {}),
+        /no audio within 50 ms/,
+    );
+    await dropped;
+});
