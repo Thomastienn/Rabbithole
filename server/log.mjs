@@ -12,6 +12,8 @@ const FIELDS = new Set([
     'input',
     'output',
     'cacheRead',
+    // A board request's thinking tokens (docs/board-spec.md).
+    'thinking',
     'ms',
     'status',
     'method',

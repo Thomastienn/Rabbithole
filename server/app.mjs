@@ -39,6 +39,7 @@ import { searxngSearch } from './tools/searxng.mjs';
 import { toolMcp } from './tools/mcp.mjs';
 import { retrieveNeighbourhood } from './neighbourhood.mjs';
 import { pieceStills } from './media/piece-stills.mjs';
+import { boardSockets } from './http/board-socket.mjs';
 
 // Matching order; each route answers only its own method and paths, and assets answers everything left.
 const ROUTES = [
@@ -316,6 +317,7 @@ export function createApp({
             else res.end();
         }
     });
+    boardSockets(ctx, server);
     return {
         server,
         jobs: ctx.jobs,

@@ -9,6 +9,7 @@ import { inputParts } from '../attachments.mjs';
 import { toolEvents } from './toolEvents.mjs';
 import { ENDED, STALLED } from './chatStream.mjs';
 import { ClaudeRunner } from './claudeRunner.mjs';
+import { ClaudeBoard } from './claudeBoard.mjs';
 
 // shortcut: aliases and effort levels follow the current Claude Code model-config table; revisit when aliases change.
 const MODELS = [
@@ -134,6 +135,10 @@ export class Claude {
     }
     async model(tree) {
         return tree.model ?? MODELS.find((m) => m.isDefault).model;
+    }
+    // A board's own long-lived process (docs/board-spec.md).
+    board(options) {
+        return new ClaudeBoard(this, options);
     }
     async generate(tree, text, emit, saveThread, signal) {
         if (signal.aborted) {
