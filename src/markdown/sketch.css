@@ -73,3 +73,79 @@
     background: var(--color-skeleton);
     opacity: 0.6;
 }
+/* Compare (mockup Rabbithole-skt.3): an aspect column up to 30% and two even value columns, on hairline seams. */
+.sketch-compare {
+    display: grid;
+    grid-template-columns: fit-content(30%) 1fr 1fr;
+    column-gap: 16px;
+    font: 14px/20px var(--rabbithole-font-reading);
+}
+.sketch-compare span {
+    padding: 7px 0;
+    border-top: 1px solid;
+    border-top-color: inherit;
+}
+.sketch-compare span:nth-child(-n + 6) {
+    border-top: 0;
+}
+.sketch-compare span:nth-child(-n + 3) {
+    padding: 0 0 8px;
+}
+.sketch-compare s {
+    display: block;
+    height: 3px;
+    margin-top: 6px;
+    border-radius: var(--radius-full);
+}
+.sketch-compare .focus,
+.sketch-pie .focus {
+    font-weight: 600;
+}
+.sketch .sketch-ring {
+    fill: none;
+    stroke-width: 3;
+}
+/* Pie: a 176px ring beside its rows of swatch, label, value and share. */
+.sketch-pie {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+.sketch .sketch-pie svg {
+    flex: none;
+    width: 176px;
+}
+.sketch .sketch-slice {
+    stroke-width: 2;
+    stroke-linejoin: round;
+}
+.sketch-pie dl {
+    display: grid;
+    grid-template-columns: fit-content(220px) max-content max-content;
+    gap: 6px 16px;
+    margin: 0;
+    font: 14px/20px var(--rabbithole-font-reading);
+    font-variant-numeric: tabular-nums;
+}
+.sketch-pie dl.as-written {
+    grid-template-columns: fit-content(220px) max-content;
+}
+.sketch-pie dt {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+.sketch-pie s {
+    flex: none;
+    width: 16px;
+    height: 8px;
+    margin-top: 6px;
+    border-radius: 4px;
+}
+.sketch-pie dd {
+    margin: 0;
+    text-align: right;
+}
+.sketch-pie .share {
+    font-size: 13px;
+}
