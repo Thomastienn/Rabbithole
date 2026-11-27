@@ -6,8 +6,9 @@ const SPEECH_FAILED =
 const SPEECH_UNAVAILABLE = 'Voice questions are unavailable here, so type your question.';
 
 // A board session's mic: off as the board opens; on once the learner asks for it and the speech models are ready.
-// While the tutor thinks or speaks (busy) it does not listen (cutting in by voice is a later ticket).
-export function boardMic(hearing, { send, log, ask, busy, closed }) {
+// It listens while the tutor thinks or speaks (busy): about 150 ms of speech cuts the tutor off.
+// The tutor's own voice from the speakers is left to the browser's echo cancellation (src/board/mic.ts).
+export function boardMic(hearing, { send, log, ask, stop, busy, closed }) {
     let ears = null,
         mic = null,
         scoring = Promise.resolve(),
@@ -43,11 +44,7 @@ export function boardMic(hearing, { send, log, ask, busy, closed }) {
     // Mic audio: 16 kHz mono float32 samples, cut into Silero frames and scored one at a time.
     const listen = (samples) => {
         const current = mic;
-        if (!current || busy() || recognizing) {
-            // A typed question cut the learner's speech short.
-            if (current?.cut.reset()) send({ type: 'hearing', on: false });
-            return;
-        }
+        if (!current || recognizing) return;
         const all = new Float32Array(rest.length + samples.length);
         all.set(rest);
         all.set(samples, rest.length);
@@ -56,9 +53,10 @@ export function boardMic(hearing, { send, log, ask, busy, closed }) {
             const frame = all.slice(at, at + FRAME);
             scoring = scoring
                 .then(async () => {
-                    if (mic !== current || busy() || recognizing) return;
+                    if (mic !== current || recognizing) return;
                     const said = current.cut.push(frame, (await current.score(frame)) > 0.5);
                     if (said === 'start') return send({ type: 'hearing', on: true });
+                    if (said === 'speech') return busy() && stop(busy());
                     if (!said) return;
                     send({ type: 'hearing', on: false });
                     if (said === 'end') return;
