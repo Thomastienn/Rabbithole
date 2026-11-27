@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import WebSocket from 'ws';
-import { open, until } from '../support/diagram-kit.mjs';
+import { complete, open, until } from '../support/diagram-kit.mjs';
 import { notify } from '../support/events.mjs';
 import { TUTOR_RULES, VERDICT_RULE } from '../../server/media/tutor-instructions.mjs';
 
@@ -30,7 +30,13 @@ function boardProvider(scripts, { status = 'completed' } = {}) {
                         await new Promise((resolve) => setImmediate(resolve));
                     }
                     // A script ending in a held promise waits there until the learner leaves.
-                    if (board.hold) await board.hold;
+                    if (board.hold)
+                        await Promise.race([
+                            board.hold,
+                            new Promise((resolve) =>
+                                signal.addEventListener('abort', resolve, { once: true }),
+                            ),
+                        ]);
                     if (signal.aborted) return { status: 'interrupted' };
                     return {
                         status,
@@ -49,7 +55,13 @@ async function setup(t, provider, { providerName = 'claude' } = {}) {
     const logs = [];
     const env = await open(
         { models: async () => [], generate: async () => {} },
-        { providers: { claude: provider }, log: (line) => logs.push(line) },
+        {
+            providers: { claude: provider },
+            log: (line) => {
+                logs.push(line);
+                notify();
+            },
+        },
     );
     t.after(env.close);
     const { csrf } = await (await env.get('/api/state')).json();
@@ -126,7 +138,7 @@ test('board: a typed question gets its sentences one at a time and saves as a le
         { role: question.role, text: question.text, board: question.board },
         { role: 'user', text: 'How does a hypha grow at its tip?', board: true },
     );
-    assert.equal(reply.text, 'A hypha grows only at its tip. Tiny sacs carry new wall forward.');
+    assert.equal(reply.text, 'A hypha grows only at its tip.\nTiny sacs carry new wall forward.');
     assert.equal(reply.status, 'completed');
     assert.ok(reply.board);
     assert.equal(reply.usage.output, 20);
@@ -138,24 +150,74 @@ test('board: a typed question gets its sentences one at a time and saves as a le
     );
 });
 
-test('board: a board turn resumes the conversation session and a fresh one receives the earlier chat', async (t) => {
-    const provider = boardProvider([]);
+test('board: opening during chat shares the finished conversation in both directions', async (t) => {
+    const provider = boardProvider([['> The cells extend at their tips.\n']]);
+    const finishChat = Promise.withResolvers();
+    const chats = [];
+    provider.generate = async (tree, text, emit, saveThread) => {
+        chats.push({ thread: tree.thread, text });
+        if (chats.length === 1) await finishChat.promise;
+        saveThread(tree.thread ?? 'chat-session');
+        complete(emit, 'Thread-like cells.');
+    };
     const { env, id, connect } = await setup(t, provider);
-    env.store.message(id, 'user', 'What are hyphae?', 'completed');
-    env.store.message(id, 'assistant', 'Thread-like cells.', 'completed');
-    env.store.thread(id, 'chat-session', 'sonnet');
-    await opened(connect().ws);
-    await until(() => provider.boards[0]?.opened);
+    const sendChat = (text) => env.post(`/api/trees/${id}/messages`, { text });
+    const firstChat = await sendChat('What are hyphae?');
+    const board = connect();
+    await opened(board.ws);
+    finishChat.resolve();
+    assert.equal(firstChat.status, 200);
+    await firstChat.text();
+
+    board.send({ type: 'ask', text: 'How do they grow?' });
+    const sentence = await board.next('sentence');
+    assert.equal(provider.boards.length, 1);
     assert.equal(provider.boards[0].options.thread, 'chat-session');
     assert.deepEqual(provider.boards[0].options.history, [
         { role: 'user', text: 'What are hyphae?' },
         { role: 'assistant', text: 'Thread-like cells.' },
     ]);
+    board.send({ type: 'progress', sentence: sentence.id, phase: 'start' });
+    board.send({ type: 'progress', sentence: sentence.id, phase: 'end' });
+    await board.next('state', (event) => event.state === 'idle');
+
+    const nextChat = await sendChat('How long are they?');
+    assert.equal(nextChat.status, 200);
+    await nextChat.text();
+    assert.deepEqual(chats[1], { thread: 'board-session', text: 'How long are they?' });
+
+    board.send({ type: 'ask', text: 'And their width?' });
+    await board.next('notice');
+    assert.ok(provider.boards[0].closed, 'chat changed the history of the warm process');
+    assert.deepEqual(provider.boards[1].options.history.slice(-2), [
+        { role: 'user', text: 'How long are they?' },
+        { role: 'assistant', text: 'Thread-like cells.' },
+    ]);
+});
+
+test('board: chat cannot start before the queued board captions finish or are stopped', async (t) => {
+    const provider = boardProvider([['> One.\n> Two.\n']]);
+    const { env, id, logs, connect } = await setup(t, provider);
+    const board = connect();
+    await opened(board.ws);
+    board.send({ type: 'ask', text: 'Why?' });
+    const first = await board.next('sentence');
+    await board.next('sentence');
+    board.send({ type: 'progress', sentence: first.id, phase: 'start' });
+    await until(() => logs.some((line) => /model finished.*task="board"/.test(line)));
+    const chat = await env.post(`/api/trees/${id}/messages`, { text: 'Meanwhile?' });
+    assert.equal(chat.status, 409);
+    assert.equal((await env.post(`/api/trees/${id}/stop`)).status, 200);
+    await board.next('state', (event) => event.state === 'idle');
+    const reply = messages(env, id).at(-1);
+    assert.equal(reply.status, 'interrupted');
+    assert.equal(reply.text, 'One.');
 });
 
 test('board: leaving mid-reply stops the tutor at once and saves the reply up to the sentence shown', async (t) => {
     const provider = boardProvider([['> First idea.\n> Second idea.\n> Third idea.\n']]);
-    const { env, id, connect } = await setup(t, provider);
+    const { env, id, logs, connect } = await setup(t, provider);
+    env.store.thread(id, 'old-session', 'sonnet');
     const board = connect();
     await opened(board.ws);
     await until(() => provider.boards[0]?.opened);
@@ -167,15 +229,25 @@ test('board: leaving mid-reply stops the tutor at once and saves the reply up to
     board.send({ type: 'progress', sentence: first.id, phase: 'start' });
     board.send({ type: 'progress', sentence: first.id, phase: 'end' });
     board.send({ type: 'progress', sentence: second.id, phase: 'start' });
-    await until(() => messages(env, id)[1]?.text === 'First idea. Second idea.');
+    await until(() => messages(env, id)[1]?.text === 'First idea.\nSecond idea.');
     board.send({ type: 'leave' });
     await until(() => process.closed);
     assert.ok(process.signals[0].aborted, 'the running turn stops');
+    await until(() =>
+        logs.some((line) => /model interrupted.*task="board".*thinking="unreported"/.test(line)),
+    );
     const reply = messages(env, id)[1];
     assert.deepEqual(
         { text: reply.text, status: reply.status, stopped: reply.stopped },
-        { text: 'First idea. Second idea.', status: 'interrupted', stopped: 'learner' },
+        { text: 'First idea.\nSecond idea.', status: 'interrupted', stopped: 'learner' },
     );
+    await opened(connect().ws);
+    await until(() => provider.boards[1]?.opened);
+    assert.equal(provider.boards[1].options.thread, null);
+    assert.deepEqual(provider.boards[1].options.history.at(-1), {
+        role: 'assistant',
+        text: 'First idea.\nSecond idea.',
+    });
 });
 
 test('board: a process that ends on its own leaves a notice and the reply up to the caption shown', async (t) => {

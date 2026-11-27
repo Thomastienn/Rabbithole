@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { IconButton } from '@astryxdesign/core/IconButton';
-import { ChatComposer, ChatComposerInput } from '@astryxdesign/core/Chat';
-import { ArrowUpIcon, ExclamationTriangleIcon, MicrophoneIcon } from '@heroicons/react/24/outline';
+import { ChatComposer, ChatComposerInput, ChatSendButton } from '@astryxdesign/core/Chat';
+import { ExclamationTriangleIcon, MicrophoneIcon } from '@heroicons/react/24/outline';
 import { holdEnter } from '../chat/Attachments';
 import type { Message } from '../chat/turn';
 import { useBoard } from './useBoard';
@@ -24,8 +24,7 @@ export default function Board({
     const busy = board.state !== 'idle' || !board.ready;
     const submit = (text: string) => {
         if (busy || !text.trim()) return;
-        board.ask(text.trim());
-        setDraft('');
+        if (board.ask(text.trim())) setDraft('');
     };
     return (
         <section className="board-column" aria-label="Board">
@@ -63,14 +62,7 @@ export default function Board({
                     onChange={setDraft}
                     onSubmit={submit}
                     sendButton={
-                        busy ? (
-                            <IconButton
-                                label="Send"
-                                icon={<ArrowUpIcon />}
-                                variant="primary"
-                                isDisabled
-                            />
-                        ) : undefined
+                        busy ? <ChatSendButton isDisabled className="board-send-busy" /> : undefined
                     }
                     footerActions={
                         // Voice arrives in a later ticket; the mic is off when a board opens.

@@ -7,11 +7,8 @@ type Clock = {
     clearTimeout: (timer: unknown) => void;
 };
 
-// Until a sentence's audio length is known it lasts an estimate: 10 characters per second at 1×.
-const CHARS_PER_SECOND = 10;
-export const DEFAULT_SPEED = 1.5;
-export const sentenceMs = (text: string, speed = DEFAULT_SPEED) =>
-    (text.length / (CHARS_PER_SECOND * speed)) * 1000;
+// An estimated ten characters per second at 1× plays at fifteen at the default 1.5×.
+const CHARS_PER_SECOND = 15;
 
 export function boardPlayer(
     show: (sentence: Sentence) => void,
@@ -30,10 +27,13 @@ export function boardPlayer(
         const sentence = current;
         show(sentence);
         report(sentence, 'start');
-        timer = clock.setTimeout(() => {
-            report(sentence, 'end');
-            next();
-        }, sentenceMs(sentence.text));
+        timer = clock.setTimeout(
+            () => {
+                report(sentence, 'end');
+                next();
+            },
+            (sentence.text.length / CHARS_PER_SECOND) * 1000,
+        );
     };
     return {
         add(sentence: Sentence) {

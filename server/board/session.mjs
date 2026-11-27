@@ -2,6 +2,7 @@ import { formatLog, errorCause } from '../log.mjs';
 import { validUsage } from '../store/usage.mjs';
 import { sentenceReader } from './script.mjs';
 import { boardSystem } from './prompt.mjs';
+import { claudeHistory } from '../providers/claudeHistory.mjs';
 
 const STOPPED = 'The tutor stopped. Ask again to carry on.';
 
@@ -13,9 +14,9 @@ export function boardSession(ctx, id, socket) {
     const send = (event) => {
         if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(event));
     };
-    const tree = store.tree(id);
     let process = null,
-        model = tree.model,
+        model,
+        warmedFor,
         turn = null,
         closed = false,
         count = 0;
@@ -32,52 +33,60 @@ export function boardSession(ctx, id, socket) {
         },
         { settle: false },
     );
-    const provider = Object.hasOwn(ctx.providers, tree.provider ?? '')
-        ? ctx.providers[tree.provider]
-        : null;
-    // The board's process starts as it opens, so it is warm before the first question.
-    const ready = provider?.board
-        ? (async () => {
-              const learner = tree.messages.filter((m) => m.role === 'user').slice(-2);
-              const neighbourhood = await ctx
-                  .neighbourhood(
-                      [tree.title, tree.branch?.text, ...learner.map((m) => m.text)]
-                          .filter(Boolean)
-                          .join('\n'),
-                      session.controller.signal,
-                  )
-                  .catch(() => null);
-              model ??= (await provider.model?.(tree)) ?? null;
-              if (closed) return;
-              process = provider.board({
-                  model,
-                  thread: tree.thread,
-                  system: boardSystem({
-                      ...tree,
-                      tutorStyle: store.tutorStyle(),
-                      memoryNote: store.memoryNote(),
-                      neighbourhood,
-                  }),
-                  history: tree.messages
-                      .filter((m) => m.status === 'completed')
-                      .map((m) => ({ role: m.role, text: m.text })),
-              });
-              process.open();
-          })()
-        : null;
-    // A failed start fails the first question instead.
-    ready?.catch(() => {});
+    const providerFor = (tree) =>
+        Object.hasOwn(ctx.providers, tree.provider ?? '') ? ctx.providers[tree.provider] : null;
+    const version = (tree) =>
+        JSON.stringify([tree.provider, tree.model, tree.thread, tree.messages.at(-1)?.id]);
+    const warm = async (tree, signal) => {
+        const key = version(tree);
+        if (process && warmedFor === key) return;
+        process?.close();
+        process = null;
+        const provider = providerFor(tree);
+        if (!provider?.board || signal.aborted) return;
+        const learner = tree.messages.filter((m) => m.role === 'user').slice(-2);
+        const neighbourhood = await ctx
+            .neighbourhood(
+                [tree.title, tree.branch?.text, ...learner.map((m) => m.text)]
+                    .filter(Boolean)
+                    .join('\n'),
+                signal,
+            )
+            .catch(() => null);
+        model = tree.model ?? (await provider.model?.(tree)) ?? null;
+        if (closed || signal.aborted) return;
+        process = provider.board({
+            model,
+            thread: tree.thread,
+            system: boardSystem({
+                ...tree,
+                tutorStyle: store.tutorStyle(),
+                memoryNote: store.memoryNote(),
+                neighbourhood,
+            }),
+            history: claudeHistory(tree),
+        });
+        process.open();
+        warmedFor = key;
+    };
+    // A board opened during a chat reply warms from the saved tree once that reply settles.
+    const signal = session.controller.signal;
+    const active = ctx.jobs.get('reply', id);
+    const ready = (active?.done ?? Promise.resolve())
+        .catch(() => {})
+        .then(() => !closed && warm(store.tree(id), signal))
+        .catch(() => {}); // Retry a failed warm-up on the first question.
     const unavailable = () =>
         send({
             type: 'notice',
             notice: 'The board needs a Claude chat model for now. Choose Claude for this conversation, then open the board again.',
         });
-    if (!ready) unavailable();
+    if (!providerFor(store.header(id))?.board) unavailable();
     const shownText = (current) =>
         current.sentences
             .slice(0, current.shown)
             .map((s) => s.text)
-            .join(' ');
+            .join('\n');
     // Saves the reply with every sentence that started showing; the rest is dropped.
     const finish = (current, status) => {
         if (current.done) return;
@@ -91,13 +100,24 @@ export function boardSession(ctx, id, socket) {
                 cacheRead: current.usage.cacheRead,
                 reasoning: current.usage.thinking,
             });
+        if (status === 'completed') {
+            store.thread(id, process.thread, model);
+            store.finishModel(id, true);
+            warmedFor = version(store.tree(id));
+        } else if (current.sentences.length) {
+            // Claude may have stored text the learner never saw. Replay the saved discussion next time.
+            store.forgetThread(id);
+        }
         if (turn === current) turn = null;
+        ctx.jobs.remove(current.job);
+        current.ended.resolve();
         send({ type: 'state', state: 'idle' });
     };
-    const run = async (current, text, signal) => {
+    const run = async (current, tree, text, signal) => {
         const started = performance.now();
         const reader = sentenceReader();
         const add = (texts) => {
+            if (current.done) return;
             for (const text of texts) {
                 const sentence = { id: String(++count), text };
                 current.sentences.push(sentence);
@@ -108,53 +128,60 @@ export function boardSession(ctx, id, socket) {
         let result;
         try {
             await ready;
-            result = process
-                ? await process.ask(text, (e) => add(reader.feed(e.text)), signal)
-                : { status: 'interrupted' };
+            if (!signal.aborted) await warm(tree, signal);
+            result = signal.aborted
+                ? { status: 'interrupted' }
+                : await process.ask(text, (e) => add(reader.feed(e.text)), signal);
         } catch (error) {
             result = { status: 'failed', cause: error };
         }
-        if (current.done) return;
-        add(reader.end());
+        if (result.status === 'completed') add(reader.end());
         const usage = result.usage;
-        const failed = result.status === 'failed';
+        const status = signal.aborted ? 'interrupted' : result.status;
+        const failed = status === 'failed' || (status === 'completed' && !current.sentences.length);
         // Thinking above 0 is a latency regression to investigate (docs/board-spec.md).
         log(
-            formatLog(failed ? 'error' : 'info', 'model', failed ? 'failed' : 'finished', {
-                id: current.reply,
-                task: 'board',
-                provider: tree.provider,
-                model,
-                input: usage?.input,
-                output: usage?.output,
-                cacheRead: usage?.cacheRead,
-                thinking: usage?.thinking,
-                ms: Math.round(performance.now() - started),
-                ...(failed && {
-                    cause: errorCause(
-                        result.cause ?? result.error ?? 'Provider reported a failed call.',
-                        [text],
-                    ),
-                    next: 'Check provider sign-in, then ask again.',
-                }),
-            }),
+            formatLog(
+                failed ? 'error' : 'info',
+                'model',
+                failed ? 'failed' : status === 'interrupted' ? 'interrupted' : 'finished',
+                {
+                    id: current.reply,
+                    task: 'board',
+                    provider: tree.provider,
+                    model,
+                    input: usage?.input,
+                    output: usage?.output,
+                    cacheRead: usage?.cacheRead,
+                    thinking: usage?.thinking,
+                    ms: Math.round(performance.now() - started),
+                    ...(failed && {
+                        cause: errorCause(
+                            result.cause ?? result.error ?? 'Provider reported a failed call.',
+                            [text],
+                        ),
+                        next: 'Check provider sign-in, then ask again.',
+                    }),
+                },
+            ),
         );
-        current.generated = true;
+        if (current.done) return;
         current.usage = usage;
-        if (result.status === 'completed' && current.sentences.length) {
-            store.thread(id, process.thread, model);
-            store.finishModel(id, true);
+        if (status === 'completed' && !failed) {
+            current.generated = true;
             return settle(current);
         }
-        if (signal.aborted) return;
+        if (status === 'interrupted') return finish(current, 'interrupted');
         send({ type: 'notice', notice: result.error ?? STOPPED });
         finish(current, 'failed');
     };
     const ask = (text) => {
         // A question waits for the tutor to finish; cutting in comes with interruptions.
         if (turn || closed) return;
-        if (!ready || ctx.jobs.get('reply', id)) {
-            if (!ready) unavailable();
+        const tree = store.tree(id);
+        const supported = providerFor(tree)?.board;
+        if (!supported || ctx.jobs.get('reply', id)) {
+            if (!supported) unavailable();
             else
                 send({
                     type: 'notice',
@@ -166,14 +193,20 @@ export function boardSession(ctx, id, socket) {
         const reply = store.message(id, 'assistant', '', 'streaming');
         store.onBoard(user);
         store.onBoard(reply);
-        const current = { user, reply, sentences: [], shown: 0, over: 0 };
+        const current = { reply, sentences: [], shown: 0, over: 0, ended: Promise.withResolvers() };
         turn = current;
         send({ type: 'state', state: 'thinking' });
         current.job = ctx.jobs.start(
             'reply',
             id,
             id,
-            (job) => run(current, text, job.controller.signal),
+            (job) => {
+                const signal = job.controller.signal;
+                signal.addEventListener('abort', () => finish(current, 'interrupted'), {
+                    once: true,
+                });
+                return run(current, tree, text, signal).then(() => current.ended.promise);
+            },
             { settle: false },
         );
     };
@@ -201,13 +234,9 @@ export function boardSession(ctx, id, socket) {
         closed = true;
         const current = turn;
         if (current) {
-            current.job.controller.abort();
-            finish(
-                current,
-                current.generated && current.shown === current.sentences.length
-                    ? 'completed'
-                    : 'interrupted',
-            );
+            if (current.generated && current.shown === current.sentences.length)
+                finish(current, 'completed');
+            else current.job.controller.abort();
         }
         process?.close();
         ctx.jobs.remove(session);

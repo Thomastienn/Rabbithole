@@ -6,27 +6,17 @@ import { boardPlayer } from './player';
 export type BoardState = 'idle' | 'thinking' | 'speaking';
 type Caption = { text: string; muted: boolean };
 
-// A saved reply joins its sentences with spaces; the caption holds the last one.
-const lastSentence = (text: string) =>
-    text
-        .trim()
-        .split(/(?<=[.!?…])\s+/)
-        .at(-1) ?? '';
-
 // One open board: its socket to the board session, the caption line and the session state.
-// Leaving (unmount) asks the server to save the reply up to the caption shown, then reloads the conversation.
 export function useBoard(conversation: string, messages: Message[], reload: () => void) {
-    const latest = messages.at(-1);
+    const latest = messages
+        .filter((m) => m.board && m.role === 'assistant' && m.text.trim())
+        .at(-1);
     const [state, setState] = useState<BoardState>('idle');
     const [ready, setReady] = useState(false);
     const [notice, setNotice] = useState<string>();
-    // The empty board's hint shows only before the conversation's first board question.
-    const [asked, setAsked] = useState(() => messages.some((m) => m.board));
-    const [caption, setCaption] = useState<Caption | undefined>(() =>
-        latest?.board && latest.role === 'assistant' && latest.text.trim()
-            ? { text: lastSentence(latest.text), muted: true }
-            : undefined,
-    );
+    const [asked, setAsked] = useState(false);
+    const [caption, setCaption] = useState<Caption>();
+    const restored = latest && { text: latest.text.trim().split('\n').at(-1) ?? '', muted: true };
     const socket = useRef<WebSocket>(undefined);
     useEffect(() => {
         const ws = boardSocket(conversation);
@@ -39,6 +29,13 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
             (s, phase) => send({ type: 'progress', sentence: s.id, phase }),
         );
         ws.onopen = () => setReady(true);
+        ws.onclose = () => {
+            player.stop();
+            setReady(false);
+            setState('idle');
+            setCaption((c) => c && { ...c, muted: true });
+            setNotice('The board disconnected. Turn Board off and on to reconnect.');
+        };
         ws.onmessage = (event) => {
             const m = JSON.parse(event.data);
             if (m.type === 'state') {
@@ -54,22 +51,39 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         };
         return () => {
             player.stop();
-            ws.onmessage = null;
-            ws.onclose = reload;
+            ws.onopen = ws.onmessage = null;
+            ws.onclose = null;
             if (ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: 'leave' }));
                 // The server closes once the reply is saved; a stalled one is closed here.
-                setTimeout(() => ws.close(), 2000);
-            } else ws.close();
+                const timeout = setTimeout(() => ws.close(), 2000);
+                ws.onclose = () => {
+                    clearTimeout(timeout);
+                    reload();
+                };
+                ws.send(JSON.stringify({ type: 'leave' }));
+            } else {
+                ws.close();
+                reload();
+            }
         };
     }, [conversation]);
     const ask = (text: string) => {
-        socket.current?.send(JSON.stringify({ type: 'ask', text }));
+        const ws = socket.current;
+        if (ws?.readyState !== WebSocket.OPEN) return false;
+        ws.send(JSON.stringify({ type: 'ask', text }));
         setAsked(true);
         setNotice(undefined);
         // The sent question shows muted until the tutor speaks, so the learner sees it was heard.
         setCaption({ text, muted: true });
         setState('thinking');
+        return true;
     };
-    return { state, ready, notice, asked, caption, ask };
+    return {
+        state,
+        ready,
+        notice,
+        asked: asked || messages.some((m) => m.board),
+        caption: caption ?? restored,
+        ask,
+    };
 }

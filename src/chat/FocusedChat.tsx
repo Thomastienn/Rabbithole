@@ -16,7 +16,7 @@ import TurnRail from './TurnRail';
 import { inkStyle } from '../map/treeList';
 import OriginStrip, { backTarget } from './OriginStrip';
 import TitleEditor from './TitleEditor';
-import ChatHeadingRow from './ChatHeader';
+import ChatHeadingRow, { BoardToggle } from './ChatHeader';
 import ChatThread, { type ThreadProps } from './ChatThread';
 import Board from '../board/Board';
 import {
@@ -113,6 +113,7 @@ export default function FocusedChat({
     // The conversation whose board is on; another conversation, or the map, shows normal chat and stops the tutor.
     const [board, setBoard] = useState<string>();
     const boardOpen = board === tree.id && !overview;
+    const toggleBoard = () => setBoard(boardOpen ? undefined : tree.id);
     useEffect(() => {
         if (!statsOpen) return;
         const frame = requestAnimationFrame(() =>
@@ -178,9 +179,12 @@ export default function FocusedChat({
     );
     return (
         <>
-            <header className="chat-header">
+            <header className={boardOpen ? 'chat-header board-header' : 'chat-header'}>
                 <VStack paddingInline={2} paddingBlock={1} gap={1}>
                     {/* Narrow (mockup narrow.html): the title sits under the app bar; the origin line, drawer and Esc navigate. */}
+                    {mobile && !overview && (
+                        <BoardToggle board={boardOpen} toggleBoard={toggleBoard} />
+                    )}
                     {!mobile && (
                         <ChatHeadingRow
                             parentTitle={
@@ -201,7 +205,7 @@ export default function FocusedChat({
                             returnToTree={returnToTree}
                             rename={() => setRenaming({ id: tree.id, place: 'header' })}
                             board={boardOpen}
-                            toggleBoard={() => setBoard(boardOpen ? undefined : tree.id)}
+                            toggleBoard={toggleBoard}
                         />
                     )}
                     {modelNotice && (

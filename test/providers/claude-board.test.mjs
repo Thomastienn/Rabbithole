@@ -27,9 +27,10 @@ function setup(t) {
         const record = { args, env: options.env, sent: [], child };
         const at = (flag) => (args.includes(flag) ? args[args.indexOf(flag) + 1] : undefined);
         record.system = readFileSync(at('--system-prompt-file'), 'utf8');
-        createInterface({ input: child.stdin }).on('line', (line) => {
+        createInterface({ input: child.stdin }).on('line', async (line) => {
             const m = JSON.parse(line);
             record.sent.push(m.message.content);
+            if (record.hold) await record.hold;
             if (record.dies) return child.kill();
             const send = (o) => child.stdout.write(JSON.stringify(o) + '\n');
             send({
@@ -40,6 +41,13 @@ function setup(t) {
             for (const text of ['> Hello', ' there.\n'])
                 send({ type: 'stream_event', event: { delta: { type: 'text_delta', text } } });
             send({
+                type: 'stream_event',
+                event: {
+                    type: 'message_delta',
+                    usage: { output_tokens_details: { thinking_tokens: 3 } },
+                },
+            });
+            send({
                 type: 'result',
                 is_error: false,
                 usage: {
@@ -47,7 +55,6 @@ function setup(t) {
                     cache_creation_input_tokens: 100,
                     cache_read_input_tokens: 40,
                     output_tokens: 7,
-                    output_tokens_details: { thinking_tokens: 0 },
                 },
             });
         });
@@ -82,11 +89,13 @@ test('Claude board: one warm process for the whole board, resuming the conversat
     assert.equal(flag(run, '--resume'), 'chat-session');
     assert.equal(flag(run, '--model'), 'sonnet');
     assert.equal(flag(run, '--effort'), 'low');
+    assert.equal(flag(run, '--tools'), '');
+    assert.deepEqual(JSON.parse(flag(run, '--mcp-config')), { mcpServers: {} });
     assert.equal(run.env.CLAUDE_CODE_EFFORT_LEVEL, 'low');
     assert.equal(run.system, 'Board prompt.');
     assert.deepEqual(run.sent, ['Why?', 'And then?'], 'a resumed session already holds the chat');
     assert.equal(first.streamed, '> Hello there.\n');
-    assert.deepEqual(first.usage, { input: 103, output: 7, cacheRead: 40, thinking: 0 });
+    assert.deepEqual(first.usage, { input: 103, output: 7, cacheRead: 40, thinking: 3 });
     assert.equal(second.status, 'completed');
     assert.equal(b.thread, 'chat-session');
 });
@@ -111,7 +120,16 @@ test('Claude board: it stops after 10 minutes idle or on close, and a dead proce
     assert.equal(launches[0].child.killed, false);
     t.mock.timers.tick(1000);
     assert.equal(launches[0].child.killed, true, 'idle for 10 minutes');
-    await ask(b, 'Back again?');
+    b.open();
+    const held = Promise.withResolvers();
+    launches[1].hold = held.promise;
+    const active = ask(b, 'Back again?');
+    t.mock.timers.tick(600000);
+    assert.equal(launches[1].child.killed, false, 'an active request cannot go idle');
+    held.resolve();
+    assert.equal((await active).status, 'completed');
+    t.mock.timers.tick(599999);
+    assert.equal(launches[1].child.killed, false, 'the idle interval starts after the result');
     assert.equal(launches.length, 2);
     launches[1].dies = true;
     assert.equal((await ask(b, 'Why?')).status, 'failed', 'the process ended on its own');

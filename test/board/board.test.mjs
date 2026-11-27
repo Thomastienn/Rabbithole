@@ -104,12 +104,29 @@ test('board: reopened, it holds the latest board reply’s last sentence and no 
         {
             id: 'r',
             role: 'assistant',
-            text: 'A hypha grows at its tip. Then the new wall hardens.',
+            text: 'A hypha grows at its tip.\nDr. Lin explains how.',
             status: 'completed',
             board: true,
         },
+        { role: 'assistant', text: 'A later chat reply.' },
     ]);
     assert.equal(board.q('.board-empty'), null);
-    assert.equal(board.q('.board-caption.muted').textContent, 'Then the new wall hardens.');
+    assert.equal(board.q('.board-caption.muted').textContent, 'Dr. Lin explains how.');
     assert.equal(board.q('[role=status]').textContent, '');
+});
+
+test('board: disconnecting holds the last caption and keeps a typed draft', async (t) => {
+    const board = await mount(t);
+    await board.type('Keep this draft');
+    await board.act(async () => {
+        board.socket.server({ type: 'state', state: 'speaking' });
+        board.socket.server({ type: 'sentence', id: '1', text: 'The visible caption.' });
+        board.socket.server({ type: 'sentence', id: '2', text: 'The queued caption.' });
+        board.socket.close();
+    });
+    assert.ok(board.q('[role=alert]'));
+    assert.equal(board.q('[role=status]').textContent, '');
+    assert.equal(board.q('.board-caption.muted').textContent, 'The visible caption.');
+    assert.ok(button(board.container, 'Send').disabled);
+    assert.equal(board.q('[contenteditable=true]').textContent, 'Keep this draft');
 });

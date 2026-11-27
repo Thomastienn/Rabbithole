@@ -92,7 +92,7 @@ export function useLearningTrees(c: View) {
     }
     const openId = () => selected.current;
     // Reloads the open conversation after changes saved outside its own requests, such as a closed board.
-    const reloadOpen = () => void reload(selected.current, setTree);
+    const reloadOpen = () => void reload(selected.current, setTree, true).catch(() => {});
     // `local` marks a rename by the learner, which wins over titles that later refreshes bring.
     function retitle(id: string, title: string, local = false) {
         if (local) {

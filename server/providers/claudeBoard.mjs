@@ -21,9 +21,7 @@ export class ClaudeBoard {
     }
     // Starts the process when none runs and restarts the idle countdown.
     open() {
-        clearTimeout(this.timer);
-        this.timer = setTimeout(() => this.end(), this.idle);
-        this.timer.unref?.();
+        this.startIdleTimer();
         if (this.child) return;
         const { claude } = this;
         let child;
@@ -87,6 +85,11 @@ export class ClaudeBoard {
         child.on('error', gone);
         child.on('close', gone);
     }
+    startIdleTimer() {
+        clearTimeout(this.timer);
+        this.timer = setTimeout(() => this.end(), this.idle);
+        this.timer.unref?.();
+    }
     // One learner turn: emits the text as it streams and resolves with its status, usage and any reason it failed.
     ask(text, emit, signal) {
         this.open();
@@ -96,6 +99,7 @@ export class ClaudeBoard {
                 status: 'failed',
                 error: 'Claude Code is not installed. Install it and sign in, then ask again.',
             });
+        clearTimeout(this.timer);
         // A fresh session receives the saved discussion once; a resumed one already holds it.
         const prompt =
             this.primed || !this.history.length
@@ -107,14 +111,20 @@ export class ClaudeBoard {
         this.primed = true;
         return new Promise((resolve) => {
             let started = this.session;
+            let thinking;
             const stop = () => this.end();
             const done = (result) => {
                 this.onLine = null;
                 this.ended = null;
                 signal.removeEventListener('abort', stop);
+                if (this.child) this.startIdleTimer();
                 resolve(result);
             };
-            this.ended = () => done({ status: signal.aborted ? 'interrupted' : 'failed' });
+            this.ended = () =>
+                done({
+                    status: signal.aborted ? 'interrupted' : 'failed',
+                    usage: thinking == null ? undefined : { thinking },
+                });
             this.onLine = (line) => {
                 let m;
                 try {
@@ -123,8 +133,11 @@ export class ClaudeBoard {
                     return;
                 }
                 if (m.type === 'system' && m.subtype === 'init') started = m.session_id ?? started;
-                const delta = m.type === 'stream_event' && m.event?.delta;
-                if (delta?.type === 'text_delta') emit({ type: 'delta', text: delta.text });
+                const event = m.type === 'stream_event' && m.event;
+                if (event?.delta?.type === 'text_delta')
+                    emit({ type: 'delta', text: event.delta.text });
+                if (event?.type === 'message_delta')
+                    thinking = event.usage?.output_tokens_details?.thinking_tokens ?? thinking;
                 if (m.type !== 'result') return;
                 const u = m.usage;
                 if (!m.is_error) this.thread = started;
@@ -134,7 +147,7 @@ export class ClaudeBoard {
                         input: u.input_tokens + (u.cache_creation_input_tokens ?? 0),
                         output: u.output_tokens,
                         cacheRead: u.cache_read_input_tokens ?? 0,
-                        thinking: u.output_tokens_details?.thinking_tokens ?? null,
+                        thinking: u.output_tokens_details?.thinking_tokens ?? thinking ?? null,
                     },
                     ...(m.is_error &&
                         /not logged in|log ?in|authenticat/i.test(m.result ?? '') && {

@@ -81,6 +81,12 @@ test('chat header row: return to parent, path crumbs, stats and map toggles, clo
     await act(async () => boardSwitch.click());
     assert.ok(container.querySelector('[role=switch]').checked);
     assert.equal(button(container, 'Show map beside chat'), undefined);
+    assert.equal(button(container, 'Return to parent conversation'), undefined);
+    assert.equal(
+        nav.querySelectorAll('button').length,
+        0,
+        'the board header shows only the current title',
+    );
     await act(async () => container.querySelector('[role=switch]').click());
     assert.ok(button(container, 'Show map beside chat'), 'off again, the map toggle returns');
     assert.deepEqual(calls, [['parent'], ['open', 'root'], ['map'], ['rename']]);
