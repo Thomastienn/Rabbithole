@@ -5,6 +5,7 @@ import { Code } from '@astryxdesign/core/Code';
 import { Text, Heading } from '@astryxdesign/core/Text';
 import { parse, plainText, type MarkdownNode } from './markdownText.ts';
 import CopyButton from './CopyButton.ts';
+import Sketch from './Sketch.tsx';
 import { codeTokens } from './codeTokens.ts';
 import ReplyImage, { imageUrl, type ImageSource } from './ReplyImage.tsx';
 import { inkStyle } from '../map/treeList.ts';
@@ -379,6 +380,21 @@ export function renderMarkdown(
                 });
             }
             case 'code': {
+                if (n.lang === 'sketch') {
+                    // Never its source, even under a saved reveal; an unclosed fence is still streaming.
+                    // shortcut: a finished reply whose sketch fence never closed keeps its placeholder; close it on final if one appears.
+                    if (hit(s, e)) revealed++;
+                    const fence = /^(`{3,}|~{3,})/.exec(raw.slice(s, e))![1],
+                        last = raw.slice(s, e).split(/\r?\n/).slice(1).at(-1) ?? '';
+                    return h(Sketch, {
+                        ...attrs,
+                        kind: n.meta ?? '',
+                        body: n.value ?? '',
+                        open: !new RegExp(`^[\\s>]*\\${fence[0]}{${fence.length},}\\s*$`).test(
+                            last,
+                        ),
+                    });
+                }
                 const lines = sourceLines(raw, n, true),
                     tokens = codeTokens(n.value!.replace(/\r\n?/g, '\n'), n.lang || 'plaintext');
                 return h(

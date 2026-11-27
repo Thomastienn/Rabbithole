@@ -18,6 +18,7 @@ export type MarkdownNode = {
     start?: number | null;
     url?: string;
     lang?: string | null;
+    meta?: string | null;
     alt?: string | null;
     identifier?: string;
     align?: ('left' | 'right' | 'center' | null)[];
