@@ -68,6 +68,17 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         micOn.current = false;
         setMic(MIC_OFF);
     };
+    // A question sent, typed or spoken: it shows muted until the tutor speaks, so the learner sees it was heard.
+    const shown = (text: string) => {
+        question.current = text;
+        setAsked(true);
+        setMarks(0);
+        setNotice(undefined);
+        setCaption({ text, muted: true });
+        // Asking returns to the latest board, which the new reply draws on.
+        setStep(undefined);
+        setReplies((rs) => [...rs, { items: [], caption: '' }]);
+    };
     useEffect(() => {
         const ws = boardSocket(conversation);
         socket.current = ws;
@@ -162,16 +173,8 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
                         ? { ...mic, hearing: m.on, levels: [0.2, 0.2, 0.2, 0.2] }
                         : mic,
                 );
-            // A spoken question was recognized and sent: it shows muted while the tutor thinks, as a typed one.
-            if (m.type === 'heard') {
-                setAsked(true);
-                setMarks(0);
-                setNotice(undefined);
-                setCaption({ text: m.text, muted: true });
-                question.current = m.text;
-                setStep(undefined);
-                setReplies((rs) => [...rs, { items: [], caption: '' }]);
-            }
+            // A spoken question was recognized and sent.
+            if (m.type === 'heard') shown(m.text);
         };
         return () => {
             stopMic();
@@ -197,22 +200,14 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         const ws = socket.current;
         if (ws?.readyState !== WebSocket.OPEN) return false;
         ws.send(JSON.stringify({ type: 'ask', text }));
-        question.current = text;
         // Sending mid-reply cuts in: the tutor stops here at once, without waiting on the server.
         if (state === 'speaking') {
             cut.current = true;
             playing.current?.stop();
             setPaused(false);
         }
-        setAsked(true);
-        setMarks(0);
-        setNotice(undefined);
-        // The sent question shows muted until the tutor speaks, so the learner sees it was heard.
-        setCaption({ text, muted: true });
+        shown(text);
         setState('thinking');
-        // Asking returns to the latest board, which the new reply draws on.
-        setStep(undefined);
-        setReplies((rs) => [...rs, { items: [], caption: '' }]);
         return true;
     };
     const at = step ?? replies.length - 1;

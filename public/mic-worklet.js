@@ -5,14 +5,15 @@ class Mic16k extends AudioWorkletProcessor {
     at = 0;
     out = new Float32Array(512);
     n = 0;
+    last = 0;
     process([input]) {
         const samples = input?.[0];
         if (!samples) return true;
-        // `at` is the next output position in this block's samples.
-        for (; this.at < samples.length; this.at += this.step) {
+        // `at` is the next output position in this block's samples; -1 is the previous block's last sample.
+        for (; this.at < samples.length - 1; this.at += this.step) {
             const i = Math.floor(this.at);
-            const a = samples[i];
-            const b = samples[i + 1] ?? a;
+            const a = i < 0 ? this.last : samples[i];
+            const b = samples[i + 1];
             this.out[this.n++] = a + (b - a) * (this.at - i);
             if (this.n === 512) {
                 this.port.postMessage(this.out);
@@ -21,6 +22,7 @@ class Mic16k extends AudioWorkletProcessor {
             }
         }
         this.at -= samples.length;
+        this.last = samples[samples.length - 1];
         return true;
     }
 }

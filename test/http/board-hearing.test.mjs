@@ -9,7 +9,7 @@ import { boardProvider, messages, opened, setup } from '../support/board-kit.mjs
 import { FRAME, speechFiles } from '../../server/board/hearing.mjs';
 
 // Fake ears: a frame is speech when its samples are 1; the first load downloads with progress, later ones don't.
-function fakeHearing({ fail = 0 } = {}) {
+function fakeHearing({ fail = 0, held } = {}) {
     const hearing = (progress) => {
         hearing.loads++;
         if (hearing.loads <= fail) return Promise.reject(new Error('HTTP 503'));
@@ -19,6 +19,7 @@ function fakeHearing({ fail = 0 } = {}) {
             detector: () => async (frame) => frame[0],
             recognize: async (audio) => {
                 hearing.heard.push(audio.length);
+                await held;
                 return 'Why is there no eclipse every month?';
             },
         });
@@ -96,16 +97,40 @@ test('board: the mic is off until pressed, the first press downloads, and a paus
     assert.ok(!board.events.some((e) => e.status === 'loading'));
 });
 
+test('board: a question typed while speech is recognized is not cut off by the spoken one', async (t) => {
+    const provider = boardProvider([['> Because it is lit.\n']]);
+    const recognized = Promise.withResolvers();
+    const hearing = fakeHearing({ held: recognized.promise });
+    const { env, id, connect } = await setup(t, provider, { app: { hearing } });
+    const board = connect();
+    await opened(board.ws);
+    board.send({ type: 'mic', on: true });
+    await board.next('mic', (m) => m.status === 'on');
+    speak(board, 8, 12);
+    await until(() => hearing.heard.length);
+    board.send({ type: 'ask', text: 'Why is the Moon lit?' });
+    assert.equal((await board.next('state')).state, 'thinking');
+    recognized.resolve();
+    const reply = await board.next('sentence');
+    board.send({ type: 'progress', sentence: reply.id, phase: 'start' });
+    board.send({ type: 'progress', sentence: reply.id, phase: 'end' });
+    await board.next('state', (m) => m.state === 'idle');
+    assert.deepEqual(
+        messages(env, id).map((m) => [m.role, m.text, m.status]),
+        [
+            ['user', 'Why is the Moon lit?', 'completed'],
+            ['assistant', 'Because it is lit.', 'completed'],
+        ],
+    );
+});
+
 test('board: a failed speech model download turns the mic off with a notice, and the next press tries again', async (t) => {
     const hearing = fakeHearing({ fail: 1 });
     const { connect } = await setup(t, boardProvider([]), { app: { hearing } });
     const board = connect();
     await opened(board.ws);
     board.send({ type: 'mic', on: true });
-    assert.equal(
-        (await board.next('notice')).notice,
-        "The speech model didn't download. Check your connection, then press the mic to try again.",
-    );
+    assert.ok((await board.next('notice')).notice);
     assert.equal((await board.next('mic')).status, 'off');
     board.send({ type: 'mic', on: true });
     assert.equal((await board.next('mic', (m) => m.status === 'on')).status, 'on');

@@ -72,7 +72,8 @@ export function boardMic(hearing, { send, log, ask, busy, closed }) {
                         return '';
                     });
                     recognizing = false;
-                    if (!text || mic !== current || closed()) return;
+                    // A question typed during recognition already started a turn; this one must not cut it.
+                    if (!text || mic !== current || closed() || busy()) return;
                     send({ type: 'heard', text });
                     ask(text);
                 })
