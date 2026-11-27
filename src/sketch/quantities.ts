@@ -1,14 +1,14 @@
-// Sketch kinds for quantities: line, quadrant and spectrum (ADR 0027).
+// The kinds that place items along a scale: line, quadrant and spectrum.
 import {
-    at,
     CHAR,
-    esc,
+    at,
     group,
-    isFocus,
+    ring,
     NUMBER,
+    esc,
+    isFocus,
     plain,
     quoted,
-    ring,
     wrap,
     type Drawing,
     type Line,

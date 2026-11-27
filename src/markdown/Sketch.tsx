@@ -10,6 +10,8 @@ import {
     type CSSProperties,
 } from 'react';
 import { HStack } from '@astryxdesign/core/Layout';
+import { Button } from '@astryxdesign/core/Button';
+import PhotoIcon from '@heroicons/react/24/outline/PhotoIcon';
 import {
     drawSketch,
     type Palette,
@@ -51,6 +53,7 @@ export const SketchAsk = createContext<{
 
 // A sketch block in a reply: a placeholder while its fence is open, nothing (logged) when it cannot draw.
 // One that arrives in a streaming reply builds in item by item, like the text around it; a saved reply's shows at once.
+// A saved reply's sketch offers Expand into visual, or Show visual once its visual exists.
 export default function Sketch({
     kind,
     body,
@@ -59,6 +62,8 @@ export default function Sketch({
     start,
     end,
     reveal,
+    visual,
+    onExpand,
 }: {
     kind: string;
     body: string;
@@ -68,6 +73,8 @@ export default function Sketch({
     end: number;
     // The passage of the sketch item branch whose source is being revealed here.
     reveal?: string;
+    visual?: string;
+    onExpand?: () => void;
 }) {
     const sketch = useMemo(
         () => (fence === 'closed' ? drawSketch(kind, body, THEME) : undefined),
@@ -92,6 +99,8 @@ export default function Sketch({
             start={start}
             end={end}
             revealed={sketchItemOf(sketch, reveal)}
+            visual={visual}
+            onExpand={onExpand}
         />
     );
 }
@@ -102,12 +111,16 @@ function SketchDrawing({
     start,
     end,
     revealed,
+    visual,
+    onExpand,
 }: {
     drawn: Drawing;
     live: boolean;
     start: number;
     end: number;
     revealed: number;
+    visual?: string;
+    onExpand?: () => void;
 }) {
     const [build] = useState(
         () => live && !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -182,6 +195,7 @@ function SketchDrawing({
             aria-label={[drawn.title ? `Sketch: ${drawn.title}` : 'Sketch', drawn.about]
                 .filter(Boolean)
                 .join(', ')}
+            data-artifact={visual}
         >
             {drawn.title && <figcaption aria-hidden="true">{drawn.title}</figcaption>}
             {/* The module escapes every label the tutor wrote. A click on an item's hit area asks about it. */}
@@ -273,6 +287,17 @@ function SketchDrawing({
                             </button>
                         ))}
                 </HStack>
+            )}
+            {onExpand && (
+                <div className="visual-actions sketch-actions">
+                    <Button
+                        label={visual ? 'Show visual' : 'Expand into visual'}
+                        icon={<PhotoIcon />}
+                        variant="ghost"
+                        size="sm"
+                        onClick={onExpand}
+                    />
+                </div>
             )}
         </figure>
     );

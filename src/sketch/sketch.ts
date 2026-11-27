@@ -294,6 +294,7 @@ function bars(lines: Line[], p: Palette): Drawing {
     return { items, markup };
 }
 
+// Shared drawing pieces: a rounded coordinate, a ring marker and one item's group.
 export const at = (n: number) => +n.toFixed(1);
 export const ring = (x: number, y: number, focus: boolean, p: Palette) =>
     focus
@@ -301,6 +302,7 @@ export const ring = (x: number, y: number, focus: boolean, p: Palette) =>
         : `<circle cx="${at(x)}" cy="${at(y)}" r="6" style="fill:${p.ground};stroke:${p.muted}"/>`;
 // One group per item, in the items' order; `--i` is its place in the sketch's build.
 export const group = (k: number, parts: string) => `<g style="--i:${k}">${parts}</g>`;
+
 const KINDS = new Map<string, [Draw, string[]?]>([
     ['flow', [flow]],
     ['bars', [bars]],

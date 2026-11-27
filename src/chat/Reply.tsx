@@ -33,6 +33,7 @@ const Reply = memo(function Reply({
     inlineArtifacts = [],
     onArtifactAction,
     onDiscussionReply,
+    onExpandSketch,
     onVisualPart,
     visualBranches,
     discussionBranches,
@@ -52,10 +53,11 @@ const Reply = memo(function Reply({
     resources?: Resource[];
     onArtifactAction?: (
         id: string,
-        action: 'cancel' | 'retry' | 'regenerate' | 'install' | 'previous',
+        action: 'cancel' | 'retry' | 'regenerate' | 'install' | 'previous' | 'sketch',
         instruction?: string,
     ) => Promise<void>;
     onDiscussionReply?: DiscussionReply;
+    onExpandSketch?: (at: number) => Promise<void>;
 }) {
     useEffect(ensureHighlightStyles, []);
     const grammarVersion = useSyncExternalStore(grammars.subscribe, grammars.version);
@@ -72,7 +74,9 @@ const Reply = memo(function Reply({
     const action = useRef(onArtifactAction),
         discussionReply = useRef(onDiscussionReply),
         partAction = useRef(onVisualPart),
-        openChild = useRef(onOpenChild);
+        openChild = useRef(onOpenChild),
+        expandSketch = useRef(onExpandSketch);
+    expandSketch.current = onExpandSketch;
     openChild.current = onOpenChild;
     action.current = onArtifactAction;
     discussionReply.current = onDiscussionReply;
@@ -96,6 +100,7 @@ const Reply = memo(function Reply({
                             at: v.position!,
                             kind: v.kind,
                             side: v.side,
+                            ...(v.sketch && { sketch: { id: v.id, shown: v.sketch === 'shown' } }),
                             node:
                                 v.kind === 'discussion' ? (
                                     <DiscussionCard
@@ -144,6 +149,11 @@ const Reply = memo(function Reply({
                                             onArtifactAction &&
                                             (() => action.current!(v.id, 'previous'))
                                         }
+                                        onShowSketch={
+                                            onArtifactAction && v.sketch
+                                                ? () => action.current!(v.id, 'sketch')
+                                                : undefined
+                                        }
                                     />
                                 ),
                         })),
@@ -151,6 +161,17 @@ const Reply = memo(function Reply({
                         narrow,
                         links,
                         streaming === undefined ? 'off' : streaming ? 'streaming' : 'saved',
+                        // Show visual brings back the sketch's visual; Expand into visual asks for one.
+                        onExpandSketch && onArtifactAction && streaming === false
+                            ? (at) => {
+                                  const v = inlineArtifacts.find(
+                                      (a) => a.sketch && a.position === at,
+                                  );
+                                  void (v
+                                      ? action.current!(v.id, 'sketch')
+                                      : expandSketch.current!(at));
+                              }
+                            : undefined,
                     ),
                 [
                     text,
@@ -167,6 +188,7 @@ const Reply = memo(function Reply({
                     reveal?.artifactId,
                     !!onArtifactAction,
                     !!onDiscussionReply,
+                    !!onExpandSketch,
                     narrow,
                     grammarVersion,
                 ],
