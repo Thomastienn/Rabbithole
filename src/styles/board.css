@@ -255,9 +255,23 @@
     color: var(--color-text-primary);
     overflow-wrap: anywhere;
 }
-.board-rail-reply .reply-md {
+.board-rail-reply :is(.reply-md, .reply-md .astryx-text) {
     font: 15px/1.55 var(--rabbithole-font-reading);
     color: var(--color-text-secondary);
+}
+.board-rail-reply .reply-md > * + * {
+    margin-block-start: 12px;
+}
+.board-rail-head > button,
+.board-rail.shut > button {
+    width: 36px;
+    height: 36px;
+    color: var(--color-text-secondary);
+}
+.board-rail-head > button svg,
+.board-rail.shut > button svg {
+    width: 20px;
+    height: 20px;
 }
 ::highlight(board-now) {
     color: var(--rabbithole-paper);
