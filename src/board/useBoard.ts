@@ -5,8 +5,8 @@ import { boardPlayer, type Op } from './player';
 
 export type BoardState = 'idle' | 'thinking' | 'speaking';
 type Caption = { text: string; muted: boolean };
-// A drawn board item and how long its entry takes.
-export type Drawn = { op: Op; ms: number };
+// A drawn board item, how long its entry takes and, once erased, how long its fade takes.
+export type Drawn = { op: Op; ms: number; erased?: number };
 
 // One open board: its socket to the board session, the caption line and the session state.
 export function useBoard(conversation: string, messages: Message[], reload: () => void) {
@@ -19,6 +19,8 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
     const [asked, setAsked] = useState(false);
     const [caption, setCaption] = useState<Caption>();
     const [items, setItems] = useState<Drawn[]>([]);
+    // Pen strokes over board items since the last question; they go with the next one.
+    const [marks, setMarks] = useState(0);
     const restored = latest && { text: latest.text.trim().split('\n').at(-1) ?? '', muted: true };
     const socket = useRef<WebSocket>(undefined);
     useEffect(() => {
@@ -27,9 +29,25 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         const send = (message: object) => {
             if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(message));
         };
+        // Erased items fade out over the op's share of its sentence, then leave the board.
+        const erase = (ids: string[], ms: number) => {
+            setItems((drawn) =>
+                drawn.map((d) => (ids.includes(d.op.id) ? { ...d, erased: ms } : d)),
+            );
+            setTimeout(
+                () =>
+                    setItems((drawn) =>
+                        drawn.filter((d) => d.erased === undefined || !ids.includes(d.op.id)),
+                    ),
+                ms,
+            );
+        };
         const player = boardPlayer(
             (s) => setCaption({ text: s.text, muted: false }),
-            (op, ms) => setItems((drawn) => [...drawn, { op, ms }]),
+            (op, ms) =>
+                op.kind === 'erase'
+                    ? erase(op.ids ?? [], ms)
+                    : setItems((drawn) => [...drawn, { op, ms }]),
             (s, phase) => send({ type: 'progress', sentence: s.id, phase }),
         );
         ws.onopen = () => setReady(true);
@@ -53,6 +71,10 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
             // The saved board shows at once, without entry.
             if (m.type === 'board') setItems(m.items.map((op: Op) => ({ op, ms: 0 })));
             if (m.type === 'sentence') player.add(m);
+            if (m.type === 'stroke') {
+                setItems((drawn) => [...drawn, { op: m.item, ms: 0 }]);
+                if (m.mark) setMarks((n) => n + 1);
+            }
             if (m.type === 'notice') setNotice(m.notice);
         };
         return () => {
@@ -78,11 +100,17 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         if (ws?.readyState !== WebSocket.OPEN) return false;
         ws.send(JSON.stringify({ type: 'ask', text }));
         setAsked(true);
+        setMarks(0);
         setNotice(undefined);
         // The sent question shows muted until the tutor speaks, so the learner sees it was heard.
         setCaption({ text, muted: true });
         setState('thinking');
         return true;
+    };
+    // A finished pen stroke, in board pixels; the server hit-tests it and sends it back as an item.
+    const draw = (points: [number, number][]) => {
+        const ws = socket.current;
+        if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'stroke', points }));
     };
     return {
         state,
@@ -91,6 +119,8 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         asked: asked || messages.some((m) => m.board),
         caption: caption ?? restored,
         items,
+        marks,
         ask,
+        draw,
     };
 }

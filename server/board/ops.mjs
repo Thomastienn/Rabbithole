@@ -1,5 +1,6 @@
 // Board op lines (docs/board-spec.md, Op language): `<id> <kind> <args> [key=value]` on a fixed
-// 1600×900 board (ADR 0028). Tokens follow prototype/board-placement. Kinds so far: shapes, text and components.
+// 1600×900 board (ADR 0028). Tokens follow prototype/board-placement. Kinds so far: shapes, text, components,
+// erase and the learner's pen strokes.
 import { COMPONENTS, component, child, layout } from './components.mjs';
 
 const KINDS = new Set([
@@ -13,6 +14,8 @@ const KINDS = new Set([
     'plot',
     'numberline',
     'point',
+    'erase',
+    'stroke',
 ]);
 const LOOKS = new Set(['focus', 'muted', 'good', 'wrong', 'new']);
 // Label font sizes in board pixels (mockup Rabbithole-brd.2).
@@ -29,7 +32,7 @@ const point = (word) => {
 };
 
 function tokens(line) {
-    const op = { strs: [], pts: [], vals: [], opts: {} };
+    const op = { strs: [], pts: [], vals: [], ids: [], opts: {} };
     const words = [...line.matchAll(TOKEN)].map((m) =>
         m[1] ? { k: m[1], v: m[2] } : m[3] !== undefined ? { s: m[3] } : { w: m[4] },
     );
@@ -51,6 +54,7 @@ function tokens(line) {
             if (!op[key]) return { error: `${w} needs an id` };
         } else if (point(w)) op.pts.push(point(w));
         else if (/^-?\d*\.?\d+(\/\d*\.?\d+)?$/.test(w)) op.vals.push(w);
+        else if (op.kind === 'erase' && ID.test(w)) op.ids.push(w);
         else if (/^\w+=\S+$/.test(w)) op.opts[w.split('=')[0]] = w.slice(w.indexOf('=') + 1);
         else return { error: `unexpected token "${w}"` };
     }
@@ -88,6 +92,24 @@ function edge(b, to) {
         : Math.min(b.w / 2 / Math.abs(dx || 1e-9), b.h / 2 / Math.abs(dy || 1e-9)) * length;
     const t = (reach + GAP) / length;
     return [Math.round(b.c[0] + dx * t), Math.round(b.c[1] + dy * t)];
+}
+
+// How far a point lies outside an item's space, 0 inside it.
+function gap(b, [x, y]) {
+    if (b.round) return Math.max(0, Math.hypot(x - b.c[0], y - b.c[1]) - b.r);
+    const dx = Math.max(0, Math.abs(x - b.c[0]) - b.w / 2);
+    const dy = Math.max(0, Math.abs(y - b.c[1]) - b.h / 2);
+    return Math.hypot(dx, dy);
+}
+
+// Whether a point is inside the polygon a stroke traces, by ray casting.
+function inside([x, y], points) {
+    let hit = false;
+    for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+        const [[xi, yi], [xj, yj]] = [points[i], points[j]];
+        if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) hit = !hit;
+    }
+    return hit;
 }
 
 // The guard (docs/board-spec.md, ADR 0028), with the prototype's overlap measure.
@@ -204,6 +226,21 @@ export function boardOps() {
             if (!LOOKS.has(op.opts.look)) return { error: `unknown look "${op.opts.look}"` };
             item.look = op.opts.look;
         }
+        if (op.kind === 'erase') {
+            if (!op.ids.length) return { error: 'erase needs an id' };
+            const unknown = op.ids.find((name) => !items.has(name));
+            if (unknown) return { error: `unknown id ${unknown}` };
+            // A component's children go with it.
+            const ids = [...items.values()]
+                .filter((i) => op.ids.includes(i.id) || op.ids.includes(i.on))
+                .map((i) => i.id);
+            ids.forEach((name) => items.delete(name) && connectors.delete(name));
+            return { item: { id: op.id, kind: 'erase', ids } };
+        }
+        if (op.kind === 'stroke') {
+            if (!op.pts.length) return { error: 'stroke needs a point' };
+            return { item: { ...item, points: op.pts } };
+        }
         if (op.kind === 'line' || op.kind === 'arrow') {
             if (op.from || op.to) {
                 const [a, b] = [items.get(op.from), items.get(op.to)];
@@ -246,17 +283,44 @@ export function boardOps() {
             const parsed = tokens(line);
             if (parsed.error) return parsed;
             const built = build(parsed.op);
-            if (!built.item) return built;
+            if (!built.item || built.item.kind === 'erase') return built;
             // To the guard a component is one item at its box; its children stay inside it, unguarded.
             if (built.item.on) {
                 items.set(built.item.id, built.item);
                 return built;
             }
             const others = [...items.values()].filter((other) => !other.on);
-            const guarded = guard(built.item, others, connectors);
+            // The learner's strokes stay where they were drawn.
+            const guarded =
+                built.item.kind === 'stroke' ? built.item : guard(built.item, others, connectors);
             const item = COMPONENTS.has(guarded.kind) ? layout(guarded) : guarded;
             items.set(item.id, item);
             return guarded === built.item ? { item } : { item, moved: true };
+        },
+        has: (id) => items.has(id),
+        items: () => [...items.values()],
+        // What a learner stroke marks (docs/board-spec.md, Learner pen): a closed loop circles the items whose
+        // centres it encloses; otherwise it points at the item nearest its end, within 40 board pixels.
+        mark(points) {
+            // Only items with a place to circle or point at; a plot is a path inside its axes.
+            const targets = [...items.values()].filter(
+                (i) => i.kind !== 'stroke' && (i.at || i.points),
+            );
+            const [start, end] = [points[0], points.at(-1)];
+            const box = bounds({ points });
+            const closed =
+                points.length > 2 &&
+                Math.hypot(end[0] - start[0], end[1] - start[1]) <=
+                    Math.max(60, 0.3 * Math.hypot(box.w, box.h));
+            const circled = closed
+                ? targets.filter((i) => inside(bounds(i).c, points)).map((i) => i.id)
+                : [];
+            if (circled.length) return { verb: 'circled', ids: circled };
+            const [near] = targets
+                .map((i) => ({ id: i.id, d: gap(bounds(i), end) }))
+                .filter(({ d }) => d <= 40)
+                .sort((a, b) => a.d - b.d);
+            return near ? { verb: 'pointed at', ids: [near.id] } : null;
         },
     };
 }
