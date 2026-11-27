@@ -16,6 +16,11 @@ export type Op = {
         | 'line'
         | 'arrow'
         | 'text'
+        | 'math'
+        | 'highlight'
+        | 'pointer'
+        | 'erase'
+        | 'clear'
         | 'axes'
         | 'numberline'
         | 'plot'
@@ -50,7 +55,8 @@ export type Op = {
     size?: 's' | 'm' | 'l';
     text?: string;
     points?: [number, number][];
-    // The items an erase op removes.
+    // A pointer glides from here; an erase names the items it fades out.
+    from?: [number, number];
     ids?: string[];
 };
 // Point labels on one number line, in value order: a label that would touch its left neighbour's on the

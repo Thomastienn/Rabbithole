@@ -39,26 +39,6 @@
     transform-origin: center;
     fill: currentColor;
 }
-/* With the pen on, a drag over the board draws; off, the board ignores the pointer. */
-.board.pen-on > svg {
-    cursor: crosshair;
-    touch-action: none;
-}
-/* Learner strokes: freehand, 6 board px, round caps, in the conversation's family ink so they never read as the tutor's. */
-.board-learner {
-    fill: none;
-    stroke: var(--ink);
-    stroke-width: 6;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-}
-.board-tip {
-    fill: var(--ink);
-}
-/* An erased item fades out over its op's share of the sentence (--board-out). */
-.board-item.erased {
-    animation: board-leave var(--board-out) linear forwards;
-}
 .board-text {
     animation-name: board-write;
     fill: currentColor;
@@ -71,6 +51,63 @@
 }
 .board-text.l {
     font-size: 64px;
+}
+/* Math: KaTeX's faces at 32, 44 or 64px in the look's colour, centred on its point; terms write in one by one. */
+.board-math-box {
+    overflow: visible;
+}
+.board-math {
+    display: grid;
+    place-items: center;
+    height: 100%;
+    color: currentColor;
+}
+.board-math .katex-display {
+    margin: 0;
+}
+.board-math .katex {
+    font-size: 44px;
+}
+.board-math.s .katex {
+    font-size: 32px;
+}
+.board-math.l .katex {
+    font-size: 64px;
+}
+.board-math .board-term {
+    display: inline-block;
+    animation: board-write calc(var(--board-ms) / var(--terms)) cubic-bezier(0.65, 0, 0.35, 1)
+        calc(var(--board-ms) * var(--term) / var(--terms)) both;
+}
+/* Highlight: a porcelain wash under its item that sweeps in left to right and stays. */
+.board-wash {
+    animation-name: board-write;
+    fill: color-mix(in srgb, var(--rabbithole-paper) 22%, transparent);
+}
+/* Pointer: a porcelain cursor edged in the board's ground. It glides in over the first half of its share
+   from where it last stopped, rests, and fades over the last 0.5s. */
+.board-item > .board-pointer {
+    animation:
+        board-glide calc(var(--board-ms) / 2) cubic-bezier(0.65, 0, 0.35, 1) both,
+        board-fade 500ms linear max(0ms, var(--board-ms) - 500ms) forwards;
+    fill: var(--rabbithole-paper);
+    stroke: var(--color-background-muted);
+    stroke-width: 3;
+    stroke-linejoin: round;
+}
+/* Erase fades the named items out together over its share. */
+.board-item.board-gone {
+    animation: board-fade var(--gone-ms) linear forwards;
+}
+@keyframes board-glide {
+    from {
+        translate: var(--dx) var(--dy);
+    }
+}
+@keyframes board-fade {
+    to {
+        opacity: 0;
+    }
 }
 /* Components (mockup Rabbithole-brd.5): axes and number lines are 4px muted strokes with 26px muted numbers, a plot
    is a 6px marker stroke, a point an 11px dot with a 36px label 50px above it, or 60px higher on a 3px muted leader.
@@ -187,11 +224,6 @@
         opacity: 0;
     }
 }
-@keyframes board-leave {
-    to {
-        opacity: 0;
-    }
-}
 /* The waiting cue: shows at once as a question is sent, then breathes until the tutor speaks. */
 .board-waiting {
     fill: var(--rabbithole-paper);
@@ -209,8 +241,15 @@
     .board-waiting {
         animation: board-enter 200ms ease-out;
     }
-    .board-item > * {
+    .board-item > *,
+    .board-math .board-term {
         animation-name: board-enter;
+    }
+    /* The pointer fades in at its item instead of gliding, rests, then fades out. */
+    .board-item > .board-pointer {
+        animation:
+            board-enter 400ms linear both,
+            board-fade 500ms linear max(0ms, var(--board-ms) - 500ms) forwards;
     }
     .board-point-label,
     .board-part-box,

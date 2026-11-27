@@ -1,103 +1,8 @@
 import '../support/tsx.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createElement as h } from 'react';
-import { render } from '../support/render.mjs';
-import { ui, button } from '../support/ui.mjs';
-const { default: Board } = await import('../../src/board/Board.tsx');
-
-// The board session's socket, driven by the test: it records what the board sends and plays what the server says.
-class FakeSocket {
-    static OPEN = 1;
-    static last;
-    readyState = 0;
-    sent = [];
-    constructor(url) {
-        this.url = url;
-        FakeSocket.last = this;
-    }
-    send(data) {
-        this.sent.push(typeof data === 'string' ? JSON.parse(data) : { audio: data.byteLength });
-    }
-    close() {
-        this.readyState = 3;
-        this.onclose?.();
-    }
-    open() {
-        this.readyState = 1;
-        this.onopen?.();
-    }
-    server(message) {
-        this.onmessage?.({ data: JSON.stringify(message) });
-    }
-    // A speech frame as the board session sends it: one byte of id length, the id, then the audio.
-    audio(id, bytes) {
-        this.onmessage?.({
-            data: new Uint8Array([id.length, ...Buffer.from(id), ...bytes]).buffer,
-        });
-    }
-}
-
-// The browser's mic: getUserMedia records its constraints (or refuses), and frame() plays a worklet frame.
-function fakeMic(t, { refuse } = {}) {
-    const mic = { asked: [], stopped: 0, frame: null };
-    const saved = [globalThis.AudioContext, globalThis.AudioWorkletNode];
-    globalThis.AudioContext = class {
-        audioWorklet = { addModule: async (url) => (mic.module = url) };
-        destination = {};
-        createMediaStreamSource = () => ({ connect: () => {} });
-        resume = async () => {};
-        close = async () => {};
-    };
-    globalThis.AudioWorkletNode = class {
-        port = {};
-        constructor() {
-            mic.frame = (samples) => this.port.onmessage({ data: samples });
-        }
-        connect() {}
-    };
-    t.after(() => ([globalThis.AudioContext, globalThis.AudioWorkletNode] = saved));
-    mic.install = (w) =>
-        Object.defineProperty(w.navigator, 'mediaDevices', {
-            value: {
-                async getUserMedia(constraints) {
-                    mic.asked.push(constraints);
-                    if (refuse) throw Object.assign(new Error('denied'), { name: refuse });
-                    return { getTracks: () => [{ stop: () => mic.stopped++ }] };
-                },
-            },
-        });
-    return mic;
-}
-
-async function mount(t, messages = [], speed, mic) {
-    const reloads = [];
-    let dom;
-    const saved = globalThis.WebSocket;
-    globalThis.WebSocket = FakeSocket;
-    t.after(() => (globalThis.WebSocket = saved));
-    const view = await render(
-        h(Board, { conversation: 'c1', messages, reload: () => reloads.push('c1') }),
-        (w) => {
-            dom = ui(w);
-            if (speed) w.localStorage.setItem('rabbithole.board-speed', speed);
-            mic?.install(w);
-        },
-    );
-    t.after(view.cleanup);
-    const socket = FakeSocket.last;
-    await view.act(async () => socket.open());
-    const q = (selector) => view.container.querySelector(selector);
-    // The composer input is contenteditable: typing replaces its text and fires input.
-    const type = async (text) => {
-        const input = q('[contenteditable=true]');
-        await view.act(async () => {
-            input.textContent = text;
-            input.dispatchEvent(new window.Event('input', { bubbles: true }));
-        });
-    };
-    return { ...view, socket, q, type, reloads, frames: () => view.act(async () => dom.frames()) };
-}
+import { button } from '../support/ui.mjs';
+import { fakeMic, mount } from './mountBoard.mjs';
 
 test('board: an empty board waits for a typed question with the mic off, then shows it was heard', async (t) => {
     const board = await mount(t);
@@ -123,7 +28,7 @@ test('board: an empty board waits for a typed question with the mic off, then sh
 
 test('board: the first mic press downloads with progress while typing works, then the mic listens for a spoken question', async (t) => {
     const mic = fakeMic(t);
-    const board = await mount(t, [], undefined, mic);
+    const board = await mount(t, [], undefined, false, mic);
     const press = () => board.act(async () => board.q('.board-mic').click());
     await press();
     assert.deepEqual(mic.asked, [
@@ -188,7 +93,7 @@ test('board: the first mic press downloads with progress while typing works, the
 
 test('board: a blocked microphone leaves the mic off with a notice saying where to allow it', async (t) => {
     const mic = fakeMic(t, { refuse: 'NotAllowedError' });
-    const board = await mount(t, [], undefined, mic);
+    const board = await mount(t, [], undefined, false, mic);
     await board.act(async () => board.q('.board-mic').click());
     assert.equal(
         board.q('.board-notice[role=alert]').textContent,
@@ -254,6 +159,67 @@ test('board: each sentence becomes the caption, reported as it shows, and leavin
     assert.deepEqual(board.reloads, ['c1'], 'the conversation reloads once the server has saved');
 });
 
+test('board: the rail lists what was said, collapses to the caption line, and branching from it pauses and saves first', async (t) => {
+    const board = await mount(
+        t,
+        [
+            { id: 'q1', role: 'user', text: 'What are hyphae?', status: 'completed' },
+            { id: 'r1', role: 'assistant', text: 'Hyphae are threads.', status: 'completed' },
+        ],
+        undefined,
+        true,
+    );
+    await board.type('Why?');
+    await board.act(async () => button(board.container, 'Send').click());
+    await board.act(async () => {
+        board.socket.server({ type: 'state', state: 'thinking', user: 'q2', reply: 'r2' });
+        board.socket.server({ type: 'state', state: 'speaking' });
+        board.socket.server({ type: 'sentence', id: '1', text: 'A hypha grows at its tip.' });
+        board.socket.server({ type: 'sentence', id: '2', text: 'Not yet spoken.' });
+    });
+    const said = () =>
+        [
+            ...board
+                .q('[role=log]')
+                .querySelectorAll('.board-rail-question, .board-rail-reply section'),
+        ].map((n) => n.textContent);
+    assert.deepEqual(said(), [
+        'What are hyphae?',
+        'Hyphae are threads.',
+        'Why?',
+        'A hypha grows at its tip.',
+    ]);
+    assert.equal(board.q('.board-caption').textContent, '', 'open, the rail carries the caption');
+    await board.act(async () => button(board.container, 'Collapse transcript').click());
+    assert.equal(board.q('[role=log]'), null);
+    assert.equal(board.q('.board-caption').textContent, 'A hypha grows at its tip.');
+    await board.act(async () => button(board.container, 'Show transcript').click());
+    // Select "hypha" in the spoken reply from the keyboard, ask, and send the branch.
+    await board.act(async () => button(board.container, 'Select passage in tutor reply 2').click());
+    const input = board.q('[role=log] textarea');
+    await board.act(async () => {
+        input.setSelectionRange(2, 7);
+        input.dispatchEvent(
+            new window.KeyboardEvent('keyup', { key: 'ArrowRight', shiftKey: true, bubbles: true }),
+        );
+    });
+    await board.act(async () => button(board.container, 'Ask about selection').click());
+    await board.act(async () => button(board.q('[role=log] form'), 'Send').click());
+    assert.equal(
+        button(board.container, 'Resume').getAttribute('aria-pressed'),
+        'true',
+        'the board pauses',
+    );
+    assert.match(board.q('.board-rail-head').textContent, /Paused/);
+    assert.deepEqual(board.socket.sent.at(-1), { type: 'leave' });
+    assert.deepEqual(board.submitted, [], 'the branch waits for the reply to be saved');
+    await board.act(async () => board.socket.close());
+    assert.deepEqual(
+        board.submitted.map((b) => b.anchor),
+        [{ messageId: 'r2', start: 2, end: 7, text: 'hypha', at: undefined }],
+    );
+});
+
 test('board: reopened, it holds the latest board reply’s last sentence and its whole board at once, with no hint', async (t) => {
     const board = await mount(t, [
         { id: 'q', role: 'user', text: 'Why?', status: 'completed', board: true },
@@ -264,7 +230,7 @@ test('board: reopened, it holds the latest board reply’s last sentence and its
             status: 'completed',
             board: true,
         },
-        { role: 'assistant', text: 'A later chat reply.' },
+        { id: 'later', role: 'assistant', text: 'A later chat reply.' },
     ]);
     assert.equal(board.q('.board-empty'), null);
     assert.equal(board.q('.board-caption.muted').textContent, 'Dr. Lin explains how.');
@@ -272,9 +238,14 @@ test('board: reopened, it holds the latest board reply’s last sentence and its
     await board.act(async () =>
         board.socket.server({
             type: 'board',
-            items: [
-                { id: 'tip', kind: 'circle', at: [800, 450], r: 60 },
-                { id: 'v1', kind: 'dot', at: [900, 450] },
+            replies: [
+                {
+                    caption: 'Dr. Lin explains how.',
+                    items: [
+                        { id: 'tip', kind: 'circle', at: [800, 450], r: 60 },
+                        { id: 'v1', kind: 'dot', at: [900, 450] },
+                    ],
+                },
             ],
         }),
     );
@@ -303,7 +274,10 @@ test('board: a number line point arriving later moves a crowded label up onto a 
         d: 'M200 520H1400',
     };
     const point = (id, x, text) => ({ id, kind: 'point', on: 'n1', at: [x, 520], text });
-    const send = (ops) => board.act(async () => board.socket.server({ type: 'board', items: ops }));
+    const send = (ops) =>
+        board.act(async () =>
+            board.socket.server({ type: 'board', replies: [{ caption: 'Points.', items: ops }] }),
+        );
     const label = () => board.q('.board-point-label');
     await send([line, point('q1', 1040, '0.7')]);
     assert.equal(label().style.translate, '0 0px');
@@ -330,6 +304,87 @@ test('board: disconnecting holds the last caption and keeps a typed draft', asyn
     assert.equal(board.q('[contenteditable=true]').textContent, 'Keep this draft');
 });
 
+test('board: the learner steps back to the board after an earlier reply, and asking returns to the latest', async (t) => {
+    const board = await mount(t, [
+        { id: 'r', role: 'assistant', text: 'The bulb glows.', status: 'completed', board: true },
+    ]);
+    const ids = () =>
+        [...board.container.querySelectorAll('svg .board-item')].map(
+            (g) => g.firstElementChild.getAttribute('cx') ?? g.firstElementChild.tagName,
+        );
+    await board.act(async () =>
+        board.socket.server({
+            type: 'board',
+            replies: [
+                {
+                    caption: 'The bulb glows.',
+                    items: [
+                        { id: 'bulb', kind: 'circle', at: [1240, 450], r: 70 },
+                        { id: 'e1', kind: 'dot', at: [560, 180] },
+                    ],
+                },
+                {
+                    caption: 'More push, more current.',
+                    items: [
+                        { id: 'h1', kind: 'highlight', at: [1240, 450], w: 180, h: 180 },
+                        { id: 'p1', kind: 'pointer', from: [800, 450], at: [432, 450] },
+                        { id: 'x1', kind: 'erase', ids: ['e1'] },
+                        { id: 'n1', kind: 'clear' },
+                        {
+                            id: 'ohm',
+                            kind: 'math',
+                            at: [800, 1230],
+                            size: 'l',
+                            text: 'I = \\frac{V}{R}',
+                        },
+                    ],
+                },
+            ],
+        }),
+    );
+    const steps = board.q('[aria-label="Board at each reply"]');
+    assert.equal(steps.textContent, 'Reply 2 of 2');
+    assert.ok(button(board.container, 'Board after the next reply').disabled);
+    // The latest board: the wash under the bulb, the erased dot and the passed pointer gone, a second area below.
+    assert.deepEqual(ids(), ['rect', '1240', 'foreignObject']);
+    assert.equal(
+        [...board.q('.board-math').querySelectorAll('.board-term')].length,
+        3,
+        'the formula writes in as three terms',
+    );
+    assert.equal(board.q('svg').getAttribute('viewBox'), '0 0 1600 1800');
+    assert.ok(board.q('.board-seam') && board.q('.board-thumb'));
+
+    await board.act(async () => button(board.container, 'Board after the previous reply').click());
+    assert.equal(steps.textContent, 'Reply 1 of 2');
+    assert.equal(board.q('svg').getAttribute('aria-label'), 'Board after reply 1');
+    assert.deepEqual(ids(), ['1240', '560'], 'the board as it stood, the erased dot back');
+    assert.equal(board.q('svg').getAttribute('viewBox'), '0 0 1600 900');
+    assert.equal(board.q('.board-thumb'), null);
+    assert.equal(board.q('.board-caption.muted').textContent, 'The bulb glows.');
+    assert.ok(button(board.container, 'Board after the previous reply').disabled);
+
+    await board.type('Why?');
+    await board.act(async () => button(board.container, 'Send').click());
+    assert.equal(board.q('svg').getAttribute('aria-label'), 'Board');
+    assert.equal(steps.textContent, 'Reply 3 of 3');
+    assert.ok(
+        button(board.container, 'Board after the previous reply').disabled,
+        'off while the tutor speaks',
+    );
+    await board.act(async () =>
+        board.socket.server({
+            type: 'sentence',
+            id: '9',
+            text: 'The wash can go now.',
+            ops: [{ id: 'x2', kind: 'erase', ids: ['h1'] }],
+        }),
+    );
+    const wash = board.q('.board-wash').parentElement;
+    assert.ok(wash.classList.contains('board-gone'), 'an erase fades its items out over its share');
+    assert.notEqual(wash.style.getPropertyValue('--gone-ms'), '0ms');
+});
+
 test('board: a voiced sentence waits for its first speech chunk before it shows', async (t) => {
     const board = await mount(t);
     await board.type('Why?');
@@ -352,7 +407,7 @@ test('board: the pen draws a stroke that waits for the question, and an erase op
     const board = await mount(t);
     const pen = button(board.container, 'Pen');
     assert.equal(pen.getAttribute('aria-pressed'), 'false', 'the pen is off when a board opens');
-    const svg = board.q('.board > svg');
+    const svg = board.q('.board svg');
     svg.getBoundingClientRect = () => ({ left: 0, top: 0, width: 800, height: 450 });
     const drag = (type, x, y) =>
         board.act(async () =>
@@ -418,9 +473,9 @@ test('board: the pen draws a stroke that waits for the question, and an erase op
             ops: [{ id: 'e1', kind: 'erase', ids: ['p1'] }],
         }),
     );
-    assert.equal(board.container.querySelectorAll('.board-item.erased').length, 1);
-    await board.act(() => new Promise((resolve) => setTimeout(resolve, 300)));
-    assert.equal(board.container.querySelectorAll('.board-learner').length, 1, 'p1 left the board');
+    const gone = board.container.querySelectorAll('.board-item.board-gone');
+    assert.equal(gone.length, 1);
+    assert.ok(gone[0].querySelector('.board-learner'), 'p1 fades out');
 });
 
 test('board: speed is 1.5× until the learner picks another, which is remembered, and pause holds the reply', async (t) => {

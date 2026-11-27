@@ -116,12 +116,6 @@
     border-radius: var(--radius-container);
     overflow: hidden;
 }
-.board > svg {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-}
 .board-empty {
     position: absolute;
     inset: 0;
@@ -204,6 +198,102 @@
     color: var(--color-text-secondary);
 }
 
+/* Transcript rail (mockup Rabbithole-brd.15): 300px right of the board, spanning the field, caption line and composer.
+   Roles: --seam border, --up popover, --mut text-secondary, --w rabbithole-paper. */
+.board-column {
+    grid-template-columns: minmax(0, 1fr) 300px;
+}
+.board-column.rail-shut {
+    grid-template-columns: minmax(0, 1fr) 44px;
+}
+.board-column > :not(.board-rail) {
+    grid-column: 1;
+}
+.board-rail {
+    grid-column: 2;
+    grid-row: 1 / 4;
+    position: relative;
+    min-height: 0;
+    overflow: hidden;
+    border-left: 1px solid var(--color-border);
+}
+.board-rail-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 44px;
+    padding: 0 4px 0 16px;
+    border-bottom: 1px solid var(--color-border);
+    font: 12px/1.2 var(--font-family-body);
+    color: var(--color-text-secondary);
+}
+.board-rail-title {
+    flex: 1;
+    font: 600 12px/1.2 var(--font-family-heading);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+}
+.board-rail-list {
+    position: absolute;
+    inset: 44px 0 0;
+    overflow: auto;
+    padding: 16px 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+/* Short transcripts sit at the bottom, by the newest line, and still scroll when long. */
+.board-rail-list > :first-child {
+    margin-top: auto;
+}
+.board-rail-question {
+    align-self: flex-end;
+    max-width: 236px;
+    padding: 8px 12px;
+    border-radius: var(--radius-element);
+    background: var(--color-background-popover);
+    font: 14px/1.4 var(--font-family-body);
+    color: var(--color-text-primary);
+    overflow-wrap: anywhere;
+}
+.board-rail-reply :is(.reply-md, .reply-md .astryx-text) {
+    font: 15px/1.55 var(--rabbithole-font-reading);
+    color: var(--color-text-secondary);
+}
+.board-rail-reply .reply-md > * + * {
+    margin-block-start: 12px;
+}
+.board-rail-head > button,
+.board-rail.shut > button {
+    width: 36px;
+    height: 36px;
+    color: var(--color-text-secondary);
+}
+.board-rail-head > button svg,
+.board-rail.shut > button svg {
+    width: 20px;
+    height: 20px;
+}
+::highlight(board-now) {
+    color: var(--rabbithole-paper);
+}
+.board-rail.shut {
+    display: flex;
+    justify-content: center;
+    padding-top: 4px;
+}
+/* The chat's Ask about selection and passage box, inline at the rail's width. */
+.board-rail .selection-action {
+    position: static;
+    margin-top: 0;
+    transform: none;
+    animation: none;
+}
+.board-rail .passage-box,
+.board-rail form {
+    width: 100%;
+}
+
 /* The chat composer, centred, without model, effort or attach controls; its tools hold the mic. */
 .board-foot {
     padding: 8px 24px 20px;
@@ -234,50 +324,6 @@
     :is(svg, span:has(> svg)) {
     width: 20px;
     height: 20px;
-}
-/* The board's tool group: the mic, the pen (mockup Rabbithole-brd.14), then speed and pause (mockup Rabbithole-brd.8). */
-.board-tools {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    margin-inline-start: -8px;
-}
-/* Off, the pen is a muted icon like the mockup's; pressed, it fills porcelain with its icon in the porcelain text colour. */
-.board-composer .board-pen {
-    color: var(--color-text-secondary);
-}
-.board-composer .board-pen:hover {
-    color: var(--color-text-primary);
-}
-.board-composer .board-pen[aria-pressed='true'] {
-    background: var(--rabbithole-paper);
-    color: var(--rabbithole-paper-ink);
-}
-/* Marks waiting for the next question: one pill above the composer text, with a short line in the learner's ink. */
-.board-tray {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-block-end: 8px;
-}
-.board-marks {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    height: 30px;
-    padding: 0 10px;
-    border-radius: var(--radius-inner);
-    background: var(--color-background-gray);
-    font-size: 13px;
-    font-weight: 500;
-    white-space: nowrap;
-}
-.board-marks > span {
-    flex: none;
-    width: 14px;
-    height: 4px;
-    border-radius: var(--radius-full);
-    background: var(--ink);
 }
 /* The mic (mockup Rabbithole-brd.11): off, a muted icon; on, porcelain with its icon in the porcelain text colour. */
 .board-composer .board-mic {
@@ -386,22 +432,4 @@
         max-width: calc(100% - 24px);
         white-space: normal;
     }
-}
-
-/* Board snapshot (mockup Rabbithole-brd.16): a board reply's board at its end, still, under the reply's text
-   in normal chat. 400px at 16:9, never wider than the column, on the board surface with no frame.
-   Margins give the mockup's drawn gaps (15px under the text, 14px to the copy button) inside the reply's 4px flex gap. */
-.board-snapshot {
-    width: 400px;
-    max-width: 100%;
-    aspect-ratio: 16 / 9;
-    margin: 11px 0 14px;
-    background: var(--color-background-muted);
-    border-radius: var(--radius-container);
-    overflow: hidden;
-}
-.board-snapshot svg {
-    display: block;
-    width: 100%;
-    height: 100%;
 }

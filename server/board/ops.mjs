@@ -1,6 +1,6 @@
 // Board op lines (docs/board-spec.md, Op language): `<id> <kind> <args> [key=value]` on a fixed
-// 1600×900 board (ADR 0028). Tokens follow prototype/board-placement. Kinds so far: shapes, text, components,
-// erase and the learner's pen strokes.
+// 1600×900 board (ADR 0028). Tokens follow prototype/board-placement.
+import katex from 'katex';
 import { COMPONENTS, PARENTS, component, child, layout } from './components.mjs';
 
 const KINDS = new Set([
@@ -12,9 +12,17 @@ const KINDS = new Set([
     'text',
     ...COMPONENTS,
     ...Object.keys(PARENTS),
+    'math',
+    'highlight',
+    'pointer',
     'erase',
+    'clear',
     'stroke',
 ]);
+// Kinds that name other items instead of placing one; they cannot be named themselves.
+const MARKS = new Set(['highlight', 'pointer', 'erase', 'clear']);
+// Each clear moves on to a fresh 1600×900 area this far below the last (mockup Rabbithole-brd.4).
+const AREA = 900;
 const LOOKS = new Set(['focus', 'muted', 'good', 'wrong', 'new']);
 // Label font sizes in board pixels (mockup Rabbithole-brd.2).
 const TEXT_SIZES = { s: 32, m: 44, l: 64 };
@@ -30,7 +38,7 @@ const point = (word) => {
 };
 
 function tokens(line) {
-    const op = { strs: [], pts: [], vals: [], ids: [], opts: {} };
+    const op = { strs: [], pts: [], vals: [], refs: [], opts: {} };
     const words = [...line.matchAll(TOKEN)].map((m) =>
         m[1] ? { k: m[1], v: m[2] } : m[3] !== undefined ? { s: m[3] } : { w: m[4] },
     );
@@ -52,8 +60,8 @@ function tokens(line) {
             if (!op[key]) return { error: `${w} needs an id` };
         } else if (point(w)) op.pts.push(point(w));
         else if (/^-?\d*\.?\d+(\/\d*\.?\d+)?$/.test(w)) op.vals.push(w);
-        else if (op.kind === 'erase' && ID.test(w)) op.ids.push(w);
         else if (/^\w+=\S+$/.test(w)) op.opts[w.split('=')[0]] = w.slice(w.indexOf('=') + 1);
+        else if (MARKS.has(op.kind) && ID.test(w)) op.refs.push(w);
         else return { error: `unexpected token "${w}"` };
     }
     return { op };
@@ -77,6 +85,16 @@ function bounds(item) {
     if (item.kind === 'text') {
         const fs = TEXT_SIZES[item.size];
         return { c: item.at, w: item.text.length * fs * 0.56 + 8, h: fs * 1.2 };
+    }
+    if (item.kind === 'math') {
+        // shortcut: sized from the LaTeX with each command as one glyph; measure KaTeX's layout if highlights miss.
+        const fs = TEXT_SIZES[item.size];
+        const glyphs = item.text.replace(/\\[a-zA-Z]+/g, 'x').replace(/[\s{}^_]/g, '').length;
+        return {
+            c: item.at,
+            w: glyphs * fs * 0.6 + 8,
+            h: fs * (/\\frac/.test(item.text) ? 2.4 : 1.2),
+        };
     }
     return { c: item.at, w: item.w, h: item.h };
 }
@@ -135,7 +153,8 @@ const contains = (o, i) =>
     i.y >= o.y - 2 &&
     i.x + i.w <= o.x + o.w + 2 &&
     i.y + i.h <= o.y + o.h + 2;
-const onBoard = (b) => b.x >= 0 && b.y >= 0 && b.x + b.w <= W && b.y + b.h <= H;
+// On the area whose top edge is at `top`.
+const onBoard = (b, top) => b.x >= 0 && b.y >= top && b.x + b.w <= W && b.y + b.h <= top + H;
 
 // Whether segment p→q passes through box b (Liang–Barsky clipping).
 function segHits(p, q, b) {
@@ -170,8 +189,8 @@ function overlaps(a, b, connectors) {
     const [ba, bb] = [box(a), box(b)];
     if (liney(a) || liney(b)) {
         const [l, o, bo] = liney(a) ? [a, b, bb] : [b, a, ba];
-        // A drawn line may cross shapes and only collides with text; a connector collides with anything.
-        if (!connectors.has(l.id) && o.kind !== 'text') return false;
+        // A drawn line may cross shapes and only collides with text or math; a connector collides with anything.
+        if (!connectors.has(l.id) && o.kind !== 'text' && o.kind !== 'math') return false;
         if (CONTAINERS.has(o.kind) && contains(bo, box(l))) return false;
         return l.points.slice(1).some((q, i) => segHits(l.points[i], q, pad(bo, -4)));
     }
@@ -189,22 +208,22 @@ const shift = (item, dx, dy) =>
         : { ...item, at: [item.at[0] + dx, item.at[1] + dy] };
 
 // The item itself when it is on the board and free, else a copy at the nearest free spot on the board.
-function guard(item, others, connectors) {
-    const free = (it) => onBoard(box(it)) && !others.some((o) => overlaps(it, o, connectors));
+function guard(item, others, connectors, top) {
+    const free = (it) => onBoard(box(it), top) && !others.some((o) => overlaps(it, o, connectors));
     // A connector stays joined to its items, so it is never moved.
     if (connectors.has(item.id) || free(item)) return item;
     const b = box(item);
     const [cx, cy] = [b.x + b.w / 2, b.y + b.h / 2];
     const spots = [];
     for (let x = b.w / 2; x <= W - b.w / 2; x += STEP)
-        for (let y = b.h / 2; y <= H - b.h / 2; y += STEP)
+        for (let y = top + b.h / 2; y <= top + H - b.h / 2; y += STEP)
             spots.push([Math.round(x - cx), Math.round(y - cy)]);
     spots.sort((p, q) => Math.hypot(...p) - Math.hypot(...q));
     let fallback;
     for (const [dx, dy] of spots) {
         const moved = shift(item, dx, dy);
         if (free(moved)) return moved;
-        if (!fallback && onBoard(box(moved))) fallback = moved;
+        if (!fallback && onBoard(box(moved), top)) fallback = moved;
     }
     // shortcut: a full board keeps the nearest on-board spot even if it overlaps; upgrade if boards fill up.
     return fallback ?? item;
@@ -215,6 +234,19 @@ function guard(item, others, connectors) {
 export function boardOps() {
     const items = new Map();
     const connectors = new Set();
+    // Clears so far, and where the pointer last stopped (a fresh area starts it at its centre).
+    let area = 0,
+        pointer = [800, 450];
+    const erased = new Set();
+    // An item still on the board that ops can name; erase can also name a highlight or a component's child.
+    // Only erase reaches back into earlier areas, since the camera shows the current one, and into a component,
+    // since the rest join top-level items only.
+    const target = (id, kind) => {
+        const item = items.get(id);
+        const named = !MARKS.has(item?.kind) || (kind === 'erase' && item.kind === 'highlight');
+        const here = () => kind === 'erase' || (!item.on && bounds(item).c[1] >= area * AREA);
+        return item && named && !erased.has(id) && here() ? item : undefined;
+    };
     const positive = (value, fallback) =>
         value === undefined ? fallback : Number(value) > 0 ? Number(value) : NaN;
     function build(op) {
@@ -224,41 +256,59 @@ export function boardOps() {
             if (!LOOKS.has(op.opts.look)) return { error: `unknown look "${op.opts.look}"` };
             item.look = op.opts.look;
         }
-        if (op.kind === 'erase') {
-            if (!op.ids.length) return { error: 'erase needs an id' };
-            const unknown = op.ids.find((name) => !items.has(name));
+        if (op.kind === 'clear') {
+            area += 1;
+            pointer = [800, 450 + area * AREA];
+            return { item };
+        }
+        if (MARKS.has(op.kind)) {
+            if (!op.refs.length) return { error: `${op.kind} needs an id` };
+            const unknown = op.refs.find((ref) => !target(ref, op.kind));
             if (unknown) return { error: `unknown id ${unknown}` };
-            // A component's children go with it, and a tree node's subtree with the node. Items come in drawing
-            // order, after their parents, so one pass reaches every descendant.
-            const gone = new Set(op.ids);
-            for (const i of items.values()) if (gone.has(i.on) || gone.has(i.under)) gone.add(i.id);
-            const ids = [...items.keys()].filter((name) => gone.has(name));
-            ids.forEach((name) => items.delete(name) && connectors.delete(name));
-            return { item: { id: op.id, kind: 'erase', ids } };
+            if (op.kind === 'erase') {
+                // A component's children go with it, and a tree node's subtree with the node. Items come in
+                // drawing order, after their parents, so one pass reaches every descendant.
+                const gone = new Set(op.refs);
+                for (const i of items.values())
+                    if (!erased.has(i.id) && (gone.has(i.on) || gone.has(i.under))) gone.add(i.id);
+                for (const id of gone) erased.add(id);
+                return { item: { ...item, ids: [...gone] } };
+            }
+            if (op.refs.length > 1) return { error: `${op.kind} takes one id` };
+            const b = bounds(items.get(op.refs[0]));
+            const [w, h] = b.round ? [2 * b.r, 2 * b.r] : [b.w, b.h];
+            // A highlight washes 20px past its item's box; the pointer's tip stops 12px right of it, at its middle.
+            if (op.kind === 'highlight')
+                return { item: { ...item, at: b.c, w: w + 40, h: h + 40 } };
+            item.from = pointer;
+            pointer = item.at = [b.c[0] + w / 2 + 12, b.c[1]];
+            return { item };
         }
         if (op.kind === 'stroke') {
             if (!op.pts.length) return { error: 'stroke needs a point' };
             return { item: { ...item, points: op.pts } };
         }
+        // Points in a fresh area start at its top left.
+        const placed = ([x, y]) => [x, y + area * AREA];
         if (op.kind === 'line' || op.kind === 'arrow') {
             if (op.from || op.to) {
-                const [a, b] = [items.get(op.from), items.get(op.to)];
-                // A component's children live inside its box, so connectors join top-level items only.
-                if (!a || !b || a.on || b.on)
-                    return { error: `unknown id ${a && !a.on ? op.to : op.from}` };
+                const [a, b] = [target(op.from), target(op.to)];
+                if (!a || !b) return { error: `unknown id ${a ? op.to : op.from}` };
                 const [ba, bb] = [bounds(a), bounds(b)];
                 item.points = [edge(ba, bb.c), edge(bb, ba.c)];
                 connectors.add(op.id);
-            } else if (op.pts.length >= 2) item.points = op.pts;
+            } else if (op.pts.length >= 2) item.points = op.pts.map(placed);
             else return { error: `${op.kind} needs two points or from ID to ID` };
             return { item };
         }
         if (op.on || Object.hasOwn(PARENTS, op.kind)) {
-            const error = child(op, item, items.get(op.on), items);
+            // Erased items stay in `items` for replay, so a node's parent is looked for among the rest.
+            const live = new Map([...items].filter(([id]) => !erased.has(id)));
+            const error = child(op, item, target(op.on), live);
             return error ? { error } : { item };
         }
         if (!op.at) return { error: 'at needs X,Y' };
-        item.at = op.at;
+        item.at = placed(op.at);
         if (COMPONENTS.has(op.kind)) {
             const error = component(op, item);
             return error ? { error } : { item };
@@ -267,14 +317,24 @@ export function boardOps() {
         if (op.kind === 'box')
             [item.w, item.h] = [positive(op.opts.w, 280), positive(op.opts.h, 160)];
         if ([item.r, item.w, item.h].some(Number.isNaN)) return { error: 'sizes must be positive' };
-        if (op.kind === 'text') {
-            if (!op.strs[0]?.trim()) return { error: 'text needs a "label"' };
+        if (op.kind === 'text' || op.kind === 'math') {
+            if (!op.strs[0]?.trim()) return { error: `${op.kind} needs a "label"` };
             item.size = op.opts.size ?? 'm';
             if (!Object.hasOwn(TEXT_SIZES, item.size))
                 return { error: `unknown size "${item.size}"` };
         }
         // A circle or box may carry a short label inside it.
         if (op.strs[0]?.trim()) item.text = op.strs[0].trim();
+        if (op.kind === 'math')
+            try {
+                katex.renderToString(item.text, {
+                    displayMode: true,
+                    throwOnError: true,
+                    strict: 'ignore',
+                });
+            } catch (error) {
+                return { error: error.message };
+            }
         return { item };
     }
     return {
@@ -282,28 +342,42 @@ export function boardOps() {
             const parsed = tokens(line);
             if (parsed.error) return parsed;
             const built = build(parsed.op);
-            if (!built.item || built.item.kind === 'erase') return built;
-            // To the guard a component is one item at its box; its children stay inside it, unguarded.
-            if (built.item.on) {
+            if (!built.item) return built;
+            // Marks are not placed, and a component's children stay inside its box, unguarded; the rest keep
+            // clear of what is still on the board, in the current area, with a component as one item at its box.
+            if (built.item.on || MARKS.has(built.item.kind)) {
                 items.set(built.item.id, built.item);
                 return built;
             }
-            const others = [...items.values()].filter((other) => !other.on);
+            const others = [...items.values()].filter(
+                (o) => !o.on && !MARKS.has(o.kind) && !erased.has(o.id),
+            );
             // The learner's strokes stay where they were drawn.
             const guarded =
-                built.item.kind === 'stroke' ? built.item : guard(built.item, others, connectors);
+                built.item.kind === 'stroke'
+                    ? built.item
+                    : guard(built.item, others, connectors, area * AREA);
             const item = COMPONENTS.has(guarded.kind) ? layout(guarded) : guarded;
             items.set(item.id, item);
             return guarded === built.item ? { item } : { item, moved: true };
         },
         has: (id) => items.has(id),
-        items: () => [...items.values()],
+        // The board as it stands, for a still snapshot: no erased items, erases or passed pointers, highlights
+        // under the rest, and the clears that say which area it shows.
+        items: () =>
+            [...items.values()]
+                .filter((i) => !erased.has(i.id) && i.kind !== 'erase' && i.kind !== 'pointer')
+                .sort((a, b) => +(b.kind === 'highlight') - +(a.kind === 'highlight')),
         // What a learner stroke marks (docs/board-spec.md, Learner pen): a closed loop circles the items whose
         // centres it encloses; otherwise it points at the item nearest its end, within 40 board pixels.
         mark(points) {
-            // Only items with a place to circle or point at; a plot is a path inside its axes.
+            // Only items still on the board with a place to circle or point at; a plot is a path inside its axes.
             const targets = [...items.values()].filter(
-                (i) => i.kind !== 'stroke' && (i.at || i.points),
+                (i) =>
+                    i.kind !== 'stroke' &&
+                    !MARKS.has(i.kind) &&
+                    !erased.has(i.id) &&
+                    (i.at || i.points),
             );
             const [start, end] = [points[0], points.at(-1)];
             const box = bounds({ points });
