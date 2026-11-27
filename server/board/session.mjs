@@ -79,7 +79,7 @@ export function boardSession(ctx, id, socket) {
     const unavailable = () =>
         send({
             type: 'notice',
-            notice: 'The board needs a Claude chat model for now. Choose Claude for this conversation, then open the board again.',
+            notice: 'The board needs a Claude or Codex chat model for now. Choose one for this conversation, then open the board again.',
         });
     if (!providerFor(store.header(id))?.board) unavailable();
     const shownText = (current) =>

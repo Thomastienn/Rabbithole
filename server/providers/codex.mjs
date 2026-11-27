@@ -229,6 +229,46 @@ export class Codex {
             defaultFallback: !terra && m === selected,
         }));
     }
+    // A board runs its turns on this shared app-server with the board prompt at low effort (docs/board-spec.md).
+    board({ model, thread, system, history = [] }) {
+        const codex = this;
+        return {
+            thread,
+            // Warms the app-server before the first question; ask reports a failed start.
+            open: () => codex.ready().catch(() => {}),
+            async ask(text, emit, signal) {
+                let status = 'failed',
+                    usage;
+                const tree = {
+                    model,
+                    thread: this.thread,
+                    effort: 'low',
+                    system,
+                    // A fresh thread gets the saved discussion, including captions already shown on a board.
+                    messages: history.map((m) => ({ ...m, status: 'completed' })),
+                };
+                const onEvent = (e) => {
+                    if (e.type === 'delta') emit(e);
+                    if (e.type === 'status') status = e.status;
+                    if (e.type === 'usage')
+                        usage = {
+                            input: e.usage.input,
+                            output: e.usage.output,
+                            cacheRead: e.usage.cacheRead,
+                            thinking: e.usage.reasoning ?? null,
+                        };
+                };
+                try {
+                    await codex.generate(tree, text, onEvent, (id) => (this.thread = id), signal);
+                } catch (error) {
+                    return { status: 'failed', usage, error: error.message };
+                }
+                return { status, usage };
+            },
+            // The app-server is shared with chat and stays up; leaving aborts the turn's signal, which interrupts it.
+            close() {},
+        };
+    }
     async generate(tree, text, emit, saveThread, signal) {
         if (
             (tree.nativeTools?.length || tree.tools?.length) &&
@@ -274,7 +314,7 @@ export class Codex {
             cwd: join(this.dir, 'workspace'),
             approvalPolicy: 'never',
             sandbox: 'read-only',
-            baseInstructions: tutorSystem(tree),
+            baseInstructions: tree.system ?? tutorSystem(tree),
         };
         const result = await this.rpc(tree.thread ? 'thread/resume' : 'thread/start', {
             ...params,
