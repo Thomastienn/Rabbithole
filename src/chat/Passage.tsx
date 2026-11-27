@@ -17,6 +17,7 @@ import type { PartAction, VisualBranch } from '../media/VisualFrame';
 import Reply from './Reply';
 import type { Brief, Resource } from './types';
 import ToolActivity from './ToolActivity';
+import { usePassageBoxPlacement } from './usePassageBoxPlacement';
 
 export default function Passage({
     message,
@@ -94,7 +95,7 @@ export default function Passage({
     }>();
     const pickerBox = useRef<HTMLDivElement>(null);
     const wrapper = useRef<HTMLElement>(null);
-    const floating = useRef<HTMLDivElement>(null);
+    const floating = usePassageBoxPlacement(formOpen, form?.at);
     const passage = useRef<HTMLElement>(null);
     const action = useRef<HTMLButtonElement>(null);
     const completed = message.status === 'completed';
@@ -109,35 +110,6 @@ export default function Passage({
                 : [],
         [completed, message.status, message.text, suggestions, branchKey, addresses],
     );
-    useLayoutEffect(() => {
-        const box = floating.current;
-        if (!box) return;
-        const position = () => {
-            box.style.transform = '';
-            const chat = wrapper.current!.closest('.focused-chat')!;
-            const top = chat.querySelector('.chat-header')!.getBoundingClientRect().bottom;
-            // The reading area ends at the composer, or at the viewport without one.
-            const bottom =
-                chat.querySelector('.astryx-chat-composer')?.getBoundingClientRect().top ??
-                window.innerHeight;
-            const at = form?.at;
-            const rect = box.getBoundingClientRect();
-            const lines = at ? (at.below ?? at.y) - at.y : 0;
-            // No room under the selection: sit above its first line instead, when that fits under the header.
-            if (at && rect.bottom > bottom && rect.top - lines - rect.height >= top)
-                box.style.transform = `translateY(calc(${-lines}px - 100% - 2 * var(--spacing-1)))`;
-        };
-        position();
-        const observer = new ResizeObserver(position);
-        observer.observe(box);
-        window.addEventListener('resize', position);
-        document.addEventListener('scroll', position, true);
-        return () => {
-            observer.disconnect();
-            window.removeEventListener('resize', position);
-            document.removeEventListener('scroll', position, true);
-        };
-    }, [formOpen, form?.at?.y, form?.at?.below]);
     useEffect(() => {
         const highlight =
             reveal && passage.current?.querySelector<HTMLElement>('mark, [data-reveal]');

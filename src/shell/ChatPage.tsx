@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useRef, useState, type CSSProperties } from 'react';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Text, Heading } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
@@ -6,7 +6,8 @@ import { ShareIcon, FilmIcon, BookOpenIcon, MapIcon, CubeIcon } from '@heroicons
 import { useTheme } from '@astryxdesign/core/theme';
 import TreeSearch from './TreeSearch';
 import ShellBand, { SaveAlert, viewTab } from './ShellBand';
-import { savedDiscordStatus, savedVim, savePreference } from './preferences';
+import { savedVim, savePreference } from './preferences';
+import { useDiscordStatus } from './useDiscordStatus';
 import LibraryPanel from './LibraryPanel';
 import ReturnPanel from './ReturnPanel';
 import FirstRunSetup from './FirstRunSetup';
@@ -53,7 +54,6 @@ export default function ChatPage({
     const searchFromDrawer = useRef(false);
     // Only this boolean is stored, per browser and app origin; unreadable storage means off.
     const [vim, setVim] = useState(savedVim);
-    const [discord, setDiscord] = useState(savedDiscordStatus);
     const trees = useLearningTrees(c);
     const { state, tree, loading, layout, changeView, returnToTree } = trees;
     const model = useChatModel(c, trees);
@@ -73,14 +73,7 @@ export default function ChatPage({
     const { cancelDelete } = actions;
     const { newChat, askDelete } = actions;
     const active = !!tree && !!state?.active.includes(tree.id);
-    // The desktop app shows the open tree as the Discord status (desktop/discord.mjs); false clears it, and a browser
-    // has no bridge.
-    const treeTitle = tree?.title ?? null;
-    useEffect(() => {
-        (
-            window as { rabbitholeDesktop?: { activity?: (t: string | null | false) => void } }
-        ).rabbitholeDesktop?.activity?.(discord && treeTitle);
-    }, [discord, treeTitle]);
+    const [discord, setDiscord] = useDiscordStatus(tree?.title ?? null);
     function openSettings(
         section?: SettingsTab,
         focus?: string,
@@ -535,10 +528,7 @@ export default function ChatPage({
                             savePreference('vim', on ? 'on' : 'off');
                         }}
                         discord={discord}
-                        setDiscord={(on) => {
-                            setDiscord(on);
-                            savePreference('discord-status', on ? 'on' : 'off');
-                        }}
+                        setDiscord={setDiscord}
                         appearance={appearance}
                         setAppearance={setAppearance}
                         theme={theme}
