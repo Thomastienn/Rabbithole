@@ -169,11 +169,28 @@
     stroke: var(--color-border);
     stroke-width: 2;
 }
+/* Sketches (mockup Rabbithole-bsk.4): stations are filled with the board's ground, notes are muted. */
+.board-part-circle.station {
+    fill: var(--color-background-muted);
+}
+.board-part-text.note {
+    fill: var(--color-text-secondary);
+    font-size: 28px;
+}
+/* A piece in focus is porcelain throughout, its note and shelf too. */
+.board-item.focus .board-part-text.note {
+    fill: currentColor;
+}
+.board-item.focus .board-part-rule {
+    stroke: currentColor;
+}
 .board-part-box,
+.board-part-circle,
 .board-part-edge,
+.board-part-rule,
 .board-part-seam,
 .board-part-text {
-    transition-property: x, y, width, height, d, translate;
+    transition-property: x, y, width, height, cx, cy, r, d, translate, font-size;
     transition-duration: 400ms;
     transition-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
 }
@@ -253,7 +270,9 @@
     }
     .board-point-label,
     .board-part-box,
+    .board-part-circle,
     .board-part-edge,
+    .board-part-rule,
     .board-part-seam,
     .board-part-text {
         transition: none;

@@ -133,7 +133,10 @@ export default function Board({
         return slide(scroller.current, top, VIEW_MS);
     }, [board.view]);
     const rows = labelRows(board.items.map((drawn) => drawn.op));
-    const parts = componentParts(scene.shown.map((drawn) => drawn.op));
+    const parts = componentParts(
+        scene.shown.map((drawn) => drawn.op),
+        scene.erased,
+    );
     const { mic } = board;
     const percent = mic.total ? Math.floor(((mic.loaded ?? 0) * 100) / mic.total) : 0;
     const loading = mic.status === 'loading';

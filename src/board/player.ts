@@ -35,6 +35,14 @@ export type Op = {
         | 'row'
         | 'venn'
         | 'item'
+        | 'cycle'
+        | 'stage'
+        | 'stack'
+        | 'layer'
+        | 'timeline'
+        | 'event'
+        | 'parts'
+        | 'part'
         | 'stroke'
         | 'erase';
     // A component's child names its component; components and plots carry their own path and numbers.
@@ -49,6 +57,10 @@ export type Op = {
     sets?: string[];
     // A Venn item's region: the indices of the sets it is in.
     region?: number[];
+    // Sketch fields (docs/board-sketches-spec.md): a parts sketch's whole, a layer's or part's note, an event's date.
+    whole?: string;
+    note?: string;
+    when?: string;
     look?: Look;
     at?: [number, number];
     r?: number;

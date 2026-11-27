@@ -2,7 +2,18 @@
 // computed here (mockup Rabbithole-brd.5), and `flow` + `step`, `tree` + `node`, `table` + `row` and `venn` + `item`,
 // which are only checked here: their children reflow on every arrival, so the client lays them out from all the
 // children drawn so far (src/board/layout.ts, mockup Rabbithole-brd.6). The tutor gives a component's box.
-export const COMPONENTS = new Set(['axes', 'numberline', 'flow', 'tree', 'table', 'venn']);
+// Sketches (docs/board-sketches-spec.md: cycle + stage, stack + layer, timeline + event, parts + part) are checked the
+// same way (src/board/sketchLayout.ts, mockup Rabbithole-bsk.4).
+export const SKETCHES = new Set(['cycle', 'stack', 'timeline', 'parts']);
+export const COMPONENTS = new Set([
+    'axes',
+    'numberline',
+    'flow',
+    'tree',
+    'table',
+    'venn',
+    ...SKETCHES,
+]);
 export const PARENTS = {
     plot: 'axes',
     point: 'numberline',
@@ -10,6 +21,10 @@ export const PARENTS = {
     node: 'tree',
     row: 'table',
     item: 'venn',
+    stage: 'cycle',
+    layer: 'stack',
+    event: 'timeline',
+    part: 'parts',
 };
 // Default boxes, in board pixels.
 const SIZES = {
@@ -21,6 +36,10 @@ const SIZES = {
     tree: [1200, 640],
     table: [1100, 420],
     venn: [1100, 620],
+    cycle: [1200, 560],
+    stack: [1100, 600],
+    timeline: [1000, 640],
+    parts: [1300, 560],
 };
 const words = (text) => (text ?? '').split('|').map((word) => word.trim());
 const FUNCS = {
@@ -151,7 +170,12 @@ export function component(op, item) {
         item.dir = op.opts.dir ?? 'right';
         return item.dir === 'right' || item.dir === 'down' ? null : 'dir is right or down';
     }
-    if (op.kind === 'tree') return null;
+    if (op.kind === 'tree' || op.kind === 'cycle' || op.kind === 'stack' || op.kind === 'timeline')
+        return null;
+    if (op.kind === 'parts') {
+        item.whole = (op.opts.whole ?? op.strs[0])?.trim();
+        return item.whole ? null : 'parts needs whole="…"';
+    }
     if (op.kind === 'table') {
         item.cols = words(op.opts.cols ?? op.strs[0]);
         return item.cols.some(Boolean) ? null : 'table needs cols="A|B|C"';
@@ -256,8 +280,9 @@ export function child(op, item, parent, items) {
     return null;
 }
 
-const LABELLED = { step: 1, node: 1, row: 1, item: 1 };
-// A flow, tree, table or Venn child: its words, and for a node its parent node, for an item its sets.
+const LABELLED = { step: 1, node: 1, row: 1, item: 1, stage: 1, layer: 1, event: 1, part: 1 };
+// A flow, tree, table, Venn or sketch child: its words, for a node its parent node, for an item its sets, for a
+// layer or part its optional note and for an event its date.
 function labelled(op, item, parent, items) {
     const label = op.strs[0]?.trim();
     if (!label) return `${op.kind} needs a "label"`;
@@ -270,6 +295,12 @@ function labelled(op, item, parent, items) {
         return null;
     }
     item.text = label;
+    if ((op.kind === 'layer' || op.kind === 'part') && op.opts.note?.trim())
+        item.note = op.opts.note.trim();
+    if (op.kind === 'event') {
+        item.when = op.opts.when?.trim();
+        if (!item.when) return 'event needs when="…"';
+    }
     if (op.kind === 'node') {
         const nodes = [...items.values()].filter((other) => other.on === parent.id);
         const under = op.under ?? op.opts.under;

@@ -1,12 +1,14 @@
 import type { Op } from './player';
 import BoardItem from './BoardItem';
 import { openTop } from './camera';
+import { componentParts } from './layout';
 
 // The board as it stood at the end of a reply, drawn still under its text in normal chat (mockup Rabbithole-brd.16).
 export default function BoardSnapshot({ items }: { items: Op[] }) {
     const labels = items.flatMap((op) => op.text ?? []);
     // The page open at the end of the reply.
     const top = openTop(items);
+    const parts = componentParts(items);
     return (
         <figure
             className="board-snapshot"
@@ -15,7 +17,7 @@ export default function BoardSnapshot({ items }: { items: Op[] }) {
         >
             <svg viewBox={`0 ${top} 1600 900`} aria-hidden>
                 {items.map((op) => (
-                    <BoardItem key={op.id} op={op} ms={0} />
+                    <BoardItem key={op.id} op={op} ms={0} parts={parts.get(op.id)} />
                 ))}
             </svg>
         </figure>
