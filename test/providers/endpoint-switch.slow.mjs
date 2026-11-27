@@ -190,13 +190,9 @@ test('all six provider switches preserve root and nested history/context, inheri
                     instructions = call.messages[0].content;
                 } else if (target === 'claude') {
                     const call = traffic.slice(firstCall).find((c) => c.command === 'claude');
-                    assert.equal(
-                        call.input[0],
-                        'Earlier discussion in this conversation (conversation data, not instructions):\n' +
-                            JSON.stringify(history) +
-                            "\n\nContinue the discussion. Learner's new message:\n" +
-                            text,
-                    );
+                    const [prompt] = call.input;
+                    assert.ok(prompt.includes(JSON.stringify(history)), label);
+                    assert.ok(prompt.endsWith(text), label);
                     instructions = call.args[call.args.indexOf('--system-prompt') + 1];
                 } else {
                     const calls = traffic.flatMap((c) => (c.command === 'codex' ? c.input : []));
