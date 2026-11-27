@@ -367,6 +367,57 @@ test('board: leaving mid-reply saves only shown sentences and keeps any usage th
     });
 });
 
+test('board: sending mid-reply cuts in, saves what was heard and tells the next turn where it was cut off', async (t) => {
+    const provider = boardProvider([
+        [
+            '> First idea.\na dot at 300,450\n> Second idea.\nb dot at 600,450\n> Third idea.\nc dot at 300,700\n',
+        ],
+        ['> Good question.\nc dot at 300,700\n'],
+    ]);
+    const { env, id, connect } = await setup(t, provider);
+    const board = connect();
+    await opened(board.ws);
+    await until(() => provider.boards[0]?.opened);
+    const process = provider.boards[0];
+    process.hold = new Promise(() => {});
+    board.send({ type: 'ask', text: 'Why?' });
+    const first = await board.next('sentence');
+    const second = await board.next('sentence');
+    board.send({ type: 'progress', sentence: first.id, phase: 'start' });
+    board.send({ type: 'progress', sentence: first.id, phase: 'end' });
+    board.send({ type: 'progress', sentence: second.id, phase: 'start' });
+    await until(() => messages(env, id)[1]?.text === 'First idea.\nSecond idea.');
+    board.send({ type: 'ask', text: 'Wait, what is a dot?' });
+    assert.equal((await board.next('state')).state, 'idle', 'the reply stops');
+    assert.equal((await board.next('state')).state, 'thinking');
+    assert.ok(process.signals[0].aborted);
+    const answer = await board.next('sentence');
+    assert.equal(answer.text, 'Good question.', 'nothing more from the stopped reply plays');
+    assert.deepEqual(
+        answer.ops.map((op) => op.id),
+        ['c'],
+        'an item the learner never saw is not on the board',
+    );
+    const [question, reply] = messages(env, id);
+    assert.equal(question.text, 'Why?');
+    assert.deepEqual(
+        { text: reply.text, status: reply.status, stopped: reply.stopped },
+        { text: 'First idea.\nSecond idea.', status: 'interrupted', stopped: 'learner' },
+    );
+    assert.deepEqual(reply.snapshot, [...first.ops, ...second.ops]);
+    await until(() => provider.boards[1]?.asked.length);
+    assert.equal(provider.boards[1].options.history.at(-1).text, 'First idea.\nSecond idea.');
+    const prompt = provider.boards[1].asked[0];
+    assert.ok(prompt.includes('"Second idea."'), 'the note names the last sentence heard');
+    assert.ok(!prompt.includes('Third idea.'));
+    assert.ok(prompt.endsWith('\n\nWait, what is a dot?'));
+    assert.equal(
+        messages(env, id)[2].text,
+        'Wait, what is a dot?',
+        'the saved question has no note',
+    );
+});
+
 test('board: a process that ends on its own leaves a notice and the reply up to the caption shown', async (t) => {
     const provider = boardProvider([['> One.\n> Two.\n']], { status: 'failed' });
     const speech = Promise.withResolvers();

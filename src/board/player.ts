@@ -4,7 +4,6 @@ import { DEFAULT_SPEED, type Voice } from './voice';
 // and draws each sentence's ops in order over that time.
 // A voiced sentence starts on its first audio chunk and lasts as long as its audio plays.
 // Times are board time, at the default 1.5×: the learner's speed scales it and pause stops it.
-// Later tickets add interruptions here.
 export type Phase = 'start' | 'end';
 export type Look = 'focus' | 'muted' | 'good' | 'wrong' | 'new';
 // A drawable op as the board session sends it (server/board/ops.mjs), in board pixels.
@@ -141,7 +140,9 @@ export function boardPlayer(
         current: Sentence | undefined,
         timers: unknown[] = [],
         ending: unknown,
-        playing: string | undefined;
+        playing: string | undefined,
+        // The sentence on show: its ops and when each entered and ends, so a stop can finish the one mid-entry.
+        drawing: { ops: Op[]; entries: { start: number; end: number }[] } | undefined;
     const pending = new Map<string, 'waiting' | 'chunked' | 'silent'>();
     const next = () => {
         const sentence = queue[0];
@@ -154,6 +155,7 @@ export function boardPlayer(
         const started = clock.now();
         const ops = sentence.ops ?? [];
         const entries: { start: number; end: number }[] = [];
+        drawing = { ops, entries };
         // Retiming updates items already on the board as well as scheduling the rest.
         const space = (ms: number, audioElapsed?: number) => {
             timers.forEach(clock.clearTimeout);
@@ -262,8 +264,14 @@ export function boardPlayer(
         },
         // A timer in board time, for effects that outlast an op's draw, such as an erase fade.
         wait: (run: () => void, ms: number) => clock.setTimeout(run, ms),
-        // Drops what has not started; the sentence on show keeps its caption and drawn items stay.
+        // Drops what has not started; the sentence on show keeps its caption, drawn items stay
+        // and an item still entering finishes within 150 ms.
         stop() {
+            const now = clock.now();
+            drawing?.entries.forEach(
+                (e, i) => e.end > now + 150 && draw(drawing!.ops[i], now - e.start + 150),
+            );
+            drawing = undefined;
             paused = false;
             clock.pause(false);
             timers.forEach(clock.clearTimeout);

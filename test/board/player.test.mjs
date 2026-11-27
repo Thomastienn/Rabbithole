@@ -50,30 +50,35 @@ test('board player: each sentence holds the caption for 15 characters per second
     assert.equal(shown.at(-1), 'Late sentence.', 'a sentence after a quiet gap shows at once');
 });
 
-test('board player: stopping drops the sentences and ops not yet shown', () => {
+test('board player: stopping drops the sentences and ops not yet shown and finishes the item entering within 150 ms', () => {
     const clock = fakeClock();
     const reports = [],
         drawn = [];
     const player = boardPlayer(
         () => {},
-        (op) => drawn.push(op.id),
+        (op, ms) => drawn.push(`${op.id} ${Math.round(ms)}`),
         (s, phase) => reports.push(`${s.id} ${phase}`),
         undefined,
         clock,
     );
     player.add({
         id: '1',
-        text: 'One.',
+        text: 'One sentence that runs a while.',
         ops: [
             { id: 'a', kind: 'dot' },
             { id: 'b', kind: 'dot' },
         ],
     });
     player.add({ id: '2', text: 'Two.', ops: [{ id: 'c', kind: 'dot' }] });
+    clock.advance(50);
     player.stop();
     clock.advance(10000);
     assert.deepEqual(reports, ['1 start']);
-    assert.deepEqual(drawn, ['a'], 'drawn items stay; the rest is dropped');
+    assert.deepEqual(
+        drawn,
+        ['a 1033', 'a 200'],
+        'a, 50 ms into its entry, ends 150 ms after the stop; the rest is dropped',
+    );
 });
 
 test('board player: a sentence’s ops share its time equally, in order', () => {

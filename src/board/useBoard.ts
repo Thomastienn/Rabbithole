@@ -28,6 +28,8 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
     const [paused, setPaused] = useState(false);
     const socket = useRef<WebSocket>(undefined);
     const playing = useRef<ReturnType<typeof boardPlayer>>(undefined);
+    // Set by a cut-in until the server answers it with a state: sentences of the stopped reply still on the wire are dropped.
+    const cut = useRef(false);
     useEffect(() => {
         const ws = boardSocket(conversation);
         socket.current = ws;
@@ -81,6 +83,7 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
             }
             const m = JSON.parse(event.data);
             if (m.type === 'state') {
+                cut.current = false;
                 setState(m.state);
                 // Idle ends the reply: anything not yet shown is dropped and the last caption is held, muted.
                 if (m.state === 'idle') {
@@ -91,7 +94,7 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
             }
             // The saved board shows at once, without entry.
             if (m.type === 'board') setItems(m.items.map((op: Op) => ({ op, ms: 0 })));
-            if (m.type === 'sentence') player.add(m);
+            if (m.type === 'sentence' && !cut.current) player.add(m);
             if (m.type === 'audio-end') player.audioEnd(m.id);
             if (m.type === 'stroke') {
                 setItems((drawn) => [...drawn, { op: m.item, ms: 0 }]);
@@ -122,6 +125,12 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         const ws = socket.current;
         if (ws?.readyState !== WebSocket.OPEN) return false;
         ws.send(JSON.stringify({ type: 'ask', text }));
+        // Sending mid-reply cuts in: the tutor stops here at once, without waiting on the server.
+        if (state === 'speaking') {
+            cut.current = true;
+            playing.current?.stop();
+            setPaused(false);
+        }
         setAsked(true);
         setMarks(0);
         setNotice(undefined);

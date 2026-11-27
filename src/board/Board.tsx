@@ -78,7 +78,8 @@ export default function Board({
         if (line) board.draw(line);
         setLine(undefined);
     };
-    const busy = board.state !== 'idle' || !board.ready;
+    // Typing never stops the tutor; sending mid-reply cuts in, so only thinking holds the send button.
+    const busy = board.state === 'thinking' || !board.ready;
     const ops = board.items.map((drawn) => drawn.op);
     const rows = labelRows(ops);
     const parts = componentParts(ops);
@@ -248,7 +249,7 @@ export default function Board({
                                 maxRows={4}
                                 value={draft}
                                 onChange={setDraft}
-                                // Typing stays open while the tutor speaks; only Enter waits for it to finish.
+                                // Typing stays open while the tutor thinks; only Enter waits for it.
                                 onKeyDown={(e) => busy && holdEnter(e)}
                                 placeholder="Ask a question"
                             />
