@@ -1,6 +1,6 @@
 // The board player: shows the tutor's sentences one at a time, each for as long as it takes to say,
 // and draws each sentence's ops in order over that time.
-// Later tickets add hand-drawn entry, audio timing, speed, pause and interruptions here.
+// Later tickets add audio timing, speed, pause and interruptions here.
 export type Phase = 'start' | 'end';
 export type Look = 'focus' | 'muted' | 'good' | 'wrong' | 'new';
 // A drawable op as the board session sends it (server/board/ops.mjs), in board pixels.

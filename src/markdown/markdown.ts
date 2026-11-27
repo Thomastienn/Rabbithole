@@ -105,7 +105,7 @@ function sourceLines(raw: string, n: MarkdownNode, code = false): Run[][] {
 // A slot with `sketch` is a visual expanded from the sketch starting at its offset: it draws in the sketch's place.
 export function renderMarkdown(
     raw: string,
-    reveal?: Span,
+    reveal?: Span & { text?: string },
     underlines: (Span & { child?: string; address?: string; ink?: number })[] = [],
     slots: {
         at: number;
@@ -399,6 +399,9 @@ export function renderMarkdown(
                         onExpand: onSketch && (() => onSketch(s)),
                         kind: n.meta ?? '',
                         body: n.value ?? '',
+                        start: s,
+                        end: e,
+                        reveal: hit(s, e) ? reveal!.text : undefined,
                         live: sketches === 'streaming',
                         fence: n.sketchClosed
                             ? 'closed'

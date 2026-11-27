@@ -286,3 +286,77 @@
         opacity: 0;
     }
 }
+
+/* Asking about an item (mockup Rabbithole-skt.6): each hit area outlines dotted when pointed at or open,
+   solid in its branch's line colour once branched, and wears the focus ring from the keyboard. */
+.sketch.askable [data-item] {
+    cursor: pointer;
+}
+.sketch .sketch-hit {
+    fill: transparent;
+}
+.sketch .sketch-outline,
+.sketch .sketch-ring {
+    fill: none;
+    stroke: transparent;
+    stroke-width: 2;
+    pointer-events: none;
+}
+.sketch .sketch-outline {
+    stroke-dasharray: 2 2;
+    transition: stroke 120ms;
+}
+.sketch .sketch-bars {
+    position: relative;
+}
+.sketch-bars .sketch-hit {
+    position: absolute;
+    grid-column: 1 / -1;
+    inset: -3px -6px;
+    border: 2px dotted transparent;
+    border-radius: var(--radius-inner);
+    transition: border-color 120ms;
+}
+/* A tap on a touch screen leaves :hover on the tapped item, which is the one its box opens on. */
+.sketch.askable [data-item]:hover .sketch-outline,
+.sketch [data-item].open .sketch-outline {
+    stroke: var(--color-text-secondary);
+}
+.sketch.askable .sketch-bars [data-item]:hover,
+.sketch-bars [data-item].open {
+    border-color: var(--color-text-secondary);
+}
+.sketch [data-item].branched .sketch-outline {
+    stroke: var(--ink);
+    stroke-dasharray: none;
+}
+.sketch-bars [data-item].branched {
+    border-style: solid;
+    border-color: var(--ink);
+}
+.sketch [data-item].focused .sketch-ring {
+    stroke: var(--rabbithole-paper);
+}
+.sketch-bars [data-item].focused {
+    outline: 2px solid var(--rabbithole-paper);
+    outline-offset: 2px;
+}
+/* The ask box's crumbs: the sketch's title, then the item's label. */
+.sketch-crumbs {
+    min-height: 30px;
+    padding: 0 4px;
+}
+.sketch-crumbs > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+}
+.sketch-crumbs strong {
+    font-size: 14px;
+}
+/* A sketch item's box opens 4px under its hit area, the passage box's own gap. */
+.passage-box:has(.sketch-crumbs) .branch-form {
+    margin-top: 0;
+}

@@ -509,7 +509,12 @@ export default function Passage({
                     <VStack
                         ref={floating}
                         className="passage-box"
-                        style={{ top: form.at.below ?? form.at.y }}
+                        style={{
+                            top: form.at.below ?? form.at.y,
+                            ...(form.at.right === undefined
+                                ? { left: form.at.x }
+                                : { right: form.at.right }),
+                        }}
                     >
                         {form.node}
                     </VStack>

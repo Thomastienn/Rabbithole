@@ -164,6 +164,7 @@ function flow(lines: Line[], p: Palette): Drawing {
         chevrons.add(`M${tip - 5 * way} ${y(n) - 5}L${tip} ${y(n)}L${tip - 5 * way} ${y(n) + 5}`);
     }
     let bottom = 0;
+    const rowBottom = new Map<number, number>();
     const text = (tx: number, ty: number, words: string, style: string, note = false) =>
         `<text${note ? ' class="sketch-note"' : ''} x="${tx}" y="${ty}" style="${style}">${esc(words)}</text>`;
     // One group per item, in the items' order; `--i` is its place in the sketch's build.
@@ -180,6 +181,7 @@ function flow(lines: Line[], p: Palette): Drawing {
         const labels = wrap(n, column - 24).map((l, i) => {
             const baseline = y(n) + (notesAbove ? 28 : 26) + LINE * i;
             bottom = Math.max(bottom, baseline);
+            rowBottom.set(row.get(n)!, Math.max(rowBottom.get(row.get(n)!) ?? 0, baseline));
             return text(
                 x(n),
                 baseline,
@@ -189,11 +191,25 @@ function flow(lines: Line[], p: Palette): Drawing {
         });
         return `<g style="--i:${k}">${notes.join('')}${station}${labels.join('')}</g>`;
     });
+    // Each station's hit area (mockup Rabbithole-skt.6): its column less 8px, from 12px above the
+    // station to 8px under its row's last label line; the outline sits inside it, the focus ring 2px outside.
+    const hits = names.map((n, i) => {
+        const w = column - 8,
+            hx = x(n) - w / 2,
+            hy = y(n) - 12,
+            h = rowBottom.get(row.get(n)!)! + 8 - hy;
+        return (
+            `<g data-item="${i}"><rect class="sketch-hit" x="${hx}" y="${hy}" width="${w}" height="${h}"/>` +
+            `<rect class="sketch-outline" x="${hx + 1}" y="${hy + 1}" width="${w - 2}" height="${h - 2}" rx="3"/>` +
+            `<rect class="sketch-ring" x="${hx - 3}" y="${hy - 3}" width="${w + 6}" height="${h + 6}" rx="7"/></g>`
+        );
+    });
     const markup =
         `<svg class="sketch-flow" viewBox="0 0 ${WIDTH} ${bottom + (notesAbove ? 10 : 8)}">` +
         `<path class="sketch-line" style="stroke:${p.seam}" d="${runs.map((r) => r.d).join('')}"/>` +
         `<path class="sketch-arrow" style="stroke:${p.muted}" d="${[...chevrons].join('')}"/>` +
         groups.join('') +
+        hits.join('') +
         '</svg>';
     const items = names.map((n) => {
         const next = edges
@@ -244,6 +260,13 @@ function bars(lines: Line[], p: Palette): Drawing {
                     `<s style="background:${r.focus ? p.focus : p.seam}"></s>${esc(r.value)}</dd>`
                 );
             })
+            .join('') +
+        // One hit area per row: the whole row, label to bar track end (mockup Rabbithole-skt.6).
+        rows
+            .map(
+                (_, i) =>
+                    `<div class="sketch-hit" data-item="${i}" style="grid-row:${i + 1} / span 1"></div>`,
+            )
             .join('') +
         '</dl>';
     const items = rows.map((r) => ({
