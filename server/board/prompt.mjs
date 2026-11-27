@@ -26,7 +26,8 @@ const boardSkills = (
 
 FORMAT (strict)
 - Output only the script. No preamble, headings, Markdown, code fences or commentary.
-- A spoken line starts with "> ", a question "?> " and a check-in "~> ". Keep it under 20 words, warm and plain, as said aloud. Say math in words on spoken lines.
+- A spoken line starts with "> ", a question "?> " and a check-in "~> ". Keep spoken lines short, warm and plain, as said aloud: say less than you would write, and let the drawing carry the rest. Say math in words on spoken lines.
+- The sentence that carries a part's key idea starts with "!> " instead of "> "; it is said slowly and followed by a longer pause. Use it sparingly, for that one sentence of a part.
 - Every other line is one board op: <id> <kind> <arguments> [key=value]. Ops belong to the sentence above them.
 - ids are short and unique (tri, a1, eq2). Never reuse an id, even after erasing.
 - Strings go in double quotes and never contain double quotes.
@@ -36,10 +37,12 @@ PACING
 - Say what you are about to draw before you draw it, such as "let me sketch the forces".
 - Keep text on the board to a minimum: single words, symbols or a short formula. Never write sentences on the board. Prefer drawings, components and math over words.
 - Where the idea has a shape, draw a sketch: a loop as a cycle, layers as a stack, an order in time as a timeline, a whole and its pieces as parts. Add one child per sentence, about eight at most.
+- Aim for about seven items on a page, a component counting as one. Beyond that, erase the items you are done with or open a new page.
 - Teach until the question is covered, then stop and wait for the learner.
 
 BOARD
 The board holds pages, one shown at a time; each page is 1600 wide and 900 tall. x grows right, y grows down, (0,0) is the top-left corner. Keep every item fully on the board and keep items from overlapping.
+- A page reads best with about seven top-level items, a component counting as one, each labelled in a few words.
 - Top-level items take "at X,Y" = their centre, in board pixels.
 - Sizes in pixels: circle r=R; box and components w=W h=H. text and math take size=s|m|l, about 28, 40 and 60 px tall; each character is about 0.55 of the height wide.
 - line and arrow points are board pixels: l1 line 200,700 -> 600,700. A connector joins two items: c1 arrow from b1 to b2.
@@ -94,7 +97,7 @@ r1 box at 500,450 w=300 h=200 look=focus
 w1 text "3" at 500,590
 > Its height is two.
 h1 text "2" at 320,450
-> The area counts the unit squares inside.
+!> The area counts the unit squares inside.
 a1 math "A = 3 \\times 2 = 6" at 1050,450 size=l
 > Six squares.
 hl1 highlight a1

@@ -27,6 +27,7 @@ import BoardItem, { strokePath } from './BoardItem';
 import { follow, slide } from './camera';
 import PageStrip, { BackChip, pagesOf } from './PageStrip';
 import { labelRows } from './player';
+import { dimmed } from './spotlight';
 import { DEFAULT_SPEED } from './voice';
 import { BOARD_SPEEDS } from '../shell/preferences';
 import { componentParts } from './layout';
@@ -116,6 +117,7 @@ export default function Board({
     const onScreen = pages.find((p) => p.id === board.view) ?? pages.find((p) => p.id === open);
     const top = onScreen?.top ?? 0;
     const parent = pages.find((p) => p.id === onScreen?.parent);
+    const lit = onScreen?.id === open ? board.lit : undefined;
     const scroller = useRef<HTMLDivElement>(null);
     const followed = useRef<number>(undefined);
     // The view follows the page the tutor draws on (src/board/camera.ts); an item that moves no page leaves it be,
@@ -133,10 +135,6 @@ export default function Board({
         return slide(scroller.current, top, VIEW_MS);
     }, [board.view]);
     const rows = labelRows(board.items.map((drawn) => drawn.op));
-    const parts = componentParts(
-        scene.shown.map((drawn) => drawn.op),
-        scene.erased,
-    );
     const { mic } = board;
     const percent = mic.total ? Math.floor(((mic.loaded ?? 0) * 100) / mic.total) : 0;
     const loading = mic.status === 'loading';
@@ -272,7 +270,8 @@ export default function Board({
                                         ms={ms}
                                         gone={scene.erased.get(op.id)}
                                         row={rows.get(op.id)}
-                                        parts={parts.get(op.id)}
+                                        parts={scene.parts.get(op.id)}
+                                        dim={dimmed(op, lit)}
                                     />
                                 ))}
                                 {/* The tutor heard, or waits for the learner's answer: a soft pulse in the corner of the open page, which board items rarely use. */}
@@ -546,5 +545,6 @@ function sceneOf(items: Drawn[]) {
         })
         .sort((a, b) => +(b.op.kind === 'highlight') - +(a.op.kind === 'highlight'));
     const areas = 1 + Math.max(0, ...items.map(({ op }) => (op.top ?? 0) / 900));
-    return { shown, erased, areas };
+    const ops = shown.map(({ op }) => op);
+    return { shown, erased, areas, parts: componentParts(ops, erased) };
 }

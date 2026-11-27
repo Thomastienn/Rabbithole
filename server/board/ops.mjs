@@ -314,6 +314,8 @@ export function boardOps() {
             if (op.refs.length > 1) return { error: `${op.kind} takes one id` };
             const b = span(items.get(op.refs[0]));
             const [w, h] = b.round ? [2 * b.r, 2 * b.r] : [b.w, b.h];
+            // `names` keeps the item a highlight or pointer names, for the spotlight (docs/board-sketches-spec.md).
+            item.names = [op.refs[0]];
             // A highlight washes 20px past its item's box; the pointer's tip stops 12px right of it, at its middle.
             if (op.kind === 'highlight')
                 return { item: { ...item, at: b.c, w: w + 40, h: h + 40 } };
@@ -333,6 +335,7 @@ export function boardOps() {
                 if (!a || !b) return { error: `unknown id ${a ? op.to : op.from}` };
                 const [ba, bb] = [span(a), span(b)];
                 item.points = [edge(ba, bb.c), edge(bb, ba.c)];
+                item.names = [op.from, op.to];
                 connectors.add(op.id);
             } else if (op.pts.length >= 2) item.points = op.pts.map(placed);
             else return { error: `${op.kind} needs two points or from ID to ID` };

@@ -52,7 +52,7 @@ export const strokePath = (points: [number, number][]) =>
     `M${points[0]}` + points.map((p) => `L${p}`).join('');
 
 // One board item in board pixels, coloured by its look, entering by hand over its share of the sentence,
-// and fading out over the share of the erase that names it (`gone`).
+// and fading out over the share of the erase that names it (`gone`); the spotlight dims it (`dim`).
 // pathLength 1 lets one dash draw any stroke on (src/styles/board-items.css). A point's label sits on `row` 0 or 1
 // above its line and slides when a later point reflows it (mockup Rabbithole-brd.5). A flow, tree, table,
 // Venn or sketch item draws its `parts` (src/board/layout.ts) one after another, each over its share of the entry.
@@ -62,12 +62,14 @@ export default function BoardItem({
     gone,
     row = 0,
     parts = [],
+    dim,
 }: {
     op: Op;
     ms: number;
     gone?: number;
     row?: number;
     parts?: Part[];
+    dim?: boolean;
 }) {
     const [x, y] = op.at ?? [0, 0];
     const label = (size: 's' | 'm' | 'l') => (
@@ -80,7 +82,8 @@ export default function BoardItem({
     const [fx, fy] = op.from ?? [x, y];
     return (
         <g
-            className={`board-item${op.look ? ` ${op.look}` : ''}${gone ? ' board-gone' : ''}`}
+            data-item={op.id}
+            className={`board-item${op.look ? ` ${op.look}` : ''}${gone ? ' board-gone' : ''}${dim ? ' board-dim' : ''}`}
             style={
                 {
                     '--board-ms': `${ms}ms`,

@@ -53,6 +53,53 @@ test('board: each sentence is spoken in chunks tagged with its id, one sentence 
     await until(() => speech.closed);
 });
 
+test('board: a key sentence is said at -15%, one drawing math at -10%, one that is both at -15%, the rest at +0%', async (t) => {
+    const provider = boardProvider([
+        [
+            '> Plain.\n!> Key.\n> Math.\nm1 math "x^2" at 400,450\n!> Both.\nm2 math "y^2" at 1200,450\n',
+        ],
+    ]);
+    const rates = [];
+    const client = {
+        warm() {},
+        async speak(text, chunk, signal, rate) {
+            rates.push([text, rate]);
+            notify();
+            chunk(Buffer.from(text));
+        },
+        close() {},
+    };
+    const { connect } = await setup(t, provider, { app: { speech: () => client } });
+    const board = connect();
+    await opened(board.ws);
+    board.send({ type: 'ask', text: 'Why?' });
+    const sentences = [];
+    for (let i = 0; i < 4; i++) {
+        const sentence = await board.next('sentence');
+        sentences.push(sentence);
+        await until(() => rates.length > i);
+        for (const phase of ['start', 'end'])
+            board.send({ type: 'progress', sentence: sentence.id, phase });
+    }
+    await board.next('state', (e) => e.state === 'idle');
+    assert.deepEqual(rates, [
+        ['Plain.', 0],
+        ['Key.', -15],
+        ['Math.', -10],
+        ['Both.', -15],
+    ]);
+    assert.deepEqual(
+        sentences.map((s) => [s.key, s.rate]),
+        [
+            [undefined, 0],
+            [true, -15],
+            [undefined, -10],
+            [true, -15],
+        ],
+        'the board gets the key mark and rate for its pause and caption estimate',
+    );
+});
+
 test('board: failed speech is retried once, then the turn carries on in captions with a notice', async (t) => {
     const provider = boardProvider([['> One.\n> Two.\n> Three.\n']]);
     const spoken = [];

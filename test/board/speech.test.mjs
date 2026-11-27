@@ -38,6 +38,7 @@ test('board speech warms one socket, streams before the clip ends, and closes on
     const [frame] = await request;
     assert.match(frame.toString(), /en-US-AriaNeural/);
     assert.match(frame.toString(), /Rock &amp; soil\./);
+    assert.match(frame.toString(), /rate="\+0%"/, 'a normal sentence keeps its pace');
     const header = Buffer.from('Path:audio\r\n');
     const send = (bytes) =>
         peer.send(Buffer.concat([Buffer.from([0, header.length]), header, Buffer.from(bytes)]));
@@ -52,11 +53,12 @@ test('board speech warms one socket, streams before the clip ends, and closes on
     const controller = new AbortController();
     const reused = once(peer, 'message');
     const cancelled = assert.rejects(
-        client.speak('This should stop.', () => {}, controller.signal),
+        client.speak('This should stop.', () => {}, controller.signal, -15),
         { name: 'AbortError' },
     );
     const [next] = await reused;
     assert.match(next.toString(), /This should stop\./);
+    assert.match(next.toString(), /rate="-15%"/, 'a slower sentence carries its rate');
     const disconnected = once(peer, 'close');
     controller.abort();
     await Promise.all([cancelled, disconnected]);

@@ -5,6 +5,11 @@
    Colours are theme tokens, so a theme or appearance switch redraws the board in the new colours. */
 .board-item {
     color: var(--color-text-primary);
+    transition: opacity 300ms ease;
+}
+/* The spotlight (mockup Rabbithole-bsk.3): what the tutor is not talking about fades to 30% and back. */
+.board-item.board-dim {
+    opacity: 0.3;
 }
 .board-item > * {
     animation: var(--board-ms, 0ms) cubic-bezier(0.65, 0, 0.35, 1) both;
@@ -261,6 +266,9 @@
     .board-item > *,
     .board-math .board-term {
         animation-name: board-enter;
+    }
+    .board-item {
+        transition: none;
     }
     /* The pointer fades in at its item instead of gliding, rests, then fades out. */
     .board-item > .board-pointer {
