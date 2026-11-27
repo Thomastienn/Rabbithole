@@ -268,7 +268,7 @@ test('board: a process that ends on its own leaves a notice and the reply up to 
     );
 });
 
-test('board: closing the tab ends the session and its process; a non-Claude conversation gets a notice', async (t) => {
+test('board: closing the tab ends the session and its process; a provider without boards gets a notice', async (t) => {
     const provider = boardProvider([]);
     const { connect } = await setup(t, provider);
     const board = connect();
@@ -277,9 +277,9 @@ test('board: closing the tab ends the session and its process; a non-Claude conv
     board.ws.close();
     await until(() => provider.boards[0].closed);
 
-    const codex = await setup(t, provider, { providerName: 'codex' });
-    const other = codex.connect();
-    assert.ok((await other.next('notice')).notice);
+    const other = await setup(t, provider, { providerName: 'openai' });
+    const socket = other.connect();
+    assert.ok((await socket.next('notice')).notice);
 });
 
 test('board: the socket opens only from the app page with its CSRF token', async (t) => {

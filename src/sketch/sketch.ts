@@ -145,32 +145,32 @@ function flow(lines: Line[], p: Palette): Drawing {
     let bottom = 0;
     const text = (tx: number, ty: number, words: string, style: string, note = false) =>
         `<text${note ? ' class="sketch-note"' : ''} x="${tx}" y="${ty}" style="${style}">${esc(words)}</text>`;
-    const labels = names.flatMap((n) =>
-        wrap(n, column - 24).map((l, i) => {
+    // One group per item, in the items' order; `--i` is its place in the sketch's build.
+    const groups = names.map((n, k) => {
+        const f = focus.has(n);
+        const notes = runs
+            .filter((r) => r.e.label && r.e.b === n)
+            .map((r) =>
+                text((r.from + x(r.e.b)) / 2, y(r.e.b) - 16, r.e.label, `fill:${p.muted}`, true),
+            );
+        const station = ring(x(n), y(n), f, p);
+        const labels = wrap(n, column - 24).map((l, i) => {
             const baseline = y(n) + (notesAbove ? 28 : 26) + LINE * i;
             bottom = Math.max(bottom, baseline);
-            const f = focus.has(n);
             return text(
                 x(n),
                 baseline,
                 l,
                 `fill:${f ? p.focus : p.ink}${f ? ';font-weight:600' : ''}`,
             );
-        }),
-    );
-    const arrowLabels = runs
-        .filter((r) => r.e.label)
-        .map((r) =>
-            text((r.from + x(r.e.b)) / 2, y(r.e.b) - 16, r.e.label, `fill:${p.muted}`, true),
-        );
-    const stations = names.map((n) => ring(x(n), y(n), focus.has(n), p));
+        });
+        return `<g style="--i:${k}">${notes.join('')}${station}${labels.join('')}</g>`;
+    });
     const markup =
         `<svg class="sketch-flow" viewBox="0 0 ${WIDTH} ${bottom + (notesAbove ? 10 : 8)}">` +
         `<path class="sketch-line" style="stroke:${p.seam}" d="${runs.map((r) => r.d).join('')}"/>` +
         `<path class="sketch-arrow" style="stroke:${p.muted}" d="${[...chevrons].join('')}"/>` +
-        arrowLabels.join('') +
-        stations.join('') +
-        labels.join('') +
+        groups.join('') +
         '</svg>';
     const items = names.map((n) => {
         const next = edges
@@ -211,11 +211,13 @@ function bars(lines: Line[], p: Palette): Drawing {
     const markup =
         `<dl class="sketch-bars" style="color:${p.ink}">` +
         rows
-            .map((r) => {
-                const f = r.focus ? ` class="focus" style="color:${p.focus}"` : '';
+            .map((r, k) => {
+                const f = r.focus
+                    ? ` class="focus" style="--i:${k};color:${p.focus}"`
+                    : ` style="--i:${k}"`;
                 return (
                     `<dt${f}>${esc(r.label)}</dt>` +
-                    `<dd${r.focus ? ` class="focus"` : ''} style="--v:${+(r.n / max).toFixed(4)}${r.focus ? `;color:${p.focus}` : ''}">` +
+                    `<dd${r.focus ? ` class="focus"` : ''} style="--i:${k};--v:${+(r.n / max).toFixed(4)}${r.focus ? `;color:${p.focus}` : ''}">` +
                     `<s style="background:${r.focus ? p.focus : p.seam}"></s>${esc(r.value)}</dd>`
                 );
             })
@@ -290,6 +292,8 @@ const ring = (x: number, y: number, focus: boolean, p: Palette) =>
     focus
         ? `<circle cx="${x}" cy="${y}" r="7" style="fill:${p.focus};stroke:${p.focus}"/>`
         : `<circle cx="${x}" cy="${y}" r="6" style="fill:${p.ground};stroke:${p.muted}"/>`;
+// One item's elements; `--i` is its place in the sketch's build.
+const group = (k: number, body: string) => `<g style="--i:${k}">${body}</g>`;
 const svg = (kind: string, height: number, d: string, body: string, p: Palette) =>
     `<svg class="sketch-${kind}" viewBox="0 0 ${WIDTH} ${height}">` +
     `<path class="sketch-line" style="stroke:${p.seam}" d="${d}"/>${body}</svg>`;
@@ -344,8 +348,15 @@ function cycle(lines: Line[], p: Palette): Drawing {
         bottom + 10,
         `M32 ${y0}H${WIDTH - 32}L${WIDTH - 16} ${y0 + 16}V${y1 - 16}L${WIDTH - 32} ${y1}H32L16 ${y1 - 16}V${y0 + 16}Z`,
         `<path class="sketch-arrow" style="stroke:${p.muted}" d="${chevrons.join('')}"/>` +
-            stages.map((s) => ring(s.x, ys[s.row], isFocus(s.raw), p)).join('') +
-            stages.map((s) => label(s.x, ys[s.row] + 26, s.words, p, 'middle')).join(''),
+            stages
+                .map((s, k) =>
+                    group(
+                        k,
+                        ring(s.x, ys[s.row], isFocus(s.raw), p) +
+                            label(s.x, ys[s.row] + 26, s.words, p, 'middle'),
+                    ),
+                )
+                .join(''),
         p,
     );
     const items = stages.map((s, i) =>
@@ -369,8 +380,8 @@ function stack(lines: Line[], p: Palette): Drawing {
         `<ol class="sketch-stack" style="color:${p.ink}">` +
         layers
             .map(
-                ([name, note]) =>
-                    `<li style="--shelf:${isFocus(name + note) ? p.focus : p.seam}"><b>${rich(name, p, 'strong')}</b>` +
+                ([name, note], k) =>
+                    `<li style="--i:${k};--shelf:${isFocus(name + note) ? p.focus : p.seam}"><b>${rich(name, p, 'strong')}</b>` +
                     `<span style="color:${p.muted}">${rich(note, p, 'strong')}</span></li>`,
             )
             .join('') +
@@ -419,8 +430,15 @@ function tree(lines: Line[], p: Palette): Drawing {
         'tree',
         last.y + 12 + LINE * (last.words.length - 1),
         d,
-        rows.map((r) => ring(r.x, r.y, isFocus(r.raw), p)).join('') +
-            rows.map((r) => label(r.x + 16, r.y + 5, r.words, p, 'start')).join(''),
+        rows
+            .map((r, k) =>
+                group(
+                    k,
+                    ring(r.x, r.y, isFocus(r.raw), p) +
+                        label(r.x + 16, r.y + 5, r.words, p, 'start'),
+                ),
+            )
+            .join(''),
         p,
     );
     return { items: rows.map((r) => item(r.raw, plain(r.raw), r.level)), markup };
@@ -447,14 +465,16 @@ function timeline(lines: Line[], p: Palette): Drawing {
         'timeline',
         last.y + 12 + LINE * (Math.max(last.ws.length, last.es.length) - 1),
         `M${x} 12V${last.y}`,
-        rows.map((r) => ring(x, r.y, isFocus(r.w + r.e), p)).join('') +
-            rows
-                .map(
-                    (r) =>
+        rows
+            .map((r, k) =>
+                group(
+                    k,
+                    ring(x, r.y, isFocus(r.w + r.e), p) +
                         label(x - 18, r.y + 5, r.ws, p, 'end') +
                         label(x + 18, r.y + 5, r.es, p, 'start'),
-                )
-                .join(''),
+                ),
+            )
+            .join(''),
         p,
     );
     return { items: rows.map((r) => item(r.w + r.e, `${plain(r.w)}: ${plain(r.e)}`)), markup };
@@ -491,14 +511,19 @@ function parts(lines: Line[], p: Palette): Drawing {
                 .map((y) => `M${bus} ${y}H${at}`)
                 .join('') +
             `M${hub} ${middle}H${bus}`,
-        ring(hub, middle, isFocus(whole), p) +
-            rows.map(([n, d], i) => ring(at, ys[i], isFocus(n + d), p)).join('') +
-            label(hub - 16, middle + 5 - (LINE * (wholes.length - 1)) / 2, wholes, p, 'end') +
+        group(
+            0,
+            ring(hub, middle, isFocus(whole), p) +
+                label(hub - 16, middle + 5 - (LINE * (wholes.length - 1)) / 2, wholes, p, 'end'),
+        ) +
             rows
-                .map(
-                    ([n, d], i) =>
-                        label(name, ys[i] + 5, [n], p, 'start') +
-                        label(note, ys[i] + 5, [d], p, 'start', true),
+                .map(([n, d], i) =>
+                    group(
+                        i + 1,
+                        ring(at, ys[i], isFocus(n + d), p) +
+                            label(name, ys[i] + 5, [n], p, 'start') +
+                            label(note, ys[i] + 5, [d], p, 'start', true),
+                    ),
                 )
                 .join(''),
         p,

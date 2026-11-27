@@ -2,7 +2,7 @@ import { formatLog, errorCause } from '../log.mjs';
 import { validUsage } from '../store/usage.mjs';
 import { sentenceReader } from './script.mjs';
 import { boardSystem } from './prompt.mjs';
-import { claudeHistory } from '../providers/claudeHistory.mjs';
+import { conversationHistory } from '../providers/conversationHistory.mjs';
 
 const STOPPED = 'The tutor stopped. Ask again to carry on.';
 
@@ -64,7 +64,7 @@ export function boardSession(ctx, id, socket) {
                 memoryNote: store.memoryNote(),
                 neighbourhood,
             }),
-            history: claudeHistory(tree),
+            history: conversationHistory(tree),
         });
         process.open();
         warmedFor = key;
@@ -79,7 +79,7 @@ export function boardSession(ctx, id, socket) {
     const unavailable = () =>
         send({
             type: 'notice',
-            notice: 'The board needs a Claude chat model for now. Choose Claude for this conversation, then open the board again.',
+            notice: 'The board needs a Claude or Codex chat model for now. Choose one for this conversation, then open the board again.',
         });
     if (!providerFor(store.header(id))?.board) unavailable();
     const shownText = (current) =>
