@@ -318,8 +318,9 @@ export function boardSession(ctx, id, socket) {
         finish(current, 'failed');
     };
     const ask = (text) => {
-        // A question waits for the tutor to finish; cutting in comes with interruptions.
-        if (turn || closed) return;
+        if (closed) return;
+        // Sending mid-reply cuts in: the reply stops, saved up to the sentence heard, and the question starts a new turn.
+        if (turn) stop(turn);
         const tree = store.tree(id);
         const supported = providerFor(tree)?.board;
         if (!supported || ctx.jobs.get('reply', id)) {
@@ -348,9 +349,17 @@ export function boardSession(ctx, id, socket) {
                 pending.map((s) => s.line),
             );
         const strokes = pending.map((s) => s.line.split(' ')[0]);
-        const prompt = strokes.length
-            ? `${text}\n\npen: ${[...marks, `strokes ${strokes.join(', ')}`].join(' · ')}`
-            : text;
+        // The provider got text the learner never heard, so a turn after a cut names where the learner stopped hearing.
+        const last = tree.messages.at(-1);
+        const cut =
+            last?.board && last.role === 'assistant' && last.status === 'interrupted' && last.text
+                ? `(You were cut off. The last sentence the learner heard was "${last.text.split('\n').at(-1)}"; they did not hear the rest of that reply.)\n\n`
+                : '';
+        const prompt =
+            cut +
+            (strokes.length
+                ? `${text}\n\npen: ${[...marks, `strokes ${strokes.join(', ')}`].join(' · ')}`
+                : text);
         const free = pending.filter((s) => !s.mark);
         pending = [];
         const current = {
@@ -447,16 +456,17 @@ export function boardSession(ctx, id, socket) {
             settle(current);
         }
     };
+    // A reply the learner has seen in full completes; any other stops at once.
+    const stop = (current) => {
+        if (current.generated && current.shown === current.sentences.length)
+            finish(current, 'completed');
+        else current.job.controller.abort();
+    };
     // Leaving stops the tutor at once and saves the reply up to the sentence shown.
     function close() {
         if (closed) return;
         closed = true;
-        const current = turn;
-        if (current) {
-            if (current.generated && current.shown === current.sentences.length)
-                finish(current, 'completed');
-            else current.job.controller.abort();
-        }
+        if (turn) stop(turn);
         process?.close();
         speech?.close();
         ctx.jobs.remove(session);
