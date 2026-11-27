@@ -16,6 +16,8 @@ const SIZES = {
     axes: [800, 600],
     numberline: [1000, 240],
     flow: [1200, 260],
+    // A downward flow stacks its steps, so it needs height: five still get 96-high boxes.
+    'flow down': [400, 800],
     tree: [1200, 640],
     table: [1100, 420],
     venn: [1100, 620],
@@ -141,8 +143,9 @@ function scale(item) {
 
 // A component's own fields, or the reason it is skipped. Its geometry comes later, from `layout`.
 export function component(op, item) {
-    item.w = Number(op.opts.w ?? SIZES[op.kind][0]);
-    item.h = Number(op.opts.h ?? SIZES[op.kind][1]);
+    const [w, h] = SIZES[op.kind === 'flow' && op.opts.dir === 'down' ? 'flow down' : op.kind];
+    item.w = Number(op.opts.w ?? w);
+    item.h = Number(op.opts.h ?? h);
     if (!(item.w > 0 && item.h > 0)) return 'sizes must be positive';
     if (op.kind === 'flow') {
         item.dir = op.opts.dir ?? 'right';

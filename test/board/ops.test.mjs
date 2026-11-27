@@ -249,6 +249,8 @@ test('board ops: flow, tree, table and venn children keep their words and are ch
         on: 'f1',
         text: 'Grapes',
     });
+    const down = board.read('f3 flow at 1300,450 dir=down').item;
+    assert.deepEqual([down.w, down.h], [400, 800], 'a downward flow defaults tall');
     board.read('t1 tree at 800,450 w=1200 h=640');
     board.read('c0 node "Cats" in t1');
     assert.equal(board.read('c1 node "Big cats" in t1 under c0').item.under, 'c0');
