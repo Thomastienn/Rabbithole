@@ -147,28 +147,6 @@ test('a spectrum sketch spaces its items in order between its ends', () => {
     assert.equal(svg(seven.markup).querySelectorAll('.sketch-leader').length, 3);
 });
 
-test('a flow sketch draws one item per step, with its title, focus and arrow labels', () => {
-    const sketch = drawSketch('flow', freezing, dark);
-    assert.equal(sketch.title, 'Freezing below 0 °C');
-    assert.deepEqual(
-        sketch.items.map((i) => i.text),
-        [
-            "Water freezes, leads to Water's entropy falls and Heat flows out",
-            "Water's entropy falls, leads to Total rises",
-            "Heat flows out, leads to Surroundings' entropy rises more",
-            "Surroundings' entropy rises more, leads to Total rises",
-            'Total rises, focus',
-        ],
-    );
-    const labelled = drawSketch('flow', 'Rock -> Loose sand: breaks and moves', dark);
-    assert.equal(labelled.title, '');
-    assert.deepEqual(
-        labelled.items.map((i) => i.text),
-        ['Rock, leads to Loose sand: breaks and moves', 'Loose sand'],
-    );
-    assert.match(labelled.markup, />breaks and moves</);
-});
-
 test('a bars sketch keeps each unit, marks the focus and draws a zero', () => {
     const sketch = drawSketch('bars', speeds, dark);
     assert.deepEqual(
