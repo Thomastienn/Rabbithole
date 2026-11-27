@@ -10,7 +10,7 @@ import { toolEvents } from './toolEvents.mjs';
 import { ENDED, STALLED } from './chatStream.mjs';
 import { ClaudeRunner } from './claudeRunner.mjs';
 import { ClaudeBoard } from './claudeBoard.mjs';
-import { claudeHistory } from './claudeHistory.mjs';
+import { conversationHistory } from './conversationHistory.mjs';
 
 // shortcut: aliases and effort levels follow the current Claude Code model-config table; revisit when aliases change.
 const MODELS = [
@@ -171,7 +171,7 @@ export class Claude {
         const selectedModel = await this.model(tree);
         const session = tree.thread ?? randomUUID();
         const system = tutorSystem(tree);
-        const history = claudeHistory(tree);
+        const history = conversationHistory(tree);
         // A fresh session (new chat or provider switch) receives the saved discussion once; resumed sessions already hold it.
         const prefix =
             !tree.thread && history.length
