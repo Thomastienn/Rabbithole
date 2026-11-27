@@ -12,6 +12,7 @@ test('board: pages and opens are saved as op lines and reopen on the page the la
         ['> Back to the forces.\no1 open first\nh1 highlight f1\n'],
         // A board saved before pages: its clear still opens a fresh untitled page.
         ['> Fresh space.\nn1 clear\nd1 dot at 800,450\n'],
+        ['> Still here.\n'],
     ]);
     const { env, id, connect } = await setup(t, provider);
     const board = connect();
@@ -40,13 +41,19 @@ test('board: pages and opens are saved as op lines and reopen on the page the la
     });
     assert.deepEqual(side[2].at, [800, 1350], 'r1 lands on the side page');
     const back = await answer('Got it.', 1);
+    // Each turn starts with the page index, the open page marked.
+    assert.equal(
+        provider.boards[0].indexes[1],
+        'BOARD PAGES (* marks the open page)\nfirst "Page 1": f1\n* s1 "Friction" parent=first from=f1: r1',
+    );
     assert.deepEqual(back[0], { id: 'o1', kind: 'open', page: 'first', top: 0 });
     assert.equal(back[1].kind, 'highlight', 'f1 is on the open page again');
     // The chat snapshot of each reply ends on its page.
     assert.equal(messages(env, id)[3].snapshot.findLast((i) => i.top !== undefined).top, 0);
     await answer('More?', 1);
     board.send({ type: 'leave' });
-    const replies = (await connect().next('board')).replies;
+    const again = connect();
+    const replies = (await again.next('board')).replies;
     assert.deepEqual(
         replies.map((r) => [r.page, r.items.map((i) => i.id)]),
         [
@@ -62,4 +69,11 @@ test('board: pages and opens are saved as op lines and reopen on the page the la
         title: 'Page 3',
         parent: 'first',
     });
+    // A new model process still gets every saved page, rebuilt from the store.
+    again.send({ type: 'ask', text: 'Still there?' });
+    await until(() => provider.boards[1]?.indexes.length);
+    assert.equal(
+        provider.boards[1].indexes[0],
+        'BOARD PAGES (* marks the open page)\nfirst "Page 1": f1\ns1 "Friction" parent=first from=f1: r1\n* n1 "Page 3" parent=first: d1',
+    );
 });

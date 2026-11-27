@@ -245,9 +245,10 @@ export function boardOps() {
         pointer = [800, 450];
     const top = () => pages.get(open)?.top ?? 0;
     // Opens a new page after the others, its parent the page open now; untitled, it shows as "Page N".
-    const add = (id, title) => {
+    const add = (id, title, from) => {
         const page = { top: pages.size * AREA, title: title || `Page ${pages.size + 1}` };
         if (open) page.parent = open;
+        if (from) page.origin = from;
         pages.set(id, page);
         open = id;
         pointer = [800, page.top + 450];
@@ -279,8 +280,9 @@ export function boardOps() {
         if (op.kind === 'page' || op.kind === 'clear') {
             const from = op.opts.from;
             if (from !== undefined && !target(from)) return { error: `unknown id ${from}` };
-            const page = add(op.id, op.kind === 'page' && op.strs[0]?.trim());
-            return { item: { ...item, ...page, ...(from && { origin: from }) } };
+            return {
+                item: { ...item, ...add(op.id, op.kind === 'page' && op.strs[0]?.trim(), from) },
+            };
         }
         if (op.kind === 'open') {
             const [ref, extra] = op.refs;
@@ -394,6 +396,27 @@ export function boardOps() {
         },
         has: (id) => items.has(id),
         open: () => open,
+        // The page index each model turn starts with (ADR 0029): every page with its parent, `from` item and the
+        // ids and texts of what is still on it; kinds and coordinates are left out to keep it short.
+        index() {
+            const lines = [...pages].map(([id, page]) => {
+                const on = [...items.values()]
+                    .filter(
+                        (i) => where.get(i.id) === id && !MARKS.has(i.kind) && !erased.has(i.id),
+                    )
+                    .map((i) => {
+                        const text = i.text ?? i.cells?.join('|');
+                        return text ? `${i.id} "${text}"` : i.id;
+                    });
+                const head = [
+                    `${id === open ? '* ' : ''}${id} "${page.title}"`,
+                    page.parent && `parent=${page.parent}`,
+                    page.origin && `from=${page.origin}`,
+                ];
+                return `${head.filter(Boolean).join(' ')}: ${on.join(', ') || '(empty)'}`;
+            });
+            return `BOARD PAGES (* marks the open page)\n${lines.join('\n') || '(none yet)'}`;
+        },
         // The board as it stands, for a still snapshot: no erased items, erases or passed pointers, highlights
         // under the rest, and the page and open ops that say which page it shows.
         items: () =>

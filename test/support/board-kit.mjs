@@ -15,13 +15,17 @@ export function boardProvider(scripts, { status = 'completed' } = {}) {
                 opened: 0,
                 closed: false,
                 asked: [],
+                indexes: [],
                 images: [],
                 signals: [],
                 thread: 'board-session',
                 open: () => (board.opened++, notify()),
                 close: () => ((board.closed = true), notify()),
                 async ask(text, emit, signal, images = []) {
-                    board.asked.push(text);
+                    // Each turn starts with the page index; `asked` keeps the rest.
+                    const at = text.indexOf('\n\n');
+                    board.indexes.push(text.slice(0, at));
+                    board.asked.push(text.slice(at + 2));
                     // The files last only for the turn, so the test keeps their bytes.
                     board.images.push(images.map((i) => ({ ...i, bytes: readFileSync(i.path) })));
                     board.signals.push(signal);
