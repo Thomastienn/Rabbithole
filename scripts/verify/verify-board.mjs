@@ -34,8 +34,8 @@ const speech = () => ({
     warm() {},
     async speak(text, chunk) {
         spoken.push(text);
-        const tone = text.startsWith('On a graph') ? long : short;
-        for (let at = 0; at < tone.length; at += 2048) chunk(tone.subarray(at, at + 2048));
+        const clip = text.startsWith('On a graph') ? long : short;
+        for (let at = 0; at < clip.length; at += 2048) chunk(clip.subarray(at, at + 2048));
     },
     close() {},
 });
@@ -136,8 +136,10 @@ try {
     );
     assert.ok(!(await ev(caption)).includes('Then it lands.'), 'unheard sentences are dropped');
     assert.ok(
-        await ev(`!!document.querySelector('.board .board-math .katex')`),
-        'the answer draws on the same board',
+        await ev(
+            `!!document.querySelector('.board .board-item.focus') && !!document.querySelector('.board .board-math .katex')`,
+        ),
+        'the answer draws its arrow on the same board',
     );
 
     // Saved: the cut reply keeps the sentences heard, the answer is whole, both as board replies.
