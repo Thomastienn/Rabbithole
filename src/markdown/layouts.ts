@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { Collapsible } from '@astryxdesign/core/Collapsible';
 import { Section } from '@astryxdesign/core/Section';
-import type { MarkdownNode } from './markdownText.ts';
+import { isSketch, type MarkdownNode } from './markdownText.ts';
 import './layouts.css';
 
 const pos = (n: MarkdownNode) => ({
@@ -50,10 +50,19 @@ function Figure(props: FigureProps) {
                 now = el.hasAttribute('data-stacked');
             if (!now) columns.current = { text: t.width, media: m.width };
             // Stacked columns are wider, so estimate the side-by-side heights: text reflows shorter, media scales taller.
-            const c = columns.current;
+            // A sketch keeps its height at any width, so only the rest of the text reflows.
+            const c = columns.current,
+                sketches = [...text.querySelectorAll('.sketch')].reduce(
+                    (sum, s) => sum + s.getBoundingClientRect().height,
+                    0,
+                );
             setStacked(
                 now
-                    ? stacks((t.height * t.width) / c.text, (m.height * c.media) / m.width, true)
+                    ? stacks(
+                          ((t.height - sketches) * t.width) / c.text + sketches,
+                          (m.height * c.media) / m.width,
+                          true,
+                      )
                     : stacks(t.height, m.height, false),
             );
         };
@@ -132,7 +141,7 @@ export function layout(
         const valid =
             n.name === 'wide'
                 ? count === 1 &&
-                  text.every((c) => c.type === 'definition') &&
+                  text.every((c) => c.type === 'definition' || isSketch(c)) &&
                   inside.every((slot) => slot.kind === 'visual')
                 : n.name === 'figure'
                   ? count >= 1 && text.length >= 1
@@ -162,6 +171,8 @@ export function layout(
                 { key: `${n.type}-${s}`, className: `reply-layout layout-${n.name}` },
                 n.name === 'gallery' && text.map(node),
                 h('div', { className: 'layout-media' }, items),
+                // A wide section's sketches sit after its visual, at the full column width.
+                n.name === 'wide' && text.map(node),
             );
         }
     }
