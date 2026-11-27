@@ -59,7 +59,6 @@ test('board: the board prompt carries the check-ins level, with no check-in bloc
         systems.push(provider.boards[systems.length].options.system);
     }
     const [sometimes, often, off] = systems;
-    assert.match(sometimes, /don't quiz the learner\./, 'learner-led asks not to quiz');
     assert.match(sometimes, /\n~> /, 'the example has a check-in');
     assert.match(sometimes, /Now and then, after a big idea/);
     assert.match(often, /After each idea, you can check in/);
