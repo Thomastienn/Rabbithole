@@ -100,6 +100,7 @@ test('board: a typed question gets its sentences one at a time and saves as a le
             'h1 arrow from t1 to nowhere\n> Tiny sacs',
             ' carry new wall forward.\nv1 dot at 900,450',
         ],
+        ['> They join.\nj1 arrow from t1 to v1\n'],
     ]);
     const { env, id, logs, connect } = await setup(t, provider);
     env.store.saveTutorStyle('Use cooking analogies.');
@@ -154,6 +155,17 @@ test('board: a typed question gets its sentences one at a time and saves as a le
     assert.ok(
         logs.some((l) => /task="board"/.test(l) && /thinking=0/.test(l)),
         'the request logs its thinking tokens',
+    );
+
+    // Reopened, the board replays its saved op lines at once, and the tutor can still join their ids.
+    board.send({ type: 'leave' });
+    const again = connect();
+    assert.deepEqual((await again.next('board')).items, [...first.ops, ...second.ops]);
+    again.send({ type: 'ask', text: 'And then?' });
+    const joined = await again.next('sentence');
+    assert.deepEqual(
+        joined.ops.map((op) => op.id),
+        ['j1'],
     );
 });
 

@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { Button } from '@astryxdesign/core/Button';
 import PhotoIcon from '@heroicons/react/24/outline/PhotoIcon';
-import { drawSketch, type Palette, type Sketch as Drawing } from '../sketch/sketch';
+import {
+    drawSketch,
+    type Palette,
+    type Sketch as Drawing,
+    type SketchItem,
+} from '../sketch/sketch';
 import './sketch.css';
 
 // Theme tokens by role (mockup Rabbithole-skt.1). As CSS variables, a theme switch recolours every sketch.
@@ -84,11 +89,7 @@ function SketchDrawing({
             {sketch.title && <figcaption aria-hidden="true">{sketch.title}</figcaption>}
             {/* The module escapes every label the tutor wrote. */}
             <div aria-hidden="true" dangerouslySetInnerHTML={{ __html: sketch.markup }} />
-            <ul className="sr-only">
-                {sketch.items.map((item, i) => (
-                    <li key={i}>{item.text}</li>
-                ))}
-            </ul>
+            <Items items={sketch.items} className="sr-only" />
             {onExpand && (
                 <div className="visual-actions sketch-actions">
                     <Button
@@ -101,5 +102,25 @@ function SketchDrawing({
                 </div>
             )}
         </figure>
+    );
+}
+
+// The items in order; a tree's deeper items nest under the item above them.
+function Items({ items, className }: { items: SketchItem[]; className?: string }) {
+    const level = items[0].level ?? 0;
+    return (
+        <ul className={className}>
+            {items.map((item, i) => {
+                if ((item.level ?? 0) !== level) return null;
+                const end = items.findIndex((next, j) => j > i && (next.level ?? 0) <= level),
+                    kids = items.slice(i + 1, end < 0 ? undefined : end);
+                return (
+                    <li key={i}>
+                        {item.text}
+                        {kids.length > 0 && <Items items={kids} />}
+                    </li>
+                );
+            })}
+        </ul>
     );
 }

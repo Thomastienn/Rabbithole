@@ -300,6 +300,8 @@ export function open(path) {
         // 1 for a question asked or a reply said on the board; NULL for chat.
         if (!hasColumn('messages', 'board'))
             this.db.exec('ALTER TABLE messages ADD COLUMN board INTEGER');
+        // A board reply's op lines for its spoken sentences, a JSON array; NULL for chat.
+        if (!hasColumn('messages', 'ops')) this.db.exec('ALTER TABLE messages ADD COLUMN ops TEXT');
         // Observations: the tutor's verdict on what one learner message showed about a concept; familiarity derives from them.
         // Created once: the old familiarity evidence (asked, used, ignored and corrections) was test data and goes; met stays.
         if (!this.db.prepare("SELECT 1 FROM sqlite_master WHERE name='observations'").get())
