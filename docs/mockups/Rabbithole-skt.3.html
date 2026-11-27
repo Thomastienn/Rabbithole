@@ -1,0 +1,609 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sketches · Rabbithole-skt.3 mockup</title><link rel="stylesheet" href="line-diagram/ld.css">
+<style>
+/* Mockup only. Sketch kinds for comparisons and quantities, on the reply's own ground as in Rabbithole-skt.1.
+   Theme roles used, mockup name then app token: --g background, --ink text-primary, --mut text-secondary,
+   --seam2 border-emphasized, --seam border, --w porcelain (rabbithole-paper), --up popover, --up2 hover. */
+.reply { max-width: 640px; }
+.reply h2:first-child { margin-top: 0; }
+
+/* The sketch: no frame, no fill, no head band. It sits between paragraphs at the column width. */
+.skt { position: relative; margin: 8px 0 20px; max-width: 640px; }
+.skt .t { font: 600 15px/1.35 var(--read); color: var(--ink); margin-bottom: 10px; }
+.skt svg { display: block; width: 100%; height: auto; overflow: visible; }
+.skt .ln2 { fill: none; stroke: var(--seam2); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.skt .ar { fill: none; stroke: var(--mut); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.skt .st { fill: var(--g); stroke: var(--mut); stroke-width: 2.5; }
+.skt .st.f { fill: var(--w); stroke: var(--w); }
+.skt text { font: 14px var(--read); fill: var(--ink); text-anchor: middle; }
+.skt text.f { fill: var(--w); font-weight: 600; }
+.skt text.e { font-size: 13px; fill: var(--mut); }
+
+/* Added for skt.3: start and end anchored labels, leaders, venn rings and pie slices. */
+.skt text.s { text-anchor: start; }
+.skt text.n { text-anchor: end; }
+.skt .ld { fill: none; stroke: var(--seam2); stroke-width: 1.5; }
+.skt .ring { fill: none; stroke: var(--seam2); stroke-width: 3; }
+.skt .ring.f { stroke: var(--w); }
+.skt .sl { fill: var(--seam2); stroke: var(--g); stroke-width: 2; stroke-linejoin: round; }
+.skt .sl.o { fill-opacity: .5; }
+.skt .sl.f { fill: var(--w); }
+.skt .quad text { paint-order: stroke; stroke: var(--g); stroke-width: 4px; stroke-linejoin: round; }
+
+/* Compare: an aspect column (up to 30%) and two even value columns, on hairline seams. */
+.cmp { display: grid; grid-template-columns: fit-content(30%) 1fr 1fr; column-gap: 16px; font: 14px/20px var(--read); }
+.cmp span { padding: 7px 0; border-top: 1px solid var(--seam); }
+.cmp span:nth-child(-n+6) { border-top: 0; }
+.cmp .h { padding: 0 0 8px; }
+.cmp .h::after { content: ""; display: block; height: 3px; border-radius: 9999px; background: var(--seam2); margin-top: 6px; }
+.cmp span:nth-child(-n+3) { padding: 0 0 8px; }
+.cmp .a { color: var(--mut); }
+.cmp .f { color: var(--w); font-weight: 600; }
+
+/* Pie: a 176px ring beside its rows; each row has a line swatch in its slice's tone, the value and the share. */
+.pie { display: flex; align-items: center; gap: 24px; }
+.pie svg { flex: none; width: 176px; }
+.pie dl { display: grid; grid-template-columns: fit-content(220px) max-content max-content; gap: 6px 16px; font: 14px/20px var(--read); font-variant-numeric: tabular-nums; }
+.pie dl.one { grid-template-columns: fit-content(220px) max-content; }
+.pie dt { display: flex; align-items: flex-start; gap: 8px; }
+.pie dt s { flex: none; width: 16px; height: 8px; margin-top: 6px; border-radius: 4px; background: var(--seam2); }
+.pie dt.o s { opacity: .5; }
+.pie dd { text-align: right; }
+.pie dd.pc { color: var(--mut); font-size: 13px; }
+.pie .f { color: var(--w); font-weight: 600; }
+.pie dt.f s { background: var(--w); }
+
+/* Controls: a quiet raised box at the top right, shown on hover and keyboard focus inside the sketch. */
+.acts { position: absolute; top: -6px; right: 0; display: none; gap: 2px; padding: 2px; border: 1px solid var(--seam); border-radius: 8px; background: var(--up); }
+.skt:hover .acts, .skt:focus-within .acts, .skt.hover .acts { display: flex; }
+@media (hover: none) { .acts { display: flex; } }
+.acts .btn { min-height: 30px; padding: 0 10px; font-size: 13px; border-color: transparent; }
+.acts .btn .i { color: var(--mut); }
+
+.stage .reply { width: 640px; max-width: 100%; }
+pre.tag { font: 12px/1.6 ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--mut); white-space: pre-wrap; background: var(--deep); border-radius: 8px; padding: 10px 14px; width: 100%; }
+.note { font-size: 13px; color: var(--mut); }
+.gone { border-top: 1px dashed var(--seam2); margin: -6px 0 9px; position: relative; }
+.gone::after { content: "hidden sketch was here (mockup marker only)"; position: absolute; right: 0; top: -9px; background: var(--g); padding-left: 8px; font-size: 12px; color: var(--mut); }
+</style></head><body>
+<nav class="mock" aria-label="Mockup screens"><b>Sketches</b><a href="line-diagram/read.html">Read</a><a href="Rabbithole-skt.1.html">skt.1 and skt.7 Sketches</a><a href="Rabbithole-skt.3.html" aria-current=page>skt.3 Comparisons and quantities</a><label><input type="checkbox" id="lt"> Light</label></nav>
+<header class="intro"><h1>Sketches: comparisons and quantities</h1><p>Rabbithole-skt.3 adds six kinds: compare, venn, pie, line, quadrant and spectrum. They draw on the reply's own ground like flow and bars in <a href="Rabbithole-skt.1.html">skt.1</a>, and keep its title, focus, controls, placeholder, hiding and screen-reader naming. Spec: <code>docs/sketches-spec.md</code>. Decision: ADR 0027. The spec wins where they differ.</p></header>
+<ul class="rules">
+<li>Everything in skt.1 holds: no frame, fill or head band; at most 640px wide; 8px below the paragraph before and 20px above the next; a 15px/600 title; 14px labels in ink; 13px values, notes and axis labels in muted ink; all text in the reading face.</li>
+<li>No line colours, and no gradient. Lines, rings and areas are the strong seam; the focus alone is porcelain, as a filled station, ring, slice or swatch and a 600-weight label. Pie slices are told apart by a 2px ground-coloured gap and by alternating full and half opacity, never by hue.</li>
+<li>Compare is a three-column grid in 14px/20px text: the aspect column takes the width it needs up to 30%, the two value columns split the rest, 16px apart. Each name heads its column over a 3px round-ended strong-seam line, 6px below it. Rows have 7px above and below and a hairline seam between them; a value wraps in its column.</li>
+<li>Venn is two 3px strong-seam ellipses, 320 × 160px at least (160px half-width, 80px half-height), centres 160px apart, so the overlap is the middle third. Items stack centred at x 160, 320 and 480, 20px a line and 6px between items, wrapping at 112px outside and 128px in the overlap. Each ellipse grows taller until every line clears both outlines by 8px. Set names sit 12px above, centred over each outer part, wrapping at 224px.</li>
+<li>Pie is a ring 176px across, 32px thick (radii 80 and 48), slices clockwise from 12 o’clock in written order. The rows beside it, 24px from the ring, are 20px lines 6px apart: a 16 × 8px round swatch, the label (wrapping at 220px), the value right-aligned and the share in 13px muted ink. Shares round to whole percents, “&lt;1%” below one. Values with no unit that sum to 100 are shown as written, with a %, and no value column.</li>
+<li>Line is a 592px axis from x 24 to 616, with 14px muted end ticks. Values sit on 12px stations (the focus 14px filled porcelain); the label is 18px above the axis, the value 26px below. A crowded label rises in 22px rows, at most three rows, on a 1.5px strong-seam leader. The range ends are written under the ticks unless one would come within 12px of a value.</li>
+<li>Quadrant is a 400 × 240px field mapped from 0 to 10 on both axes, crossed by 3px strong-seam axes at 5, 5, with a muted chevron at each high end. The y labels sit centred 14px above and 24px below the vertical axis; the x labels sit 12px beside the horizontal axis ends, wrapping at 88px. Item labels start 12px right of their station, or end 12px left of it past x 7, wrapping at 150px, with a 4px ground-coloured halo where they cross an axis.</li>
+<li>Spectrum is a 3px strong-seam line from x 24 to 616, with its ends above it in muted ink, wrapping at 220px. Items are spaced evenly, centred in 592/n-px slots, in written order: a station on the line, the name 30px below, the note under it. From five items, every second item drops to a second row on a 1.5px leader.</li>
+<li>A value out of its kind’s range is an error: a line value outside its range, a quadrant coordinate below 0 or above 10, or a negative pie share. So is a missing head line (<code>vs:</code>, <code>ends:</code>, or a second set). The reply hides the sketch and logs its kind and reason, as in skt.1.</li>
+</ul>
+<main class="specs wide">
+
+<section class="spec"><h2>Compare in a reply</h2><p>The two names head their columns over a 3px strong-seam line. Each aspect is one row: the aspect in muted ink on the left, then each side’s value. Rows sit on hairline seams.</p><div class="stage">
+<article class="reply">
+<h2>Why antibiotics miss a cold</h2>
+<p class="p">A cold is caused by a virus, and a virus is not a smaller bacterium. Antibiotics jam machinery that only a living cell has, such as its ribosomes.</p>
+<figure class="skt" aria-label="Sketch: Bacterium or virus">
+<figcaption class="t">Bacterium or virus</figcaption>
+<div class="cmp">
+<span></span><span class="h">Bacterium</span><span class="h">Virus</span>
+<span class="a">Structure</span><span>A living cell</span><span>Genes in a protein shell</span>
+<span class="a">Typical size</span><span>About 1–2 micrometres</span><span>Mostly 20–300 nanometres</span>
+<span class="a">Own ribosomes</span><span>Yes</span><span>No</span>
+<span class="a">Reproduces</span><span>By itself</span><span>Only inside a host cell</span>
+<span class="a">Antibiotics</span><span>Often work</span><span class="f">Don't work</span>
+</div>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+<p class="p">A virus borrows the host cell’s ribosomes instead, so there is nothing of its own for the drug to hit.</p>
+</article>
+<pre class="tag">```sketch compare
+title: Bacterium or virus
+vs: Bacterium | Virus
+Structure: A living cell | Genes in a protein shell
+Typical size: About 1–2 micrometres | Mostly 20–300 nanometres
+Own ribosomes: Yes | No
+Reproduces: By itself | Only inside a host cell
+Antibiotics: Often work | *Don't work*
+```</pre>
+</div></section>
+
+<section class="spec"><h2>Compare: long values, the pipe form, no title</h2><p>An aspect or value wraps inside its column and the row grows; the three cells of a row share its top line. The aspect column takes the width it needs, up to 30%, and the two value columns split the rest evenly. The tutor sometimes writes <code>aspect | A | B</code>: a bar before any colon ends the aspect, and the row draws the same. With no title, the controls box sits over the top-right corner on hover, as for flow in skt.1.</p><div class="stage">
+<div class="reply">
+<figure class="skt" aria-label="Sketch: Europe’s rival blocs">
+<figcaption class="t">Europe’s rival blocs</figcaption>
+<div class="cmp">
+<span></span><span class="h">Triple Alliance</span><span class="h">Triple Entente</span>
+<span class="a">Members</span><span>Germany, Austria-Hungary, Italy</span><span>France, Russia, Britain</span>
+<span class="a">Formed</span><span>1882</span><span>1894 to 1907, in stages</span>
+<span class="a">What each member promised to do</span><span>To defend the others if attacked</span><span>Talks first, no promise to fight</span>
+</div>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</div>
+<pre class="tag">```sketch compare
+title: Europe’s rival blocs
+vs: Triple Alliance | Triple Entente
+Members | Germany, Austria-Hungary, Italy | France, Russia, Britain
+Formed | 1882 | 1894 to 1907, in stages
+What each member promised to do | To defend the others if attacked | Talks first, no promise to fight
+```</pre>
+<div class="reply">
+<figure class="skt" aria-label="Sketch">
+<div class="cmp">
+<span></span><span class="h">House</span><span class="h">Senate</span>
+<span class="a">Voting members</span><span>435</span><span>100</span>
+<span class="a">Seats</span><span>By state population</span><span>2 per state</span>
+<span class="a">Term</span><span>2 years</span><span class="f">6 years</span>
+<span class="a">Special role</span><span>Starts revenue bills</span><span>Confirms nominees</span>
+</div>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</div>
+<pre class="tag">```sketch compare
+vs: House | Senate
+Voting members: 435 | 100
+Seats: By state population | 2 per state
+Term: 2 years | *6 years*
+Special role: Starts revenue bills | Confirms nominees
+```</pre>
+</div></section>
+
+<section class="spec"><h2>Venn in a reply</h2><p>Two outlined ellipses overlap by a third of their width. Each set’s own items sit in its outer part, the both items in the overlap, each stack centred. The set names sit above, in muted ink.</p><div class="stage">
+<article class="reply">
+<h2>What every cell shares</h2>
+<p class="p">Plant and animal cells are both eukaryotic: each keeps its DNA in a nucleus and makes its energy in mitochondria. The differences come from how they live.</p>
+<figure class="skt" aria-label="Sketch: Plant and animal cells">
+<figcaption class="t">Plant and animal cells</figcaption>
+<svg viewBox="0 0 640 202" aria-hidden="true">
+<ellipse class="ring" cx="240" cy="118" rx="160" ry="80"/><ellipse class="ring" cx="400" cy="118" rx="160" ry="80"/>
+<text class="e" x="160" y="16">Plant cell</text><text class="e" x="480" y="16">Animal cell</text>
+<text x="160" y="97">Cell wall</text><text x="160" y="123">Chloroplasts</text><text x="160" y="149">Large vacuole</text>
+<text x="320" y="84">Nucleus</text><text class="f" x="320" y="110">Mitochondria</text><text x="320" y="136">Cell membrane</text><text x="320" y="162">Ribosomes</text>
+<text x="480" y="110">Centrioles</text><text x="480" y="136">Lysosomes</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+<p class="p">A plant cannot move to find food, so it makes its own in chloroplasts and holds its shape with a rigid wall.</p>
+</article>
+<pre class="tag">```sketch venn
+title: Plant and animal cells
+Plant cell: Cell wall, Chloroplasts, Large vacuole
+Animal cell: Centrioles, Lysosomes
+both: Nucleus, *Mitochondria*, Cell membrane, Ribosomes
+```</pre>
+</div></section>
+
+<section class="spec"><h2>Venn: long items, an empty side and a focus set</h2><p>Items wrap at 112px in the outer parts and 128px in the overlap, and the ellipses grow taller until every line clears both outlines by 8px. A set with no items of its own leaves its outer part empty. A starred set name is porcelain, and so is its outline.</p><div class="stage">
+<div class="reply">
+<figure class="skt" aria-label="Sketch: Square or rectangle">
+<figcaption class="t">Square or rectangle</figcaption>
+<svg viewBox="0 0 640 306" aria-hidden="true">
+<ellipse class="ring f" cx="240" cy="170" rx="160" ry="132"/><ellipse class="ring" cx="400" cy="170" rx="160" ry="132"/>
+<text class="f" x="160" y="16">Squares</text><text class="e" x="480" y="16">Rectangles</text>
+
+<text x="320" y="109">Four right</text><text x="320" y="129">angles</text><text x="320" y="155">Opposite sides</text><text x="320" y="175">parallel and</text><text x="320" y="195">equal</text><text x="320" y="221">Diagonals bisect</text><text x="320" y="241">each other</text>
+<text x="480" y="122">Sides of two</text><text x="480" y="142">different</text><text x="480" y="162">lengths</text><text x="480" y="188">Only the</text><text x="480" y="208">opposite sides</text><text x="480" y="228">match</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</div>
+<pre class="tag">```sketch venn
+title: Square or rectangle
+*Squares*:
+Rectangles: Sides of two different lengths, Only the opposite sides match
+both: Four right angles, Opposite sides parallel and equal, Diagonals bisect each other
+```</pre>
+</div></section>
+
+<section class="spec"><h2>Pie in a reply</h2><p>A 176px ring, 32px thick, beside its rows. Slices run clockwise from 12 o’clock in the order written, split by 2px gaps in the ground colour, and alternate strong seam at full and half opacity. Each row repeats its slice’s tone as a 16px line swatch, then the value as written and its share in muted ink.</p><div class="stage">
+<article class="reply">
+<h2>Where a day’s energy comes from</h2>
+<p class="p">A typical 2,000 kcal day splits across three macronutrients. Fat gives the smallest share by weight, but each gram carries 9 kcal, more than twice the 4 of carbohydrate or protein.</p>
+<figure class="skt" aria-label="Sketch: A 2,000 kcal day">
+<figcaption class="t">A 2,000 kcal day</figcaption>
+<div class="pie">
+<svg viewBox="0 0 176 176" aria-hidden="true">
+<path class="sl" d="M88 8A80 80 0 0 1 88 168L88 136A48 48 0 0 0 88 40Z"/>
+<path class="sl f" d="M88 168A80 80 0 0 1 23.3 41L49.2 59.8A48 48 0 0 0 88 136Z"/>
+<path class="sl" d="M23.3 41A80 80 0 0 1 88 8L88 40A48 48 0 0 0 49.2 59.8Z"/>
+</svg>
+<dl>
+<dt><s></s>Carbohydrates</dt><dd>1,000 kcal</dd><dd class="pc">50%</dd>
+<dt class="f"><s></s>Fat</dt><dd class="f">700 kcal</dd><dd class="pc f">35%</dd>
+<dt><s></s>Protein</dt><dd>300 kcal</dd><dd class="pc">15%</dd>
+</dl>
+</div>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+<p class="p">So a little fat goes a long way: 700 kcal is under 80 grams of it.</p>
+</article>
+<pre class="tag">```sketch pie
+title: A 2,000 kcal day
+Carbohydrates: 1,000 kcal
+*Fat*: 700 kcal
+Protein: 300 kcal
+```</pre>
+</div></section>
+
+<section class="spec"><h2>Pie: eight slices that already add up to 100</h2><p>When the values have no unit and sum to 100, they are the shares: each row shows the number as written with a % sign, and the value column is left out. A long label wraps at 220px and its row grows.</p><div class="stage">
+<div class="reply">
+<figure class="skt" aria-label="Sketch: Elements in the human body, by mass">
+<figcaption class="t">Elements in the human body, by mass</figcaption>
+<div class="pie">
+<svg viewBox="0 0 176 176" aria-hidden="true">
+<path class="sl" d="M88 8A80 80 0 1 1 23.3 135L49.2 116.2A48 48 0 1 0 88 40Z"/>
+<path class="sl f" d="M23.3 135A80 80 0 0 1 19.1 47.3L46.7 63.6A48 48 0 0 0 49.2 116.2Z"/>
+<path class="sl" d="M19.1 47.3A80 80 0 0 1 53.9 15.6L67.6 44.6A48 48 0 0 0 46.7 63.6Z"/>
+<path class="sl o" d="M53.9 15.6A80 80 0 0 1 69.1 10.3L76.6 41.4A48 48 0 0 0 67.6 44.6Z"/>
+<path class="sl" d="M69.1 10.3A80 80 0 0 1 76.5 8.8L81.1 40.5A48 48 0 0 0 76.6 41.4Z"/>
+<path class="sl o" d="M76.5 8.8A80 80 0 0 1 81.5 8.3L84.1 40.2A48 48 0 0 0 81.1 40.5Z"/>
+<path class="sl" d="M81.5 8.3A80 80 0 0 1 83.5 8.1L85.3 40.1A48 48 0 0 0 84.1 40.2Z"/>
+<path class="sl o" d="M83.5 8.1A80 80 0 0 1 88 8L88 40A48 48 0 0 0 85.3 40.1Z"/>
+</svg>
+<dl class="one">
+<dt><s></s>Oxygen</dt><dd class="pc">65%</dd>
+<dt class="f"><s></s>Carbon</dt><dd class="pc f">18.5%</dd>
+<dt><s></s>Hydrogen</dt><dd class="pc">9.5%</dd>
+<dt class="o"><s></s>Nitrogen</dt><dd class="pc">3.2%</dd>
+<dt><s></s>Calcium</dt><dd class="pc">1.5%</dd>
+<dt class="o"><s></s>Phosphorus</dt><dd class="pc">1%</dd>
+<dt><s></s>Potassium</dt><dd class="pc">0.4%</dd>
+<dt class="o"><s></s>Everything else, mostly sulfur and sodium</dt><dd class="pc">0.9%</dd>
+</dl>
+</div>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</div>
+<pre class="tag">```sketch pie
+title: Elements in the human body, by mass
+Oxygen: 65
+*Carbon*: 18.5
+Hydrogen: 9.5
+Nitrogen: 3.2
+Calcium: 1.5
+Phosphorus: 1
+Potassium: 0.4
+Everything else, mostly sulfur and sodium: 0.9
+```</pre>
+</div></section>
+
+<section class="spec"><h2>Pie: tiny shares and a zero</h2><p>A share too thin to see still keeps its row and its percentage; the gaps swallow its slice. A computed share under 1% reads “&lt;1%”. A zero draws no slice and reads 0%.</p><div class="stage">
+<div class="reply">
+<figure class="skt" aria-label="Sketch: Dry air, by volume">
+<figcaption class="t">Dry air, by volume</figcaption>
+<div class="pie">
+<svg viewBox="0 0 176 176" aria-hidden="true">
+<path class="sl" d="M88 8A80 80 0 1 1 9.5 72.6L40.9 78.8A48 48 0 1 0 88 40Z"/>
+<path class="sl f" d="M9.5 72.6A80 80 0 0 1 83.1 8.1L85.1 40.1A48 48 0 0 0 40.9 78.8Z"/>
+<path class="sl" d="M83.1 8.1A80 80 0 0 1 87.8 8L87.9 40A48 48 0 0 0 85.1 40.1Z"/>
+<path class="sl o" d="M87.8 8A80 80 0 0 1 88 8L88 40A48 48 0 0 0 87.9 40Z"/>
+</svg>
+<dl class="one">
+<dt><s></s>Nitrogen</dt><dd class="pc">78.08%</dd>
+<dt class="f"><s></s>Oxygen</dt><dd class="pc f">20.95%</dd>
+<dt><s></s>Argon</dt><dd class="pc">0.93%</dd>
+<dt class="o"><s></s>Carbon dioxide</dt><dd class="pc">0.04%</dd>
+<dt><s></s>Water vapour</dt><dd class="pc">0%</dd>
+</dl>
+</div>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</div>
+<pre class="tag">```sketch pie
+title: Dry air, by volume
+Nitrogen: 78.08
+*Oxygen*: 20.95
+Argon: 0.93
+Carbon dioxide: 0.04
+Water vapour: 0
+```</pre>
+<div class="reply">
+<figure class="skt" aria-label="Sketch: Who answered the survey">
+<figcaption class="t">Who answered the survey</figcaption>
+<div class="pie">
+<svg viewBox="0 0 176 176" aria-hidden="true">
+<path class="sl" d="M88 8A80 80 0 1 1 14.9 120.6L44.2 107.5A48 48 0 1 0 88 40Z"/>
+<path class="sl o" d="M14.9 120.6A80 80 0 0 1 9.9 70.8L41.1 77.7A48 48 0 0 0 44.2 107.5Z"/>
+<path class="sl f" d="M9.9 70.8A80 80 0 0 1 85.5 8L86.5 40A48 48 0 0 0 41.1 77.7Z"/>
+<path class="sl o" d="M85.5 8A80 80 0 0 1 88 8L88 40A48 48 0 0 0 86.5 40Z"/>
+</svg>
+<dl>
+<dt><s></s>Students</dt><dd>412 people</dd><dd class="pc">68%</dd>
+<dt class="o"><s></s>Teachers</dt><dd>61 people</dd><dd class="pc">10%</dd>
+<dt class="f"><s></s>Parents</dt><dd class="f">127 people</dd><dd class="pc f">21%</dd>
+<dt class="o"><s></s>Governors</dt><dd>3 people</dd><dd class="pc">&lt;1%</dd>
+</dl>
+</div>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</div>
+<pre class="tag">```sketch pie
+title: Who answered the survey
+Students: 412 people
+Teachers: 61 people
+*Parents*: 127 people
+Governors: 3 people
+```</pre>
+</div></section>
+
+<section class="spec"><h2>Line in a reply</h2><p>A number line: a 3px strong-seam axis with 14px end ticks, a station per value, the label above it and the value below it in muted ink. The range ends are read at the tick ends.</p><div class="stage">
+<article class="reply">
+<h2>The all-or-nothing spike</h2>
+<p class="p">A neuron at rest sits near −70 mV. Inputs nudge it up a few millivolts at a time, and nothing happens until it reaches about −55 mV.</p>
+<figure class="skt" aria-label="Sketch: Membrane voltage (mV)">
+<figcaption class="t">Membrane voltage (mV)</figcaption>
+<svg viewBox="0 0 640 88" aria-hidden="true">
+<path class="ln2" d="M24 56H616"/>
+<path class="ar" d="M24 49V63M616 49V63"/>
+<path class="ld" d="M172 22V47"/>
+<circle class="st" cx="108.6" cy="56" r="6"/><circle class="st f" cx="172" cy="56" r="7"/><circle class="st" cx="531.4" cy="56" r="6"/>
+<text x="108.6" y="38">Resting</text><text class="f" x="172" y="16">Threshold</text><text x="531.4" y="38">Typical peak</text>
+<text class="e" x="108.6" y="82">−70</text><text class="e" x="172" y="82">−55</text><text class="e" x="531.4" y="82">30</text><text class="e s" x="24" y="82">−90</text><text class="e n" x="616" y="82">50</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+<p class="p">Past that threshold, sodium channels snap open and the voltage shoots up to around +30 mV in under a millisecond.</p>
+</article>
+<pre class="tag">```sketch line
+title: Membrane voltage (mV)
+range: -90..50
+-70: Resting
+-55: *Threshold*
+30: Typical peak
+```</pre>
+</div></section>
+
+<section class="spec"><h2>Line: close values stack, and a value on the end</h2><p>A label that would come within 12px of its neighbour rises one 22px row, at most two, with a 1.5px strong-seam leader down to its station. A leader never crosses a label. A label near an end shifts inward to stay inside 640px. A value on the range end replaces that end’s number. A hyphen before a number draws as a minus sign.</p><div class="stage">
+<div class="reply">
+<figure class="skt" aria-label="Sketch: What λ does to its eigenvector">
+<figcaption class="t">What λ does to its eigenvector</figcaption>
+<svg viewBox="0 0 640 88" aria-hidden="true">
+<path class="ln2" d="M24 56H616"/>
+<path class="ar" d="M24 49V63M616 49V63"/>
+<path class="ld" d="M260.8 22V47"/><path class="ld" d="M379.2 22V47"/>
+<circle class="st" cx="142.4" cy="56" r="6"/><circle class="st" cx="260.8" cy="56" r="6"/><circle class="st" cx="320" cy="56" r="6"/><circle class="st f" cx="379.2" cy="56" r="7"/><circle class="st" cx="497.6" cy="56" r="6"/><circle class="st" cx="616" cy="56" r="6"/>
+<text x="142.4" y="38">Flips, same length</text><text x="260.8" y="16">Squashed to zero</text><text x="320" y="38">Shrinks</text><text class="f" x="379.2" y="16">Unchanged</text><text x="497.6" y="38">Doubles</text><text x="610.6" y="38">Triples</text>
+<text class="e" x="142.4" y="82">−1</text><text class="e" x="260.8" y="82">0</text><text class="e" x="320" y="82">0.5</text><text class="e" x="379.2" y="82">1</text><text class="e" x="497.6" y="82">2</text><text class="e" x="616" y="82">3</text><text class="e s" x="24" y="82">−2</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</div>
+<pre class="tag">```sketch line
+title: What λ does to its eigenvector
+range: -2..3
+-1: Flips, same length
+0: Squashed to zero
+0.5: Shrinks
+1: *Unchanged*
+2: Doubles
+3: Triples
+```</pre>
+</div></section>
+
+<section class="spec"><h2>Line: a unit on each value</h2><p>A unit after the number, as in bars, follows the value under the station, and the range ends take the same unit. An end number that would come within 12px of a value is left out, as the 25 °C is here.</p><div class="stage">
+<div class="reply">
+<figure class="skt" aria-label="Sketch: Food storage temperatures">
+<figcaption class="t">Food storage temperatures</figcaption>
+<svg viewBox="0 0 640 66" aria-hidden="true">
+<path class="ln2" d="M24 34H616"/>
+<path class="ar" d="M24 27V41M616 27V41"/>
+
+<circle class="st" cx="106.9" cy="34" r="6"/><circle class="st f" cx="367.4" cy="34" r="7"/><circle class="st" cx="568.6" cy="34" r="6"/>
+<text x="106.9" y="16">Freezer</text><text class="f" x="367.4" y="16">Fridge upper limit</text><text x="568.6" y="16">Typical room</text>
+<text class="e" x="106.9" y="60">−18 °C</text><text class="e" x="367.4" y="60">4 °C</text><text class="e" x="568.6" y="60">21 °C</text><text class="e s" x="24" y="60">−25 °C</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</div>
+<pre class="tag">```sketch line
+title: Food storage temperatures
+range: -25..25
+-18 °C: Freezer
+4 °C: *Fridge upper limit*
+21 °C: Typical room
+```</pre>
+</div></section>
+
+<section class="spec"><h2>Quadrant in a reply</h2><p>Two 3px strong-seam axes cross at 5, 5 in a 400 × 240 field, each with a chevron at its high end. The axis labels sit at the axis ends in muted ink. Items are stations with the label to the right, or to the left past x 7; a 4px halo in the ground colour keeps a label readable where it crosses an axis.</p><div class="stage">
+<article class="reply">
+<h2>Sorting a busy week</h2>
+<p class="p">The Eisenhower matrix asks two separate questions of every task: does it have to happen soon, and does it matter? Urgent tasks shout, so they crowd out the important ones that do not.</p>
+<figure class="skt" aria-label="Sketch: Urgent or important?">
+<figcaption class="t">Urgent or important?</figcaption>
+<svg class="quad" viewBox="0 0 640 308" aria-hidden="true">
+<path class="ln2" d="M120 156H520M320 276V36"/>
+<path class="ar" d="M515 151L520 156L515 161M315 41L320 36L325 41"/>
+<text class="e" x="320" y="22">Important</text><text class="e" x="320" y="300">Not important</text><text class="e n" x="108" y="160">Not urgent</text><text class="e s" x="532" y="160">Urgent</text>
+<circle class="st" cx="480" cy="60" r="6"/><circle class="st f" cx="200" cy="60" r="7"/><circle class="st" cx="280" cy="132" r="6"/><circle class="st" cx="440" cy="228" r="6"/><circle class="st" cx="160" cy="252" r="6"/>
+<text class="n" x="468" y="65">Exam tomorrow</text><text class="f s" x="212" y="65">Weekly revision</text><text class="s" x="292" y="137">Booking the dentist</text><text class="n" x="428" y="233">Most notifications</text><text class="s" x="172" y="257">Scrolling feeds</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+<p class="p">Weekly revision sits top left: it never feels urgent, which is exactly why it needs a fixed slot.</p>
+</article>
+<pre class="tag">```sketch quadrant
+title: Urgent or important?
+x: Not urgent .. Urgent
+y: Not important .. Important
+Exam tomorrow: 9, 9
+*Weekly revision*: 2, 9
+Booking the dentist: 4, 6
+Most notifications: 8, 2
+Scrolling feeds: 1, 1
+```</pre>
+</div></section>
+
+<section class="spec"><h2>Quadrant: edges, a shared spot and long axis labels</h2><p>A 0 or a 10 sits on the field’s edge. Items at the same spot share one station and their labels stack 20px apart; a stack that would pass the field’s bottom grows upward instead. Axis labels wrap at 88px beside the horizontal axis ends.</p><div class="stage">
+<div class="reply">
+<figure class="skt" aria-label="Sketch: Power sources: cost and carbon">
+<figcaption class="t">Power sources: cost and carbon</figcaption>
+<svg class="quad" viewBox="0 0 640 308" aria-hidden="true">
+<path class="ln2" d="M120 156H520M320 276V36"/>
+<path class="ar" d="M515 151L520 156L515 161M315 41L320 36L325 41"/>
+<text class="e" x="320" y="22">High carbon</text><text class="e" x="320" y="300">Low carbon</text><text class="e n" x="108" y="152">Cheap to</text><text class="e n" x="108" y="168">build</text><text class="e s" x="532" y="152">Costly to</text><text class="e s" x="532" y="168">build</text>
+<circle class="st" cx="280" cy="36" r="6"/><circle class="st" cx="240" cy="132" r="6"/><circle class="st f" cx="520" cy="276" r="7"/><circle class="st" cx="200" cy="276" r="6"/><circle class="st" cx="360" cy="252" r="6"/>
+<text class="s" x="292" y="41">Coal</text><text class="s" x="252" y="137">Gas</text><text class="f n" x="508" y="281">Nuclear</text><text class="s" x="212" y="261">Onshore wind</text><text class="s" x="212" y="281">Solar farms</text><text class="s" x="372" y="257">Offshore wind</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</div>
+<pre class="tag">```sketch quadrant
+title: Power sources: cost and carbon
+x: Cheap to build .. Costly to build
+y: Low carbon .. High carbon
+Coal: 4, 10
+Gas: 3, 6
+*Nuclear*: 10, 0
+Onshore wind: 2, 0
+Solar farms: 2, 0
+Offshore wind: 6, 1
+```</pre>
+</div></section>
+
+<section class="spec"><h2>Spectrum in a reply</h2><p>A 3px strong-seam line with its two ends written above it in muted ink. Items are spaced evenly, in the order written, each a station with its name below and its note under that in muted ink. No gradient: the order carries the scale.</p><div class="stage">
+<article class="reply">
+<h2>Why obsidian is glass</h2>
+<p class="p">Igneous rocks all start as molten rock. What changes is how fast it cools: slow cooling deep underground gives the atoms time to line up into large crystals.</p>
+<figure class="skt" aria-label="Sketch: Cooling speed and crystal size">
+<figcaption class="t">Cooling speed and crystal size</figcaption>
+<svg viewBox="0 0 640 87" aria-hidden="true">
+<path class="ln2" d="M24 30H616"/>
+<text class="e s" x="24" y="16">Slow cooling</text><text class="e n" x="616" y="16">Very fast cooling</text>
+
+<circle class="st" cx="122.7" cy="30" r="6"/><circle class="st" cx="320" cy="30" r="6"/><circle class="st f" cx="517.3" cy="30" r="7"/>
+<text x="122.7" y="60">Granite</text><text class="e" x="122.7" y="77">crystals easy to see</text><text x="320" y="60">Basalt</text><text class="e" x="320" y="77">crystals mostly tiny</text><text class="f" x="517.3" y="60">Obsidian</text><text class="e" x="517.3" y="77">glass, no real crystals</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+<p class="p">Lava that hits air or water freezes before crystals can form at all, so obsidian is a natural glass.</p>
+</article>
+<pre class="tag">```sketch spectrum
+title: Cooling speed and crystal size
+ends: Slow cooling .. Very fast cooling
+Granite: crystals easy to see
+Basalt: crystals mostly tiny
+*Obsidian*: glass, no real crystals
+```</pre>
+</div></section>
+
+<section class="spec"><h2>Spectrum: seven items, long ends, an item with no note</h2><p>Up to four items share one row, each wrapping at its slot width minus 16px. With five or more, every second item drops to a second row on a 1.5px strong-seam leader, and labels wrap at two slots minus 16px. Ends wrap at 220px. An item may have no note.</p><div class="stage">
+<div class="reply">
+<figure class="skt" aria-label="Sketch: The electromagnetic spectrum">
+<figcaption class="t">The electromagnetic spectrum</figcaption>
+<svg viewBox="0 0 640 136" aria-hidden="true">
+<path class="ln2" d="M24 30H616"/>
+<text class="e s" x="24" y="16">Long waves, low energy</text><text class="e n" x="616" y="16">Short waves, high energy</text>
+<path class="ld" d="M150.9 39V91"/><path class="ld" d="M320 39V91"/><path class="ld" d="M489.1 39V91"/>
+<circle class="st" cx="66.3" cy="30" r="6"/><circle class="st" cx="150.9" cy="30" r="6"/><circle class="st" cx="235.4" cy="30" r="6"/><circle class="st f" cx="320" cy="30" r="7"/><circle class="st" cx="404.6" cy="30" r="6"/><circle class="st" cx="489.1" cy="30" r="6"/><circle class="st" cx="573.7" cy="30" r="6"/>
+<text x="66.3" y="60">Radio</text><text x="150.9" y="109">Microwave</text><text class="e" x="150.9" y="126">phones, ovens</text><text x="235.4" y="60">Infrared</text><text class="e" x="235.4" y="77">felt as heat</text><text class="f" x="320" y="109">Visible</text><text class="e" x="320" y="126">380–750 nm</text><text x="404.6" y="60">Ultraviolet</text><text class="e" x="404.6" y="77">sunburn</text><text x="489.1" y="109">X-ray</text><text class="e" x="489.1" y="126">passes soft tissue</text><text x="573.7" y="60">Gamma</text><text class="e" x="573.7" y="77">nuclear decay</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</div>
+<pre class="tag">```sketch spectrum
+title: The electromagnetic spectrum
+ends: Long waves, low energy .. Short waves, high energy
+Radio
+Microwave: phones, ovens
+Infrared: felt as heat
+*Visible*: 380–750 nm
+Ultraviolet: sunburn
+X-ray: passes soft tissue
+Gamma: nuclear decay
+```</pre>
+</div></section>
+
+<section class="spec"><h2>Sketches the app cannot draw</h2><p>Nothing shows, as in skt.1: the paragraphs close up, with no gap, error box or source. The console logs the kind and the reason. Line numbers count the body from 1, title line included. One case per kind:</p><div class="stage">
+<div class="reply">
+<p class="p">Lava that hits air or water freezes before crystals can form at all.</p>
+<div class="gone" aria-hidden="true"></div>
+<p class="p">So obsidian is a natural glass, sharp enough for the first surgical blades.</p>
+</div>
+<pre class="tag">```sketch compare
+Cost: Cheap | Expensive
+Speed: Slow | Fast
+```
+
+console.warn: Sketch hidden (compare): no &quot;vs: A | B&quot; line</pre>
+<pre class="tag">```sketch venn
+Metals: Iron, Copper
+both: Conduct heat
+```
+
+console.warn: Sketch hidden (venn): needs two sets, found 1</pre>
+<pre class="tag">```sketch pie
+title: Monthly budget
+Rent: 900
+Food: 400
+Savings: -150
+```
+
+console.warn: Sketch hidden (pie): line 4 &quot;Savings: -150&quot; is negative</pre>
+<pre class="tag">```sketch line
+title: Water at sea level (°C)
+range: 0..100
+0: Freezes
+100: Boils
+120: Steam in a pressure cooker
+```
+
+console.warn: Sketch hidden (line): line 5 &quot;120: Steam in a pressure cooker&quot; is outside 0..100</pre>
+<pre class="tag">```sketch quadrant
+x: Easy .. Hard
+y: Low payoff .. High payoff
+Flashcards: 3, 8
+Rewriting notes: 6, 12
+```
+
+console.warn: Sketch hidden (quadrant): line 4 &quot;Rewriting notes: 6, 12&quot; has y 12, above 10</pre>
+<pre class="tag">```sketch spectrum
+Granite: crystals easy to see
+Basalt: crystals mostly tiny
+```
+
+console.warn: Sketch hidden (spectrum): no &quot;ends: low .. high&quot; line</pre>
+</div></section>
+
+<section class="spec"><h2>What a screen reader hears</h2><p>As in skt.1, the figure is named “Sketch: <i>title</i>”, or “Sketch” with no title. Each kind adds its frame of reference after the title: the two names, the two sets, “shares of a whole”, the range, the two axes or the two ends. The items follow as a list in reading order, built from the items the sketch module returns.</p><div class="stage">
+<pre class="tag">Sketch: Bacterium or virus, comparing Bacterium and Virus, list, 5 items
+Structure: Bacterium, A living cell; Virus, Genes in a protein shell
+Typical size: Bacterium, About 1–2 micrometres; Virus, Mostly 20–300 nanometres
+Own ribosomes: Bacterium, Yes; Virus, No
+Reproduces: Bacterium, By itself; Virus, Only inside a host cell
+Antibiotics: Bacterium, Often work; Virus, Don't work, focus</pre>
+<pre class="tag">Sketch: Plant and animal cells, sets Plant cell and Animal cell, list, 9 items
+Cell wall, Plant cell only
+Chloroplasts, Plant cell only
+Large vacuole, Plant cell only
+Nucleus, both
+Mitochondria, both, focus
+Cell membrane, both
+Ribosomes, both
+Centrioles, Animal cell only
+Lysosomes, Animal cell only</pre>
+<pre class="tag">Sketch: A 2,000 kcal day, shares of a whole, list, 3 items
+Carbohydrates, 1,000 kcal, 50%
+Fat, 700 kcal, 35%, focus
+Protein, 300 kcal, 15%</pre>
+<pre class="tag">Sketch: Membrane voltage (mV), from −90 to 50, list, 3 items
+Resting, −70
+Threshold, −55, focus
+Typical peak, 30</pre>
+<pre class="tag">Sketch: Urgent or important?, across Not urgent to Urgent, up Not important to Important, list, 5 items
+Exam tomorrow, x 9, y 9
+Weekly revision, x 2, y 9, focus
+Booking the dentist, x 4, y 6
+Most notifications, x 8, y 2
+Scrolling feeds, x 1, y 1</pre>
+<pre class="tag">Sketch: Cooling speed and crystal size, from Slow cooling to Very fast cooling, list, 3 items
+Granite, crystals easy to see
+Basalt, crystals mostly tiny
+Obsidian, glass, no real crystals, focus</pre>
+</div></section>
+
+</main>
+<script src="line-diagram/ld.js"></script>
+</body></html>

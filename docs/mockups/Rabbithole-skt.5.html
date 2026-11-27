@@ -1,0 +1,1159 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sketches · Rabbithole-skt.5 mockup</title><link rel="stylesheet" href="line-diagram/ld.css">
+<style>
+/* Mockup only. Sketches: small diagrams the tutor writes, drawn by the app on the reply's own ground.
+   Theme roles used, mockup name then app token: --g background, --ink text-primary, --mut text-secondary,
+   --seam2 border-emphasized, --seam border, --w porcelain (rabbithole-paper), --up popover, --up2 hover. */
+.reply { max-width: 640px; }
+.reply h2:first-child { margin-top: 0; }
+
+/* The sketch: no frame, no fill, no head band. It sits between paragraphs at the column width. */
+.skt { position: relative; margin: 8px 0 20px; max-width: 640px; }
+.skt .t { font: 600 15px/1.35 var(--read); color: var(--ink); margin-bottom: 10px; }
+.skt svg { display: block; width: 100%; height: auto; overflow: visible; }
+.skt .ln2 { fill: none; stroke: var(--seam2); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.skt .ar { fill: none; stroke: var(--mut); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.skt .st { fill: var(--g); stroke: var(--mut); stroke-width: 2.5; }
+.skt .st.f { fill: var(--w); stroke: var(--w); }
+.skt text { font: 14px var(--read); fill: var(--ink); text-anchor: middle; }
+.skt text.f { fill: var(--w); font-weight: 600; }
+.skt text.e { font-size: 13px; fill: var(--mut); }
+
+/* Bars: one row per item, label column then an 8px round-capped line and its value. */
+.bars { display: grid; grid-template-columns: max-content minmax(0, 360px); gap: 6px 16px; align-items: center; font: 14px/20px var(--read); }
+.bars dd { display: flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; }
+.bars s { flex: none; height: 8px; border-radius: 4px; background: var(--seam2); width: calc(var(--v) * (100% - 72px)); min-width: 8px; }
+.bars .f { color: var(--w); font-weight: 600; }
+.bars dd.f s { background: var(--w); }
+
+/* Controls: a quiet raised box at the top right, shown on hover and keyboard focus inside the sketch. */
+.acts { position: absolute; top: -6px; right: 0; display: none; gap: 2px; padding: 2px; border: 1px solid var(--seam); border-radius: 8px; background: var(--up); }
+.skt:hover .acts, .skt:focus-within .acts, .skt.hover .acts { display: flex; }
+@media (hover: none) { .acts { display: flex; } }
+.acts .btn { min-height: 30px; padding: 0 10px; font-size: 13px; border-color: transparent; }
+.acts .btn .i { color: var(--mut); }
+
+/* Streaming placeholder: the size of a small sketch, the hover-enamel skeleton tone. */
+.skt-wait { height: 96px; border-radius: 8px; margin: 8px 0 20px; background: var(--up2); opacity: .6; }
+
+/* The existing visual, as the app draws it today: no frame, actions box top right. */
+.vis { position: relative; margin: 8px 0 20px; }
+.vis svg text { font: 11px ui-monospace, "SF Mono", Menlo, Consolas, monospace; fill: var(--ink); text-anchor: middle; }
+.vis svg text.lab { font: 13px var(--ui); fill: var(--mut); }
+
+.stage .reply { width: 640px; max-width: 100%; }
+code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+pre.tag { font: 12px/1.6 ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--mut); white-space: pre-wrap; background: var(--deep); border-radius: 8px; padding: 10px 14px; width: 100%; }
+.note { font-size: 13px; color: var(--mut); }
+
+/* skt.5: every sketch lays out at its own box width at scale 1, so widths are container queries, never window ones. */
+.skt { container-type: inline-size; }
+/* Vertical flow keeps scale 1: its drawn width is its own, left-aligned in the box. */
+.skt svg.v { width: auto; max-width: 100%; }
+.skt svg.v text { text-anchor: start; }
+/* Bars below 280px: the label sits on its own line above its bar; the longest bar is the box minus 72px for the value. */
+@container (max-width: 279.98px) {
+  .bars { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .bars dt { margin-bottom: 2px; overflow-wrap: anywhere; }
+  .bars dd { margin-bottom: 10px; }
+  .bars dd:last-child { margin-bottom: 0; }
+  .bars s { width: calc(var(--v) * (100% - 72px)); }
+}
+/* The title stops 8px short of the controls box, shown or not, so pointing at a sketch never covers or reflows it. */
+.skt .t { padding-right: 164px; text-wrap: balance; }
+/* Controls below 400px: the icon alone, still named Expand into visual. */
+@container (max-width: 399.98px) {
+  .acts .btn { font-size: 0; gap: 0; width: 30px; padding: 0; justify-content: center; }
+  .skt .t { padding-right: 44px; }
+}
+/* Where the device cannot hover, the controls always show, so they sit under the sketch at its right instead of over it. */
+@media (hover: none) { .skt { padding-bottom: 44px; } .skt .acts { top: auto; bottom: 0; } .skt .t { padding-right: 0; } }
+.touch .skt { padding-bottom: 44px; } .touch .skt .acts { display: flex; top: auto; bottom: 0; } .touch .skt .t { padding-right: 0; }
+/* Station rings take the surface they sit on: raised enamel inside a comparison panel or a callout. */
+.layout-comparison .skt .st:not(.f), .layout-callout .skt .st:not(.f) { fill: var(--up); }
+
+/* Build-in: each item fades in, 160ms, house ease-out; item i starts at i x --gap. Opacity only. */
+@keyframes skt-in { from { opacity: 0; } to { opacity: 1; } }
+.skt.build .it { animation: skt-in 160ms cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: calc(var(--i) * var(--gap)); }
+/* A frame (.fr) is the build stopped at --t. */
+.fr .skt .it { animation: skt-in 160ms cubic-bezier(0.16, 1, 0.3, 1) both paused; animation-delay: calc(var(--i) * var(--gap) - var(--t)); }
+@media (prefers-reduced-motion: reduce) { .skt .it { animation: none !important; } }
+.rm .skt .it { animation: none !important; }
+
+/* Reply layouts, as src/markdown/layouts.css draws them today (Astryx spacing n = 4n px). */
+.reply-layout { min-width: 0; margin-block: 24px; }
+.reply-layout :is(.layout-media, .layout-text, .layout-item, .layout-card) { min-width: 0; }
+.reply-layout h3 { font: 700 18px/1.25 var(--cond); color: var(--w); margin-bottom: 4px; }
+.reply-layout .p { margin: 0; }
+.reply-layout :is(.layout-card, .timeline-entry, .layout-text, .layout-callout, .ans) > * + * { margin-block-start: 12px; }
+.reply-layout :is(.layout-card, .timeline-entry, .layout-text, .layout-callout, .ans) > :first-child { margin-block-start: 0; }
+.reply-layout :is(.layout-card, .timeline-entry, .layout-text, .layout-callout, .ans) > :last-child { margin-block-end: 0; }
+.reply-layout h3 + * { margin-block-start: 0; }
+.reply-layout :is(.layout-cards, .timeline-entries) { display: grid; margin: 0; padding: 0; list-style: none; }
+.reply-layout > p + :is(.layout-cards, .timeline-entries) { margin-block-start: 16px; }
+.layout-comparison .layout-cards { grid-auto-columns: minmax(0, 1fr); grid-auto-flow: column; padding: 16px 20px; background: var(--up); border-radius: 8px; }
+/* Same geometry as the app's 20px card padding: the panel takes the outer 20px, the seam keeps 20px each side. */
+.layout-comparison .layout-card:not(:last-child) { padding-inline-end: 20px; }
+.layout-comparison .layout-card + .layout-card { padding-inline-start: 20px; }
+.layout-comparison .layout-card + .layout-card { border-inline-start: 1px solid var(--seam); }
+.layout-steps .layout-cards { counter-reset: step; }
+.layout-steps .layout-card, .timeline-entry { position: relative; padding-block-end: 20px; }
+.layout-steps .layout-card:last-child, .timeline-entry:last-child { padding-block-end: 0; }
+.layout-steps .layout-card { counter-increment: step; padding-block-start: 3px; padding-inline-start: 44px; }
+.layout-steps .layout-card::before { content: counter(step); position: absolute; top: 0; left: 0; box-sizing: border-box; display: grid; place-items: center; width: 28px; height: 28px; border: 1.5px solid var(--seam2); border-radius: 50%; color: var(--w); font: 700 13px/1 var(--cond); font-variant-numeric: tabular-nums; }
+.timeline-entry { padding-inline-start: 28px; }
+.timeline-entry::before { content: ""; position: absolute; top: 5px; left: 0; box-sizing: border-box; width: 12px; height: 12px; border: 2.5px solid var(--w); border-radius: 50%; }
+.layout-steps .layout-card:not(:last-child)::after, .timeline-entry:not(:last-child)::after { content: ""; position: absolute; top: 32px; bottom: 4px; left: 13px; border-inline-start: 1.5px solid var(--seam2); }
+.timeline-entry:not(:last-child)::after { top: 21px; bottom: -1px; left: 5px; }
+.layout-figure { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.layout-figure .layout-media { display: grid; gap: 16px; }
+.layout-gallery .layout-media { display: flex; flex-wrap: wrap; gap: 16px; }
+.layout-gallery > .layout-media:not(:first-child) { margin-block-start: 16px; }
+.layout-callout { background: var(--up); border-radius: 8px; padding: 16px 20px; }
+.layout-wide .layout-media { width: 100%; }
+.layout-stages .layout-cards { grid-auto-columns: minmax(0, 1fr); grid-auto-flow: column; }
+.layout-stages .layout-card { position: relative; padding-block-start: 28px; padding-inline-end: 16px; }
+.layout-stages .layout-card::before { content: ""; position: absolute; top: 0; left: 0; box-sizing: border-box; width: 12px; height: 12px; border: 2.5px solid var(--w); border-radius: 50%; }
+.layout-stages .layout-card:not(:last-child)::after { content: ""; position: absolute; top: 5px; left: 16px; right: 4px; border-block-start: 1.5px solid var(--seam2); }
+.layout-terms .layout-card { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 5fr); column-gap: 20px; padding-block: 12px; border-block-start: 1px solid var(--seam); }
+.layout-terms .layout-card:last-child { border-block-end: 1px solid var(--seam); }
+.layout-terms .layout-card > :first-child { grid-row: 1 / span 20; margin-block-end: 0; padding-block-start: 3px; }
+.layout-terms .layout-card > :not(:first-child) { grid-column: 2; }
+.layout-terms .layout-card > h3 + * { margin-block-start: 0; }
+.layout-check .layout-card > h3 + * { margin-block-start: 4px; }
+.layout-check .ans { margin-block-start: 12px; }
+/* A picture in a layout: the image itself, shown here as a deep-field plate with its alt text. */
+.img { display: grid; place-items: center; background: var(--deep); border-radius: 8px; color: var(--mut); font: 13px var(--ui); padding: 12px; text-align: center; }
+
+/* Mockup page only: the two reply widths side by side, frame strips, the live demo controls. */
+.widths { display: flex; gap: 48px; align-items: flex-start; }
+.widths > div { flex: none; }
+.widths .note { margin-bottom: 10px; }
+.strip { display: grid; gap: 24px 24px; }
+.strip.six { grid-template-columns: repeat(3, 400px); }
+.strip.four { grid-template-columns: repeat(4, 320px); gap: 16px; }
+.fr { --t: 0ms; }
+.fr-shot { zoom: .625; width: 640px; }
+.strip.four .fr-shot { zoom: .5; }
+.fr .acts { display: none !important; }
+.fr .note { margin-top: 8px; }
+.fr .note b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.demo-bar { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+.demo-bar label { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.live { min-height: 860px; }
+.cursor::after { content: ""; display: inline-block; width: 2px; height: 1em; margin-left: 2px; vertical-align: -2px; background: var(--mut); }
+</style></head><body>
+<nav class="mock" aria-label="Mockup screens"><b>Sketches</b><a href="line-diagram/read.html">Read</a><a href="Rabbithole-skt.1.html">skt.1 and skt.7 Sketches</a><a href="Rabbithole-skt.5.html" aria-current=page>skt.5 Build-in and layouts</a><label><input type="checkbox" id="lt"> Light</label></nav>
+<header class="intro"><h1>Sketches build in and fit every reply layout</h1><p>Rabbithole-skt.5. A sketch fades in one item after another over 0.5 s, in step with the reply's reveal, and appears at once with reduced motion. It sits anywhere a paragraph can, in every reply layout, and fits each at the widths the app really gives it. The flow and bars shapes are skt.1's and do not change here. Spec: <code>docs/sketches-spec.md</code>. Decision: ADR 0027. The spec wins where they differ.</p></header>
+<ul class="rules">
+<li>A sketch lays out at its own box's width, at scale 1. Its text never shrinks or grows (title 15px, labels 14px, arrow labels 13px) and its lines stay 3px. The box is the column or layout cell the sketch sits in, at most 640px. Its breakpoints are container widths, never window widths.</li>
+<li>Flow stays horizontal while each rank column (box width divided by ranks) is at least 120px, or at least 160px when the flow forks. Below that it turns vertical. A 4-rank flow with a fork is horizontal only at 640px. A straight 4-rank flow is horizontal from 480px.</li>
+<li>Vertical flow runs down a 3px line 8px from the left edge. A fork leaves its station 12px down and turns 45 degrees onto a lane 24px to the right. A rejoin leaves its station 12px down and turns 45 degrees back, merging 36px above its target so the two steps share one chevron. Labels start 20px right of the last lane. Stations are 44px apart, plus 18px per extra label line and 20px for an arrow label, and 72px before a rejoin. Chevrons point down at the middle of each step, and an arrow label sits beside its chevron.</li>
+<li>Labels and arrow labels wrap at word breaks: in horizontal flow at the column width minus 24px, in vertical flow at the box's right edge. A word longer than its line breaks inside the word. The drawing grows taller and never overflows its box or scrolls.</li>
+<li>Bars keep their labels beside the bars from 280px. The label column takes its widest label, up to 45% of the box, and the track is at most 360px. Below 280px each label sits on its own line, 2px above its bar, and rows are 10px apart. The longest bar is always the track minus 72px, which leaves room for the value.</li>
+<li>Inside a layout, the layout's spacing replaces the sketch's own: 12px between it and its neighbours in a card, entry or column, and none at the cell's top or bottom. Station rings are filled with the surface under them: the ground, or raised enamel inside a comparison panel or a callout. A sketch counts toward a figure's text height, so a tall one can make the figure stack, as long text already does.</li>
+<li>Below a 480px reply, every layout already renders as plain flow (<code>LAYOUT_MIN_WIDTH</code>), so there a sketch sits at the full column width. The title always stops 8px short of the controls box, whether the box shows or not, so pointing at a sketch never covers or reflows the title. Below a 400px box the controls show only the photo icon, still named "Expand into visual", so the title gives up 44px instead of 164px. A title that wraps is balanced across its lines. Where the device cannot hover, the controls always show, so they sit 8px under the sketch at its right instead of over its title.</li>
+<li>Build-in: each item fades from opacity 0 to 1 over 160ms on the house ease-out, <code>cubic-bezier(0.16, 1, 0.3, 1)</code>. An item is its station or bar together with its label, its value, its incoming line, its chevron and its arrow label. Item <i>i</i> starts at <i>i</i> × min(120ms, 340ms ÷ (<i>n</i> − 1)). Five items start 85ms apart and four start 113ms apart, and both end at 500ms. The title fades in with the first item. Items go in reading order: ranks left to right with the top row before the fork row, and bars top to bottom.</li>
+<li>Only opacity moves. There is no line draw, slide, scale or growing bar: the One Motion Rule keeps the line draw for new branches. The sketch takes its full height from the first frame, so nothing around it moves.</li>
+<li>In step with the reveal, the build starts when the fence closes and the sketch replaces its placeholder. The text after it keeps streaming and does not wait. A sketch that is already complete when it first shows draws at once, like the text around it. This covers a reopened or scrolled-back reply, a theme switch and a check answer opened later.</li>
+<li>With reduced motion (<code>prefers-reduced-motion: reduce</code>) there is no build. The sketch draws whole at 0ms as the placeholder goes. Screen readers get the whole figure and its item list at 0ms either way, because the build is visual only.</li>
+</ul>
+<main class="specs wide">
+
+<section class="spec"><h2>Build-in, live</h2><p>A reply streaming in at an illustrative speed. While each fence is open its placeholder holds the place. When the fence closes, the sketch builds and the next paragraph streams at the same time. Tick Reduced motion to see the sketches appear at once. Your system's reduced-motion setting does the same.</p><div class="stage">
+<div class="demo-bar"><button class="btn" id="replay"><i class="i i--sm i-arrow-path"></i>Replay</button><label><input type="checkbox" id="rm"> Reduced motion</label><button class="btn ghost" id="all"><i class="i i--sm i-play"></i>Build every sketch on this page</button></div>
+<article class="reply live" id="live">
+<h2>Counting arrangements</h2>
+<p class="p" data-stream>Flip four coins and write down the order: there are 16 possible sequences. Most of them land in the middle. There is only one way to get no heads, but six ways to get exactly two.</p>
+<div class="skt-wait" role="status" aria-label="Drawing a sketch" hidden></div>
+<figure class="skt" aria-label="Sketch: Sequences behind each head count (4 coins)">
+<figcaption class="t it" style="--i:0">Sequences behind each head count (4 coins)</figcaption>
+<dl class="bars">
+<dt class="it" style="--i:0">0 heads</dt><dd class="it" style="--v:.1667;--i:0"><s></s>1</dd>
+<dt class="it" style="--i:1">1 head</dt><dd class="it" style="--v:.6667;--i:1"><s></s>4</dd>
+<dt class="f it" style="--i:2">2 heads</dt><dd class="f it" style="--v:1;--i:2"><s></s>6</dd>
+<dt class="it" style="--i:3">3 heads</dt><dd class="it" style="--v:.6667;--i:3"><s></s>4</dd>
+<dt class="it" style="--i:4">4 heads</dt><dd class="it" style="--v:.1667;--i:4"><s></s>1</dd>
+</dl>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+<p class="p" data-stream>Entropy counts those ways. A state that can happen in more ways is more likely, which is why mixed results win.</p>
+<h2 data-stream>Why freezing water does not break the rule</h2>
+<p class="p" data-stream>Ice is more ordered than water, so the water's own entropy falls as it freezes. But freezing releases heat, and that heat spreads into colder surroundings, which gain more entropy than the water lost.</p>
+<div class="skt-wait" role="status" aria-label="Drawing a sketch" hidden></div>
+<figure class="skt" aria-label="Sketch: Freezing below 0 °C">
+<figcaption class="t it" style="--i:0">Freezing below 0 °C</figcaption>
+<svg viewBox="0 0 640 160" aria-hidden="true">
+<path class="ln2 it" d="M80 24H240" style="--i:1"/>
+<path class="ln2 it" d="M80 24H124L208 108H240" style="--i:2"/>
+<path class="ln2 it" d="M240 108H400" style="--i:3"/>
+<path class="ln2 it" d="M240 24H560" style="--i:4"/>
+<path class="ln2 it" d="M400 108H432L516 24" style="--i:4"/>
+<path class="ar it" d="M157 19L162 24L157 29" style="--i:1"/>
+<path class="ar it" d="M219 103L224 108L219 113" style="--i:2"/>
+<path class="ar it" d="M317 103L322 108L317 113" style="--i:3"/>
+<path class="ar it" d="M537 19L542 24L537 29" style="--i:4"/>
+<circle class="st it" cx="80" cy="24" r="6" style="--i:0"/>
+<circle class="st it" cx="240" cy="24" r="6" style="--i:1"/>
+<circle class="st it" cx="240" cy="108" r="6" style="--i:2"/>
+<circle class="st it" cx="400" cy="108" r="6" style="--i:3"/>
+<circle class="st f it" cx="560" cy="24" r="7" style="--i:4"/>
+<text class="it" x="80" y="50" style="--i:0">Water freezes</text>
+<text class="it" x="240" y="50" style="--i:1">Water's entropy</text>
+<text class="it" x="240" y="68" style="--i:1">falls</text>
+<text class="f it" x="560" y="50" style="--i:4">Total rises</text>
+<text class="it" x="240" y="134" style="--i:2">Heat flows out</text>
+<text class="it" x="400" y="134" style="--i:3">Surroundings'</text>
+<text class="it" x="400" y="152" style="--i:3">entropy rises more</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+<p class="p" data-stream>So the total still rises. The second law is about the whole system, never one part of it.</p>
+</article>
+</div></section>
+
+<section class="spec"><h2>Build-in, frame by frame: flow</h2><p>Five items, 85ms apart, each fading in over 160ms. The line into each station fades in with that station, so the drawing grows along its steps without anything travelling. Frames are drawn at 62.5%.</p><div class="strip six">
+<div class="fr" style="--t:0ms"><div class="fr-shot"><figure class="skt" aria-label="Sketch: Freezing below 0 °C">
+<figcaption class="t it" style="--i:0">Freezing below 0 °C</figcaption>
+<svg viewBox="0 0 640 160" aria-hidden="true">
+<path class="ln2 it" d="M80 24H240" style="--i:1"/>
+<path class="ln2 it" d="M80 24H124L208 108H240" style="--i:2"/>
+<path class="ln2 it" d="M240 108H400" style="--i:3"/>
+<path class="ln2 it" d="M240 24H560" style="--i:4"/>
+<path class="ln2 it" d="M400 108H432L516 24" style="--i:4"/>
+<path class="ar it" d="M157 19L162 24L157 29" style="--i:1"/>
+<path class="ar it" d="M219 103L224 108L219 113" style="--i:2"/>
+<path class="ar it" d="M317 103L322 108L317 113" style="--i:3"/>
+<path class="ar it" d="M537 19L542 24L537 29" style="--i:4"/>
+<circle class="st it" cx="80" cy="24" r="6" style="--i:0"/>
+<circle class="st it" cx="240" cy="24" r="6" style="--i:1"/>
+<circle class="st it" cx="240" cy="108" r="6" style="--i:2"/>
+<circle class="st it" cx="400" cy="108" r="6" style="--i:3"/>
+<circle class="st f it" cx="560" cy="24" r="7" style="--i:4"/>
+<text class="it" x="80" y="50" style="--i:0">Water freezes</text>
+<text class="it" x="240" y="50" style="--i:1">Water's entropy</text>
+<text class="it" x="240" y="68" style="--i:1">falls</text>
+<text class="f it" x="560" y="50" style="--i:4">Total rises</text>
+<text class="it" x="240" y="134" style="--i:2">Heat flows out</text>
+<text class="it" x="400" y="134" style="--i:3">Surroundings'</text>
+<text class="it" x="400" y="152" style="--i:3">entropy rises more</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure></div><p class="note"><b>0 ms</b> · The fence has closed and the placeholder is gone. The sketch holds its full height, with nothing drawn yet.</p></div>
+<div class="fr" style="--t:85ms"><div class="fr-shot"><figure class="skt" aria-label="Sketch: Freezing below 0 °C">
+<figcaption class="t it" style="--i:0">Freezing below 0 °C</figcaption>
+<svg viewBox="0 0 640 160" aria-hidden="true">
+<path class="ln2 it" d="M80 24H240" style="--i:1"/>
+<path class="ln2 it" d="M80 24H124L208 108H240" style="--i:2"/>
+<path class="ln2 it" d="M240 108H400" style="--i:3"/>
+<path class="ln2 it" d="M240 24H560" style="--i:4"/>
+<path class="ln2 it" d="M400 108H432L516 24" style="--i:4"/>
+<path class="ar it" d="M157 19L162 24L157 29" style="--i:1"/>
+<path class="ar it" d="M219 103L224 108L219 113" style="--i:2"/>
+<path class="ar it" d="M317 103L322 108L317 113" style="--i:3"/>
+<path class="ar it" d="M537 19L542 24L537 29" style="--i:4"/>
+<circle class="st it" cx="80" cy="24" r="6" style="--i:0"/>
+<circle class="st it" cx="240" cy="24" r="6" style="--i:1"/>
+<circle class="st it" cx="240" cy="108" r="6" style="--i:2"/>
+<circle class="st it" cx="400" cy="108" r="6" style="--i:3"/>
+<circle class="st f it" cx="560" cy="24" r="7" style="--i:4"/>
+<text class="it" x="80" y="50" style="--i:0">Water freezes</text>
+<text class="it" x="240" y="50" style="--i:1">Water's entropy</text>
+<text class="it" x="240" y="68" style="--i:1">falls</text>
+<text class="f it" x="560" y="50" style="--i:4">Total rises</text>
+<text class="it" x="240" y="134" style="--i:2">Heat flows out</text>
+<text class="it" x="400" y="134" style="--i:3">Surroundings'</text>
+<text class="it" x="400" y="152" style="--i:3">entropy rises more</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure></div><p class="note"><b>85 ms</b> · The title and Water freezes are nearly in. Water's entropy falls starts.</p></div>
+<div class="fr" style="--t:170ms"><div class="fr-shot"><figure class="skt" aria-label="Sketch: Freezing below 0 °C">
+<figcaption class="t it" style="--i:0">Freezing below 0 °C</figcaption>
+<svg viewBox="0 0 640 160" aria-hidden="true">
+<path class="ln2 it" d="M80 24H240" style="--i:1"/>
+<path class="ln2 it" d="M80 24H124L208 108H240" style="--i:2"/>
+<path class="ln2 it" d="M240 108H400" style="--i:3"/>
+<path class="ln2 it" d="M240 24H560" style="--i:4"/>
+<path class="ln2 it" d="M400 108H432L516 24" style="--i:4"/>
+<path class="ar it" d="M157 19L162 24L157 29" style="--i:1"/>
+<path class="ar it" d="M219 103L224 108L219 113" style="--i:2"/>
+<path class="ar it" d="M317 103L322 108L317 113" style="--i:3"/>
+<path class="ar it" d="M537 19L542 24L537 29" style="--i:4"/>
+<circle class="st it" cx="80" cy="24" r="6" style="--i:0"/>
+<circle class="st it" cx="240" cy="24" r="6" style="--i:1"/>
+<circle class="st it" cx="240" cy="108" r="6" style="--i:2"/>
+<circle class="st it" cx="400" cy="108" r="6" style="--i:3"/>
+<circle class="st f it" cx="560" cy="24" r="7" style="--i:4"/>
+<text class="it" x="80" y="50" style="--i:0">Water freezes</text>
+<text class="it" x="240" y="50" style="--i:1">Water's entropy</text>
+<text class="it" x="240" y="68" style="--i:1">falls</text>
+<text class="f it" x="560" y="50" style="--i:4">Total rises</text>
+<text class="it" x="240" y="134" style="--i:2">Heat flows out</text>
+<text class="it" x="400" y="134" style="--i:3">Surroundings'</text>
+<text class="it" x="400" y="152" style="--i:3">entropy rises more</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure></div><p class="note"><b>170 ms</b> · The fork starts: Heat flows out and its line.</p></div>
+<div class="fr" style="--t:255ms"><div class="fr-shot"><figure class="skt" aria-label="Sketch: Freezing below 0 °C">
+<figcaption class="t it" style="--i:0">Freezing below 0 °C</figcaption>
+<svg viewBox="0 0 640 160" aria-hidden="true">
+<path class="ln2 it" d="M80 24H240" style="--i:1"/>
+<path class="ln2 it" d="M80 24H124L208 108H240" style="--i:2"/>
+<path class="ln2 it" d="M240 108H400" style="--i:3"/>
+<path class="ln2 it" d="M240 24H560" style="--i:4"/>
+<path class="ln2 it" d="M400 108H432L516 24" style="--i:4"/>
+<path class="ar it" d="M157 19L162 24L157 29" style="--i:1"/>
+<path class="ar it" d="M219 103L224 108L219 113" style="--i:2"/>
+<path class="ar it" d="M317 103L322 108L317 113" style="--i:3"/>
+<path class="ar it" d="M537 19L542 24L537 29" style="--i:4"/>
+<circle class="st it" cx="80" cy="24" r="6" style="--i:0"/>
+<circle class="st it" cx="240" cy="24" r="6" style="--i:1"/>
+<circle class="st it" cx="240" cy="108" r="6" style="--i:2"/>
+<circle class="st it" cx="400" cy="108" r="6" style="--i:3"/>
+<circle class="st f it" cx="560" cy="24" r="7" style="--i:4"/>
+<text class="it" x="80" y="50" style="--i:0">Water freezes</text>
+<text class="it" x="240" y="50" style="--i:1">Water's entropy</text>
+<text class="it" x="240" y="68" style="--i:1">falls</text>
+<text class="f it" x="560" y="50" style="--i:4">Total rises</text>
+<text class="it" x="240" y="134" style="--i:2">Heat flows out</text>
+<text class="it" x="400" y="134" style="--i:3">Surroundings'</text>
+<text class="it" x="400" y="152" style="--i:3">entropy rises more</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure></div><p class="note"><b>255 ms</b> · Surroundings' entropy rises more starts.</p></div>
+<div class="fr" style="--t:340ms"><div class="fr-shot"><figure class="skt" aria-label="Sketch: Freezing below 0 °C">
+<figcaption class="t it" style="--i:0">Freezing below 0 °C</figcaption>
+<svg viewBox="0 0 640 160" aria-hidden="true">
+<path class="ln2 it" d="M80 24H240" style="--i:1"/>
+<path class="ln2 it" d="M80 24H124L208 108H240" style="--i:2"/>
+<path class="ln2 it" d="M240 108H400" style="--i:3"/>
+<path class="ln2 it" d="M240 24H560" style="--i:4"/>
+<path class="ln2 it" d="M400 108H432L516 24" style="--i:4"/>
+<path class="ar it" d="M157 19L162 24L157 29" style="--i:1"/>
+<path class="ar it" d="M219 103L224 108L219 113" style="--i:2"/>
+<path class="ar it" d="M317 103L322 108L317 113" style="--i:3"/>
+<path class="ar it" d="M537 19L542 24L537 29" style="--i:4"/>
+<circle class="st it" cx="80" cy="24" r="6" style="--i:0"/>
+<circle class="st it" cx="240" cy="24" r="6" style="--i:1"/>
+<circle class="st it" cx="240" cy="108" r="6" style="--i:2"/>
+<circle class="st it" cx="400" cy="108" r="6" style="--i:3"/>
+<circle class="st f it" cx="560" cy="24" r="7" style="--i:4"/>
+<text class="it" x="80" y="50" style="--i:0">Water freezes</text>
+<text class="it" x="240" y="50" style="--i:1">Water's entropy</text>
+<text class="it" x="240" y="68" style="--i:1">falls</text>
+<text class="f it" x="560" y="50" style="--i:4">Total rises</text>
+<text class="it" x="240" y="134" style="--i:2">Heat flows out</text>
+<text class="it" x="400" y="134" style="--i:3">Surroundings'</text>
+<text class="it" x="400" y="152" style="--i:3">entropy rises more</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure></div><p class="note"><b>340 ms</b> · The focus, Total rises, starts with both lines that join into it.</p></div>
+<div class="fr" style="--t:500ms"><div class="fr-shot"><figure class="skt" aria-label="Sketch: Freezing below 0 °C">
+<figcaption class="t it" style="--i:0">Freezing below 0 °C</figcaption>
+<svg viewBox="0 0 640 160" aria-hidden="true">
+<path class="ln2 it" d="M80 24H240" style="--i:1"/>
+<path class="ln2 it" d="M80 24H124L208 108H240" style="--i:2"/>
+<path class="ln2 it" d="M240 108H400" style="--i:3"/>
+<path class="ln2 it" d="M240 24H560" style="--i:4"/>
+<path class="ln2 it" d="M400 108H432L516 24" style="--i:4"/>
+<path class="ar it" d="M157 19L162 24L157 29" style="--i:1"/>
+<path class="ar it" d="M219 103L224 108L219 113" style="--i:2"/>
+<path class="ar it" d="M317 103L322 108L317 113" style="--i:3"/>
+<path class="ar it" d="M537 19L542 24L537 29" style="--i:4"/>
+<circle class="st it" cx="80" cy="24" r="6" style="--i:0"/>
+<circle class="st it" cx="240" cy="24" r="6" style="--i:1"/>
+<circle class="st it" cx="240" cy="108" r="6" style="--i:2"/>
+<circle class="st it" cx="400" cy="108" r="6" style="--i:3"/>
+<circle class="st f it" cx="560" cy="24" r="7" style="--i:4"/>
+<text class="it" x="80" y="50" style="--i:0">Water freezes</text>
+<text class="it" x="240" y="50" style="--i:1">Water's entropy</text>
+<text class="it" x="240" y="68" style="--i:1">falls</text>
+<text class="f it" x="560" y="50" style="--i:4">Total rises</text>
+<text class="it" x="240" y="134" style="--i:2">Heat flows out</text>
+<text class="it" x="400" y="134" style="--i:3">Surroundings'</text>
+<text class="it" x="400" y="152" style="--i:3">entropy rises more</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure></div><p class="note"><b>500 ms</b> · Done. This is also the reduced-motion frame at 0 ms.</p></div>
+</div></section>
+
+<section class="spec"><h2>Build-in, frame by frame: bars</h2><p>Each row fades in whole: label, bar and value together. Bars never grow from zero. The focus row builds in its turn, not last.</p><div class="strip six">
+<div class="fr" style="--t:0ms"><div class="fr-shot"><figure class="skt" aria-label="Sketch: Sequences behind each head count (4 coins)">
+<figcaption class="t it" style="--i:0">Sequences behind each head count (4 coins)</figcaption>
+<dl class="bars">
+<dt class="it" style="--i:0">0 heads</dt><dd class="it" style="--v:.1667;--i:0"><s></s>1</dd>
+<dt class="it" style="--i:1">1 head</dt><dd class="it" style="--v:.6667;--i:1"><s></s>4</dd>
+<dt class="f it" style="--i:2">2 heads</dt><dd class="f it" style="--v:1;--i:2"><s></s>6</dd>
+<dt class="it" style="--i:3">3 heads</dt><dd class="it" style="--v:.6667;--i:3"><s></s>4</dd>
+<dt class="it" style="--i:4">4 heads</dt><dd class="it" style="--v:.1667;--i:4"><s></s>1</dd>
+</dl>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure></div><p class="note"><b>0 ms</b> · Full height held, nothing drawn yet.</p></div>
+<div class="fr" style="--t:85ms"><div class="fr-shot"><figure class="skt" aria-label="Sketch: Sequences behind each head count (4 coins)">
+<figcaption class="t it" style="--i:0">Sequences behind each head count (4 coins)</figcaption>
+<dl class="bars">
+<dt class="it" style="--i:0">0 heads</dt><dd class="it" style="--v:.1667;--i:0"><s></s>1</dd>
+<dt class="it" style="--i:1">1 head</dt><dd class="it" style="--v:.6667;--i:1"><s></s>4</dd>
+<dt class="f it" style="--i:2">2 heads</dt><dd class="f it" style="--v:1;--i:2"><s></s>6</dd>
+<dt class="it" style="--i:3">3 heads</dt><dd class="it" style="--v:.6667;--i:3"><s></s>4</dd>
+<dt class="it" style="--i:4">4 heads</dt><dd class="it" style="--v:.1667;--i:4"><s></s>1</dd>
+</dl>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure></div><p class="note"><b>85 ms</b> · The title and 0 heads are nearly in. 1 head starts.</p></div>
+<div class="fr" style="--t:170ms"><div class="fr-shot"><figure class="skt" aria-label="Sketch: Sequences behind each head count (4 coins)">
+<figcaption class="t it" style="--i:0">Sequences behind each head count (4 coins)</figcaption>
+<dl class="bars">
+<dt class="it" style="--i:0">0 heads</dt><dd class="it" style="--v:.1667;--i:0"><s></s>1</dd>
+<dt class="it" style="--i:1">1 head</dt><dd class="it" style="--v:.6667;--i:1"><s></s>4</dd>
+<dt class="f it" style="--i:2">2 heads</dt><dd class="f it" style="--v:1;--i:2"><s></s>6</dd>
+<dt class="it" style="--i:3">3 heads</dt><dd class="it" style="--v:.6667;--i:3"><s></s>4</dd>
+<dt class="it" style="--i:4">4 heads</dt><dd class="it" style="--v:.1667;--i:4"><s></s>1</dd>
+</dl>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure></div><p class="note"><b>170 ms</b> · 2 heads, the focus, starts.</p></div>
+<div class="fr" style="--t:255ms"><div class="fr-shot"><figure class="skt" aria-label="Sketch: Sequences behind each head count (4 coins)">
+<figcaption class="t it" style="--i:0">Sequences behind each head count (4 coins)</figcaption>
+<dl class="bars">
+<dt class="it" style="--i:0">0 heads</dt><dd class="it" style="--v:.1667;--i:0"><s></s>1</dd>
+<dt class="it" style="--i:1">1 head</dt><dd class="it" style="--v:.6667;--i:1"><s></s>4</dd>
+<dt class="f it" style="--i:2">2 heads</dt><dd class="f it" style="--v:1;--i:2"><s></s>6</dd>
+<dt class="it" style="--i:3">3 heads</dt><dd class="it" style="--v:.6667;--i:3"><s></s>4</dd>
+<dt class="it" style="--i:4">4 heads</dt><dd class="it" style="--v:.1667;--i:4"><s></s>1</dd>
+</dl>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure></div><p class="note"><b>255 ms</b> · 3 heads starts.</p></div>
+<div class="fr" style="--t:340ms"><div class="fr-shot"><figure class="skt" aria-label="Sketch: Sequences behind each head count (4 coins)">
+<figcaption class="t it" style="--i:0">Sequences behind each head count (4 coins)</figcaption>
+<dl class="bars">
+<dt class="it" style="--i:0">0 heads</dt><dd class="it" style="--v:.1667;--i:0"><s></s>1</dd>
+<dt class="it" style="--i:1">1 head</dt><dd class="it" style="--v:.6667;--i:1"><s></s>4</dd>
+<dt class="f it" style="--i:2">2 heads</dt><dd class="f it" style="--v:1;--i:2"><s></s>6</dd>
+<dt class="it" style="--i:3">3 heads</dt><dd class="it" style="--v:.6667;--i:3"><s></s>4</dd>
+<dt class="it" style="--i:4">4 heads</dt><dd class="it" style="--v:.1667;--i:4"><s></s>1</dd>
+</dl>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure></div><p class="note"><b>340 ms</b> · 4 heads starts.</p></div>
+<div class="fr" style="--t:500ms"><div class="fr-shot"><figure class="skt" aria-label="Sketch: Sequences behind each head count (4 coins)">
+<figcaption class="t it" style="--i:0">Sequences behind each head count (4 coins)</figcaption>
+<dl class="bars">
+<dt class="it" style="--i:0">0 heads</dt><dd class="it" style="--v:.1667;--i:0"><s></s>1</dd>
+<dt class="it" style="--i:1">1 head</dt><dd class="it" style="--v:.6667;--i:1"><s></s>4</dd>
+<dt class="f it" style="--i:2">2 heads</dt><dd class="f it" style="--v:1;--i:2"><s></s>6</dd>
+<dt class="it" style="--i:3">3 heads</dt><dd class="it" style="--v:.6667;--i:3"><s></s>4</dd>
+<dt class="it" style="--i:4">4 heads</dt><dd class="it" style="--v:.1667;--i:4"><s></s>1</dd>
+</dl>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure></div><p class="note"><b>500 ms</b> · Done.</p></div>
+</div></section>
+
+<section class="spec"><h2>In step with the reply's reveal</h2><p>The sketch arrives where its fence was, after the text before it and while the text after it is still arriving. Nothing waits for anything else. Frames are drawn at 50%.</p><div class="strip four">
+<div class="fr" style="--t:0ms"><div class="fr-shot"><div class="reply"><p class="p">Flip four coins and write down the order: there are 16 possible sequences. Most of them land in the middle. There is only one way to get no heads, but six ways to get exactly two.</p><div class="skt-wait"></div></div></div><p class="note"><b>Fence open</b> · The 96px placeholder holds the place. The source never shows.</p></div>
+<div class="fr" style="--t:170ms"><div class="fr-shot"><div class="reply"><p class="p">Flip four coins and write down the order: there are 16 possible sequences. Most of them land in the middle. There is only one way to get no heads, but six ways to get exactly two.</p><figure class="skt" aria-label="Sketch: Sequences behind each head count (4 coins)">
+<figcaption class="t it" style="--i:0">Sequences behind each head count (4 coins)</figcaption>
+<dl class="bars">
+<dt class="it" style="--i:0">0 heads</dt><dd class="it" style="--v:.1667;--i:0"><s></s>1</dd>
+<dt class="it" style="--i:1">1 head</dt><dd class="it" style="--v:.6667;--i:1"><s></s>4</dd>
+<dt class="f it" style="--i:2">2 heads</dt><dd class="f it" style="--v:1;--i:2"><s></s>6</dd>
+<dt class="it" style="--i:3">3 heads</dt><dd class="it" style="--v:.6667;--i:3"><s></s>4</dd>
+<dt class="it" style="--i:4">4 heads</dt><dd class="it" style="--v:.1667;--i:4"><s></s>1</dd>
+</dl>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure><p class="p"><span class="cursor">Entropy counts</span></p></div></div><p class="note"><b>Fence closed + 170 ms</b> · The sketch is building. The next paragraph has started streaming below it.</p></div>
+<div class="fr" style="--t:500ms"><div class="fr-shot"><div class="reply"><p class="p">Flip four coins and write down the order: there are 16 possible sequences. Most of them land in the middle. There is only one way to get no heads, but six ways to get exactly two.</p><figure class="skt" aria-label="Sketch: Sequences behind each head count (4 coins)">
+<figcaption class="t it" style="--i:0">Sequences behind each head count (4 coins)</figcaption>
+<dl class="bars">
+<dt class="it" style="--i:0">0 heads</dt><dd class="it" style="--v:.1667;--i:0"><s></s>1</dd>
+<dt class="it" style="--i:1">1 head</dt><dd class="it" style="--v:.6667;--i:1"><s></s>4</dd>
+<dt class="f it" style="--i:2">2 heads</dt><dd class="f it" style="--v:1;--i:2"><s></s>6</dd>
+<dt class="it" style="--i:3">3 heads</dt><dd class="it" style="--v:.6667;--i:3"><s></s>4</dd>
+<dt class="it" style="--i:4">4 heads</dt><dd class="it" style="--v:.1667;--i:4"><s></s>1</dd>
+</dl>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure><p class="p"><span class="cursor">Entropy counts those ways. A state that can happen</span></p></div></div><p class="note"><b>+ 500 ms</b> · Built. The text goes on at its own pace.</p></div>
+<div class="fr rm" style="--t:0ms"><div class="fr-shot"><div class="reply"><p class="p">Flip four coins and write down the order: there are 16 possible sequences. Most of them land in the middle. There is only one way to get no heads, but six ways to get exactly two.</p><figure class="skt" aria-label="Sketch: Sequences behind each head count (4 coins)">
+<figcaption class="t it" style="--i:0">Sequences behind each head count (4 coins)</figcaption>
+<dl class="bars">
+<dt class="it" style="--i:0">0 heads</dt><dd class="it" style="--v:.1667;--i:0"><s></s>1</dd>
+<dt class="it" style="--i:1">1 head</dt><dd class="it" style="--v:.6667;--i:1"><s></s>4</dd>
+<dt class="f it" style="--i:2">2 heads</dt><dd class="f it" style="--v:1;--i:2"><s></s>6</dd>
+<dt class="it" style="--i:3">3 heads</dt><dd class="it" style="--v:.6667;--i:3"><s></s>4</dd>
+<dt class="it" style="--i:4">4 heads</dt><dd class="it" style="--v:.1667;--i:4"><s></s>1</dd>
+</dl>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure><p class="p">Entropy counts those ways. A state that can happen in more ways is more likely, which is why mixed results win.</p></div></div><p class="note"><b>Already complete</b> · A reopened or scrolled-back reply, a theme switch, or reduced motion: the sketch draws whole at once.</p></div>
+</div></section>
+
+<section class="spec"><h2>Reduced motion</h2><p>With <code>prefers-reduced-motion: reduce</code>, the placeholder gives way to the finished sketch in one frame. There is no fade, no stagger and no delay, and the layout is the same as with the build on.</p><div class="stage"><div class="reply rm">
+<p class="p">Each degree of latitude you move north, the ground under you travels a shorter circle.</p>
+<figure class="skt" aria-label="Sketch: Approximate eastward speed of the ground">
+<figcaption class="t it" style="--i:0">Approximate eastward speed of the ground</figcaption>
+<dl class="bars">
+<dt class="it" style="--i:0">Equator</dt><dd class="it" style="--v:1;--i:0"><s></s>465 m/s</dd>
+<dt class="it" style="--i:1">30° latitude</dt><dd class="it" style="--v:.8667;--i:1"><s></s>403 m/s</dd>
+<dt class="f it" style="--i:2">60° latitude</dt><dd class="f it" style="--v:.5011;--i:2"><s></s>233 m/s</dd>
+<dt class="it" style="--i:3">North Pole</dt><dd class="it" style="--v:0;--i:3"><s></s>0 m/s</dd>
+</dl>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</div>
+<pre class="tag">@media (prefers-reduced-motion: reduce) { sketch items: no animation, opacity 1 at 0 ms }</pre></div></section>
+
+</main>
+
+<header class="intro"><h2>In every reply layout</h2><p>Each layout at its two real widths. On the left is a 640px reply, from a 1440 window with the docked map, or Expand chat. On the right is a 480px reply, from a 1280 window with the docked map, which is the narrowest reply that still holds layouts. Each caption gives the sketch's own box width, which sets how it draws. The build and reduced motion change only opacity, so each drawing is the same in both.</p></header>
+<main class="specs wide">
+
+<section class="spec"><h2>Plain flow</h2><p>The sketch takes the column. A forked 4-rank flow needs 160px per column, so it is horizontal at 640px and vertical at 480px.</p><div class="widths">
+<div style="width:640px"><p class="note">640px reply · sketch box 640px · 160px per rank, horizontal</p><article class="reply">
+<p class="p">Ice is more ordered than water, so the water's own entropy falls as it freezes. But freezing releases heat, and that heat spreads into colder surroundings, which gain more entropy than the water lost.</p>
+<figure class="skt" aria-label="Sketch: Freezing below 0 °C">
+<figcaption class="t it" style="--i:0">Freezing below 0 °C</figcaption>
+<svg viewBox="0 0 640 160" aria-hidden="true">
+<path class="ln2 it" d="M80 24H240" style="--i:1"/>
+<path class="ln2 it" d="M80 24H124L208 108H240" style="--i:2"/>
+<path class="ln2 it" d="M240 108H400" style="--i:3"/>
+<path class="ln2 it" d="M240 24H560" style="--i:4"/>
+<path class="ln2 it" d="M400 108H432L516 24" style="--i:4"/>
+<path class="ar it" d="M157 19L162 24L157 29" style="--i:1"/>
+<path class="ar it" d="M219 103L224 108L219 113" style="--i:2"/>
+<path class="ar it" d="M317 103L322 108L317 113" style="--i:3"/>
+<path class="ar it" d="M537 19L542 24L537 29" style="--i:4"/>
+<circle class="st it" cx="80" cy="24" r="6" style="--i:0"/>
+<circle class="st it" cx="240" cy="24" r="6" style="--i:1"/>
+<circle class="st it" cx="240" cy="108" r="6" style="--i:2"/>
+<circle class="st it" cx="400" cy="108" r="6" style="--i:3"/>
+<circle class="st f it" cx="560" cy="24" r="7" style="--i:4"/>
+<text class="it" x="80" y="50" style="--i:0">Water freezes</text>
+<text class="it" x="240" y="50" style="--i:1">Water's entropy</text>
+<text class="it" x="240" y="68" style="--i:1">falls</text>
+<text class="f it" x="560" y="50" style="--i:4">Total rises</text>
+<text class="it" x="240" y="134" style="--i:2">Heat flows out</text>
+<text class="it" x="400" y="134" style="--i:3">Surroundings'</text>
+<text class="it" x="400" y="152" style="--i:3">entropy rises more</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+<p class="p">So the total still rises.</p>
+</article></div>
+<div style="width:480px"><p class="note">480px reply · sketch box 480px · 120px per rank, under 160 with a fork, vertical</p><article class="reply">
+<p class="p">Ice is more ordered than water, so the water's own entropy falls as it freezes. But freezing releases heat, and that heat spreads into colder surroundings, which gain more entropy than the water lost.</p>
+<figure class="skt" aria-label="Sketch: Freezing below 0 °C">
+<figcaption class="t it" style="--i:0">Freezing below 0 °C</figcaption>
+<svg class="v" width="260" height="228" viewBox="0 0 260 228" aria-hidden="true">
+<path class="ln2 it" d="M8 12V56" style="--i:1"/>
+<path class="ln2 it" d="M8 12V24L32 48V100" style="--i:2"/>
+<path class="ln2 it" d="M32 100V144" style="--i:3"/>
+<path class="ln2 it" d="M8 56V216" style="--i:4"/>
+<path class="ln2 it" d="M32 144V156L8 180V216" style="--i:4"/>
+<path class="ar it" d="M3 37L8 42L13 37" style="--i:1"/>
+<path class="ar it" d="M27 71L32 76L37 71" style="--i:2"/>
+<path class="ar it" d="M27 119L32 124L37 119" style="--i:3"/>
+<path class="ar it" d="M3 195L8 200L13 195" style="--i:4"/>
+<circle class="st it" cx="8" cy="12" r="6" style="--i:0"/>
+<circle class="st it" cx="8" cy="56" r="6" style="--i:1"/>
+<circle class="st it" cx="32" cy="100" r="6" style="--i:2"/>
+<circle class="st it" cx="32" cy="144" r="6" style="--i:3"/>
+<circle class="st f it" cx="8" cy="216" r="7" style="--i:4"/>
+<text class="it" x="52" y="17" style="--i:0">Water freezes</text>
+<text class="it" x="52" y="61" style="--i:1">Water's entropy falls</text>
+<text class="it" x="52" y="105" style="--i:2">Heat flows out</text>
+<text class="it" x="52" y="149" style="--i:3">Surroundings' entropy rises more</text>
+<text class="f it" x="52" y="221" style="--i:4">Total rises</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+<p class="p">So the total still rises.</p>
+</article></div>
+</div></section>
+
+<section class="spec"><h2>Figure beside text</h2><p>The sketch sits in the text column, beside the picture. Bars keep their labels beside at 308px and stack them at 228px. The figure keeps its columns here because the text is still under twice the picture's height.</p><div class="widths">
+<div style="width:640px"><p class="note">640px reply · text column, sketch box 308px · bars beside</p><article class="reply"><div class="reply-layout layout-figure">
+<div class="layout-media"><div class="layout-item"><div class="img" style="aspect-ratio:1">Photo: Earth from orbit, the equator lit</div></div></div>
+<div class="layout-text"><p class="p">Each degree of latitude you move north, the ground under you travels a shorter circle in the same 24 hours.</p>
+<figure class="skt" aria-label="Sketch: Approximate eastward speed of the ground">
+<figcaption class="t it" style="--i:0">Approximate eastward speed of the ground</figcaption>
+<dl class="bars">
+<dt class="it" style="--i:0">Equator</dt><dd class="it" style="--v:1;--i:0"><s></s>465 m/s</dd>
+<dt class="it" style="--i:1">30° latitude</dt><dd class="it" style="--v:.8667;--i:1"><s></s>403 m/s</dd>
+<dt class="f it" style="--i:2">60° latitude</dt><dd class="f it" style="--v:.5011;--i:2"><s></s>233 m/s</dd>
+<dt class="it" style="--i:3">North Pole</dt><dd class="it" style="--v:0;--i:3"><s></s>0 m/s</dd>
+</dl>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</div></div></article></div>
+<div style="width:480px"><p class="note">480px reply · text column, sketch box 228px · bars stacked</p><article class="reply"><div class="reply-layout layout-figure">
+<div class="layout-media"><div class="layout-item"><div class="img" style="aspect-ratio:1">Photo: Earth from orbit, the equator lit</div></div></div>
+<div class="layout-text"><p class="p">Each degree of latitude you move north, the ground under you travels a shorter circle in the same 24 hours.</p>
+<figure class="skt" aria-label="Sketch: Approximate eastward speed of the ground">
+<figcaption class="t it" style="--i:0">Approximate eastward speed of the ground</figcaption>
+<dl class="bars">
+<dt class="it" style="--i:0">Equator</dt><dd class="it" style="--v:1;--i:0"><s></s>465 m/s</dd>
+<dt class="it" style="--i:1">30° latitude</dt><dd class="it" style="--v:.8667;--i:1"><s></s>403 m/s</dd>
+<dt class="f it" style="--i:2">60° latitude</dt><dd class="f it" style="--v:.5011;--i:2"><s></s>233 m/s</dd>
+<dt class="it" style="--i:3">North Pole</dt><dd class="it" style="--v:0;--i:3"><s></s>0 m/s</dd>
+</dl>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</div></div></article></div>
+</div></section>
+
+<section class="spec"><h2>Image gallery</h2><p>The gallery's text sits above its images, and so does a sketch in it, at the full width. A straight flow stays horizontal at 120px per rank. At 480px, "breaks and moves" wraps onto two lines above its step and the drawing grows 16px taller.</p><div class="widths">
+<div style="width:640px"><p class="note">640px reply · sketch box 640px · 160px per rank</p><article class="reply"><div class="reply-layout layout-gallery">
+<p class="p">Sand turns to stone in three moves, and the rock keeps a record of each.</p>
+<figure class="skt" aria-label="Sketch">
+<svg viewBox="0 0 640 78" aria-hidden="true">
+<path class="ln2 it" d="M80 40H240" style="--i:1"/>
+<path class="ln2 it" d="M240 40H400" style="--i:2"/>
+<path class="ln2 it" d="M400 40H560" style="--i:3"/>
+<path class="ar it" d="M157 35L162 40L157 45" style="--i:1"/>
+<path class="ar it" d="M317 35L322 40L317 45" style="--i:2"/>
+<path class="ar it" d="M477 35L482 40L477 45" style="--i:3"/>
+<text class="e it" x="160" y="24" style="--i:1">breaks and moves</text>
+<text class="e it" x="320" y="24" style="--i:2">settles</text>
+<text class="e it" x="480" y="24" style="--i:3">squeezed, glued</text>
+<circle class="st it" cx="80" cy="40" r="6" style="--i:0"/>
+<circle class="st it" cx="240" cy="40" r="6" style="--i:1"/>
+<circle class="st it" cx="400" cy="40" r="6" style="--i:2"/>
+<circle class="st f it" cx="560" cy="40" r="7" style="--i:3"/>
+<text class="it" x="80" y="68" style="--i:0">Rock</text>
+<text class="it" x="240" y="68" style="--i:1">Loose sand</text>
+<text class="it" x="400" y="68" style="--i:2">Buried layers</text>
+<text class="f it" x="560" y="68" style="--i:3">Sandstone</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+<div class="layout-media"><div class="layout-item"><div class="img" style="width:220px;height:176px">Photo: wind-blown dunes</div></div><div class="layout-item"><div class="img" style="width:200px;height:176px">Photo: cross-bedded sandstone</div></div></div>
+</div></article></div>
+<div style="width:480px"><p class="note">480px reply · sketch box 480px · 120px per rank, arrow label wraps</p><article class="reply"><div class="reply-layout layout-gallery">
+<p class="p">Sand turns to stone in three moves, and the rock keeps a record of each.</p>
+<figure class="skt" aria-label="Sketch">
+<svg viewBox="0 0 480 94" aria-hidden="true">
+<path class="ln2 it" d="M60 56H180" style="--i:1"/>
+<path class="ln2 it" d="M180 56H300" style="--i:2"/>
+<path class="ln2 it" d="M300 56H420" style="--i:3"/>
+<path class="ar it" d="M117 51L122 56L117 61" style="--i:1"/>
+<path class="ar it" d="M237 51L242 56L237 61" style="--i:2"/>
+<path class="ar it" d="M357 51L362 56L357 61" style="--i:3"/>
+<text class="e it" x="120" y="24" style="--i:1">breaks and</text>
+<text class="e it" x="120" y="40" style="--i:1">moves</text>
+<text class="e it" x="240" y="40" style="--i:2">settles</text>
+<text class="e it" x="360" y="40" style="--i:3">squeezed, glued</text>
+<circle class="st it" cx="60" cy="56" r="6" style="--i:0"/>
+<circle class="st it" cx="180" cy="56" r="6" style="--i:1"/>
+<circle class="st it" cx="300" cy="56" r="6" style="--i:2"/>
+<circle class="st f it" cx="420" cy="56" r="7" style="--i:3"/>
+<text class="it" x="60" y="84" style="--i:0">Rock</text>
+<text class="it" x="180" y="84" style="--i:1">Loose sand</text>
+<text class="it" x="300" y="84" style="--i:2">Buried layers</text>
+<text class="f it" x="420" y="84" style="--i:3">Sandstone</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+<div class="layout-media"><div class="layout-item"><div class="img" style="width:220px;height:176px">Photo: wind-blown dunes</div></div><div class="layout-item"><div class="img" style="width:200px;height:176px">Photo: cross-bedded sandstone</div></div></div>
+</div></article></div>
+</div></section>
+
+<section class="spec"><h2>Side-by-side comparison</h2><p>The sketch sits in its column, inside the panel's 20px padding. Two columns give it 280px at 640, so the labels stay beside, and 200px at 480, so they stack.</p><div class="widths">
+<div style="width:640px"><p class="note">640px reply · column, sketch box 280px · bars beside</p><article class="reply"><div class="reply-layout layout-comparison"><div class="layout-cards">
+<section class="layout-card"><h3>Four coins</h3><p class="p">16 sequences, and most of them have two heads.</p>
+<figure class="skt" aria-label="Sketch: Sequences behind each head count (4 coins)">
+<figcaption class="t it" style="--i:0">Sequences behind each head count (4 coins)</figcaption>
+<dl class="bars">
+<dt class="it" style="--i:0">0 heads</dt><dd class="it" style="--v:.1667;--i:0"><s></s>1</dd>
+<dt class="it" style="--i:1">1 head</dt><dd class="it" style="--v:.6667;--i:1"><s></s>4</dd>
+<dt class="f it" style="--i:2">2 heads</dt><dd class="f it" style="--v:1;--i:2"><s></s>6</dd>
+<dt class="it" style="--i:3">3 heads</dt><dd class="it" style="--v:.6667;--i:3"><s></s>4</dd>
+<dt class="it" style="--i:4">4 heads</dt><dd class="it" style="--v:.1667;--i:4"><s></s>1</dd>
+</dl>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</section>
+<section class="layout-card"><h3>One coin</h3><p class="p">Two outcomes, one way each. Neither is more likely, so there is no middle to win.</p></section>
+</div></div></article></div>
+<div style="width:480px"><p class="note">480px reply · column, sketch box 200px · bars stacked</p><article class="reply"><div class="reply-layout layout-comparison"><div class="layout-cards">
+<section class="layout-card"><h3>Four coins</h3><p class="p">16 sequences, and most of them have two heads.</p>
+<figure class="skt" aria-label="Sketch: Sequences behind each head count (4 coins)">
+<figcaption class="t it" style="--i:0">Sequences behind each head count (4 coins)</figcaption>
+<dl class="bars">
+<dt class="it" style="--i:0">0 heads</dt><dd class="it" style="--v:.1667;--i:0"><s></s>1</dd>
+<dt class="it" style="--i:1">1 head</dt><dd class="it" style="--v:.6667;--i:1"><s></s>4</dd>
+<dt class="f it" style="--i:2">2 heads</dt><dd class="f it" style="--v:1;--i:2"><s></s>6</dd>
+<dt class="it" style="--i:3">3 heads</dt><dd class="it" style="--v:.6667;--i:3"><s></s>4</dd>
+<dt class="it" style="--i:4">4 heads</dt><dd class="it" style="--v:.1667;--i:4"><s></s>1</dd>
+</dl>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</section>
+<section class="layout-card"><h3>One coin</h3><p class="p">Two outcomes, one way each. Neither is more likely, so there is no middle to win.</p></section>
+</div></div></article></div>
+</div></section>
+
+<section class="spec"><h2>Steps</h2><p>The sketch sits inside its step, right of the 44px ring column. A straight flow gets 149px per rank at 640, so it stays horizontal, and 109px at 480, so it turns vertical.</p><div class="widths">
+<div style="width:640px"><p class="note">640px reply · step, sketch box 596px · 149px per rank, horizontal</p><article class="reply"><div class="reply-layout layout-steps"><ol class="layout-cards">
+<li class="layout-card"><h3>Find the grains</h3><p class="p">Rub the rock: sandstone sheds rounded grains of quartz.</p></li>
+<li class="layout-card"><h3>Read the layers</h3><p class="p">Tilted bands show where wind or water laid the sand down.</p>
+<figure class="skt" aria-label="Sketch">
+<svg viewBox="0 0 596 78" aria-hidden="true">
+<path class="ln2 it" d="M74.5 40H223.5" style="--i:1"/>
+<path class="ln2 it" d="M223.5 40H372.5" style="--i:2"/>
+<path class="ln2 it" d="M372.5 40H521.5" style="--i:3"/>
+<path class="ar it" d="M146 35L151 40L146 45" style="--i:1"/>
+<path class="ar it" d="M295 35L300 40L295 45" style="--i:2"/>
+<path class="ar it" d="M444 35L449 40L444 45" style="--i:3"/>
+<text class="e it" x="149" y="24" style="--i:1">breaks and moves</text>
+<text class="e it" x="298" y="24" style="--i:2">settles</text>
+<text class="e it" x="447" y="24" style="--i:3">squeezed, glued</text>
+<circle class="st it" cx="74.5" cy="40" r="6" style="--i:0"/>
+<circle class="st it" cx="223.5" cy="40" r="6" style="--i:1"/>
+<circle class="st it" cx="372.5" cy="40" r="6" style="--i:2"/>
+<circle class="st f it" cx="521.5" cy="40" r="7" style="--i:3"/>
+<text class="it" x="74.5" y="68" style="--i:0">Rock</text>
+<text class="it" x="223.5" y="68" style="--i:1">Loose sand</text>
+<text class="it" x="372.5" y="68" style="--i:2">Buried layers</text>
+<text class="f it" x="521.5" y="68" style="--i:3">Sandstone</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</li>
+<li class="layout-card"><h3>Test the glue</h3><p class="p">A drop of acid fizzes on calcite, the cement that holds the grains.</p></li>
+</ol></div></article></div>
+<div style="width:480px"><p class="note">480px reply · step, sketch box 436px · 109px per rank, vertical</p><article class="reply"><div class="reply-layout layout-steps"><ol class="layout-cards">
+<li class="layout-card"><h3>Find the grains</h3><p class="p">Rub the rock: sandstone sheds rounded grains of quartz.</p></li>
+<li class="layout-card"><h3>Read the layers</h3><p class="p">Tilted bands show where wind or water laid the sand down.</p>
+<figure class="skt" aria-label="Sketch">
+<svg class="v" width="200" height="216" viewBox="0 0 200 216" aria-hidden="true">
+<path class="ln2 it" d="M8 12V76" style="--i:1"/>
+<path class="ln2 it" d="M8 76V140" style="--i:2"/>
+<path class="ln2 it" d="M8 140V204" style="--i:3"/>
+<path class="ar it" d="M3 41L8 46L13 41" style="--i:1"/>
+<path class="ar it" d="M3 105L8 110L13 105" style="--i:2"/>
+<path class="ar it" d="M3 169L8 174L13 169" style="--i:3"/>
+<circle class="st it" cx="8" cy="12" r="6" style="--i:0"/>
+<circle class="st it" cx="8" cy="76" r="6" style="--i:1"/>
+<circle class="st it" cx="8" cy="140" r="6" style="--i:2"/>
+<circle class="st f it" cx="8" cy="204" r="7" style="--i:3"/>
+<text class="it" x="28" y="17" style="--i:0">Rock</text>
+<text class="it" x="28" y="81" style="--i:1">Loose sand</text>
+<text class="it" x="28" y="145" style="--i:2">Buried layers</text>
+<text class="f it" x="28" y="209" style="--i:3">Sandstone</text>
+<text class="e it" x="28" y="48" style="--i:1">breaks and moves</text>
+<text class="e it" x="28" y="112" style="--i:2">settles</text>
+<text class="e it" x="28" y="176" style="--i:3">squeezed, glued</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</li>
+<li class="layout-card"><h3>Test the glue</h3><p class="p">A drop of acid fizzes on calcite, the cement that holds the grains.</p></li>
+</ol></div></article></div>
+</div></section>
+
+<section class="spec"><h2>Stages</h2><p>The narrowest cell a sketch gets: one of three stage columns, 197px at 640 and 144px at 480. Bars stack, and the title wraps. On the right the sketch is pointed at: under 400px the controls show the icon alone, and the title already stops short of it.</p><div class="widths">
+<div style="width:640px"><p class="note">640px reply · stage, sketch box 197px · bars stacked</p><article class="reply"><div class="reply-layout layout-stages"><ol class="layout-cards">
+<li class="layout-card"><h3>Equator</h3><p class="p">The ground covers 40,000 km a day.</p></li>
+<li class="layout-card"><h3>Moving north</h3><p class="p">Each circle is shorter, so the ground slows.</p>
+<figure class="skt" aria-label="Sketch: Approximate eastward speed of the ground">
+<figcaption class="t it" style="--i:0">Approximate eastward speed of the ground</figcaption>
+<dl class="bars">
+<dt class="it" style="--i:0">Equator</dt><dd class="it" style="--v:1;--i:0"><s></s>465 m/s</dd>
+<dt class="it" style="--i:1">30° latitude</dt><dd class="it" style="--v:.8667;--i:1"><s></s>403 m/s</dd>
+<dt class="f it" style="--i:2">60° latitude</dt><dd class="f it" style="--v:.5011;--i:2"><s></s>233 m/s</dd>
+<dt class="it" style="--i:3">North Pole</dt><dd class="it" style="--v:0;--i:3"><s></s>0 m/s</dd>
+</dl>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</li>
+<li class="layout-card"><h3>Pole</h3><p class="p">The ground only turns on the spot.</p></li>
+</ol></div></article></div>
+<div style="width:480px"><p class="note">480px reply · stage, sketch box 144px · bars stacked, pointed at</p><article class="reply"><div class="reply-layout layout-stages"><ol class="layout-cards">
+<li class="layout-card"><h3>Equator</h3><p class="p">The ground covers 40,000 km a day.</p></li>
+<li class="layout-card"><h3>Moving north</h3><p class="p">Each circle is shorter, so the ground slows.</p>
+<figure class="skt hover" aria-label="Sketch: Approximate eastward speed of the ground">
+<figcaption class="t it" style="--i:0">Approximate eastward speed of the ground</figcaption>
+<dl class="bars">
+<dt class="it" style="--i:0">Equator</dt><dd class="it" style="--v:1;--i:0"><s></s>465 m/s</dd>
+<dt class="it" style="--i:1">30° latitude</dt><dd class="it" style="--v:.8667;--i:1"><s></s>403 m/s</dd>
+<dt class="f it" style="--i:2">60° latitude</dt><dd class="f it" style="--v:.5011;--i:2"><s></s>233 m/s</dd>
+<dt class="it" style="--i:3">North Pole</dt><dd class="it" style="--v:0;--i:3"><s></s>0 m/s</dd>
+</dl>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</li>
+<li class="layout-card"><h3>Pole</h3><p class="p">The ground only turns on the spot.</p></li>
+</ol></div></article></div>
+</div></section>
+
+<section class="spec"><h2>Key terms</h2><p>The sketch sits in the meaning column, under the term's text: 442px at 640 and 328px at 480. Both keep the labels beside the bars.</p><div class="widths">
+<div style="width:640px"><p class="note">640px reply · meaning column, sketch box 442px · bars beside</p><article class="reply"><div class="reply-layout layout-terms"><div class="layout-cards">
+<section class="layout-card"><h3>Microstate</h3><p class="p">One exact arrangement, such as HTHT for four coins.</p></section>
+<section class="layout-card"><h3>Entropy</h3><p class="p">A count of the microstates behind what you see. Two heads has the most.</p>
+<figure class="skt" aria-label="Sketch: Sequences behind each head count (4 coins)">
+<figcaption class="t it" style="--i:0">Sequences behind each head count (4 coins)</figcaption>
+<dl class="bars">
+<dt class="it" style="--i:0">0 heads</dt><dd class="it" style="--v:.1667;--i:0"><s></s>1</dd>
+<dt class="it" style="--i:1">1 head</dt><dd class="it" style="--v:.6667;--i:1"><s></s>4</dd>
+<dt class="f it" style="--i:2">2 heads</dt><dd class="f it" style="--v:1;--i:2"><s></s>6</dd>
+<dt class="it" style="--i:3">3 heads</dt><dd class="it" style="--v:.6667;--i:3"><s></s>4</dd>
+<dt class="it" style="--i:4">4 heads</dt><dd class="it" style="--v:.1667;--i:4"><s></s>1</dd>
+</dl>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</section>
+</div></div></article></div>
+<div style="width:480px"><p class="note">480px reply · meaning column, sketch box 328px · bars beside</p><article class="reply"><div class="reply-layout layout-terms"><div class="layout-cards">
+<section class="layout-card"><h3>Microstate</h3><p class="p">One exact arrangement, such as HTHT for four coins.</p></section>
+<section class="layout-card"><h3>Entropy</h3><p class="p">A count of the microstates behind what you see. Two heads has the most.</p>
+<figure class="skt" aria-label="Sketch: Sequences behind each head count (4 coins)">
+<figcaption class="t it" style="--i:0">Sequences behind each head count (4 coins)</figcaption>
+<dl class="bars">
+<dt class="it" style="--i:0">0 heads</dt><dd class="it" style="--v:.1667;--i:0"><s></s>1</dd>
+<dt class="it" style="--i:1">1 head</dt><dd class="it" style="--v:.6667;--i:1"><s></s>4</dd>
+<dt class="f it" style="--i:2">2 heads</dt><dd class="f it" style="--v:1;--i:2"><s></s>6</dd>
+<dt class="it" style="--i:3">3 heads</dt><dd class="it" style="--v:.6667;--i:3"><s></s>4</dd>
+<dt class="it" style="--i:4">4 heads</dt><dd class="it" style="--v:.1667;--i:4"><s></s>1</dd>
+</dl>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</section>
+</div></div></article></div>
+</div></section>
+
+<section class="spec"><h2>Callout</h2><p>The sketch sits on the callout's raised enamel, inside its 16px by 20px padding, and its station rings take that surface. A forked flow gets 150px per rank at 640 and 110px at 480, so it is vertical at both.</p><div class="widths">
+<div style="width:640px"><p class="note">640px reply · callout, sketch box 600px · 150px per rank, under 160 with a fork, vertical</p><article class="reply"><div class="reply-layout layout-callout" role="region" aria-label="Callout">
+<p class="p">The water's entropy does fall. The rule holds because the heat it gives off raises the surroundings' entropy by more.</p>
+<figure class="skt" aria-label="Sketch: Freezing below 0 °C">
+<figcaption class="t it" style="--i:0">Freezing below 0 °C</figcaption>
+<svg class="v" width="260" height="228" viewBox="0 0 260 228" aria-hidden="true">
+<path class="ln2 it" d="M8 12V56" style="--i:1"/>
+<path class="ln2 it" d="M8 12V24L32 48V100" style="--i:2"/>
+<path class="ln2 it" d="M32 100V144" style="--i:3"/>
+<path class="ln2 it" d="M8 56V216" style="--i:4"/>
+<path class="ln2 it" d="M32 144V156L8 180V216" style="--i:4"/>
+<path class="ar it" d="M3 37L8 42L13 37" style="--i:1"/>
+<path class="ar it" d="M27 71L32 76L37 71" style="--i:2"/>
+<path class="ar it" d="M27 119L32 124L37 119" style="--i:3"/>
+<path class="ar it" d="M3 195L8 200L13 195" style="--i:4"/>
+<circle class="st it" cx="8" cy="12" r="6" style="--i:0"/>
+<circle class="st it" cx="8" cy="56" r="6" style="--i:1"/>
+<circle class="st it" cx="32" cy="100" r="6" style="--i:2"/>
+<circle class="st it" cx="32" cy="144" r="6" style="--i:3"/>
+<circle class="st f it" cx="8" cy="216" r="7" style="--i:4"/>
+<text class="it" x="52" y="17" style="--i:0">Water freezes</text>
+<text class="it" x="52" y="61" style="--i:1">Water's entropy falls</text>
+<text class="it" x="52" y="105" style="--i:2">Heat flows out</text>
+<text class="it" x="52" y="149" style="--i:3">Surroundings' entropy rises more</text>
+<text class="f it" x="52" y="221" style="--i:4">Total rises</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</div></article></div>
+<div style="width:480px"><p class="note">480px reply · callout, sketch box 440px · vertical</p><article class="reply"><div class="reply-layout layout-callout" role="region" aria-label="Callout">
+<p class="p">The water's entropy does fall. The rule holds because the heat it gives off raises the surroundings' entropy by more.</p>
+<figure class="skt" aria-label="Sketch: Freezing below 0 °C">
+<figcaption class="t it" style="--i:0">Freezing below 0 °C</figcaption>
+<svg class="v" width="260" height="228" viewBox="0 0 260 228" aria-hidden="true">
+<path class="ln2 it" d="M8 12V56" style="--i:1"/>
+<path class="ln2 it" d="M8 12V24L32 48V100" style="--i:2"/>
+<path class="ln2 it" d="M32 100V144" style="--i:3"/>
+<path class="ln2 it" d="M8 56V216" style="--i:4"/>
+<path class="ln2 it" d="M32 144V156L8 180V216" style="--i:4"/>
+<path class="ar it" d="M3 37L8 42L13 37" style="--i:1"/>
+<path class="ar it" d="M27 71L32 76L37 71" style="--i:2"/>
+<path class="ar it" d="M27 119L32 124L37 119" style="--i:3"/>
+<path class="ar it" d="M3 195L8 200L13 195" style="--i:4"/>
+<circle class="st it" cx="8" cy="12" r="6" style="--i:0"/>
+<circle class="st it" cx="8" cy="56" r="6" style="--i:1"/>
+<circle class="st it" cx="32" cy="100" r="6" style="--i:2"/>
+<circle class="st it" cx="32" cy="144" r="6" style="--i:3"/>
+<circle class="st f it" cx="8" cy="216" r="7" style="--i:4"/>
+<text class="it" x="52" y="17" style="--i:0">Water freezes</text>
+<text class="it" x="52" y="61" style="--i:1">Water's entropy falls</text>
+<text class="it" x="52" y="105" style="--i:2">Heat flows out</text>
+<text class="it" x="52" y="149" style="--i:3">Surroundings' entropy rises more</text>
+<text class="f it" x="52" y="221" style="--i:4">Total rises</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</div></article></div>
+</div></section>
+
+<section class="spec"><h2>Timeline</h2><p>The sketch sits inside its entry, right of the 28px station column: 612px at 640 and 452px at 480.</p><div class="widths">
+<div style="width:640px"><p class="note">640px reply · entry, sketch box 612px · bars beside</p><article class="reply"><div class="reply-layout layout-timeline"><ol class="timeline-entries">
+<li class="timeline-entry"><h3>1835</h3><p class="p">Gaspard-Gustave de Coriolis describes the sideways push on anything that moves across a turning surface.</p></li>
+<li class="timeline-entry"><h3>1851</h3><p class="p">Léon Foucault's pendulum turns slowly in Paris, showing that the ground itself is moving.</p>
+<figure class="skt" aria-label="Sketch: Approximate eastward speed of the ground">
+<figcaption class="t it" style="--i:0">Approximate eastward speed of the ground</figcaption>
+<dl class="bars">
+<dt class="it" style="--i:0">Equator</dt><dd class="it" style="--v:1;--i:0"><s></s>465 m/s</dd>
+<dt class="it" style="--i:1">30° latitude</dt><dd class="it" style="--v:.8667;--i:1"><s></s>403 m/s</dd>
+<dt class="f it" style="--i:2">60° latitude</dt><dd class="f it" style="--v:.5011;--i:2"><s></s>233 m/s</dd>
+<dt class="it" style="--i:3">North Pole</dt><dd class="it" style="--v:0;--i:3"><s></s>0 m/s</dd>
+</dl>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</li>
+</ol></div></article></div>
+<div style="width:480px"><p class="note">480px reply · entry, sketch box 452px · bars beside</p><article class="reply"><div class="reply-layout layout-timeline"><ol class="timeline-entries">
+<li class="timeline-entry"><h3>1835</h3><p class="p">Gaspard-Gustave de Coriolis describes the sideways push on anything that moves across a turning surface.</p></li>
+<li class="timeline-entry"><h3>1851</h3><p class="p">Léon Foucault's pendulum turns slowly in Paris, showing that the ground itself is moving.</p>
+<figure class="skt" aria-label="Sketch: Approximate eastward speed of the ground">
+<figcaption class="t it" style="--i:0">Approximate eastward speed of the ground</figcaption>
+<dl class="bars">
+<dt class="it" style="--i:0">Equator</dt><dd class="it" style="--v:1;--i:0"><s></s>465 m/s</dd>
+<dt class="it" style="--i:1">30° latitude</dt><dd class="it" style="--v:.8667;--i:1"><s></s>403 m/s</dd>
+<dt class="f it" style="--i:2">60° latitude</dt><dd class="f it" style="--v:.5011;--i:2"><s></s>233 m/s</dd>
+<dt class="it" style="--i:3">North Pole</dt><dd class="it" style="--v:0;--i:3"><s></s>0 m/s</dd>
+</dl>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</li>
+</ol></div></article></div>
+</div></section>
+
+<section class="spec"><h2>Check</h2><p>Shown with the answer open. A sketch in a hidden answer is drawn while the reply streams, so when the answer opens it shows at once with its text, without a build. The question side can hold a sketch too, at the same width.</p><div class="widths">
+<div style="width:640px"><p class="note">640px reply · answer, sketch box 640px · horizontal</p><article class="reply"><div class="reply-layout layout-check"><div class="layout-cards">
+<section class="layout-card"><h3>Does freezing water break the second law?</h3><button class="btn ghost sm" aria-expanded="true"><i class="i i--sm i-chevron-up"></i>Show answer</button>
+<div class="ans"><p class="p">No. The water's entropy falls, but the heat it releases raises the surroundings' entropy by more.</p>
+<figure class="skt" aria-label="Sketch: Freezing below 0 °C">
+<figcaption class="t it" style="--i:0">Freezing below 0 °C</figcaption>
+<svg viewBox="0 0 640 160" aria-hidden="true">
+<path class="ln2 it" d="M80 24H240" style="--i:1"/>
+<path class="ln2 it" d="M80 24H124L208 108H240" style="--i:2"/>
+<path class="ln2 it" d="M240 108H400" style="--i:3"/>
+<path class="ln2 it" d="M240 24H560" style="--i:4"/>
+<path class="ln2 it" d="M400 108H432L516 24" style="--i:4"/>
+<path class="ar it" d="M157 19L162 24L157 29" style="--i:1"/>
+<path class="ar it" d="M219 103L224 108L219 113" style="--i:2"/>
+<path class="ar it" d="M317 103L322 108L317 113" style="--i:3"/>
+<path class="ar it" d="M537 19L542 24L537 29" style="--i:4"/>
+<circle class="st it" cx="80" cy="24" r="6" style="--i:0"/>
+<circle class="st it" cx="240" cy="24" r="6" style="--i:1"/>
+<circle class="st it" cx="240" cy="108" r="6" style="--i:2"/>
+<circle class="st it" cx="400" cy="108" r="6" style="--i:3"/>
+<circle class="st f it" cx="560" cy="24" r="7" style="--i:4"/>
+<text class="it" x="80" y="50" style="--i:0">Water freezes</text>
+<text class="it" x="240" y="50" style="--i:1">Water's entropy</text>
+<text class="it" x="240" y="68" style="--i:1">falls</text>
+<text class="f it" x="560" y="50" style="--i:4">Total rises</text>
+<text class="it" x="240" y="134" style="--i:2">Heat flows out</text>
+<text class="it" x="400" y="134" style="--i:3">Surroundings'</text>
+<text class="it" x="400" y="152" style="--i:3">entropy rises more</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</div></section>
+</div></div></article></div>
+<div style="width:480px"><p class="note">480px reply · answer, sketch box 480px · vertical</p><article class="reply"><div class="reply-layout layout-check"><div class="layout-cards">
+<section class="layout-card"><h3>Does freezing water break the second law?</h3><button class="btn ghost sm" aria-expanded="true"><i class="i i--sm i-chevron-up"></i>Show answer</button>
+<div class="ans"><p class="p">No. The water's entropy falls, but the heat it releases raises the surroundings' entropy by more.</p>
+<figure class="skt" aria-label="Sketch: Freezing below 0 °C">
+<figcaption class="t it" style="--i:0">Freezing below 0 °C</figcaption>
+<svg class="v" width="260" height="228" viewBox="0 0 260 228" aria-hidden="true">
+<path class="ln2 it" d="M8 12V56" style="--i:1"/>
+<path class="ln2 it" d="M8 12V24L32 48V100" style="--i:2"/>
+<path class="ln2 it" d="M32 100V144" style="--i:3"/>
+<path class="ln2 it" d="M8 56V216" style="--i:4"/>
+<path class="ln2 it" d="M32 144V156L8 180V216" style="--i:4"/>
+<path class="ar it" d="M3 37L8 42L13 37" style="--i:1"/>
+<path class="ar it" d="M27 71L32 76L37 71" style="--i:2"/>
+<path class="ar it" d="M27 119L32 124L37 119" style="--i:3"/>
+<path class="ar it" d="M3 195L8 200L13 195" style="--i:4"/>
+<circle class="st it" cx="8" cy="12" r="6" style="--i:0"/>
+<circle class="st it" cx="8" cy="56" r="6" style="--i:1"/>
+<circle class="st it" cx="32" cy="100" r="6" style="--i:2"/>
+<circle class="st it" cx="32" cy="144" r="6" style="--i:3"/>
+<circle class="st f it" cx="8" cy="216" r="7" style="--i:4"/>
+<text class="it" x="52" y="17" style="--i:0">Water freezes</text>
+<text class="it" x="52" y="61" style="--i:1">Water's entropy falls</text>
+<text class="it" x="52" y="105" style="--i:2">Heat flows out</text>
+<text class="it" x="52" y="149" style="--i:3">Surroundings' entropy rises more</text>
+<text class="f it" x="52" y="221" style="--i:4">Total rises</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</div></section>
+</div></div></article></div>
+</div></section>
+
+<section class="spec"><h2>Wide</h2><p>A wide section holds one visual. A sketch in it sits right after that visual, at the full column width. Today a <code>:::wide</code> with anything but its visual falls back to plain flow, so this ticket lets a sketch through.</p><div class="widths">
+<div style="width:640px"><p class="note">640px reply · sketch box 640px · bars beside</p><article class="reply"><div class="reply-layout layout-wide"><div class="layout-media"><div class="layout-item">
+<figure class="vis" aria-label="All 16 sequences of four coins, grouped by how many heads">
+<svg viewBox="0 0 640 196" role="img" aria-label="All 16 sequences of four coins, grouped by how many heads">
+<g fill="none" stroke="var(--seam2)" stroke-width="1.5">
+<rect x="20" y="148" width="88" height="20" rx="4"/>
+<rect x="148" y="76" width="88" height="20" rx="4"/><rect x="148" y="100" width="88" height="20" rx="4"/><rect x="148" y="124" width="88" height="20" rx="4"/><rect x="148" y="148" width="88" height="20" rx="4"/>
+<rect x="404" y="76" width="88" height="20" rx="4"/><rect x="404" y="100" width="88" height="20" rx="4"/><rect x="404" y="124" width="88" height="20" rx="4"/><rect x="404" y="148" width="88" height="20" rx="4"/>
+<rect x="532" y="148" width="88" height="20" rx="4"/>
+</g>
+<g fill="none" stroke="var(--l1)" stroke-width="2">
+<rect x="276" y="28" width="88" height="20" rx="4"/><rect x="276" y="52" width="88" height="20" rx="4"/><rect x="276" y="76" width="88" height="20" rx="4"/><rect x="276" y="100" width="88" height="20" rx="4"/><rect x="276" y="124" width="88" height="20" rx="4"/><rect x="276" y="148" width="88" height="20" rx="4"/>
+</g>
+<text x="64" y="162">TTTT</text>
+<text x="192" y="90">HTTT</text><text x="192" y="114">THTT</text><text x="192" y="138">TTHT</text><text x="192" y="162">TTTH</text>
+<text x="320" y="42">HHTT</text><text x="320" y="66">HTHT</text><text x="320" y="90">HTTH</text><text x="320" y="114">THHT</text><text x="320" y="138">THTH</text><text x="320" y="162">TTHH</text>
+<text x="448" y="90">HHHT</text><text x="448" y="114">HHTH</text><text x="448" y="138">HTHH</text><text x="448" y="162">THHH</text>
+<text x="576" y="162">HHHH</text>
+<text class="lab" x="64" y="190">0 heads · 1</text><text class="lab" x="192" y="190">1 head · 4</text><text class="lab" x="320" y="190">2 heads · 6</text><text class="lab" x="448" y="190">3 heads · 4</text><text class="lab" x="576" y="190">4 heads · 1</text>
+</svg>
+</figure></div></div>
+<figure class="skt" aria-label="Sketch: Sequences behind each head count (4 coins)">
+<figcaption class="t it" style="--i:0">Sequences behind each head count (4 coins)</figcaption>
+<dl class="bars">
+<dt class="it" style="--i:0">0 heads</dt><dd class="it" style="--v:.1667;--i:0"><s></s>1</dd>
+<dt class="it" style="--i:1">1 head</dt><dd class="it" style="--v:.6667;--i:1"><s></s>4</dd>
+<dt class="f it" style="--i:2">2 heads</dt><dd class="f it" style="--v:1;--i:2"><s></s>6</dd>
+<dt class="it" style="--i:3">3 heads</dt><dd class="it" style="--v:.6667;--i:3"><s></s>4</dd>
+<dt class="it" style="--i:4">4 heads</dt><dd class="it" style="--v:.1667;--i:4"><s></s>1</dd>
+</dl>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</div></article></div>
+<div style="width:480px"><p class="note">480px reply · sketch box 480px · bars beside (the visual scales, the sketch does not)</p><article class="reply"><div class="reply-layout layout-wide"><div class="layout-media"><div class="layout-item">
+<figure class="vis" aria-label="All 16 sequences of four coins, grouped by how many heads">
+<svg viewBox="0 0 640 196" role="img" aria-label="All 16 sequences of four coins, grouped by how many heads">
+<g fill="none" stroke="var(--seam2)" stroke-width="1.5">
+<rect x="20" y="148" width="88" height="20" rx="4"/>
+<rect x="148" y="76" width="88" height="20" rx="4"/><rect x="148" y="100" width="88" height="20" rx="4"/><rect x="148" y="124" width="88" height="20" rx="4"/><rect x="148" y="148" width="88" height="20" rx="4"/>
+<rect x="404" y="76" width="88" height="20" rx="4"/><rect x="404" y="100" width="88" height="20" rx="4"/><rect x="404" y="124" width="88" height="20" rx="4"/><rect x="404" y="148" width="88" height="20" rx="4"/>
+<rect x="532" y="148" width="88" height="20" rx="4"/>
+</g>
+<g fill="none" stroke="var(--l1)" stroke-width="2">
+<rect x="276" y="28" width="88" height="20" rx="4"/><rect x="276" y="52" width="88" height="20" rx="4"/><rect x="276" y="76" width="88" height="20" rx="4"/><rect x="276" y="100" width="88" height="20" rx="4"/><rect x="276" y="124" width="88" height="20" rx="4"/><rect x="276" y="148" width="88" height="20" rx="4"/>
+</g>
+<text x="64" y="162">TTTT</text>
+<text x="192" y="90">HTTT</text><text x="192" y="114">THTT</text><text x="192" y="138">TTHT</text><text x="192" y="162">TTTH</text>
+<text x="320" y="42">HHTT</text><text x="320" y="66">HTHT</text><text x="320" y="90">HTTH</text><text x="320" y="114">THHT</text><text x="320" y="138">THTH</text><text x="320" y="162">TTHH</text>
+<text x="448" y="90">HHHT</text><text x="448" y="114">HHTH</text><text x="448" y="138">HTHH</text><text x="448" y="162">THHH</text>
+<text x="576" y="162">HHHH</text>
+<text class="lab" x="64" y="190">0 heads · 1</text><text class="lab" x="192" y="190">1 head · 4</text><text class="lab" x="320" y="190">2 heads · 6</text><text class="lab" x="448" y="190">3 heads · 4</text><text class="lab" x="576" y="190">4 heads · 1</text>
+</svg>
+</figure></div></div>
+<figure class="skt" aria-label="Sketch: Sequences behind each head count (4 coins)">
+<figcaption class="t it" style="--i:0">Sequences behind each head count (4 coins)</figcaption>
+<dl class="bars">
+<dt class="it" style="--i:0">0 heads</dt><dd class="it" style="--v:.1667;--i:0"><s></s>1</dd>
+<dt class="it" style="--i:1">1 head</dt><dd class="it" style="--v:.6667;--i:1"><s></s>4</dd>
+<dt class="f it" style="--i:2">2 heads</dt><dd class="f it" style="--v:1;--i:2"><s></s>6</dd>
+<dt class="it" style="--i:3">3 heads</dt><dd class="it" style="--v:.6667;--i:3"><s></s>4</dd>
+<dt class="it" style="--i:4">4 heads</dt><dd class="it" style="--v:.1667;--i:4"><s></s>1</dd>
+</dl>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</div></article></div>
+</div></section>
+
+<section class="spec"><h2>Narrow windows: every layout is plain flow</h2><p>Below a 480px reply the app drops every layout wrapper, so these two drawings cover all eleven layouts. A 390px phone gives a 358px reply (16px gutters). A 1024 window with the docked map gives 224px. Under 255px the long label wraps beside its station. On the phone, the controls always show and sit under each sketch.</p><div class="widths">
+<div style="width:358px" class="touch"><p class="note">358px reply · 390 phone, which cannot hover · flow vertical, bars beside</p><article class="reply">
+<p class="p">Ice is more ordered than water, so the water's own entropy falls as it freezes.</p>
+<figure class="skt" aria-label="Sketch: Freezing below 0 °C">
+<figcaption class="t it" style="--i:0">Freezing below 0 °C</figcaption>
+<svg class="v" width="260" height="228" viewBox="0 0 260 228" aria-hidden="true">
+<path class="ln2 it" d="M8 12V56" style="--i:1"/>
+<path class="ln2 it" d="M8 12V24L32 48V100" style="--i:2"/>
+<path class="ln2 it" d="M32 100V144" style="--i:3"/>
+<path class="ln2 it" d="M8 56V216" style="--i:4"/>
+<path class="ln2 it" d="M32 144V156L8 180V216" style="--i:4"/>
+<path class="ar it" d="M3 37L8 42L13 37" style="--i:1"/>
+<path class="ar it" d="M27 71L32 76L37 71" style="--i:2"/>
+<path class="ar it" d="M27 119L32 124L37 119" style="--i:3"/>
+<path class="ar it" d="M3 195L8 200L13 195" style="--i:4"/>
+<circle class="st it" cx="8" cy="12" r="6" style="--i:0"/>
+<circle class="st it" cx="8" cy="56" r="6" style="--i:1"/>
+<circle class="st it" cx="32" cy="100" r="6" style="--i:2"/>
+<circle class="st it" cx="32" cy="144" r="6" style="--i:3"/>
+<circle class="st f it" cx="8" cy="216" r="7" style="--i:4"/>
+<text class="it" x="52" y="17" style="--i:0">Water freezes</text>
+<text class="it" x="52" y="61" style="--i:1">Water's entropy falls</text>
+<text class="it" x="52" y="105" style="--i:2">Heat flows out</text>
+<text class="it" x="52" y="149" style="--i:3">Surroundings' entropy rises more</text>
+<text class="f it" x="52" y="221" style="--i:4">Total rises</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+<p class="p">Each degree of latitude you move north, the ground under you travels a shorter circle.</p>
+<figure class="skt" aria-label="Sketch: Approximate eastward speed of the ground">
+<figcaption class="t it" style="--i:0">Approximate eastward speed of the ground</figcaption>
+<dl class="bars">
+<dt class="it" style="--i:0">Equator</dt><dd class="it" style="--v:1;--i:0"><s></s>465 m/s</dd>
+<dt class="it" style="--i:1">30° latitude</dt><dd class="it" style="--v:.8667;--i:1"><s></s>403 m/s</dd>
+<dt class="f it" style="--i:2">60° latitude</dt><dd class="f it" style="--v:.5011;--i:2"><s></s>233 m/s</dd>
+<dt class="it" style="--i:3">North Pole</dt><dd class="it" style="--v:0;--i:3"><s></s>0 m/s</dd>
+</dl>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</article></div>
+<div style="width:224px"><p class="note">224px reply · 1024 window, docked map · flow vertical with a wrapped label, bars stacked</p><article class="reply">
+<p class="p">Ice is more ordered than water, so the water's own entropy falls as it freezes.</p>
+<figure class="skt" aria-label="Sketch: Freezing below 0 °C">
+<figcaption class="t it" style="--i:0">Freezing below 0 °C</figcaption>
+<svg class="v" width="224" height="246" viewBox="0 0 224 246" aria-hidden="true">
+<path class="ln2 it" d="M8 12V56" style="--i:1"/>
+<path class="ln2 it" d="M8 12V24L32 48V100" style="--i:2"/>
+<path class="ln2 it" d="M32 100V144" style="--i:3"/>
+<path class="ln2 it" d="M8 56V234" style="--i:4"/>
+<path class="ln2 it" d="M32 144V156L8 180V234" style="--i:4"/>
+<path class="ar it" d="M3 37L8 42L13 37" style="--i:1"/>
+<path class="ar it" d="M27 71L32 76L37 71" style="--i:2"/>
+<path class="ar it" d="M27 119L32 124L37 119" style="--i:3"/>
+<path class="ar it" d="M3 204L8 209L13 204" style="--i:4"/>
+<circle class="st it" cx="8" cy="12" r="6" style="--i:0"/>
+<circle class="st it" cx="8" cy="56" r="6" style="--i:1"/>
+<circle class="st it" cx="32" cy="100" r="6" style="--i:2"/>
+<circle class="st it" cx="32" cy="144" r="6" style="--i:3"/>
+<circle class="st f it" cx="8" cy="234" r="7" style="--i:4"/>
+<text class="it" x="52" y="17" style="--i:0">Water freezes</text>
+<text class="it" x="52" y="61" style="--i:1">Water's entropy falls</text>
+<text class="it" x="52" y="105" style="--i:2">Heat flows out</text>
+<text class="it" x="52" y="149" style="--i:3">Surroundings' entropy</text>
+<text class="it" x="52" y="167" style="--i:3">rises more</text>
+<text class="f it" x="52" y="239" style="--i:4">Total rises</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+<p class="p">Each degree of latitude you move north, the ground under you travels a shorter circle.</p>
+<figure class="skt" aria-label="Sketch: Approximate eastward speed of the ground">
+<figcaption class="t it" style="--i:0">Approximate eastward speed of the ground</figcaption>
+<dl class="bars">
+<dt class="it" style="--i:0">Equator</dt><dd class="it" style="--v:1;--i:0"><s></s>465 m/s</dd>
+<dt class="it" style="--i:1">30° latitude</dt><dd class="it" style="--v:.8667;--i:1"><s></s>403 m/s</dd>
+<dt class="f it" style="--i:2">60° latitude</dt><dd class="f it" style="--v:.5011;--i:2"><s></s>233 m/s</dd>
+<dt class="it" style="--i:3">North Pole</dt><dd class="it" style="--v:0;--i:3"><s></s>0 m/s</dd>
+</dl>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</article></div>
+</div></section>
+
+</main>
+<script src="line-diagram/ld.js"></script>
+<script>
+// Mockup only. Sets each sketch's stagger from its item count, then runs the live demo.
+for (const fig of document.querySelectorAll(".skt")) {
+  const last = Math.max(...[...fig.querySelectorAll(".it")].map((el) => +el.style.getPropertyValue("--i")));
+  fig.style.setProperty("--gap", (last ? Math.min(120, 340 / last) : 0) + "ms");
+}
+const live = document.getElementById("live"), rm = document.getElementById("rm");
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const build = (fig) => { fig.classList.remove("build"); void fig.offsetWidth; fig.classList.add("build"); };
+const texts = [...live.querySelectorAll("[data-stream]")].map((el) => [el, el.textContent]);
+let run = 0;
+async function play() {
+  const me = ++run;
+  for (const [el] of texts) el.textContent = "";
+  for (const el of live.querySelectorAll(".skt, .skt-wait")) el.hidden = true;
+  for (const el of live.children) {
+    if (me !== run) return;
+    const t = texts.find(([e]) => e === el);
+    if (t) {
+      el.classList.add("cursor");
+      for (const w of t[1].split(" ")) { if (me !== run) return; el.textContent += (el.textContent ? " " : "") + w; await wait(28); }
+      el.classList.remove("cursor");
+    } else if (el.matches(".skt-wait")) { el.hidden = false; await wait(700); el.hidden = true; }
+    else if (el.matches(".skt")) { el.hidden = false; build(el); }
+  }
+}
+rm.onchange = () => live.classList.toggle("rm", rm.checked);
+document.getElementById("replay").onclick = play;
+document.getElementById("all").onclick = () => { for (const fig of document.querySelectorAll("main .skt")) if (!fig.closest(".fr")) build(fig); play(); };
+play();
+</script>
+</body></html>

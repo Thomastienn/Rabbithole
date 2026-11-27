@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sketches · Rabbithole-skt.1 and skt.7 mockup</title><link rel="stylesheet" href="line-diagram/ld.css">
+<style>
+/* Mockup only. Sketches: small diagrams the tutor writes, drawn by the app on the reply's own ground.
+   Theme roles used, mockup name then app token: --g background, --ink text-primary, --mut text-secondary,
+   --seam2 border-emphasized, --seam border, --w porcelain (rabbithole-paper), --up popover, --up2 hover. */
+.reply { max-width: 640px; }
+.reply h2:first-child { margin-top: 0; }
+
+/* The sketch: no frame, no fill, no head band. It sits between paragraphs at the column width. */
+.skt { position: relative; margin: 8px 0 20px; max-width: 640px; }
+.skt .t { font: 600 15px/1.35 var(--read); color: var(--ink); margin-bottom: 10px; }
+.skt svg { display: block; width: 100%; height: auto; overflow: visible; }
+.skt .ln2 { fill: none; stroke: var(--seam2); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.skt .ar { fill: none; stroke: var(--mut); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.skt .st { fill: var(--g); stroke: var(--mut); stroke-width: 2.5; }
+.skt .st.f { fill: var(--w); stroke: var(--w); }
+.skt text { font: 14px var(--read); fill: var(--ink); text-anchor: middle; }
+.skt text.f { fill: var(--w); font-weight: 600; }
+.skt text.e { font-size: 13px; fill: var(--mut); }
+
+/* Bars: one row per item, label column then an 8px round-capped line and its value. */
+.bars { display: grid; grid-template-columns: max-content minmax(0, 360px); gap: 6px 16px; align-items: center; font: 14px/20px var(--read); }
+.bars dd { display: flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; }
+.bars s { flex: none; height: 8px; border-radius: 4px; background: var(--seam2); width: calc(var(--v) * (100% - 72px)); min-width: 8px; }
+.bars .f { color: var(--w); font-weight: 600; }
+.bars dd.f s { background: var(--w); }
+
+/* Controls: a quiet raised box at the top right, shown on hover and keyboard focus inside the sketch. */
+.acts { position: absolute; top: -6px; right: 0; display: none; gap: 2px; padding: 2px; border: 1px solid var(--seam); border-radius: 8px; background: var(--up); }
+.skt:hover .acts, .skt:focus-within .acts, .skt.hover .acts { display: flex; }
+@media (hover: none) { .acts { display: flex; } }
+.acts .btn { min-height: 30px; padding: 0 10px; font-size: 13px; border-color: transparent; }
+.acts .btn .i { color: var(--mut); }
+
+/* Streaming placeholder: the size of a small sketch, the hover-enamel skeleton tone. */
+.skt-wait { height: 96px; border-radius: 8px; margin: 8px 0 20px; background: var(--up2); opacity: .6; }
+
+/* The existing visual, as the app draws it today: no frame, actions box top right. */
+.vis { position: relative; margin: 8px 0 20px; }
+.vis .badge { display: inline-block; margin-bottom: 6px; font: 600 12px/1 var(--ui); padding: 4px 8px; border-radius: 4px; background: var(--up); color: var(--mut); font-variant-numeric: tabular-nums; }
+.vis .shim { height: 180px; border-radius: 8px; background: var(--up2); opacity: .6; }
+.vis .acts { display: flex; top: 0; }
+.vis svg text { font: 11px ui-monospace, "SF Mono", Menlo, Consolas, monospace; fill: var(--ink); text-anchor: middle; }
+.vis svg text.lab { font: 13px var(--ui); fill: var(--mut); }
+.vis .menu { position: absolute; top: 40px; right: 0; width: 220px; z-index: 1; }
+.new { font-size: 11px; color: var(--mut); margin-left: auto; }
+
+.stage .reply { width: 640px; max-width: 100%; }
+pre.tag { font: 12px/1.6 ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--mut); white-space: pre-wrap; background: var(--deep); border-radius: 8px; padding: 10px 14px; width: 100%; }
+.note { font-size: 13px; color: var(--mut); }
+.gone { border-top: 1px dashed var(--seam2); margin: -6px 0 9px; position: relative; }
+.gone::after { content: "hidden sketch was here (mockup marker only)"; position: absolute; right: 0; top: -9px; background: var(--g); padding-left: 8px; font-size: 12px; color: var(--mut); }
+</style></head><body>
+<nav class="mock" aria-label="Mockup screens"><b>Sketches</b><a href="line-diagram/read.html">Read</a><a href="Rabbithole-skt.1.html" aria-current=page>skt.1 and skt.7 Sketches</a><label><input type="checkbox" id="lt"> Light</label></nav>
+<header class="intro"><h1>Sketches</h1><p>Rabbithole-skt.1 (flow and bars in replies) and Rabbithole-skt.7 (Expand into visual). A <code>```sketch &lt;kind&gt;</code> block draws as a small diagram on the reply's own ground, the moment its fence closes. Spec: <code>docs/sketches-spec.md</code>. Decision: ADR 0027. The spec wins where they differ.</p></header>
+<ul class="rules">
+<li>A sketch has no frame, fill or head band. It sits in the reading column, at most 640px wide, 8px below the paragraph before it and 20px above the next.</li>
+<li>No line colours. The four lines belong to branches, so a sketch uses only ink, muted ink, the strong seam and porcelain.</li>
+<li>Flow is a small line diagram. It has 3px strong-seam lines with round caps that turn only at 45 or 90 degrees, 12px muted station rings, and a muted chevron on each step. A fork drops to a row 84px lower and rejoins with a 45 degree turn.</li>
+<li>Bars are 8px round-capped strong-seam lines in rows 26px apart. The longest bar spans the track (360px at most) minus 72px left for its value. A zero value is a dot.</li>
+<li>The focus words, wrapped in <code>*stars*</code>, are porcelain: a filled station or bar, and a 600-weight label. Everything else is ink.</li>
+<li>The tutor wrote every word, so all text is in the reading face. The optional title is 15px/600. Station and bar labels are 14px. Arrow labels are 13px muted.</li>
+<li>A sketch is not a figure. It has no "Fig N", it is not in the Figures list and it has no copy button. Its source never shows.</li>
+<li>Its controls show only on hover or keyboard focus inside the sketch (always where the device cannot hover). They sit in a raised box at the top right, like a visual's.</li>
+</ul>
+<main class="specs wide">
+
+<section class="spec"><h2>In a reply</h2><p>One sketch per section that has a shape, right after the text it shows. Both are at rest: no controls until pointed at.</p><div class="stage">
+<article class="reply">
+<h2>Counting arrangements</h2>
+<p class="p">Flip four coins and write down the order: there are 16 possible sequences. Most of them land in the middle. There is only one way to get no heads, but six ways to get exactly two.</p>
+<figure class="skt" aria-label="Sketch: Sequences behind each head count (4 coins)">
+<figcaption class="t">Sequences behind each head count (4 coins)</figcaption>
+<dl class="bars">
+<dt>0 heads</dt><dd style="--v:.1667"><s></s>1</dd>
+<dt>1 head</dt><dd style="--v:.6667"><s></s>4</dd>
+<dt class="f">2 heads</dt><dd class="f" style="--v:1"><s></s>6</dd>
+<dt>3 heads</dt><dd style="--v:.6667"><s></s>4</dd>
+<dt>4 heads</dt><dd style="--v:.1667"><s></s>1</dd>
+</dl>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+<p class="p">Entropy counts those ways. A state that can happen in more ways is more likely, which is why mixed results win.</p>
+<h2>Why freezing water does not break the rule</h2>
+<p class="p">Ice is more ordered than water, so the water's own entropy falls as it freezes. But freezing releases heat, and that heat spreads into colder surroundings, which gain more entropy than the water lost.</p>
+<figure class="skt" aria-label="Sketch: Freezing below 0 °C">
+<figcaption class="t">Freezing below 0 °C</figcaption>
+<svg viewBox="0 0 640 160" aria-hidden="true">
+<path class="ln2" d="M80 24H560M80 24H124L208 108H400H432L516 24"/>
+<path class="ar" d="M157 19L162 24L157 29M537 19L542 24L537 29M219 103L224 108L219 113M317 103L322 108L317 113"/>
+<circle class="st" cx="80" cy="24" r="6"/><circle class="st" cx="240" cy="24" r="6"/><circle class="st" cx="240" cy="108" r="6"/><circle class="st" cx="400" cy="108" r="6"/><circle class="st f" cx="560" cy="24" r="7"/>
+<text x="80" y="50">Water freezes</text>
+<text x="240" y="50">Water's entropy</text><text x="240" y="68">falls</text>
+<text class="f" x="560" y="50">Total rises</text>
+<text x="240" y="134">Heat flows out</text>
+<text x="400" y="134">Surroundings'</text><text x="400" y="152">entropy rises more</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+<p class="p">So the total still rises. The second law is about the whole system, never one part of it.</p>
+</article>
+</div></section>
+
+<section class="spec"><h2>Flow: steps, with arrow labels and no title</h2><p>Each rank is a column: 640px divided by the number of ranks. Stations are centred in their column. A label wraps at the column width minus 24px, and an arrow label sits above the middle of its step. With no title, the drawing starts at the top, and on hover the controls box sits over its top-right corner, as it does over a visual today.</p><div class="stage"><div class="reply">
+<figure class="skt" aria-label="Sketch">
+<svg viewBox="0 0 640 78" aria-hidden="true">
+<path class="ln2" d="M80 40H560"/>
+<path class="ar" d="M157 35L162 40L157 45M317 35L322 40L317 45M477 35L482 40L477 45"/>
+<text class="e" x="160" y="24">breaks and moves</text><text class="e" x="320" y="24">settles</text><text class="e" x="480" y="24">squeezed, glued</text>
+<circle class="st" cx="80" cy="40" r="6"/><circle class="st" cx="240" cy="40" r="6"/><circle class="st" cx="400" cy="40" r="6"/><circle class="st f" cx="560" cy="40" r="7"/>
+<text x="80" y="68">Rock</text><text x="240" y="68">Loose sand</text><text x="400" y="68">Buried layers</text><text class="f" x="560" y="68">Sandstone</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</div>
+<pre class="tag">```sketch flow
+Rock -> Loose sand: breaks and moves
+Loose sand -> Buried layers: settles
+Buried layers -> *Sandstone*: squeezed, glued
+```</pre></div></section>
+
+<section class="spec"><h2>Flow: branch and rejoin</h2><p>A step's rank is its longest path from a start. A second child forks onto the next row down. A step that skips ranks runs straight along its row, and a rejoin merges into that run before the target, so both share one chevron.</p><div class="stage"><div class="reply">
+<figure class="skt hover" aria-label="Sketch: Freezing below 0 °C">
+<figcaption class="t">Freezing below 0 °C</figcaption>
+<svg viewBox="0 0 640 160" aria-hidden="true">
+<path class="ln2" d="M80 24H560M80 24H124L208 108H400H432L516 24"/>
+<path class="ar" d="M157 19L162 24L157 29M537 19L542 24L537 29M219 103L224 108L219 113M317 103L322 108L317 113"/>
+<circle class="st" cx="80" cy="24" r="6"/><circle class="st" cx="240" cy="24" r="6"/><circle class="st" cx="240" cy="108" r="6"/><circle class="st" cx="400" cy="108" r="6"/><circle class="st f" cx="560" cy="24" r="7"/>
+<text x="80" y="50">Water freezes</text>
+<text x="240" y="50">Water's entropy</text><text x="240" y="68">falls</text>
+<text class="f" x="560" y="50">Total rises</text>
+<text x="240" y="134">Heat flows out</text>
+<text x="400" y="134">Surroundings'</text><text x="400" y="152">entropy rises more</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</div>
+<p class="note">Shown hovered: the controls box appears at the top right and covers nothing the title row needs.</p>
+<pre class="tag">```sketch flow
+title: Freezing below 0 °C
+Water freezes -> Water's entropy falls
+Water freezes -> Heat flows out
+Heat flows out -> Surroundings' entropy rises more
+Water's entropy falls -> *Total rises*
+Surroundings' entropy rises more -> *Total rises*
+```</pre></div></section>
+
+<section class="spec"><h2>Bars: with a unit, and a zero</h2><p>The labels take the width they need, up to 45% of the column. The unit follows the number. A zero value is an 8px dot, so the row still reads as a bar.</p><div class="stage"><div class="reply">
+<figure class="skt" aria-label="Sketch: Approximate eastward speed of the ground">
+<figcaption class="t">Approximate eastward speed of the ground</figcaption>
+<dl class="bars">
+<dt>Equator</dt><dd style="--v:1"><s></s>465 m/s</dd>
+<dt>30° latitude</dt><dd style="--v:.8667"><s></s>403 m/s</dd>
+<dt class="f">60° latitude</dt><dd class="f" style="--v:.5011"><s></s>233 m/s</dd>
+<dt>North Pole</dt><dd style="--v:0"><s></s>0 m/s</dd>
+</dl>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</div>
+<pre class="tag">```sketch bars
+title: Approximate eastward speed of the ground
+Equator: 465 m/s
+30° latitude: 403 m/s
+*60° latitude*: 233 m/s
+North Pole: 0 m/s
+```</pre></div></section>
+
+<section class="spec"><h2>Streaming: fence still open, then closed</h2><p>While the fence is open, a 96px placeholder in the skeleton tone holds the place, and the source never shows. When the fence closes, the sketch replaces it. Screen readers hear "Drawing a sketch" once.</p><div class="stage"><div class="reply">
+<p class="p">Each degree of latitude you move north, the ground under you travels a shorter circle.</p>
+<div class="skt-wait" role="status" aria-label="Drawing a sketch"></div>
+</div>
+<div class="reply">
+<p class="p">Each degree of latitude you move north, the ground under you travels a shorter circle.</p>
+<figure class="skt" aria-label="Sketch: Approximate eastward speed of the ground">
+<figcaption class="t">Approximate eastward speed of the ground</figcaption>
+<dl class="bars">
+<dt>Equator</dt><dd style="--v:1"><s></s>465 m/s</dd>
+<dt>30° latitude</dt><dd style="--v:.8667"><s></s>403 m/s</dd>
+<dt class="f">60° latitude</dt><dd class="f" style="--v:.5011"><s></s>233 m/s</dd>
+<dt>North Pole</dt><dd style="--v:0"><s></s>0 m/s</dd>
+</dl>
+</figure>
+</div></div></section>
+
+<section class="spec"><h2>A sketch the app cannot draw</h2><p>Nothing shows. The paragraphs close up as if the block were not there: no gap, no error box, no source. The console logs the kind and the reason.</p><div class="stage"><div class="reply">
+<p class="p">Pressure pushes air toward the low, and the spinning Earth turns its path to the right.</p>
+<div class="gone" aria-hidden="true"></div>
+<p class="p">Once the two forces balance, the wind runs along the pressure lines instead of across them.</p>
+</div>
+<pre class="tag">```sketch bars
+Pressure push: strong
+Coriolis turn: weak
+```
+
+console.warn: Sketch hidden (bars): line 1 "Pressure push: strong" has no number</pre></div></section>
+
+<section class="spec"><h2>What a screen reader hears</h2><p>The figure is named "Sketch: <i>title</i>", or just "Sketch" with no title. Its items follow as a list, in order, built from the items the sketch module returns. The tutor writes no alt text.</p><div class="stage">
+<pre class="tag">Sketch: Freezing below 0 °C, list, 5 items
+Water freezes, leads to Water's entropy falls and Heat flows out
+Water's entropy falls, leads to Total rises
+Heat flows out, leads to Surroundings' entropy rises more
+Surroundings' entropy rises more, leads to Total rises
+Total rises, focus</pre>
+<pre class="tag">Sketch: Approximate eastward speed of the ground, list, 4 items
+Equator, 465 m/s
+30° latitude, 403 m/s
+60° latitude, 233 m/s, focus
+North Pole, 0 m/s</pre>
+<pre class="tag">Sketch, list, 4 items
+Rock, leads to Loose sand: breaks and moves
+Loose sand, leads to Buried layers: settles
+Buried layers, leads to Sandstone: squeezed, glued
+Sandstone, focus</pre>
+</div></section>
+
+</main>
+
+<header class="intro"><h2>Expand into visual (Rabbithole-skt.7)</h2><p>Expand asks for a normal visual, built from the sketch's title, its items and the text around it. The visual takes the sketch's place in the reply. From then on it is an ordinary visual: it counts in the Figures list and has visual parts, new versions and Enlarge. The sketch stays one menu item away.</p></header>
+<main class="specs wide">
+
+<section class="spec"><h2>1. Point at the sketch</h2><p>The box shows one control, "Expand into visual". Tab into the sketch to reach it, and press Enter to expand.</p><div class="stage"><div class="reply">
+<figure class="skt hover" aria-label="Sketch: Sequences behind each head count (4 coins)">
+<figcaption class="t">Sequences behind each head count (4 coins)</figcaption>
+<dl class="bars">
+<dt>0 heads</dt><dd style="--v:.1667"><s></s>1</dd>
+<dt>1 head</dt><dd style="--v:.6667"><s></s>4</dd>
+<dt class="f">2 heads</dt><dd class="f" style="--v:1"><s></s>6</dd>
+<dt>3 heads</dt><dd style="--v:.6667"><s></s>4</dd>
+<dt>4 heads</dt><dd style="--v:.1667"><s></s>1</dd>
+</dl>
+<div class="acts"><button class="btn focus"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</div></div></section>
+
+<section class="spec"><h2>2. Drawing, in its place</h2><p>The sketch gives way at once to today's drawing state for a visual: the timer badge over a 180px shimmer. The paragraphs around it do not move.</p><div class="stage"><div class="reply">
+<p class="p">Entropy counts those ways.</p>
+<figure class="vis" aria-busy="true" aria-label="Sequences behind each head count (4 coins)">
+<span class="badge">Drawing… 0:04</span>
+<div class="shim"></div>
+</figure>
+</div></div></section>
+
+<section class="spec"><h2>3. The visual, with the sketch one menu item away</h2><p>The visual is drawn as any visual is today, with Ask and the actions menu. The menu gains "Show sketch" after the version items, only on a visual expanded from a sketch. This is the same way "Previous version" goes back to a replaced version.</p><div class="stage"><div class="reply">
+<p class="p">Entropy counts those ways.</p>
+<figure class="vis" aria-label="All 16 sequences of four coins, grouped by how many heads">
+<svg viewBox="0 0 640 196" role="img" aria-label="All 16 sequences of four coins, grouped by how many heads">
+<g fill="none" stroke="var(--seam2)" stroke-width="1.5">
+<rect x="20" y="148" width="88" height="20" rx="4"/>
+<rect x="148" y="76" width="88" height="20" rx="4"/><rect x="148" y="100" width="88" height="20" rx="4"/><rect x="148" y="124" width="88" height="20" rx="4"/><rect x="148" y="148" width="88" height="20" rx="4"/>
+<rect x="404" y="76" width="88" height="20" rx="4"/><rect x="404" y="100" width="88" height="20" rx="4"/><rect x="404" y="124" width="88" height="20" rx="4"/><rect x="404" y="148" width="88" height="20" rx="4"/>
+<rect x="532" y="148" width="88" height="20" rx="4"/>
+</g>
+<g fill="none" stroke="var(--l1)" stroke-width="2">
+<rect x="276" y="28" width="88" height="20" rx="4"/><rect x="276" y="52" width="88" height="20" rx="4"/><rect x="276" y="76" width="88" height="20" rx="4"/><rect x="276" y="100" width="88" height="20" rx="4"/><rect x="276" y="124" width="88" height="20" rx="4"/><rect x="276" y="148" width="88" height="20" rx="4"/>
+</g>
+<text x="64" y="162">TTTT</text>
+<text x="192" y="90">HTTT</text><text x="192" y="114">THTT</text><text x="192" y="138">TTHT</text><text x="192" y="162">TTTH</text>
+<text x="320" y="42">HHTT</text><text x="320" y="66">HTHT</text><text x="320" y="90">HTTH</text><text x="320" y="114">THHT</text><text x="320" y="138">THTH</text><text x="320" y="162">TTHH</text>
+<text x="448" y="90">HHHT</text><text x="448" y="114">HHTH</text><text x="448" y="138">HTHH</text><text x="448" y="162">THHH</text>
+<text x="576" y="162">HHHH</text>
+<text class="lab" x="64" y="190">0 heads · 1</text><text class="lab" x="192" y="190">1 head · 4</text><text class="lab" x="320" y="190">2 heads · 6</text><text class="lab" x="448" y="190">3 heads · 4</text><text class="lab" x="576" y="190">4 heads · 1</text>
+</svg>
+<div class="acts"><button class="btn">Ask</button><button class="ib hover" style="width:30px;height:30px" aria-label="Visual actions: Sequences behind each head count" aria-expanded="true"><i class="i i--sm i-ellipsis-horizontal"></i></button></div>
+<div class="menu" role="menu"><div class="mi">Try a new version…</div><div class="mi hover">Show sketch<span class="new">new</span></div><div class="mi">Enlarge</div></div>
+</figure>
+<p class="p">A state that can happen in more ways is more likely, which is why mixed results win.</p>
+</div></div></section>
+
+<section class="spec"><h2>4. Back on the sketch</h2><p>The sketch draws again in the same place. Its control now reads "Show visual" and brings the same visual back, with no new request. When the conversation reopens, the reply shows whichever of the two was showing last.</p><div class="stage"><div class="reply">
+<figure class="skt hover" aria-label="Sketch: Sequences behind each head count (4 coins)">
+<figcaption class="t">Sequences behind each head count (4 coins)</figcaption>
+<dl class="bars">
+<dt>0 heads</dt><dd style="--v:.1667"><s></s>1</dd>
+<dt>1 head</dt><dd style="--v:.6667"><s></s>4</dd>
+<dt class="f">2 heads</dt><dd class="f" style="--v:1"><s></s>6</dd>
+<dt>3 heads</dt><dd style="--v:.6667"><s></s>4</dd>
+<dt>4 heads</dt><dd style="--v:.1667"><s></s>1</dd>
+</dl>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Show visual</button></div>
+</figure>
+</div></div></section>
+
+</main>
+<script src="line-diagram/ld.js"></script>
+</body></html>

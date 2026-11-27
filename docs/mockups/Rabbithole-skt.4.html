@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sketches · Rabbithole-skt.4 mockup</title><link rel="stylesheet" href="line-diagram/ld.css">
+<style>
+/* Mockup only. Sketches: small diagrams the tutor writes, drawn by the app on the reply's own ground.
+   Theme roles used, mockup name then app token: --g background, --ink text-primary, --mut text-secondary,
+   --seam2 border-emphasized, --seam border, --w porcelain (rabbithole-paper), --up popover, --up2 hover. */
+.reply { max-width: 640px; }
+.reply h2:first-child { margin-top: 0; }
+
+/* The sketch: no frame, no fill, no head band. It sits between paragraphs at the column width. */
+.skt { position: relative; margin: 8px 0 20px; max-width: 640px; }
+.skt .t { font: 600 15px/1.35 var(--read); color: var(--ink); margin-bottom: 10px; }
+.skt svg { display: block; width: 100%; height: auto; overflow: visible; }
+.skt .ln2 { fill: none; stroke: var(--seam2); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.skt .ar { fill: none; stroke: var(--mut); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.skt .st { fill: var(--g); stroke: var(--mut); stroke-width: 2.5; }
+.skt .st.f { fill: var(--w); stroke: var(--w); }
+.skt text { font: 14px var(--read); fill: var(--ink); text-anchor: middle; }
+.skt text.f { fill: var(--w); font-weight: 600; }
+.skt text.e { font-size: 13px; fill: var(--mut); }
+
+/* Focus on a line or chevron, and on starred words inside a longer label. */
+.skt .ln2.f, .skt .ar.f { stroke: var(--w); }
+.skt tspan.f { fill: var(--w); font-weight: 600; }
+.skt text.s { text-anchor: start; }
+.skt text.n { text-anchor: end; }
+
+/* Maths: the app renders reply maths with KaTeX as MathML, which the browser sets in its math font.
+   Plot curve labels are real MathML; the equation approximates it with font-family math and the
+   math italic letters MathML uses for <mi>, so each symbol can carry its own leader. */
+
+/* Plot: axes in muted ink, curves as strong-seam lines, curve labels in the math font. */
+.skt .ax { fill: none; stroke: var(--mut); stroke-width: 1.5; }
+.skt text.tk { font-size: 12px; fill: var(--mut); font-variant-numeric: tabular-nums; }
+.skt text.tk.y { text-anchor: end; }
+.skt .cv.f { fill: none; stroke: var(--w); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.skt .ml { font: 15px/28px math; color: var(--ink); white-space: nowrap; }
+.skt .ml.f { color: var(--w); }
+
+/* Sequence: lifelines a step lighter than the messages; a gap path erases a lifeline under a crossing. */
+.skt .lf { fill: none; stroke: var(--seam2); stroke-width: 2; }
+.skt .gap { fill: none; stroke: var(--g); stroke-width: 6; }
+
+/* Equation: the formula on one 40px row; each annotated symbol drops a leader to its own row of meaning. */
+.eq { display: flex; gap: 10px; height: calc(38px + var(--rows) * 26px); font: 26px/40px math; color: var(--ink); }
+.eq .tk { display: block; height: 40px; white-space: nowrap; }
+.eq .an { position: relative; display: inline-block; height: 40px; vertical-align: top; }
+.eq sub, .eq sup { font-size: 70%; line-height: 0; }
+.eq .up { font-style: normal; }
+.eq .ld { position: absolute; left: 50%; top: 100%; margin-left: -1px; width: 10px; height: calc(14px + var(--r) * 26px); border: solid var(--seam2); border-width: 0 0 2px 2px; }
+.eq .ld span { position: absolute; left: 16px; top: 100%; transform: translateY(-50%); margin-top: -1px; white-space: nowrap; font: 14px/20px var(--read); color: var(--ink); }
+.eq .an.f { color: var(--w); }
+.eq .an.f .ld { border-color: var(--w); }
+.eq .ld em { font-style: normal; font-weight: 600; color: var(--w); }
+
+/* Grid: cells on a 1px strong-seam lattice, drawn by the 1px gaps between ground-coloured cells. */
+.grids { display: flex; align-items: center; gap: 16px; max-width: 640px; overflow-x: auto; }
+.grids.stack { flex-direction: column; align-items: flex-start; }
+.gb { display: flex; flex-direction: column; }
+.gb .gc { font: 13px/18px var(--read); color: var(--mut); margin-bottom: 6px; }
+.gd { display: grid; grid-template-columns: repeat(var(--c), auto); gap: 1px; padding: 1px; background: var(--seam2); width: max-content; }
+.gd > i { display: block; min-width: 36px; min-height: 32px; max-width: 200px; padding: 6px 10px; background: var(--g); font: 14px/20px var(--read); font-style: normal; color: var(--ink); text-align: center; font-variant-numeric: tabular-nums; }
+.gd.tbl > i { text-align: start; }
+.gd.tbl > i.h { font: 600 13px/20px var(--read); color: var(--mut); border-bottom: 1px solid var(--seam2); }
+.gd > i.f { color: var(--w); font-weight: 600; outline: 2px solid var(--w); outline-offset: -2px; }
+.grids .op { font: 24px/1 math; color: var(--mut); padding-top: 24px; }
+
+.stage .reply { width: 640px; max-width: 100%; }
+pre.tag { font: 12px/1.6 ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--mut); white-space: pre-wrap; background: var(--deep); border-radius: 8px; padding: 10px 14px; width: 100%; }
+.note { font-size: 13px; color: var(--mut); }
+.gone { border-top: 1px dashed var(--seam2); margin: -6px 0 9px; position: relative; }
+.gone::after { content: "hidden sketch was here (mockup marker only)"; position: absolute; right: 0; top: -9px; background: var(--g); padding-left: 8px; font-size: 12px; color: var(--mut); }
+</style></head><body>
+<nav class="mock" aria-label="Mockup screens"><b>Sketches</b><a href="line-diagram/read.html">Read</a><a href="Rabbithole-skt.1.html">skt.1 and skt.7 Sketches</a><a href="Rabbithole-skt.4.html" aria-current=page>skt.4 Maths and exchanges</a><label><input type="checkbox" id="lt"> Light</label></nav>
+<header class="intro"><h1>Sketches: plot, sequence, equation, grid</h1><p>Rabbithole-skt.4. Four more kinds for the sketch module, drawn in the same way as flow and bars in Rabbithole-skt.1: on the reply's own ground, the moment the fence closes. Spec: <code>docs/sketches-spec.md</code>. Decision: ADR 0027. The spec wins where they differ.</p></header>
+<ul class="rules">
+<li>Everything in Rabbithole-skt.1 still holds: no frame, fill or head band; at most 640px wide, 8px below the paragraph before and 20px above the next; only ink, muted ink, the strong seam and porcelain; a 15px/600 title; no Fig N, copy button or source.</li>
+<li>The focus is porcelain. When the stars wrap a whole label, the whole label is 600-weight porcelain. When they wrap only part of it, as in <code>19^6 mod 23 = *2*</code>, only the starred words are, and the item's mark (ring, line, leader or cell) turns porcelain.</li>
+<li>Maths uses the app's maths renderer (KaTeX, as MathML in the browser's math font): the formula of an equation, its symbols, the curve labels of a plot and a grid's join signs. Every other word is in the reading face. Labels outside an equation or plot are text, so a <code>^</code> there stays as written.</li>
+<li>Plot: a 640 × 216 drawing. The plot area starts 40px from the left and 8px from the top and is 176px tall. Its right edge leaves 12px plus the widest curve label. The axes are 1.5px muted lines at zero, or at the area's low edge when zero is outside the range. There are no gridlines and no tick marks. Tick labels are 12px muted with tabular figures: y labels end 8px left of the area, x labels are centred 20px under it. There are 4 to 6 even steps, plus each end of <code>x:</code> when it is 40px or more from a step. The y range runs from 0 or the lowest value, whichever is lower, to the highest value, rounded out to a step.</li>
+<li>Plot curves are 3px strong-seam lines with round caps, sampled 200 times across <code>x:</code>; the focus curve is porcelain. A curve breaks where its value is not a number. Each curve is named at its right end, 12px past the area, in 15px maths. Two names closer than 20px are pushed apart to 20px.</li>
+<li>Sequence: actors share the width evenly, each in a column 640px / n wide, its name in 14px ink centred at the top. Lifelines are 2px strong seam from 26px down to the last row. Rows follow the source order. A message row is 44px: the label baseline sits 18px down and the line 30px down. A note row is 32px, plus 18px for each extra line.</li>
+<li>A message is a 3px strong-seam line from lifeline to lifeline, with a 2px muted chevron whose tip sits 8px before the receiver. Its 14px ink label is centred above it and wraps at the span minus 16px. A note is a 12px muted ring on its actor's lifeline. Its text is 14px and starts 14px right of the lifeline (on the last actor it ends 14px to the left), wrapping at the column minus 28px. Where a message crosses a lifeline, the lifeline breaks from 26px above the line to 6px below, so the label never sits on it.</li>
+<li>Equation: the formula sits on one 40px row in 26px maths, left aligned, one symbol per space-separated token, 10px apart. Each annotated symbol drops a 2px strong-seam leader 14px plus 26px per row, then turns right for 10px. Its meaning is 14px ink, 6px past the turn and centred on it. The rightmost annotated symbol takes the top row, so no leader crosses a meaning. A symbol with no meaning line has no leader. The height is 38px + 26px × rows.</li>
+<li>Grid: cells sit on a 1px strong-seam lattice, outer edge included, with square corners. Each cell has 14px text, 6px × 10px padding, and is at least 36 × 32px. A cell wider than 200px wraps. A grid of only numbers is a matrix, its cells centred with tabular figures. A grid with any word in it is a table: its cells are left aligned and its first row is the header, in 13px/600 muted with a 2px rule under it.</li>
+<li>A <code>name:</code> caption is 13px muted, 6px above its grid. A join sign (×, =, + or →) is 24px muted maths with 16px on each side, centred on the grids. Grids with no join between them stack 16px apart. A focus cell has 600-weight porcelain text and a 2px porcelain ring inside the lattice. A joined row wider than the column scrolls sideways, as display maths does today.</li>
+</ul>
+<main class="specs wide">
+
+<section class="spec"><h2>In a reply: grid and plot</h2><p>A table of numbers and the curve they lead to, each right after the text it shows. Both have a title and a focus.</p><div class="stage">
+<article class="reply">
+<h2>Slope at a single point</h2>
+<p class="p">To find the slope of y = x² at x = 1, take a second point a little to the right, at 1 + h, and work out the slope of the line through both. Then let h shrink.</p>
+<figure class="skt" aria-label="Sketch: Slope from x = 1 to x = 1 + h">
+<figcaption class="t">Slope from x = 1 to x = 1 + h</figcaption>
+<div class="grids"><div class="gb"><div class="gd tbl" style="--c:2">
+<i class="h">h</i><i class="h">slope</i>
+<i>1</i><i>3</i>
+<i>0.1</i><i>2.1</i>
+<i>0.01</i><i>2.01</i>
+<i>0.001</i><i class="f">2.001</i>
+</div></div></div>
+</figure>
+<p class="p">The slope closes in on 2. That limit is the derivative at x = 1, and the line through (1, 1) with slope 2 is the tangent there.</p>
+<figure class="skt" aria-label="Sketch: x² and its tangent at x = 1">
+<figcaption class="t">x² and its tangent at x = 1</figcaption>
+<svg viewBox="0 0 640 216" aria-hidden="true">
+<path class="ax" d="M40 140H548M124.7 8V184"/>
+<text class="tk y" x="32" y="188">−2.5</text><text class="tk y" x="32" y="144">0</text><text class="tk y" x="32" y="100">2.5</text><text class="tk y" x="32" y="56">5</text><text class="tk y" x="32" y="12">7.5</text>
+<text class="tk" x="40" y="204">−0.5</text><text class="tk" x="124.7" y="204">0</text><text class="tk" x="294" y="204">1</text><text class="tk" x="463.3" y="204">2</text><text class="tk" x="548" y="204">2.5</text>
+<path class="ln2" d="M40 135.6L42.5 135.9L45.1 136.1L47.6 136.4L50.2 136.6L52.7 136.8L55.2 137L57.8 137.3L60.3 137.5L62.9 137.7L65.4 137.8L67.9 138L70.5 138.2L73 138.4L75.6 138.5L78.1 138.7L80.6 138.8L83.2 138.9L85.7 139.1L88.3 139.2L90.8 139.3L93.3 139.4L95.9 139.5L98.4 139.6L101 139.7L103.5 139.7L106 139.8L108.6 139.8L111.1 139.9L113.7 139.9L116.2 140L118.7 140L121.3 140L123.8 140L126.4 140L128.9 140L131.4 140L134 139.9L136.5 139.9L139.1 139.9L141.6 139.8L144.1 139.8L146.7 139.7L149.2 139.6L151.8 139.5L154.3 139.5L156.8 139.4L159.4 139.3L161.9 139.1L164.5 139L167 138.9L169.5 138.8L172.1 138.6L174.6 138.5L177.2 138.3L179.7 138.1L182.2 138L184.8 137.8L187.3 137.6L189.9 137.4L192.4 137.2L194.9 137L197.5 136.7L200 136.5L202.6 136.3L205.1 136L207.6 135.8L210.2 135.5L212.7 135.2L215.3 135L217.8 134.7L220.3 134.4L222.9 134.1L225.4 133.8L228 133.5L230.5 133.1L233 132.8L235.6 132.4L238.1 132.1L240.7 131.7L243.2 131.4L245.7 131L248.3 130.6L250.8 130.2L253.4 129.8L255.9 129.4L258.4 129L261 128.6L263.5 128.2L266.1 127.7L268.6 127.3L271.1 126.8L273.7 126.4L276.2 125.9L278.8 125.4L281.3 124.9L283.8 124.4L286.4 123.9L288.9 123.4L291.5 122.9L294 122.4L296.5 121.9L299.1 121.3L301.6 120.8L304.2 120.2L306.7 119.7L309.2 119.1L311.8 118.5L314.3 117.9L316.9 117.3L319.4 116.7L321.9 116.1L324.5 115.5L327 114.9L329.6 114.2L332.1 113.6L334.6 112.9L337.2 112.3L339.7 111.6L342.3 110.9L344.8 110.3L347.3 109.6L349.9 108.9L352.4 108.2L355 107.4L357.5 106.7L360 106L362.6 105.3L365.1 104.5L367.7 103.8L370.2 103L372.7 102.2L375.3 101.4L377.8 100.7L380.4 99.9L382.9 99.1L385.4 98.3L388 97.4L390.5 96.6L393.1 95.8L395.6 94.9L398.1 94.1L400.7 93.2L403.2 92.4L405.8 91.5L408.3 90.6L410.8 89.7L413.4 88.8L415.9 87.9L418.5 87L421 86.1L423.5 85.2L426.1 84.2L428.6 83.3L431.2 82.3L433.7 81.4L436.2 80.4L438.8 79.4L441.3 78.5L443.9 77.5L446.4 76.5L448.9 75.5L451.5 74.4L454 73.4L456.6 72.4L459.1 71.3L461.6 70.3L464.2 69.2L466.7 68.2L469.3 67.1L471.8 66L474.3 64.9L476.9 63.9L479.4 62.8L482 61.6L484.5 60.5L487 59.4L489.6 58.3L492.1 57.1L494.7 56L497.2 54.8L499.7 53.7L502.3 52.5L504.8 51.3L507.4 50.1L509.9 48.9L512.4 47.7L515 46.5L517.5 45.3L520.1 44L522.6 42.8L525.1 41.6L527.7 40.3L530.2 39L532.8 37.8L535.3 36.5L537.8 35.2L540.4 33.9L542.9 32.6L545.5 31.3L548 30"/>
+<path class="cv f" d="M40 175.2L42.5 174.7L45.1 174.1L47.6 173.6L50.2 173.1L52.7 172.6L55.2 172L57.8 171.5L60.3 171L62.9 170.4L65.4 169.9L67.9 169.4L70.5 168.9L73 168.3L75.6 167.8L78.1 167.3L80.6 166.8L83.2 166.2L85.7 165.7L88.3 165.2L90.8 164.6L93.3 164.1L95.9 163.6L98.4 163.1L101 162.5L103.5 162L106 161.5L108.6 160.9L111.1 160.4L113.7 159.9L116.2 159.4L118.7 158.8L121.3 158.3L123.8 157.8L126.4 157.2L128.9 156.7L131.4 156.2L134 155.7L136.5 155.1L139.1 154.6L141.6 154.1L144.1 153.6L146.7 153L149.2 152.5L151.8 152L154.3 151.4L156.8 150.9L159.4 150.4L161.9 149.9L164.5 149.3L167 148.8L169.5 148.3L172.1 147.7L174.6 147.2L177.2 146.7L179.7 146.2L182.2 145.6L184.8 145.1L187.3 144.6L189.9 144L192.4 143.5L194.9 143L197.5 142.5L200 141.9L202.6 141.4L205.1 140.9L207.6 140.4L210.2 139.8L212.7 139.3L215.3 138.8L217.8 138.2L220.3 137.7L222.9 137.2L225.4 136.7L228 136.1L230.5 135.6L233 135.1L235.6 134.5L238.1 134L240.7 133.5L243.2 133L245.7 132.4L248.3 131.9L250.8 131.4L253.4 130.8L255.9 130.3L258.4 129.8L261 129.3L263.5 128.7L266.1 128.2L268.6 127.7L271.1 127.2L273.7 126.6L276.2 126.1L278.8 125.6L281.3 125L283.8 124.5L286.4 124L288.9 123.5L291.5 122.9L294 122.4L296.5 121.9L299.1 121.3L301.6 120.8L304.2 120.3L306.7 119.8L309.2 119.2L311.8 118.7L314.3 118.2L316.9 117.6L319.4 117.1L321.9 116.6L324.5 116.1L327 115.5L329.6 115L332.1 114.5L334.6 114L337.2 113.4L339.7 112.9L342.3 112.4L344.8 111.8L347.3 111.3L349.9 110.8L352.4 110.3L355 109.7L357.5 109.2L360 108.7L362.6 108.1L365.1 107.6L367.7 107.1L370.2 106.6L372.7 106L375.3 105.5L377.8 105L380.4 104.4L382.9 103.9L385.4 103.4L388 102.9L390.5 102.3L393.1 101.8L395.6 101.3L398.1 100.8L400.7 100.2L403.2 99.7L405.8 99.2L408.3 98.6L410.8 98.1L413.4 97.6L415.9 97.1L418.5 96.5L421 96L423.5 95.5L426.1 94.9L428.6 94.4L431.2 93.9L433.7 93.4L436.2 92.8L438.8 92.3L441.3 91.8L443.9 91.2L446.4 90.7L448.9 90.2L451.5 89.7L454 89.1L456.6 88.6L459.1 88.1L461.6 87.6L464.2 87L466.7 86.5L469.3 86L471.8 85.4L474.3 84.9L476.9 84.4L479.4 83.9L482 83.3L484.5 82.8L487 82.3L489.6 81.7L492.1 81.2L494.7 80.7L497.2 80.2L499.7 79.6L502.3 79.1L504.8 78.6L507.4 78L509.9 77.5L512.4 77L515 76.5L517.5 75.9L520.1 75.4L522.6 74.9L525.1 74.4L527.7 73.8L530.2 73.3L532.8 72.8L535.3 72.2L537.8 71.7L540.4 71.2L542.9 70.7L545.5 70.1L548 69.6"/>
+<foreignObject x="560" y="16" width="80" height="28"><div class="ml"><math><mi>y</mi><mo>=</mo><msup><mi>x</mi><mn>2</mn></msup></math></div></foreignObject>
+<foreignObject x="560" y="56" width="80" height="28"><div class="ml f"><math><mi>y</mi><mo>=</mo><mn>2</mn><mi>x</mi><mo>−</mo><mn>1</mn></math></div></foreignObject>
+</svg>
+</figure>
+<p class="p">Near x = 1 the curve and its tangent are almost the same line. Further away they part, which is why the derivative only describes one point.</p>
+</article>
+</div></section>
+
+<section class="spec"><h2>In a reply: sequence and equation</h2><p>Who sends what, then the formula behind it with the reply's own numbers.</p><div class="stage">
+<article class="reply">
+<h2>Agreeing on a key in public</h2>
+<p class="p">Alice and Bob agree in the open on a prime, 23, and a base, 5. Each picks a secret number and sends only 5 raised to it, mod 23.</p>
+<figure class="skt" aria-label="Sketch: What crosses the public channel">
+<figcaption class="t">What crosses the public channel</figcaption>
+<svg viewBox="0 0 640 260" aria-hidden="true">
+<path class="lf" d="M160 26V256M480 26V256"/>
+<text x="160" y="14">Alice</text><text x="480" y="14">Bob</text>
+<circle class="st" cx="160" cy="52" r="6"/><text class="s" x="174" y="57">keeps a = 6 private</text>
+<circle class="st" cx="480" cy="84" r="6"/><text class="n" x="466" y="89">keeps b = 15 private</text>
+<text x="320" y="118">A = 8</text><path class="ln2" d="M160 130H480"/><path class="ar" d="M467 125L472 130L467 135"/>
+<text x="320" y="162">B = 19</text><path class="ln2" d="M480 174H160"/><path class="ar" d="M173 169L168 174L173 179"/>
+<circle class="st f" cx="160" cy="204" r="7"/><text class="s" x="174" y="209">19^6 mod 23 = <tspan class="f">2</tspan></text>
+<circle class="st f" cx="480" cy="236" r="7"/><text class="n" x="466" y="241">8^15 mod 23 = <tspan class="f">2</tspan></text>
+</svg>
+</figure>
+<p class="p">An eavesdropper sees 23, 5, 8 and 19, but never 6 or 15. Both sides still reach the same number, because each raised the other's value to their own secret.</p>
+<figure class="skt" aria-label="Sketch: With our numbers">
+<figcaption class="t">With our numbers</figcaption>
+<div class="eq" style="--rows:4">
+<span class="tk"><span class="an">𝐾<b class="ld" style="--r:3"><span>the shared key, 2</span></b></span></span>
+<span class="tk">=</span>
+<span class="tk"><span class="an">𝑔<b class="ld" style="--r:2"><span>public base, 5</span></b></span><span class="an f"><sup>𝑎𝑏</sup><b class="ld" style="--r:1"><span>6 × 15 = 90, <em>never sent</em></span></b></span></span>
+<span class="tk"><span class="up">mod</span></span>
+<span class="tk"><span class="an">𝑝<b class="ld" style="--r:0"><span>public prime, 23</span></b></span></span>
+</div>
+</figure>
+<p class="p">The 90 in the exponent is the secret nobody sent. Finding it from 8 and 19 alone is the hard problem that keeps the key safe.</p>
+</article>
+</div></section>
+
+<section class="spec"><h2>Plot: two curves crossing zero</h2><p>Zero is inside the y range, so the x axis runs through the middle and the tick labels stay outside the area. Two long curve names narrow the plot area. Only the focus curve is porcelain; the other is told apart by its name at its end.</p><div class="stage"><div class="reply">
+<figure class="skt" aria-label="Sketch: A slow wave, and the sum with a fast one">
+<figcaption class="t">A slow wave, and the sum with a fast one</figcaption>
+<svg viewBox="0 0 640 216" aria-hidden="true">
+<path class="ax" d="M40 96H464M40 8V184"/>
+<text class="tk y" x="32" y="188">−2</text><text class="tk y" x="32" y="144">−1</text><text class="tk y" x="32" y="100">0</text><text class="tk y" x="32" y="56">1</text><text class="tk y" x="32" y="12">2</text>
+<text class="tk" x="40" y="204">0</text><text class="tk" x="208.7" y="204">5</text><text class="tk" x="377.3" y="204">10</text><text class="tk" x="464" y="204">12.57</text>
+<path class="ln2" d="M40 96L42.1 93.2L44.2 90.5L46.4 87.8L48.5 85.1L50.6 82.4L52.7 79.8L54.8 77.3L57 74.8L59.1 72.4L61.2 70.1L63.3 67.9L65.4 65.9L67.6 63.9L69.7 62.1L71.8 60.4L73.9 58.8L76 57.4L78.2 56.2L80.3 55.1L82.4 54.1L84.5 53.4L86.6 52.8L88.8 52.3L90.9 52.1L93 52L95.1 52.1L97.2 52.3L99.4 52.8L101.5 53.4L103.6 54.2L105.7 55.1L107.8 56.2L110 57.5L112.1 58.9L114.2 60.4L116.3 62.1L118.4 63.9L120.6 65.9L122.7 68L124.8 70.2L126.9 72.5L129 74.8L131.2 77.3L133.3 79.8L135.4 82.4L137.5 85.1L139.6 87.8L141.8 90.5L143.9 93.3L146 96L148.1 98.8L150.2 101.6L152.4 104.3L154.5 107L156.6 109.6L158.7 112.2L160.8 114.8L163 117.2L165.1 119.6L167.2 121.9L169.3 124.1L171.4 126.2L173.6 128.1L175.7 129.9L177.8 131.6L179.9 133.2L182 134.6L184.2 135.8L186.3 136.9L188.4 137.9L190.5 138.6L192.6 139.2L194.8 139.7L196.9 139.9L199 140L201.1 139.9L203.2 139.6L205.4 139.2L207.5 138.6L209.6 137.8L211.7 136.9L213.8 135.8L216 134.5L218.1 133.1L220.2 131.6L222.3 129.9L224.4 128L226.6 126.1L228.7 124L230.8 121.8L232.9 119.5L235 117.1L237.2 114.7L239.3 112.1L241.4 109.5L243.5 106.9L245.6 104.2L247.8 101.4L249.9 98.7L252 95.9L254.1 93.2L256.2 90.4L258.4 87.7L260.5 85L262.6 82.3L264.7 79.7L266.8 77.2L269 74.7L271.1 72.4L273.2 70.1L275.3 67.9L277.4 65.8L279.6 63.9L281.7 62L283.8 60.3L285.9 58.8L288 57.4L290.2 56.1L292.3 55.1L294.4 54.1L296.5 53.4L298.6 52.8L300.8 52.3L302.9 52.1L305 52L307.1 52.1L309.2 52.4L311.4 52.8L313.5 53.4L315.6 54.2L317.7 55.1L319.8 56.2L322 57.5L324.1 58.9L326.2 60.5L328.3 62.2L330.4 64L332.6 66L334.7 68L336.8 70.2L338.9 72.5L341 74.9L343.2 77.4L345.3 79.9L347.4 82.5L349.5 85.2L351.6 87.9L353.8 90.6L355.9 93.4L358 96.1L360.1 98.9L362.2 101.6L364.4 104.4L366.5 107.1L368.6 109.7L370.7 112.3L372.8 114.8L375 117.3L377.1 119.7L379.2 122L381.3 124.1L383.4 126.2L385.6 128.2L387.7 130L389.8 131.7L391.9 133.2L394 134.6L396.2 135.9L398.3 137L400.4 137.9L402.5 138.7L404.6 139.2L406.8 139.7L408.9 139.9L411 140L413.1 139.9L415.2 139.6L417.4 139.2L419.5 138.6L421.6 137.8L423.7 136.9L425.8 135.8L428 134.5L430.1 133.1L432.2 131.5L434.3 129.8L436.4 128L438.6 126L440.7 123.9L442.8 121.7L444.9 119.4L447 117.1L449.2 114.6L451.3 112.1L453.4 109.4L455.5 106.8L457.6 104.1L459.8 101.4L461.9 98.6L464 95.8"/>
+<path class="cv f" d="M40 96L42.1 89.1L44.2 82.4L46.4 76L48.5 70L50.6 64.6L52.7 59.9L54.8 55.9L57 52.8L59.1 50.6L61.2 49.2L63.3 48.7L65.4 48.9L67.6 49.9L69.7 51.5L71.8 53.6L73.9 56.1L76 58.8L78.2 61.7L80.3 64.5L82.4 67.1L84.5 69.4L86.6 71.4L88.8 72.8L90.9 73.7L93 74L95.1 73.7L97.2 72.8L99.4 71.3L101.5 69.4L103.6 67.1L105.7 64.4L107.8 61.6L110 58.8L112.1 56.1L114.2 53.6L116.3 51.5L118.4 49.9L120.6 48.9L122.7 48.7L124.8 49.2L126.9 50.6L129 52.9L131.2 56L133.3 60L135.4 64.7L137.5 70.1L139.6 76.1L141.8 82.5L143.9 89.2L146 96.1L148.1 103L150.2 109.7L152.4 116.1L154.5 122.1L156.6 127.5L158.7 132.2L160.8 136.1L163 139.2L165.1 141.4L167.2 142.8L169.3 143.3L171.4 143.1L173.6 142.1L175.7 140.5L177.8 138.4L179.9 135.9L182 133.1L184.2 130.3L186.3 127.5L188.4 124.9L190.5 122.5L192.6 120.6L194.8 119.2L196.9 118.3L199 118L201.1 118.3L203.2 119.2L205.4 120.7L207.5 122.6L209.6 125L211.7 127.6L213.8 130.4L216 133.2L218.1 136L220.2 138.5L222.3 140.5L224.4 142.1L226.6 143.1L228.7 143.3L230.8 142.8L232.9 141.4L235 139.1L237.2 135.9L239.3 132L241.4 127.3L243.5 121.8L245.6 115.9L247.8 109.4L249.9 102.7L252 95.8L254.1 88.9L256.2 82.2L258.4 75.8L260.5 69.8L262.6 64.5L264.7 59.8L266.8 55.8L269 52.8L271.1 50.5L273.2 49.2L275.3 48.7L277.4 48.9L279.6 49.9L281.7 51.6L283.8 53.7L285.9 56.2L288 58.9L290.2 61.8L292.3 64.6L294.4 67.2L296.5 69.5L298.6 71.4L300.8 72.8L302.9 73.7L305 74L307.1 73.7L309.2 72.8L311.4 71.3L313.5 69.3L315.6 67L317.7 64.4L319.8 61.6L322 58.7L324.1 56L326.2 53.5L328.3 51.4L330.4 49.9L332.6 48.9L334.7 48.7L336.8 49.3L338.9 50.7L341 53L343.2 56.1L345.3 60.1L347.4 64.8L349.5 70.2L351.6 76.2L353.8 82.7L355.9 89.4L358 96.3L360.1 103.2L362.2 109.9L364.4 116.3L366.5 122.3L368.6 127.6L370.7 132.3L372.8 136.2L375 139.3L377.1 141.5L379.2 142.8L381.3 143.3L383.4 143L385.6 142L387.7 140.4L389.8 138.3L391.9 135.8L394 133L396.2 130.2L398.3 127.4L400.4 124.8L402.5 122.5L404.6 120.6L406.8 119.1L408.9 118.3L411 118L413.1 118.3L415.2 119.3L417.4 120.7L419.5 122.7L421.6 125L423.7 127.7L425.8 130.5L428 133.3L430.1 136L432.2 138.5L434.3 140.6L436.4 142.2L438.6 143.1L440.7 143.3L442.8 142.7L444.9 141.3L447 139L449.2 135.8L451.3 131.9L453.4 127.1L455.5 121.7L457.6 115.7L459.8 109.2L461.9 102.5L464 95.6"/>
+<foreignObject x="476" y="92" width="164" height="28"><div class="ml"><math><mi>y</mi><mo>=</mo><mi>sin</mi><mo>&#x2061;</mo><mspace width="0.1667em"/><mi>x</mi></math></div></foreignObject>
+<foreignObject x="476" y="72" width="164" height="28"><div class="ml f"><math><mi>y</mi><mo>=</mo><mi>sin</mi><mo>&#x2061;</mo><mspace width="0.1667em"/><mi>x</mi><mo>+</mo><mn>0.5</mn><mspace width="0.1667em"/><mi>sin</mi><mo>&#x2061;</mo><mspace width="0.1667em"/><mn>3</mn><mi>x</mi></math></div></foreignObject>
+</svg>
+</figure>
+</div>
+<pre class="tag">```sketch plot
+title: A slow wave, and the sum with a fast one
+y = sin(x)
+*y = sin(x) + 0.5*sin(3*x)*
+x: 0..12.57
+```</pre></div></section>
+
+<section class="spec"><h2>Plot: one steep curve, no focus</h2><p>The y range is rounded up to the next step above the highest value, here 8 above 7.09. The x range ends at 0.99, which shows as its own tick label because it is more than 40px from 0.8.</p><div class="stage"><div class="reply">
+<figure class="skt" aria-label="Sketch: Time stretch vs. fraction of light speed">
+<figcaption class="t">Time stretch vs. fraction of light speed</figcaption>
+<svg viewBox="0 0 640 216" aria-hidden="true">
+<path class="ax" d="M40 184H520M40 8V184"/>
+<text class="tk y" x="32" y="188">0</text><text class="tk y" x="32" y="144">2</text><text class="tk y" x="32" y="100">4</text><text class="tk y" x="32" y="56">6</text><text class="tk y" x="32" y="12">8</text>
+<text class="tk" x="40" y="204">0</text><text class="tk" x="137" y="204">0.2</text><text class="tk" x="233.9" y="204">0.4</text><text class="tk" x="330.9" y="204">0.6</text><text class="tk" x="427.9" y="204">0.8</text><text class="tk" x="520" y="204">0.99</text>
+<path class="ln2" d="M40 162L42.4 162L44.8 162L47.2 162L49.6 162L52 162L54.4 162L56.8 162L59.2 162L61.6 162L64 162L66.4 162L68.8 162L71.2 162L73.6 161.9L76 161.9L78.4 161.9L80.8 161.9L83.2 161.9L85.6 161.9L88 161.9L90.4 161.9L92.8 161.9L95.2 161.9L97.6 161.8L100 161.8L102.4 161.8L104.8 161.8L107.2 161.8L109.6 161.8L112 161.8L114.4 161.7L116.8 161.7L119.2 161.7L121.6 161.7L124 161.7L126.4 161.6L128.8 161.6L131.2 161.6L133.6 161.6L136 161.6L138.4 161.5L140.8 161.5L143.2 161.5L145.6 161.5L148 161.4L150.4 161.4L152.8 161.4L155.2 161.4L157.6 161.3L160 161.3L162.4 161.3L164.8 161.2L167.2 161.2L169.6 161.2L172 161.1L174.4 161.1L176.8 161.1L179.2 161L181.6 161L184 161L186.4 160.9L188.8 160.9L191.2 160.8L193.6 160.8L196 160.8L198.4 160.7L200.8 160.7L203.2 160.6L205.6 160.6L208 160.5L210.4 160.5L212.8 160.5L215.2 160.4L217.6 160.4L220 160.3L222.4 160.3L224.8 160.2L227.2 160.2L229.6 160.1L232 160L234.4 160L236.8 159.9L239.2 159.9L241.6 159.8L244 159.7L246.4 159.7L248.8 159.6L251.2 159.6L253.6 159.5L256 159.4L258.4 159.4L260.8 159.3L263.2 159.2L265.6 159.1L268 159.1L270.4 159L272.8 158.9L275.2 158.8L277.6 158.8L280 158.7L282.4 158.6L284.8 158.5L287.2 158.4L289.6 158.3L292 158.2L294.4 158.2L296.8 158.1L299.2 158L301.6 157.9L304 157.8L306.4 157.7L308.8 157.6L311.2 157.5L313.6 157.4L316 157.2L318.4 157.1L320.8 157L323.2 156.9L325.6 156.8L328 156.7L330.4 156.5L332.8 156.4L335.2 156.3L337.6 156.1L340 156L342.4 155.9L344.8 155.7L347.2 155.6L349.6 155.4L352 155.3L354.4 155.1L356.8 154.9L359.2 154.8L361.6 154.6L364 154.4L366.4 154.2L368.8 154.1L371.2 153.9L373.6 153.7L376 153.5L378.4 153.3L380.8 153.1L383.2 152.9L385.6 152.6L388 152.4L390.4 152.2L392.8 151.9L395.2 151.7L397.6 151.4L400 151.2L402.4 150.9L404.8 150.6L407.2 150.3L409.6 150L412 149.7L414.4 149.4L416.8 149L419.2 148.7L421.6 148.3L424 148L426.4 147.6L428.8 147.2L431.2 146.8L433.6 146.3L436 145.9L438.4 145.4L440.8 144.9L443.2 144.4L445.6 143.8L448 143.3L450.4 142.7L452.8 142.1L455.2 141.4L457.6 140.7L460 140L462.4 139.2L464.8 138.4L467.2 137.5L469.6 136.5L472 135.5L474.4 134.5L476.8 133.3L479.2 132.1L481.6 130.7L484 129.2L486.4 127.6L488.8 125.9L491.2 123.9L493.6 121.7L496 119.3L498.4 116.5L500.8 113.3L503.2 109.5L505.6 105.1L508 99.8L510.4 93.2L512.8 84.7L515.2 73.2L517.6 56.3L520 28"/>
+<foreignObject x="532" y="10" width="108" height="28"><div class="ml"><math><mi>y</mi><mo>=</mo><mn>1</mn><mo>/</mo><msqrt><mn>1</mn><mo>−</mo><msup><mi>x</mi><mn>2</mn></msup></msqrt></math></div></foreignObject>
+</svg>
+</figure>
+</div>
+<pre class="tag">```sketch plot
+title: Time stretch vs. fraction of light speed
+y = 1/sqrt(1-x^2)
+x: 0..0.99
+```</pre></div></section>
+
+<section class="spec"><h2>Sequence: three actors, a message passing over one</h2><p>A message from Alice to Bob passes over Eve's lifeline, which breaks under its label and line. A note on the middle actor sits to the right of its lifeline. Seven rows, in source order.</p><div class="stage"><div class="reply">
+<figure class="skt" aria-label="Sketch: What Eve can see">
+<figcaption class="t">What Eve can see</figcaption>
+<svg viewBox="0 0 640 292" aria-hidden="true">
+<path class="lf" d="M107 26V288M320 26V288M533 26V288"/>
+<path class="gap" d="M320 104V136M320 148V180"/>
+<text x="107" y="14">Alice</text><text x="320" y="14">Eve</text><text x="533" y="14">Bob</text>
+<circle class="st" cx="107" cy="52" r="6"/><text class="s" x="121" y="57">keeps a = 6</text>
+<circle class="st" cx="533" cy="84" r="6"/><text class="n" x="519" y="89">keeps b = 15</text>
+<text x="320" y="118">A = 8</text><path class="ln2" d="M107 130H533"/><path class="ar" d="M520 125L525 130L520 135"/>
+<text x="320" y="162">B = 19</text><path class="ln2" d="M533 174H107"/><path class="ar" d="M120 169L115 174L120 179"/>
+<circle class="st" cx="320" cy="204" r="6"/><text class="s" x="334" y="209">sees 23, 5, 8 and 19</text>
+<circle class="st f" cx="107" cy="236" r="7"/><text class="s" x="121" y="241">19^6 mod 23 = <tspan class="f">2</tspan></text>
+<circle class="st f" cx="533" cy="268" r="7"/><text class="n" x="519" y="273">8^15 mod 23 = <tspan class="f">2</tspan></text>
+</svg>
+</figure>
+</div>
+<pre class="tag">```sketch sequence
+title: What Eve can see
+actors: Alice | Eve | Bob
+Alice: keeps a = 6
+Bob: keeps b = 15
+Alice -> Bob: A = 8
+Bob -> Alice: B = 19
+Eve: sees 23, 5, 8 and 19
+Alice: 19^6 mod 23 = *2*
+Bob: 8^15 mod 23 = *2*
+```</pre></div></section>
+
+<section class="spec"><h2>Sequence: four actors, labels that wrap</h2><p>Columns are 160px, so a message label wraps at 144px and a note at 132px. A wrapped row grows by 18px per extra line. The focus is one word of a message, so its line and chevron turn porcelain.</p><div class="stage"><div class="reply">
+<figure class="skt" aria-label="Sketch: Maya pays Leo $10,000">
+<figcaption class="t">Maya pays Leo $10,000</figcaption>
+<svg viewBox="0 0 640 262" aria-hidden="true">
+<path class="lf" d="M80 26V258M240 26V258M400 26V258M560 26V258"/>
+<text x="80" y="14">Maya</text><text x="240" y="14">Bank A</text><text x="400" y="14">Bank B</text><text x="560" y="14">Leo</text>
+<text x="160" y="54">pay Leo $10,000</text><path class="ln2" d="M80 66H240"/><path class="ar" d="M227 61L232 66L227 71"/>
+<circle class="st" cx="240" cy="96" r="6"/><text class="s" x="254" y="101">Maya's deposit</text><text class="s" x="254" y="119">falls $10,000</text>
+<text x="320" y="148">send $10,000 in</text><text x="320" y="166"><tspan class="f">reserves</tspan></text><path class="ln2 f" d="M240 178H400"/><path class="ar f" d="M387 173L392 178L387 183"/>
+<text x="480" y="210">add $10,000 to</text><text x="480" y="228">her deposit</text><path class="ln2" d="M400 240H560"/><path class="ar" d="M547 235L552 240L547 245"/>
+</svg>
+</figure>
+</div>
+<pre class="tag">```sketch sequence
+title: Maya pays Leo $10,000
+actors: Maya | Bank A | Bank B | Leo
+Maya -> Bank A: pay Leo $10,000
+Bank A: Maya's deposit falls $10,000
+Bank A -> Bank B: send $10,000 in *reserves*
+Bank B -> Leo: add $10,000 to her deposit
+```</pre></div></section>
+
+<section class="spec"><h2>Equation: a subscript, a function name and the focus</h2><p>Every symbol has a meaning, including the function name ln. The subscripted k<sub>B</sub> is one symbol. W has the focus, so its leader and its symbol are porcelain.</p><div class="stage"><div class="reply">
+<figure class="skt" aria-label="Sketch: Boltzmann's entropy">
+<figcaption class="t">Boltzmann's entropy</figcaption>
+<div class="eq" style="--rows:4">
+<span class="tk"><span class="an">𝑆<b class="ld" style="--r:3"><span>entropy, in joules per kelvin</span></b></span></span>
+<span class="tk">=</span>
+<span class="tk"><span class="an">𝑘<sub>𝐵</sub><b class="ld" style="--r:2"><span>1.38 × 10⁻²³ J/K, sets the units</span></b></span></span>
+<span class="tk"><span class="an up">ln<b class="ld" style="--r:1"><span>turns multiplied counts into sums</span></b></span></span>
+<span class="tk"><span class="an f">𝑊<b class="ld" style="--r:0"><span><em>microstates that fit</em></span></b></span></span>
+</div>
+</figure>
+</div>
+<pre class="tag">```sketch equation
+title: Boltzmann's entropy
+eq: S = k_B ln W
+S: entropy, in joules per kelvin
+k_B: 1.38 × 10⁻²³ J/K, sets the units
+ln: turns multiplied counts into sums
+*W*: microstates that fit
+```</pre></div></section>
+
+<section class="spec"><h2>Equation: no title, symbols left without a meaning</h2><p>With no title the formula starts at the top. The 2, = and sin have no meaning line, so they have no leader. Greek capitals are upright and Greek small letters italic, as KaTeX sets them.</p><div class="stage"><div class="reply">
+<figure class="skt" aria-label="Sketch">
+<div class="eq" style="--rows:4">
+<span class="tk"><span class="an">𝑎<b class="ld" style="--r:3"><span>sideways acceleration</span></b></span></span>
+<span class="tk">=</span>
+<span class="tk">2</span>
+<span class="tk"><span class="an">Ω<b class="ld" style="--r:2"><span>Earth's spin rate</span></b></span></span>
+<span class="tk"><span class="an">𝑣<b class="ld" style="--r:1"><span>wind speed</span></b></span></span>
+<span class="tk"><span class="up">sin</span></span>
+<span class="tk"><span class="an">𝜑<b class="ld" style="--r:0"><span>latitude (0 at equator, 90° at pole)</span></b></span></span>
+</div>
+</figure>
+</div>
+<pre class="tag">```sketch equation
+eq: a = 2 Ω v sin φ
+a: sideways acceleration
+Ω: Earth's spin rate
+v: wind speed
+φ: latitude (0 at equator, 90° at pole)
+```</pre></div></section>
+
+<section class="spec"><h2>Grid: three grids joined by × and =</h2><p>Each grid has its caption above it. The join signs are centred on the grids. The two focus cells are the output values the filter found.</p><div class="stage"><div class="reply">
+<figure class="skt" aria-label="Sketch: Slide a 3×3 filter across 3 positions">
+<figcaption class="t">Slide a 3×3 filter across 3 positions</figcaption>
+<div class="grids">
+<div class="gb"><span class="gc">image</span><div class="gd" style="--c:5">
+<i>10</i><i>10</i><i>10</i><i>0</i><i>0</i>
+<i>10</i><i>10</i><i>10</i><i>0</i><i>0</i>
+<i>10</i><i>10</i><i>10</i><i>0</i><i>0</i>
+</div></div>
+<span class="op">×</span>
+<div class="gb"><span class="gc">filter</span><div class="gd" style="--c:3">
+<i>1</i><i>0</i><i>−1</i>
+<i>1</i><i>0</i><i>−1</i>
+<i>1</i><i>0</i><i>−1</i>
+</div></div>
+<span class="op">=</span>
+<div class="gb"><span class="gc">output</span><div class="gd" style="--c:3">
+<i>0</i><i class="f">30</i><i class="f">30</i>
+</div></div>
+</div>
+</figure>
+</div>
+<pre class="tag">```sketch grid
+title: Slide a 3×3 filter across 3 positions
+image:
+10 10 10 0 0
+10 10 10 0 0
+10 10 10 0 0
+×
+filter:
+1 0 -1
+1 0 -1
+1 0 -1
+=
+output:
+0 *30* *30*
+```</pre></div></section>
+
+<section class="spec"><h2>Grid: an arrow join, grids of different heights</h2><p>The 2 × 2 grid is centred on the 4 × 4 one, with the arrow between them.</p><div class="stage"><div class="reply">
+<figure class="skt" aria-label="Sketch: 2 × 2 max pooling, steps of 2">
+<figcaption class="t">2 × 2 max pooling, steps of 2</figcaption>
+<div class="grids">
+<div class="gb"><span class="gc">feature map</span><div class="gd" style="--c:4">
+<i>1</i><i>3</i><i>0</i><i>2</i>
+<i>4</i><i>2</i><i>1</i><i>0</i>
+<i>0</i><i>1</i><i>9</i><i>5</i>
+<i>2</i><i>0</i><i>6</i><i>7</i>
+</div></div>
+<span class="op">→</span>
+<div class="gb"><span class="gc">pooled</span><div class="gd" style="--c:2">
+<i class="f">4</i><i>2</i>
+<i>2</i><i>9</i>
+</div></div>
+</div>
+</figure>
+</div>
+<pre class="tag">```sketch grid
+title: 2 × 2 max pooling, steps of 2
+feature map:
+1 3 0 2
+4 2 1 0
+0 1 9 5
+2 0 6 7
+→
+pooled:
+*4* 2
+2 9
+```</pre></div></section>
+
+<section class="spec"><h2>Grid: a table with a header row and long cells</h2><p>Cells holding spaces are separated by <code>|</code>. The grid has words, so it is a table: the first row is the header and the cells are left aligned. A cell wider than 200px wraps, and its whole row grows with it.</p><div class="stage"><div class="reply">
+<figure class="skt" aria-label="Sketch: Heat and pressure remake each rock">
+<figcaption class="t">Heat and pressure remake each rock</figcaption>
+<div class="grids"><div class="gb"><div class="gd tbl" style="--c:3">
+<i class="h">Parent rock</i><i class="h">Becomes</i><i class="h">What changes</i>
+<i>Limestone</i><i>Marble</i><i>calcite crystals grow and lock together</i>
+<i>Shale</i><i>Slate</i><i>clay flattens into sheets that split</i>
+<i>Sandstone</i><i class="f">Quartzite</i><i>sand grains fuse</i>
+</div></div></div>
+</figure>
+</div>
+<pre class="tag">```sketch grid
+title: Heat and pressure remake each rock
+Parent rock | Becomes | What changes
+Limestone | Marble | calcite crystals grow and lock together
+Shale | Slate | clay flattens into sheets that split
+Sandstone | *Quartzite* | sand grains fuse
+```</pre></div></section>
+
+<section class="spec"><h2>Grid: named grids with no join</h2><p>A <code>name:</code> line after a grid's rows starts a new grid. With no join sign between them, the grids stack 16px apart, each with its caption and header.</p><div class="stage"><div class="reply">
+<figure class="skt" aria-label="Sketch: Who holds the new $10,000?">
+<figcaption class="t">Who holds the new $10,000?</figcaption>
+<div class="grids stack">
+<div class="gb"><span class="gc">After the loan</span><div class="gd tbl" style="--c:3"><i class="h">Maya</i><i class="h">Leo</i><i class="h">Supplier</i><i>10000</i><i>0</i><i>0</i></div></div>
+<div class="gb"><span class="gc">After Maya pays</span><div class="gd tbl" style="--c:3"><i class="h">Maya</i><i class="h">Leo</i><i class="h">Supplier</i><i>0</i><i>10000</i><i>0</i></div></div>
+<div class="gb"><span class="gc">After Leo pays $6,000</span><div class="gd tbl" style="--c:3"><i class="h">Maya</i><i class="h">Leo</i><i class="h">Supplier</i><i>0</i><i class="f">4000</i><i class="f">6000</i></div></div>
+</div>
+</figure>
+</div>
+<pre class="tag">```sketch grid
+title: Who holds the new $10,000?
+After the loan:
+Maya Leo Supplier
+10000 0 0
+After Maya pays:
+Maya Leo Supplier
+0 10000 0
+After Leo pays $6,000:
+Maya Leo Supplier
+0 *4000* *6000*
+```</pre></div></section>
+
+<section class="spec"><h2>A sketch the app cannot draw</h2><p>Nothing shows, for every kind. The paragraphs close up as if the block were not there: no gap, no error box, no source. The console logs the kind and the reason. A plot expression is parsed by its own grammar and never run as code, so a name outside it is an error.</p><div class="stage"><div class="reply">
+<p class="p">ReLU keeps a positive input as it is and turns a negative one into zero.</p>
+<div class="gone" aria-hidden="true"></div>
+<p class="p">So −30 becomes 0, and 30 stays 30.</p>
+</div>
+<pre class="tag">```sketch plot
+title: ReLU: -30 becomes 0, 30 stays 30
+y = (x + abs(x)) / 2
+x: -30..30
+```
+
+console.warn: Sketch hidden (plot): line 2 "y = (x + abs(x)) / 2" uses abs, which is not one of + - * / ^ sin cos exp log sqrt</pre>
+<pre class="tag">```sketch sequence
+actors: Alice | Bob
+Alice -> Bob: A = 8
+Eve: sees 8
+```
+
+console.warn: Sketch hidden (sequence): line 3 "Eve: sees 8" names Eve, who is not in actors</pre>
+<pre class="tag">```sketch equation
+eq: S = k_B ln W
+S: entropy
+Ω: number of microstates
+```
+
+console.warn: Sketch hidden (equation): line 3 "Ω: number of microstates" annotates Ω, which is not a symbol of the equation</pre>
+<pre class="tag">```sketch grid
+image:
+0 0 9
+0 0 9
+×
+```
+
+console.warn: Sketch hidden (grid): line 4 "×" joins nothing after it</pre></div></section>
+
+<section class="spec"><h2>What a screen reader hears</h2><p>The figure is named "Sketch: <i>title</i>", or just "Sketch" with no title. Its items follow as a list, in source order, built from the items the sketch module returns. An equation's formula is read from its MathML. A grid is read as a table, row by row. The tutor writes no alt text.</p><div class="stage">
+<pre class="tag">Sketch: x² and its tangent at x = 1, list, 2 items
+Curve y = x², x from −0.5 to 2.5
+Curve y = 2x − 1, x from −0.5 to 2.5, focus</pre>
+<pre class="tag">Sketch: What crosses the public channel, list, 7 items
+Actors: Alice, Bob
+Alice, note: keeps a = 6 private
+Bob, note: keeps b = 15 private
+Alice to Bob: A = 8
+Bob to Alice: B = 19
+Alice, note: 19^6 mod 23 = 2, focus
+Bob, note: 8^15 mod 23 = 2, focus</pre>
+<pre class="tag">Sketch: With our numbers, list, 5 items
+Equation: K equals g superscript a b, mod p
+K: the shared key, 2
+g: public base, 5
+ab: 6 × 15 = 90, never sent, focus
+p: public prime, 23</pre>
+<pre class="tag">Sketch: Slide a 3×3 filter across 3 positions, list, 3 items
+image, table, 3 rows, 5 columns: 10, 10, 10, 0, 0; 10, 10, 10, 0, 0; 10, 10, 10, 0, 0
+times filter, table, 3 rows, 3 columns: 1, 0, −1; 1, 0, −1; 1, 0, −1
+equals output, table, 1 row, 3 columns: 0; 30, focus; 30, focus</pre>
+<pre class="tag">Sketch: Slope from x = 1 to x = 1 + h, table, 2 columns, 4 rows
+h, slope
+1, 3
+0.1, 2.1
+0.01, 2.01
+0.001, 2.001, focus</pre>
+</div></section>
+
+</main>
+<script src="line-diagram/ld.js"></script>
+</body></html>

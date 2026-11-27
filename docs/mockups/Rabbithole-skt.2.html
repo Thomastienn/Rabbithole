@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sketches · Rabbithole-skt.2 mockup</title><link rel="stylesheet" href="line-diagram/ld.css">
+<style>
+/* Mockup only. Sketches: small diagrams the tutor writes, drawn by the app on the reply's own ground.
+   Theme roles used, mockup name then app token: --g background, --ink text-primary, --mut text-secondary,
+   --seam2 border-emphasized, --seam border, --w porcelain (rabbithole-paper), --up popover, --up2 hover. */
+.reply { max-width: 640px; }
+.reply h2:first-child { margin-top: 0; }
+
+/* The sketch: no frame, no fill, no head band. It sits between paragraphs at the column width. */
+.skt { position: relative; margin: 8px 0 20px; max-width: 640px; }
+.skt .t { font: 600 15px/1.35 var(--read); color: var(--ink); margin-bottom: 10px; }
+.skt svg { display: block; width: 100%; height: auto; overflow: visible; }
+.skt .ln2 { fill: none; stroke: var(--seam2); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.skt .ar { fill: none; stroke: var(--mut); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.skt .st { fill: var(--g); stroke: var(--mut); stroke-width: 2.5; }
+.skt .st.f { fill: var(--w); stroke: var(--w); }
+.skt text { font: 14px var(--read); fill: var(--ink); text-anchor: middle; }
+.skt text.f { fill: var(--w); font-weight: 600; }
+.skt text.e { font-size: 13px; fill: var(--mut); }
+
+/* Bars: one row per item, label column then an 8px round-capped line and its value. */
+.bars { display: grid; grid-template-columns: max-content minmax(0, 360px); gap: 6px 16px; align-items: center; font: 14px/20px var(--read); }
+.bars dd { display: flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; }
+.bars s { flex: none; height: 8px; border-radius: 4px; background: var(--seam2); width: calc(var(--v) * (100% - 72px)); min-width: 8px; }
+.bars .f { color: var(--w); font-weight: 600; }
+.bars dd.f s { background: var(--w); }
+
+/* Controls: a quiet raised box at the top right, shown on hover and keyboard focus inside the sketch. */
+.acts { position: absolute; top: -6px; right: 0; display: none; gap: 2px; padding: 2px; border: 1px solid var(--seam); border-radius: 8px; background: var(--up); }
+.skt:hover .acts, .skt:focus-within .acts, .skt.hover .acts { display: flex; }
+@media (hover: none) { .acts { display: flex; } }
+.acts .btn { min-height: 30px; padding: 0 10px; font-size: 13px; border-color: transparent; }
+.acts .btn .i { color: var(--mut); }
+
+/* Streaming placeholder: the size of a small sketch, the hover-enamel skeleton tone. */
+.skt-wait { height: 96px; border-radius: 8px; margin: 8px 0 20px; background: var(--up2); opacity: .6; }
+
+/* The existing visual, as the app draws it today: no frame, actions box top right. */
+.vis { position: relative; margin: 8px 0 20px; }
+.vis .badge { display: inline-block; margin-bottom: 6px; font: 600 12px/1 var(--ui); padding: 4px 8px; border-radius: 4px; background: var(--up); color: var(--mut); font-variant-numeric: tabular-nums; }
+.vis .shim { height: 180px; border-radius: 8px; background: var(--up2); opacity: .6; }
+.vis .acts { display: flex; top: 0; }
+.vis svg text { font: 11px ui-monospace, "SF Mono", Menlo, Consolas, monospace; fill: var(--ink); text-anchor: middle; }
+.vis svg text.lab { font: 13px var(--ui); fill: var(--mut); }
+.vis .menu { position: absolute; top: 40px; right: 0; width: 220px; z-index: 1; }
+.new { font-size: 11px; color: var(--mut); margin-left: auto; }
+
+.stage .reply { width: 640px; max-width: 100%; }
+pre.tag { font: 12px/1.6 ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--mut); white-space: pre-wrap; background: var(--deep); border-radius: 8px; padding: 10px 14px; width: 100%; }
+.note { font-size: 13px; color: var(--mut); }
+.gone { border-top: 1px dashed var(--seam2); margin: -6px 0 9px; position: relative; }
+.gone::after { content: "hidden sketch was here (mockup marker only)"; position: absolute; right: 0; top: -9px; background: var(--g); padding-left: 8px; font-size: 12px; color: var(--mut); }
+
+/* skt.2 additions. Left- and right-anchored labels, and focus words inside a longer label. */
+.skt text.l { text-anchor: start; }
+.skt text.r { text-anchor: end; }
+.skt tspan.f { fill: var(--w); font-weight: 600; }
+.skt .fw { color: var(--w); font-weight: 600; font-style: normal; }
+
+/* Stack: one layer per row, top first, each set on a 3px round-capped shelf as wide as the widest layer. */
+.stack { list-style: none; padding: 0; display: grid; grid-template-columns: fit-content(288px) auto; column-gap: 16px; width: fit-content; max-width: 100%; font: 14px/20px var(--read); }
+.stack li { font: inherit; display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: baseline; position: relative; padding: 5px 0 9px; }
+.stack li::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; border-radius: 4px; background: var(--seam2); }
+.stack b { font-weight: 400; }
+.stack span { font-size: 13px; color: var(--mut); }
+.stack li.f::after { background: var(--w); }
+</style></head><body>
+<nav class="mock" aria-label="Mockup screens"><b>Sketches</b><a href="line-diagram/read.html">Read</a><a href="Rabbithole-skt.1.html">skt.1 and skt.7 Sketches</a><a href="Rabbithole-skt.2.html" aria-current=page>skt.2 Structure kinds</a><label><input type="checkbox" id="lt"> Light</label></nav>
+<header class="intro"><h1>Sketches: structure kinds</h1><p>Rabbithole-skt.2 adds cycle, stack, tree, timeline and parts to the sketch module. They draw in replies exactly as flow and bars do in Rabbithole-skt.1: same place, title, focus, controls, placeholder and hiding. Spec: <code>docs/sketches-spec.md</code>. Decision: ADR 0027. The spec wins where they differ.</p></header>
+<ul class="rules">
+<li>Everything in the skt.1 rules holds: no frame or fill, at most 640px wide, 8px below the paragraph before and 20px above the next, ink, muted ink, the strong seam and porcelain only. Lines are 3px strong seam with round caps and turn only at 45 or 90 degrees. Stations are 12px muted rings (radius 6, 2.5px stroke). Chevrons are 2px muted, 10px tall. Labels are 14px, notes 13px muted, the title 15px/600, all in the reading face.</li>
+<li>The focus marks an item. Its ring fills porcelain at 14px (radius 7), or its shelf turns porcelain. Only the starred words turn porcelain at weight 600; the rest of a label keeps its colour. A label that is wholly starred is wholly porcelain.</li>
+<li>Cycle is a loop line with two rows 84px apart, like a flow fork. The first half of the stages runs left to right along the top (the odd one goes on top), and the rest runs right to left along the bottom. Each row splits 640px into equal columns, with a ring centred in each. The loop runs 16px in from each edge, with 16px corners at 45 degrees. Each step has one muted chevron at its middle. The step from the last stage back to the first is the up chevron on the left side. Labels sit 26px below their ring and wrap at the column width minus 48px. Top labels stay inside the loop; up to three lines fit, and each further line pushes the bottom row 18px down.</li>
+<li>Stack has one row per layer, with the first line on top. The name is 14px ink, up to 288px (45%) wide, and the note is 13px muted, 16px after the widest name, wrapping. Each layer sits on its own 3px round-capped strong-seam shelf, 6px below its text. Every shelf is as wide as the widest layer. Rows are 34px apart. A focus layer has a porcelain shelf.</li>
+<li>Tree is an indented outline, one row per line, rows 28px apart; a wrapped label adds 18px. Each level, two spaces in the source, indents 24px. A parent's line drops straight down from its ring. Each child leaves that line with a 45 degree branch that starts 24px above the child's row and ends on its ring. Labels start 16px right of the ring. Lines at the top level stand alone, and no trunk is added to join them.</li>
+<li>Timeline is one straight vertical line with one ring per line, rows 28px apart, in the order written. The app does not sort and does not space by date. The "when" column is right-aligned, as wide as its widest entry (at most 192px, 30%), and ends 18px left of the line. Events start 18px right of it and wrap at the column edge. There are no chevrons: time runs down.</li>
+<li>Parts puts the whole on the left. Its label is right-aligned, at most 192px wide, and ends 16px before its ring. The ring sits level with the middle of the parts. Its line runs 24px to a vertical bus from the first part to the last, and each part leaves the bus at 90 degrees, 24px to its ring. Parts are rows 28px apart. Each part name is 14px ink, 16px after its ring. What it does is 13px muted, in a column 16px after the widest name.</li>
+</ul>
+<main class="specs wide">
+
+<section class="spec"><h2>In a reply: stack and timeline</h2><p>Each sketch sits right after the paragraph it shows. At rest, as here, there are no controls until the sketch is pointed at.</p><div class="stage">
+<article class="reply">
+<h2>Three languages, one kingdom</h2>
+<p class="p">After 1066 England ran in three languages at once. Which one you heard depended on where you stood: in church, at court, or in the fields.</p>
+<figure class="skt" aria-label="Sketch: Languages in Norman England">
+<figcaption class="t">Languages in Norman England</figcaption>
+<ol class="stack">
+<li><b>Latin</b><span>Church, scholarship, records</span></li>
+<li class="f"><b><em class="fw">French</em></b><span>royal court and nobility</span></li>
+<li><b>English</b><span>most of the population</span></li>
+</ol>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+<p class="p">French sat in the middle, so its words leaked down into everyday English: beef, pork and mutton on the lord's table, cow, pig and sheep in the farmer's field.</p>
+<h2>How English won back the top</h2>
+<p class="p">The French layer thinned once England lost Normandy, but the borrowing went on for two more centuries.</p>
+<figure class="skt" aria-label="Sketch: French influence on English">
+<figcaption class="t">French influence on English</figcaption>
+<svg viewBox="0 0 640 136" aria-hidden="true">
+<path class="ln2" d="M88 12V124"/>
+<circle class="st f" cx="88" cy="12" r="7"/><circle class="st" cx="88" cy="40" r="6"/><circle class="st" cx="88" cy="68" r="6"/><circle class="st" cx="88" cy="96" r="6"/><circle class="st" cx="88" cy="124" r="6"/>
+<text class="r" x="70" y="17">1066</text><text class="l" x="106" y="17"><tspan class="f">Norman Conquest</tspan></text>
+<text class="r" x="70" y="45">1200s</text><text class="l" x="106" y="45">Borrowing from French surges</text>
+<text class="r" x="70" y="73">1362</text><text class="l" x="106" y="73">English heard in law courts by statute</text>
+<text class="r" x="70" y="101">Late 1300s</text><text class="l" x="106" y="101">Chaucer writes in English</text>
+<text class="r" x="70" y="129">1400s</text><text class="l" x="106" y="129">English returns in government writing</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+<p class="p">By 1400 English was back at the top, but it was a different English, carrying about ten thousand French words.</p>
+</article>
+<pre class="tag">```sketch stack
+title: Languages in Norman England
+Latin: Church, scholarship, records
+*French*: royal court and nobility
+English: most of the population
+```
+
+```sketch timeline
+title: French influence on English
+1066: *Norman Conquest*
+1200s: Borrowing from French surges
+1362: English heard in law courts by statute
+Late 1300s: Chaucer writes in English
+1400s: English returns in government writing
+```</pre>
+</div></section>
+
+<section class="spec"><h2>In a reply: cycle and tree</h2><p>The cycle's top labels sit inside the loop, and the bottom labels sit below it. The tree nests the way the outline does.</p><div class="stage">
+<article class="reply">
+<h2>The loop that never stops</h2>
+<p class="p">The sun lifts water off the oceans as vapour. High up it cools into cloud, falls as rain or snow, and runs back downhill to the sea to start again.</p>
+<figure class="skt" aria-label="Sketch: The basic loop">
+<figcaption class="t">The basic loop</figcaption>
+<svg viewBox="0 0 640 144" aria-hidden="true">
+<path class="ln2" d="M32 24H608L624 40V92L608 108H32L16 92V40Z"/>
+<path class="ar" d="M317 19L322 24L317 29M619 63L624 68L629 63M323 103L318 108L323 113M11 69L16 64L21 69"/>
+<circle class="st f" cx="160" cy="24" r="7"/><circle class="st" cx="480" cy="24" r="6"/><circle class="st" cx="480" cy="108" r="6"/><circle class="st" cx="160" cy="108" r="6"/>
+<text class="f" x="160" y="50">Evaporation</text><text x="480" y="50">Condensation</text>
+<text x="480" y="134">Precipitation</text><text x="160" y="134">Collection and flow</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+<p class="p">Evaporation is the engine. It is the one step that needs energy, and the sun supplies all of it.</p>
+<h2>Where rain goes after it lands</h2>
+<p class="p">Rain on land does not all reach a river. Some sinks in, some is held as ice, and some rises straight back into the air.</p>
+<figure class="skt" aria-label="Sketch: Where water can go on land">
+<figcaption class="t">Where water can go on land</figcaption>
+<svg viewBox="0 0 640 192" aria-hidden="true">
+<path class="ln2" d="M10 12V156M10 16L34 40M10 44L34 68M10 128L34 152M10 156L34 180M34 68V100M34 72L58 96M34 100L58 124"/>
+<circle class="st" cx="10" cy="12" r="6"/><circle class="st" cx="34" cy="40" r="6"/><circle class="st" cx="34" cy="68" r="6"/><circle class="st" cx="58" cy="96" r="6"/><circle class="st f" cx="58" cy="124" r="7"/><circle class="st" cx="34" cy="152" r="6"/><circle class="st" cx="34" cy="180" r="6"/>
+<text class="l" x="26" y="17">Precipitation</text>
+<text class="l" x="50" y="45">Runs off into streams and rivers</text>
+<text class="l" x="50" y="73">Soaks into the ground</text>
+<text class="l" x="74" y="101">Taken up by plants</text>
+<text class="l" x="74" y="129">Becomes <tspan class="f">groundwater</tspan></text>
+<text class="l" x="50" y="157">Stored as snow or ice</text>
+<text class="l" x="50" y="185">Evaporates again</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+<p class="p">Groundwater is the slow lane. A drop can stay underground for centuries before a spring brings it back.</p>
+</article>
+<pre class="tag">```sketch cycle
+title: The basic loop
+*Evaporation*
+Condensation
+Precipitation
+Collection and flow
+```
+
+```sketch tree
+title: Where water can go on land
+Precipitation
+  Runs off into streams and rivers
+  Soaks into the ground
+    Taken up by plants
+    Becomes *groundwater*
+  Stored as snow or ice
+  Evaporates again
+```</pre>
+</div></section>
+
+<section class="spec"><h2>In a reply: parts</h2><p>The whole and its parts, with the focus words inside a part's note.</p><div class="stage">
+<article class="reply">
+<h2>The second line of defence</h2>
+<p class="p">If germs get past the skin and the first, general responders, a slower and more precise team takes over. It learns the exact shape of the invader, and it remembers it.</p>
+<figure class="skt" aria-label="Sketch: The targeted team">
+<figcaption class="t">The targeted team</figcaption>
+<svg viewBox="0 0 640 80" aria-hidden="true">
+<path class="ln2" d="M178 12H154V68H178M130 40H178"/>
+<circle class="st" cx="130" cy="40" r="6"/><circle class="st" cx="178" cy="12" r="6"/><circle class="st f" cx="178" cy="40" r="7"/><circle class="st" cx="178" cy="68" r="6"/>
+<text class="r" x="114" y="45">Adaptive immunity</text>
+<text class="l" x="194" y="17">Helper T cells</text><text class="l e" x="296" y="17">coordinate the others</text>
+<text class="l" x="194" y="45">B cells</text><text class="l e" x="296" y="45">lead to cells making <tspan class="f">antibodies</tspan></text>
+<text class="l" x="194" y="73">Killer T cells</text><text class="l e" x="296" y="73">destroy infected cells</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+<p class="p">Antibodies are why a vaccine works: the team meets a harmless copy first, so it is ready the day the real germ arrives.</p>
+</article>
+<pre class="tag">```sketch parts
+title: The targeted team
+whole: Adaptive immunity
+Helper T cells: coordinate the others
+B cells: lead to cells making *antibodies*
+Killer T cells: destroy infected cells
+```</pre>
+</div></section>
+
+<section class="spec"><h2>Cycle: three stages, focus inside a label</h2><p>With an odd count the extra stage goes on top, and the bottom row centres its one stage. Only "Meiosis" is porcelain; the rest of its label stays ink.</p><div class="stage"><div class="reply">
+<figure class="skt" aria-label="Sketch: The human life cycle">
+<figcaption class="t">The human life cycle</figcaption>
+<svg viewBox="0 0 640 144" aria-hidden="true">
+<path class="ln2" d="M32 24H608L624 40V92L608 108H32L16 92V40Z"/>
+<path class="ar" d="M317 19L322 24L317 29M619 63L624 68L629 63M11 69L16 64L21 69"/>
+<circle class="st" cx="160" cy="24" r="6"/><circle class="st f" cx="480" cy="24" r="7"/><circle class="st" cx="320" cy="108" r="6"/>
+<text x="160" y="50">Body cells (46), grown by mitosis</text><text x="480" y="50"><tspan class="f">Meiosis</tspan> makes gametes (23)</text>
+<text x="320" y="134">Fertilization forms a zygote (46)</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</div>
+<pre class="tag">```sketch cycle
+title: The human life cycle
+Body cells (46), grown by mitosis
+*Meiosis* makes gametes (23)
+Fertilization forms a zygote (46)
+```</pre></div></section>
+
+<section class="spec"><h2>Cycle: eight stages, wrapped labels, no title</h2><p>Eight stages fill four 160px columns, so labels wrap at 112px. With no title the drawing starts at the top, as a titleless flow does.</p><div class="stage"><div class="reply">
+<figure class="skt" aria-label="Sketch">
+<svg viewBox="0 0 640 160" aria-hidden="true">
+<path class="ln2" d="M32 24H608L624 40V92L608 108H32L16 92V40Z"/>
+<path class="ar" d="M157 19L162 24L157 29M317 19L322 24L317 29M477 19L482 24L477 29M619 63L624 68L629 63M483 103L478 108L483 113M323 103L318 108L323 113M163 103L158 108L163 113M11 69L16 64L21 69"/>
+<circle class="st" cx="80" cy="24" r="6"/><circle class="st" cx="240" cy="24" r="6"/><circle class="st" cx="400" cy="24" r="6"/><circle class="st" cx="560" cy="24" r="6"/>
+<circle class="st" cx="560" cy="108" r="6"/><circle class="st" cx="400" cy="108" r="6"/><circle class="st" cx="240" cy="108" r="6"/><circle class="st f" cx="80" cy="108" r="7"/>
+<text x="80" y="50">Citrate, 6 carbons</text><text x="240" y="50">Isocitrate</text>
+<text x="400" y="50">α-Ketoglutarate,</text><text x="400" y="68">loses CO₂</text>
+<text x="560" y="50">Succinyl-CoA,</text><text x="560" y="68">loses CO₂</text>
+<text x="560" y="134">Succinate,</text><text x="560" y="152">makes ATP</text>
+<text x="400" y="134">Fumarate,</text><text x="400" y="152">makes FADH₂</text>
+<text x="240" y="134">Malate</text>
+<text x="80" y="134"><tspan class="f">Oxaloacetate</tspan>,</text><text x="80" y="152">takes acetyl-CoA</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</div>
+<pre class="tag">```sketch cycle
+Citrate, 6 carbons
+Isocitrate
+α-Ketoglutarate, loses CO₂
+Succinyl-CoA, loses CO₂
+Succinate, makes ATP
+Fumarate, makes FADH₂
+Malate
+*Oxaloacetate*, takes acetyl-CoA
+```</pre></div></section>
+
+<section class="spec"><h2>Stack: seven layers, two in focus</h2><p>Each line's name is kept as written, number included. Two starred layers both get a porcelain shelf. Only the starred words turn porcelain.</p><div class="stage"><div class="reply">
+<figure class="skt" aria-label="Sketch: OSI model">
+<figcaption class="t">OSI model</figcaption>
+<ol class="stack">
+<li><b>7 Application</b><span>services apps use (HTTP)</span></li>
+<li><b>6 Presentation</b><span>formats and encoding</span></li>
+<li><b>5 Session</b><span>manages conversations</span></li>
+<li class="f"><b>4 <em class="fw">Transport</em></b><span>program to program (TCP, UDP)</span></li>
+<li class="f"><b>3 <em class="fw">Network</em></b><span>routing across networks (IP)</span></li>
+<li><b>2 Data link</b><span>one local hop (Ethernet)</span></li>
+<li><b>1 Physical</b><span>signals on wire, fibre, radio</span></li>
+</ol>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</div>
+<pre class="tag">```sketch stack
+title: OSI model
+7 Application: services apps use (HTTP)
+6 Presentation: formats and encoding
+5 Session: manages conversations
+4 *Transport*: program to program (TCP, UDP)
+3 *Network*: routing across networks (IP)
+2 Data link: one local hop (Ethernet)
+1 Physical: signals on wire, fibre, radio
+```</pre></div></section>
+
+<section class="spec"><h2>Tree: six levels deep</h2><p>There is no depth limit. Each level indents another 24px, so at six levels a label still starts 146px in. A lone child steps down along one diagonal.</p><div class="stage"><div class="reply">
+<figure class="skt" aria-label="Sketch: Where humans sit">
+<figcaption class="t">Where humans sit</figcaption>
+<svg viewBox="0 0 640 220" aria-hidden="true">
+<path class="ln2" d="M10 12V184M10 16L34 40M34 44L58 68M58 72L82 96M82 100L106 124M106 124V156M106 128L130 152M106 156L130 180M10 184L34 208"/>
+<circle class="st" cx="10" cy="12" r="6"/><circle class="st" cx="34" cy="40" r="6"/><circle class="st" cx="58" cy="68" r="6"/><circle class="st" cx="82" cy="96" r="6"/><circle class="st" cx="106" cy="124" r="6"/><circle class="st f" cx="130" cy="152" r="7"/><circle class="st" cx="130" cy="180" r="6"/><circle class="st" cx="34" cy="208" r="6"/>
+<text class="l" x="26" y="17">Animals</text>
+<text class="l" x="50" y="45">Chordates</text>
+<text class="l" x="74" y="73">Mammals</text>
+<text class="l" x="98" y="101">Primates</text>
+<text class="l" x="122" y="129">Great apes</text>
+<text class="l f" x="146" y="157">Humans</text>
+<text class="l" x="146" y="185">Chimpanzees</text>
+<text class="l" x="50" y="213">Insects</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</div>
+<pre class="tag">```sketch tree
+title: Where humans sit
+Animals
+  Chordates
+    Mammals
+      Primates
+        Great apes
+          *Humans*
+          Chimpanzees
+  Insects
+```</pre></div></section>
+
+<section class="spec"><h2>Tree: several top-level lines, no title</h2><p>Each top-level line starts its own short line, and nothing joins them. An odd indent rounds down to the level below it. A line indented two levels past the line above it nests just one level down, as the prototype parses it.</p><div class="stage"><div class="reply">
+<figure class="skt" aria-label="Sketch">
+<svg viewBox="0 0 640 220" aria-hidden="true">
+<path class="ln2" d="M10 12V44M10 16L34 40M10 44L34 68M10 96V100L34 124M10 152V184M10 156L34 180M10 184L34 208"/>
+<circle class="st" cx="10" cy="12" r="6"/><circle class="st" cx="34" cy="40" r="6"/><circle class="st" cx="34" cy="68" r="6"/>
+<circle class="st" cx="10" cy="96" r="6"/><circle class="st" cx="34" cy="124" r="6"/>
+<circle class="st" cx="10" cy="152" r="6"/><circle class="st f" cx="34" cy="180" r="7"/><circle class="st" cx="34" cy="208" r="6"/>
+<text class="l" x="26" y="17">Numbers</text><text class="l" x="50" y="45">int</text><text class="l" x="50" y="73">float</text>
+<text class="l" x="26" y="101">Text</text><text class="l" x="50" y="129">str</text>
+<text class="l" x="26" y="157">Collections</text><text class="l f" x="50" y="185">list</text><text class="l" x="50" y="213">dict</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</div>
+<pre class="tag">```sketch tree
+Numbers
+  int
+  float
+Text
+  str
+Collections
+  *list*
+  dict
+```</pre></div></section>
+
+<section class="spec"><h2>Timeline: seven events, focus on a date</h2><p>The "when" column is only as wide as "28 June". A starred date fills its ring, and only the date turns porcelain.</p><div class="stage"><div class="reply">
+<figure class="skt" aria-label="Sketch: From murder to world war, 1914">
+<figcaption class="t">From murder to world war, 1914</figcaption>
+<svg viewBox="0 0 640 192" aria-hidden="true">
+<path class="ln2" d="M68 12V180"/>
+<circle class="st" cx="68" cy="12" r="6"/><circle class="st" cx="68" cy="40" r="6"/><circle class="st" cx="68" cy="68" r="6"/><circle class="st" cx="68" cy="96" r="6"/><circle class="st" cx="68" cy="124" r="6"/><circle class="st" cx="68" cy="152" r="6"/><circle class="st f" cx="68" cy="180" r="7"/>
+<text class="r" x="50" y="17">28 June</text><text class="l" x="86" y="17">Franz Ferdinand assassinated</text>
+<text class="r" x="50" y="45">23 July</text><text class="l" x="86" y="45">Ultimatum to Serbia</text>
+<text class="r" x="50" y="73">28 July</text><text class="l" x="86" y="73">Austria-Hungary declares war</text>
+<text class="r" x="50" y="101">30 July</text><text class="l" x="86" y="101">Russia orders full mobilisation</text>
+<text class="r" x="50" y="129">1 Aug</text><text class="l" x="86" y="129">Germany declares war on Russia</text>
+<text class="r" x="50" y="157">3 Aug</text><text class="l" x="86" y="157">Germany declares war on France</text>
+<text class="r f" x="50" y="185">4 Aug</text><text class="l" x="86" y="185">Britain declares war on Germany</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</div>
+<pre class="tag">```sketch timeline
+title: From murder to world war, 1914
+28 June: Franz Ferdinand assassinated
+23 July: Ultimatum to Serbia
+28 July: Austria-Hungary declares war
+30 July: Russia orders full mobilisation
+1 Aug: Germany declares war on Russia
+3 Aug: Germany declares war on France
+*4 Aug*: Britain declares war on Germany
+```</pre></div></section>
+
+<section class="spec"><h2>Timeline: ranges, and the order as written</h2><p>A "when" can be a range or any words. The tutor put 395 before 376–378, and the app keeps that order. It does not sort, check or space by date.</p><div class="stage"><div class="reply">
+<figure class="skt" aria-label="Sketch: The long unravelling">
+<figcaption class="t">The long unravelling</figcaption>
+<svg viewBox="0 0 640 164" aria-hidden="true">
+<path class="ln2" d="M74 12V152"/>
+<circle class="st" cx="74" cy="12" r="6"/><circle class="st" cx="74" cy="40" r="6"/><circle class="st" cx="74" cy="68" r="6"/><circle class="st" cx="74" cy="96" r="6"/><circle class="st" cx="74" cy="124" r="6"/><circle class="st f" cx="74" cy="152" r="7"/>
+<text class="r" x="56" y="17">235–284</text><text class="l" x="92" y="17">Third-century crisis</text>
+<text class="r" x="56" y="45">395</text><text class="l" x="92" y="45">East and West split for good</text>
+<text class="r" x="56" y="73">376–378</text><text class="l" x="92" y="73">Goths cross Danube, win Adrianople</text>
+<text class="r" x="56" y="101">410</text><text class="l" x="92" y="101">Visigoths sack Rome</text>
+<text class="r" x="56" y="129">439</text><text class="l" x="92" y="129">Vandals take Carthage</text>
+<text class="r" x="56" y="157">476</text><text class="l f" x="92" y="157">Last western emperor deposed</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</div>
+<pre class="tag">```sketch timeline
+title: The long unravelling
+235–284: Third-century crisis
+395: East and West split for good
+376–378: Goths cross Danube, win Adrianople
+410: Visigoths sack Rome
+439: Vandals take Carthage
+476: *Last western emperor deposed*
+```</pre></div></section>
+
+<section class="spec"><h2>Parts: five parts, focus in the whole, no title</h2><p>The whole's ring sits level with the middle part, so its line runs straight into that row. A starred whole fills its ring.</p><div class="stage"><div class="reply">
+<figure class="skt" aria-label="Sketch">
+<svg viewBox="0 0 640 136" aria-hidden="true">
+<path class="ln2" d="M208 12H184V124H208M184 40H208M184 96H208M160 68H208"/>
+<circle class="st f" cx="160" cy="68" r="7"/>
+<circle class="st" cx="208" cy="12" r="6"/><circle class="st" cx="208" cy="40" r="6"/><circle class="st" cx="208" cy="68" r="6"/><circle class="st" cx="208" cy="96" r="6"/><circle class="st" cx="208" cy="124" r="6"/>
+<text class="r" x="144" y="73">Brakes on <tspan class="f">new lending</tspan></text>
+<text class="l" x="224" y="17">Borrowers</text><text class="l e" x="324" y="17">must want credit</text>
+<text class="l" x="224" y="45">Profit</text><text class="l e" x="324" y="45">loan must beat costs and risk</text>
+<text class="l" x="224" y="73">Capital rules</text><text class="l e" x="324" y="73">owners' funds absorb losses</text>
+<text class="l" x="224" y="101">Liquidity</text><text class="l e" x="324" y="101">bank must meet withdrawals</text>
+<text class="l" x="224" y="129">Interest rates</text><text class="l e" x="324" y="129">central bank influences them</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</div>
+<pre class="tag">```sketch parts
+whole: Brakes on *new lending*
+Borrowers: must want credit
+Profit: loan must beat costs and risk
+Capital rules: owners' funds absorb losses
+Liquidity: bank must meet withdrawals
+Interest rates: central bank influences them
+```</pre></div></section>
+
+<section class="spec"><h2>Parts: a worked example as the whole</h2><p>A whole can be a formula, and parts can be its terms. The note column starts after the widest name, here the 600-weight focus term.</p><div class="stage"><div class="reply">
+<figure class="skt" aria-label="Sketch">
+<svg viewBox="0 0 640 80" aria-hidden="true">
+<path class="ln2" d="M200 12H176V68H200M152 40H200"/>
+<circle class="st" cx="152" cy="40" r="6"/><circle class="st" cx="200" cy="12" r="6"/><circle class="st" cx="200" cy="40" r="6"/><circle class="st f" cx="200" cy="68" r="7"/>
+<text class="r" x="136" y="45">(1 + h)² when h = 0.01</text>
+<text class="l" x="216" y="17">1</text><text class="l e" x="310" y="17">starting height</text>
+<text class="l" x="216" y="45">2h = 0.02</text><text class="l e" x="310" y="45">change along a line of slope 2</text>
+<text class="l f" x="216" y="73">h² = 0.0001</text><text class="l e" x="310" y="73">the leftover bend, far smaller</text>
+</svg>
+<div class="acts"><button class="btn"><i class="i i--sm i-photo"></i>Expand into visual</button></div>
+</figure>
+</div>
+<pre class="tag">```sketch parts
+whole: (1 + h)² when h = 0.01
+1: starting height
+2h = 0.02: change along a line of slope 2
+*h² = 0.0001*: the leftover bend, far smaller
+```</pre></div></section>
+
+<section class="spec"><h2>A sketch the app cannot draw</h2><p>As in skt.1, nothing shows. The paragraphs close up, and the console logs the kind and the reason. Each kind's errors follow: an empty body, a line that does not match its kind, or a value out of range.</p><div class="stage"><div class="reply">
+<p class="p">England lost Normandy in 1204, and with it the nobles' reason to stay French.</p>
+<div class="gone" aria-hidden="true"></div>
+<p class="p">Within two lifetimes the law courts were hearing cases in English.</p>
+</div>
+<pre class="tag">```sketch timeline
+1066: Normans conquer England
+Normandy lost in 1204
+1362: Law orders court pleading in English
+```
+
+console.warn: Sketch hidden (timeline): line 2 "Normandy lost in 1204" has no "when:"</pre>
+<pre class="tag">```sketch cycle
+title: The compounding loop
+*Bigger balance*
+```
+
+console.warn: Sketch hidden (cycle): 1 stage; a cycle needs at least 2</pre>
+<pre class="tag">```sketch stack
+Application
+Transport: program-to-program delivery
+Internet: routing across networks
+```
+
+console.warn: Sketch hidden (stack): line 1 "Application" has no ": note"</pre>
+<pre class="tag">```sketch tree
+title: Where water can go on land
+```
+
+console.warn: Sketch hidden (tree): empty body</pre>
+<pre class="tag">```sketch parts
+Helper T cells: coordinate the others
+B cells: lead to cells making antibodies
+```
+
+console.warn: Sketch hidden (parts): line 1 is not "whole: name"</pre>
+</div></section>
+
+<section class="spec"><h2>What a screen reader hears</h2><p>As in skt.1, the figure is named "Sketch: <i>title</i>", or just "Sketch" with no title, and its items follow as a list, in order. A tree is a nested list. Parts reads the whole first, then its parts. The word "focus" ends a focus item.</p><div class="stage">
+<pre class="tag">Sketch: The basic loop, list, 4 items
+Evaporation, leads to Condensation, focus
+Condensation, leads to Precipitation
+Precipitation, leads to Collection and flow
+Collection and flow, leads back to Evaporation</pre>
+<pre class="tag">Sketch: Languages in Norman England, list, 3 items
+Latin, top layer: Church, scholarship, records
+French: royal court and nobility, focus
+English, bottom layer: most of the population</pre>
+<pre class="tag">Sketch: Where water can go on land, list, 1 item
+Precipitation, list, 4 items
+  Runs off into streams and rivers
+  Soaks into the ground, list, 2 items
+    Taken up by plants
+    Becomes groundwater, focus
+  Stored as snow or ice
+  Evaporates again</pre>
+<pre class="tag">Sketch: French influence on English, list, 5 items
+1066: Norman Conquest, focus
+1200s: Borrowing from French surges
+1362: English heard in law courts by statute
+Late 1300s: Chaucer writes in English
+1400s: English returns in government writing</pre>
+<pre class="tag">Sketch: The targeted team, list, 4 items
+Adaptive immunity, made of 3 parts
+Helper T cells: coordinate the others
+B cells: lead to cells making antibodies, focus
+Killer T cells: destroy infected cells</pre>
+</div></section>
+
+</main>
+<script src="line-diagram/ld.js"></script>
+</body></html>
