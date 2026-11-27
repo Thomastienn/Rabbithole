@@ -257,10 +257,14 @@
 
 /* Board items (mockup Rabbithole-brd.2), in board pixels: 7px marker strokes, round caps and joins, no fill.
    Looks by role: none text-primary, focus rabbithole-paper, muted text-secondary, good text-success,
-   wrong text-error, new text-info. Each item fades in over its share of its sentence. */
+   wrong text-error, new text-info. Each item enters by hand over its share of its sentence (--board-ms):
+   a stroke draws on, a dot grows, text writes in left to right; with reduced motion each one fades in.
+   Colours are theme tokens, so a theme or appearance switch redraws the board in the new colours. */
 .board-item {
     color: var(--color-text-primary);
-    animation: board-enter 0ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.board-item > * {
+    animation: var(--board-ms, 0ms) cubic-bezier(0.65, 0, 0.35, 1) both;
 }
 .board-item.focus {
     color: var(--rabbithole-paper);
@@ -278,6 +282,8 @@
     color: var(--color-text-info);
 }
 .board-stroke {
+    animation-name: board-draw;
+    stroke-dasharray: 1;
     fill: none;
     stroke: currentColor;
     stroke-width: 7;
@@ -285,9 +291,13 @@
     stroke-linejoin: round;
 }
 .board-dot {
+    animation-name: board-grow;
+    transform-box: fill-box;
+    transform-origin: center;
     fill: currentColor;
 }
 .board-text {
+    animation-name: board-write;
     fill: currentColor;
     font: 500 44px var(--rabbithole-font-reading);
     text-anchor: middle;
@@ -299,8 +309,28 @@
 .board-text.l {
     font-size: 64px;
 }
+@keyframes board-draw {
+    from {
+        stroke-dashoffset: 1;
+    }
+}
+@keyframes board-grow {
+    from {
+        transform: scale(0);
+    }
+}
+@keyframes board-write {
+    from {
+        clip-path: inset(0 100% 0 0);
+    }
+}
 @keyframes board-enter {
     from {
         opacity: 0;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .board-item > * {
+        animation-name: board-enter;
     }
 }
