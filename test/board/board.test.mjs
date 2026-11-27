@@ -315,20 +315,23 @@ test('board: the learner steps back to the board after an earlier reply, and ask
         3,
         'the formula writes in as three terms',
     );
-    assert.equal(board.q('svg').getAttribute('viewBox'), '0 0 1600 1800');
+    assert.equal(board.q('.board-scroller > svg').getAttribute('viewBox'), '0 0 1600 1800');
     assert.ok(board.q('.board-seam'));
 
     await board.act(async () => button(board.container, 'Board after the previous reply').click());
     assert.equal(steps.textContent, 'Reply 1 of 2');
-    assert.equal(board.q('svg').getAttribute('aria-label'), 'Board after reply 1');
+    assert.equal(
+        board.q('.board-scroller > svg').getAttribute('aria-label'),
+        'Board after reply 1',
+    );
     assert.deepEqual(ids(), ['1240', '560'], 'the board as it stood, the erased dot back');
-    assert.equal(board.q('svg').getAttribute('viewBox'), '0 0 1600 900');
+    assert.equal(board.q('.board-scroller > svg').getAttribute('viewBox'), '0 0 1600 900');
     assert.equal(board.q('.board-caption.muted').textContent, 'The bulb glows.');
     assert.ok(button(board.container, 'Board after the previous reply').disabled);
 
     await board.type('Why?');
     await board.act(async () => button(board.container, 'Send').click());
-    assert.equal(board.q('svg').getAttribute('aria-label'), 'Board');
+    assert.equal(board.q('.board-scroller > svg').getAttribute('aria-label'), 'Board');
     assert.equal(steps.textContent, 'Reply 3 of 3');
     assert.ok(
         button(board.container, 'Board after the previous reply').disabled,

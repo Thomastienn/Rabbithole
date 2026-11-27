@@ -55,6 +55,13 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
     const dropSilent = () => setReplies((rs) => (rs.at(-1)?.caption ? rs : rs.slice(0, -1)));
     const onLast = (change: (reply: Reply) => Reply) =>
         setReplies((rs) => [...rs.slice(0, -1), change(rs.at(-1) ?? { items: [], caption: '' })]);
+    // The page the learner opened (ADR 0029); none shows the open page. The tutor's next drawn item brings them back.
+    const [view, setView] = useState<string>();
+    const viewed = useRef<string>(undefined);
+    const look = (page?: string) => {
+        viewed.current = page;
+        setView(page);
+    };
     // Pen strokes over board items since the last question; they go with the next one.
     const [marks, setMarks] = useState(0);
     const restored = latest && { text: latest.text.trim().split('\n').at(-1) ?? '', muted: true };
@@ -109,13 +116,18 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
                 onLast((r) => ({ ...r, caption: s.text }));
             },
             // A retimed op comes again with its new entry time and replaces its first draw.
-            (op, ms) =>
+            (op, ms) => {
+                if (viewed.current) {
+                    look(undefined);
+                    send({ type: 'view' });
+                }
                 onLast((r) => ({
                     ...r,
                     items: r.items.some((item) => item.op.id === op.id)
                         ? r.items.map((item) => (item.op.id === op.id ? { op, ms } : item))
                         : [...r.items, { op, ms }],
-                })),
+                }));
+            },
             (s, phase) => send({ type: 'progress', sentence: s.id, phase }),
             streamedVoice(),
         );
@@ -246,6 +258,12 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         const ws = socket.current;
         if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'stroke', points }));
     };
+    // The learner opens a page; the session asks from it next (server/board/pen.mjs).
+    const openPage = (page: string) => {
+        look(page);
+        const ws = socket.current;
+        if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'view', page }));
+    };
     // The learner started typing: a question's wait holds open until they send.
     const typing = () => {
         setWaiting(false);
@@ -347,6 +365,8 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         at,
         stepped: step !== undefined,
         go,
+        view,
+        openPage,
         marks,
         ask,
         typing,
