@@ -30,7 +30,12 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         };
         const player = boardPlayer(
             (s) => setCaption({ text: s.text, muted: false }),
-            (op, ms) => setItems((drawn) => [...drawn, { op, ms }]),
+            (op, ms) =>
+                setItems((drawn) =>
+                    drawn.some((item) => item.op.id === op.id)
+                        ? drawn.map((item) => (item.op.id === op.id ? { op, ms } : item))
+                        : [...drawn, { op, ms }],
+                ),
             (s, phase) => send({ type: 'progress', sentence: s.id, phase }),
             streamedVoice(),
         );

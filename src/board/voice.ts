@@ -4,8 +4,11 @@
 export type Voice = {
     chunk(id: string, bytes: Uint8Array): void;
     end(id: string): void;
-    // duration is in board time, once the whole clip is in; failed means play it by its estimate instead.
-    play(id: string, on: { duration(ms: number): void; ended(): void; failed(): void }): void;
+    // Duration and elapsed time are in board time. Failed falls back to the estimate.
+    play(
+        id: string,
+        on: { duration(ms: number, elapsed: number): void; ended(): void; failed(): void },
+    ): void;
     stop(): void;
 };
 
@@ -23,12 +26,15 @@ export function streamedVoice(): Voice {
     };
     return {
         chunk(id, bytes) {
-            clip(id).chunks.push(bytes);
-            clip(id).feed?.();
+            const c = clip(id);
+            c.chunks.push(bytes);
+            c.feed?.();
         },
         end(id) {
-            clip(id).ended = true;
-            clip(id).feed?.();
+            const c = clips.get(id);
+            if (!c) return;
+            c.ended = true;
+            c.feed?.();
         },
         play(id, on) {
             release();
@@ -45,6 +51,7 @@ export function streamedVoice(): Voice {
             }
             const url = URL.createObjectURL(source);
             release = () => {
+                if (done) return;
                 done = true;
                 c.feed = undefined;
                 clips.delete(id);
@@ -68,19 +75,23 @@ export function streamedVoice(): Voice {
                 c.feed = () => {
                     if (done || buffer.updating || source.readyState !== 'open') return;
                     // edge-tts sends frames of about 120 bytes, so whatever has arrived goes in as one append.
-                    if (c.chunks.length) {
-                        const next = new Uint8Array(c.chunks.reduce((n, b) => n + b.length, 0));
-                        let at = 0;
-                        for (const b of c.chunks) {
-                            next.set(b, at);
-                            at += b.length;
+                    try {
+                        if (c.chunks.length) {
+                            const next = new Uint8Array(c.chunks.reduce((n, b) => n + b.length, 0));
+                            let at = 0;
+                            for (const b of c.chunks) {
+                                next.set(b, at);
+                                at += b.length;
+                            }
+                            c.chunks = [];
+                            return buffer.appendBuffer(next);
                         }
-                        c.chunks = [];
-                        return buffer.appendBuffer(next);
+                        if (!c.ended) return;
+                        source.endOfStream();
+                    } catch {
+                        return fail();
                     }
-                    if (!c.ended) return;
-                    source.endOfStream();
-                    on.duration((source.duration * 1000) / RATE);
+                    on.duration((source.duration * 1000) / RATE, (audio.currentTime * 1000) / RATE);
                 };
                 buffer.addEventListener('updateend', () => c.feed?.());
                 c.feed();

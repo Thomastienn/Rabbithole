@@ -114,6 +114,7 @@ export function boardSession(ctx, id, socket) {
     const finish = (current, status) => {
         if (current.done) return;
         current.done = true;
+        if (status === 'failed') current.job.controller.abort();
         const stopped = status === 'interrupted' ? (ctx.stopping ? 'shutdown' : 'learner') : null;
         save(current, status, stopped);
         if (status === 'completed' && current.usage && validUsage(current.usage))
@@ -279,7 +280,7 @@ export function boardSession(ctx, id, socket) {
         current.speaking = true;
         const signal = current.job.controller.signal;
         speech
-            .speak(sentence.text, (chunk) => sendAudio(sentence.id, chunk), signal)
+            .speak(sentence.text, (chunk) => !current.done && sendAudio(sentence.id, chunk), signal)
             .catch((error) => {
                 if (!signal.aborted)
                     log(
@@ -291,8 +292,9 @@ export function boardSession(ctx, id, socket) {
             })
             .finally(() => {
                 current.speaking = false;
+                if (current.done) return;
                 send({ type: 'audio-end', id: sentence.id });
-                if (!current.done) speak(current);
+                speak(current);
             });
     };
     // The reply is complete once the model has finished and its last sentence has been shown in full.

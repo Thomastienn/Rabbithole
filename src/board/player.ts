@@ -44,26 +44,44 @@ export function boardPlayer(
     let queue: Sentence[] = [],
         current: Sentence | undefined,
         timers: unknown[] = [],
-        ending: unknown;
-    // Sentence ids whose first audio chunk, or audio end, has arrived.
-    const sounding = new Set<string>(),
-        over = new Set<string>();
+        ending: unknown,
+        playing: string | undefined;
+    const pending = new Map<string, 'waiting' | 'chunked' | 'silent'>();
     const next = () => {
-        const head = queue[0];
-        if (current || !head || (head.voiced && !sounding.has(head.id) && !over.has(head.id)))
-            return;
-        const sentence = (current = queue.shift()!);
+        const sentence = queue[0];
+        if (current || !sentence) return;
+        const audio = pending.get(sentence.id);
+        if (audio === 'waiting') return;
+        queue.shift();
+        pending.delete(sentence.id);
+        current = sentence;
         const started = clock.now();
         const ops = sentence.ops ?? [];
-        let drawn = 0;
-        // Each op takes an equal share of its sentence, in order; a known audio length re-spaces the rest.
-        const space = (ms: number) => {
+        const entries: { start: number; end: number }[] = [];
+        // Retiming updates items already on the board as well as scheduling the rest.
+        const space = (ms: number, audioElapsed?: number) => {
             timers.forEach(clock.clearTimeout);
-            const share = ms / (ops.length || 1);
-            const enter = () => draw(ops[drawn++], share);
             timers = [];
-            for (let i = drawn; i < ops.length; i++) {
-                const wait = i * share - (clock.now() - started);
+            const now = clock.now();
+            const elapsed = audioElapsed ?? now - started;
+            const share = ms / (ops.length || 1);
+            for (const [index, op] of ops.entries()) {
+                const endAt = now - elapsed + (index + 1) * share;
+                const entry = entries[index];
+                if (entry) {
+                    const end = audioElapsed === undefined ? entry.start + share : endAt;
+                    if (entry.end === end || (entry.end <= now && end <= now)) continue;
+                    entry.end = end;
+                    draw(op, Math.max(0, end - entry.start));
+                    continue;
+                }
+                const enter = () => {
+                    const start = clock.now();
+                    const end = audioElapsed === undefined ? start + share : endAt;
+                    entries[index] = { start, end };
+                    draw(op, Math.max(0, end - start));
+                };
+                const wait = index * share - elapsed;
                 if (wait <= 0) enter();
                 else timers.push(clock.setTimeout(enter, wait));
             }
@@ -73,6 +91,7 @@ export function boardPlayer(
             timers.forEach(clock.clearTimeout);
             clock.clearTimeout(ending);
             current = undefined;
+            playing = undefined;
             report(sentence, 'end');
             next();
         };
@@ -82,31 +101,48 @@ export function boardPlayer(
         show(sentence);
         report(sentence, 'start');
         space(estimate);
-        if (voice && sounding.delete(sentence.id))
+        if (voice && audio === 'chunked') {
+            playing = sentence.id;
             voice.play(sentence.id, {
-                duration: (ms) => current === sentence && space(ms),
-                ended: end,
-                failed: () => current === sentence && byEstimate(),
+                duration: (ms, elapsed) => current === sentence && space(ms, elapsed),
+                ended: () => {
+                    if (current !== sentence) return;
+                    space(0, 0);
+                    end();
+                },
+                failed: () => {
+                    if (current !== sentence) return;
+                    playing = undefined;
+                    space(estimate);
+                    byEstimate();
+                },
             });
-        else byEstimate();
-        over.delete(sentence.id);
+        } else byEstimate();
     };
     return {
         add(sentence: Sentence) {
+            if (sentence.voiced) pending.set(sentence.id, 'waiting');
             queue.push(sentence);
             next();
         },
         // The sentence's speech streams in chunks; its first chunk starts it.
         chunk(id: string, bytes: Uint8Array) {
+            const audio = pending.get(id);
+            if (playing !== id && (!audio || audio === 'silent')) return;
             voice?.chunk(id, bytes);
-            sounding.add(id);
-            next();
+            if (audio === 'waiting') {
+                pending.set(id, 'chunked');
+                next();
+            }
         },
         // The sentence's speech is complete; with no chunk at all it plays by its estimate.
         audioEnd(id: string) {
-            voice?.end(id);
-            over.add(id);
-            next();
+            const audio = pending.get(id);
+            if (playing === id || audio === 'chunked') voice?.end(id);
+            if (audio === 'waiting') {
+                pending.set(id, 'silent');
+                next();
+            }
         },
         // Drops what has not started; the sentence on show keeps its caption and drawn items stay.
         stop() {
@@ -115,8 +151,8 @@ export function boardPlayer(
             voice?.stop();
             queue = [];
             current = undefined;
-            sounding.clear();
-            over.clear();
+            playing = undefined;
+            pending.clear();
         },
     };
 }

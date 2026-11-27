@@ -335,7 +335,21 @@ test('board: leaving mid-reply stops the tutor at once and saves the reply up to
 
 test('board: a process that ends on its own leaves a notice and the reply up to the caption shown', async (t) => {
     const provider = boardProvider([['> One.\n> Two.\n']], { status: 'failed' });
-    const { env, id, connect } = await setup(t, provider);
+    const speech = Promise.withResolvers();
+    const { env, id, connect } = await setup(t, provider, {
+        speech: () => ({
+            warm() {},
+            async speak(_text, chunk, signal) {
+                chunk(Buffer.from('first bytes'));
+                const aborted = new Promise((resolve) =>
+                    signal.addEventListener('abort', resolve, { once: true }),
+                );
+                speech.resolve({ signal, chunk });
+                await aborted;
+            },
+            close() {},
+        }),
+    });
     const board = connect();
     await opened(board.ws);
     await until(() => provider.boards[0]?.opened);
@@ -343,11 +357,27 @@ test('board: a process that ends on its own leaves a notice and the reply up to 
     provider.boards[0].hold = dies.promise; // the process dies while the first caption shows
     board.send({ type: 'ask', text: 'Why?' });
     const first = await board.next('sentence');
+    await board.next('audio');
+    const { signal, chunk } = await speech.promise;
     board.send({ type: 'progress', sentence: first.id, phase: 'start' });
     await until(() => messages(env, id)[1]?.text === 'One.');
     dies.resolve();
     assert.ok((await board.next('notice')).notice);
     assert.equal((await board.next('state')).state, 'idle');
+    assert.equal(
+        signal.aborted,
+        true,
+        'the next turn can use speech without old synthesis running',
+    );
+    chunk(Buffer.from('late bytes'));
+    board.send({ type: 'ask', text: 'What else?' });
+    await until(() =>
+        board.events.some((event) => event.type === 'state' && event.state === 'thinking'),
+    );
+    assert.ok(
+        board.events.every((event) => event.id !== first.id),
+        'no late audio or end marker',
+    );
     assert.deepEqual(
         { text: messages(env, id)[1].text, status: messages(env, id)[1].status },
         { text: 'One.', status: 'failed' },
