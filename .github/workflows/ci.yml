@@ -15,6 +15,8 @@ jobs:
   # Format check shares the test job: minutes bill per job, rounded up, so a separate job paid for a second npm ci.
   test:
     runs-on: ubuntu-latest
+    # A normal run takes about 4 minutes; a stalled runner otherwise holds the PR for GitHub's 6-hour default.
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
