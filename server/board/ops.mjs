@@ -106,7 +106,8 @@ export function boardOps() {
         if (op.kind === 'text') {
             if (!op.strs[0]?.trim()) return { error: 'text needs a "label"' };
             item.size = op.opts.size ?? 'm';
-            if (!TEXT_SIZES[item.size]) return { error: `unknown size "${item.size}"` };
+            if (!Object.hasOwn(TEXT_SIZES, item.size))
+                return { error: `unknown size "${item.size}"` };
         }
         // A circle or box may carry a short label inside it.
         if (op.strs[0]?.trim()) item.text = op.strs[0].trim();

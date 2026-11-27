@@ -71,6 +71,7 @@ test('board ops: a malformed op or one naming an unknown id is skipped with its 
         'x2 box w=10 h=10',
         'x3 text at 10,10',
         'x4 text "big" at 10,10 size=xl',
+        'x4 text "big" at 10,10 size=constructor',
         'x5 circle at 10,10 r=-4',
         'x6 dot at 10,10 look=red',
         'x7 box at 10,10 sideways',
