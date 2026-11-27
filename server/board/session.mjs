@@ -80,16 +80,23 @@ export function boardSession(ctx, id, socket) {
         send({ type: 'audio-end', id: 'filler' });
     };
     // The items drawn on this board so far, across its turns.
-    const board = boardOps();
-    const replies = [];
-    for (const { role, text, lines } of store.boardReplies(id)) {
-        const items = lines.flatMap((line) => board.read(line).item ?? []);
-        // The learner's strokes join the board they were drawn on; a reply that said nothing is not a step.
-        if (role === 'user') {
-            if (!replies.length) replies.push({ caption: '', items: [] });
-            replies.at(-1).items.push(...items);
-        } else if (text.trim()) replies.push({ caption: text.trim().split('\n').at(-1), items });
-    }
+    let board;
+    // Rebuilds the board from the saved turns, and returns them as replies.
+    const load = () => {
+        board = boardOps();
+        const replies = [];
+        for (const { role, text, lines } of store.boardReplies(id)) {
+            const items = lines.flatMap((line) => board.read(line).item ?? []);
+            // The learner's strokes join the board they were drawn on; a reply that said nothing is not a step.
+            if (role === 'user') {
+                if (!replies.length) replies.push({ caption: '', items: [] });
+                replies.at(-1).items.push(...items);
+            } else if (text.trim())
+                replies.push({ caption: text.trim().split('\n').at(-1), items });
+        }
+        return replies;
+    };
+    const replies = load();
     if (replies.length) send({ type: 'board', replies });
     const ended = Promise.withResolvers();
     // A newer board for the same conversation replaces this one; deleting it or stopping the app ends it too.
@@ -192,6 +199,11 @@ export function boardSession(ctx, id, socket) {
         } else if (current.sentences.length) {
             // Claude may have stored text the learner never saw. Replay the saved discussion next time.
             store.forgetThread(id);
+        }
+        // Ops of sentences that never played leave the board; pen strokes waiting for the next question stay.
+        if (status !== 'completed' && !closed) {
+            load();
+            pending.forEach((s) => board.read(s.line));
         }
         if (turn === current) turn = null;
         ctx.jobs.remove(current.job);
@@ -327,8 +339,9 @@ export function boardSession(ctx, id, socket) {
         finish(current, 'failed');
     };
     const ask = (text) => {
-        // A question waits for the tutor to finish; cutting in comes with interruptions.
-        if (turn || closed) return;
+        if (closed) return;
+        // Sending mid-reply cuts in: the reply stops, saved up to the sentence heard, and the question starts a new turn.
+        if (turn) stop(turn);
         const tree = store.tree(id);
         const supported = providerFor(tree)?.board;
         if (!supported || ctx.jobs.get('reply', id)) {
@@ -357,9 +370,17 @@ export function boardSession(ctx, id, socket) {
                 pending.map((s) => s.line),
             );
         const strokes = pending.map((s) => s.line.split(' ')[0]);
-        const prompt = strokes.length
-            ? `${text}\n\npen: ${[...marks, `strokes ${strokes.join(', ')}`].join(' · ')}`
-            : text;
+        // The provider got text the learner never heard, so a turn after a cut names where the learner stopped hearing.
+        const last = tree.messages.at(-1);
+        const cut =
+            last?.board && last.role === 'assistant' && last.status === 'interrupted' && last.text
+                ? `(You were cut off. The last sentence the learner heard was "${last.text.split('\n').at(-1)}"; they did not hear the rest of that reply.)\n\n`
+                : '';
+        const prompt =
+            cut +
+            (strokes.length
+                ? `${text}\n\npen: ${[...marks, `strokes ${strokes.join(', ')}`].join(' · ')}`
+                : text);
         const free = pending.filter((s) => !s.mark);
         pending = [];
         const current = {
@@ -456,16 +477,17 @@ export function boardSession(ctx, id, socket) {
             settle(current);
         }
     };
+    // A reply the learner has seen in full completes; any other stops at once.
+    const stop = (current) => {
+        if (current.generated && current.shown === current.sentences.length)
+            finish(current, 'completed');
+        else current.job.controller.abort();
+    };
     // Leaving stops the tutor at once and saves the reply up to the sentence shown.
     function close() {
         if (closed) return;
         closed = true;
-        const current = turn;
-        if (current) {
-            if (current.generated && current.shown === current.sentences.length)
-                finish(current, 'completed');
-            else current.job.controller.abort();
-        }
+        if (turn) stop(turn);
         process?.close();
         speech?.close();
         ctx.jobs.remove(session);

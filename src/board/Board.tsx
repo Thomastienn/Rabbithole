@@ -80,7 +80,10 @@ export default function Board({
         if (line) board.draw(line);
         setLine(undefined);
     };
-    const busy = board.state !== 'idle' || !board.ready;
+    // Typing never stops the tutor; sending mid-reply cuts in, so only thinking holds the send button.
+    const busy = board.state === 'thinking' || !board.ready;
+    // Stepping through replies waits for the tutor to finish.
+    const tutoring = board.state !== 'idle' || !board.ready;
     const scene = sceneOf(board.items);
     const scroller = useRef<HTMLDivElement>(null);
     const [scrolled, setScrolled] = useState(0);
@@ -172,7 +175,7 @@ export default function Board({
                                 icon={<ChevronLeftIcon />}
                                 variant="ghost"
                                 size="sm"
-                                isDisabled={busy || board.at === 0}
+                                isDisabled={tutoring || board.at === 0}
                                 onClick={() => board.go(board.at - 1)}
                             />
                             <span>
@@ -183,7 +186,7 @@ export default function Board({
                                 icon={<ChevronRightIcon />}
                                 variant="ghost"
                                 size="sm"
-                                isDisabled={busy || !board.stepped}
+                                isDisabled={tutoring || !board.stepped}
                                 onClick={() => board.go(board.at + 1)}
                             />
                         </div>
@@ -310,7 +313,7 @@ export default function Board({
                                 maxRows={4}
                                 value={draft}
                                 onChange={setDraft}
-                                // Typing stays open while the tutor speaks; only Enter waits for it to finish.
+                                // Typing stays open while the tutor thinks; only Enter waits for it.
                                 onKeyDown={(e) => busy && holdEnter(e)}
                                 placeholder="Ask a question"
                             />
