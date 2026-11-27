@@ -41,6 +41,8 @@ export default function BoardSettings() {
                 <Selector
                     label="Voice language"
                     width={300}
+                    placement="below"
+                    indicatorPosition="start"
                     value={lang}
                     options={languages}
                     onChange={(value) => {
