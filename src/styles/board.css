@@ -13,6 +13,8 @@
 
 /* Board toggle: the switch and its word, first among the header's controls; muted when off, ink when on. */
 .board-toggle {
+    display: inline-flex;
+    align-items: center;
     height: 36px;
     padding: 0 10px;
     margin-right: 4px;
@@ -23,6 +25,10 @@
 }
 .board-toggle:has(input:checked) {
     color: var(--color-text-primary);
+}
+.board-toggle .astryx-field-label {
+    font: inherit;
+    color: inherit;
 }
 
 /* Fixed rows under the header: the board field, the 52px caption line and the composer. State never moves them. */
@@ -136,4 +142,5 @@
 .board-foot .board-composer {
     max-width: 720px;
     margin: 0 auto;
+    padding: 0;
 }
