@@ -137,9 +137,11 @@ export function boardSession(ctx, id, socket) {
                     writing = { id: String(++count), text: line.sentence, ops: [] };
                     continue;
                 }
-                const { item, error } = writing
+                const { item, moved, error } = writing
                     ? board.read(line.op)
                     : { error: 'op before its sentence' };
+                // Moves show prompt regressions in the log (docs/board-spec.md, the guard).
+                if (moved) log(formatLog('info', 'board', 'item moved', { id: item.id }));
                 if (item) writing.ops.push(item);
                 // The learner never sees a broken op; the log keeps why it was skipped.
                 else

@@ -82,3 +82,36 @@ test('board ops: a malformed op or one naming an unknown id is skipped with its 
     assert.ok(board.read('c5 line 0,0 -> 10,10').item, 'the board carries on');
     assert.ok(board.read('bl text "bulb" at 1460,450').item, 'a skipped id stays free');
 });
+
+test('board ops: the guard moves an overlapping or off-board item to the nearest free spot', () => {
+    const board = boardOps();
+    board.read('a box at 400,450 w=200 h=100');
+    const over = board.read('b box at 450,450 w=200 h=100');
+    assert.equal(over.moved, true);
+    assert.deepEqual(over.item.at, [450, 350], 'just clear of a, the shortest way');
+    const off = board.read('c circle at 1580,20 r=60');
+    assert.equal(off.moved, true);
+    assert.deepEqual(off.item.at, [1540, 60], 'pulled just inside the corner');
+    board.read('w arrow 800,100 -> 800,800');
+    const label = board.read('t text "speed" at 800,300 size=s');
+    assert.equal(label.moved, true, 'a label on a drawn arrow moves');
+    assert.notDeepEqual(label.item.at, [800, 300]);
+    board.read('d box at 1100,600 w=60 h=60');
+    assert.ok(board.read('ad arrow from a to d').item, 'a connector is kept');
+    assert.equal(board.read('wd text "far" at 1300,800').moved, undefined);
+});
+
+test('board ops: a label in a shape, a line over shapes and a connector at its ends stay put', () => {
+    const board = boardOps();
+    board.read('a box at 300,450 w=300 h=200');
+    assert.equal(board.read('al text "inside" at 300,450 size=s').moved, undefined);
+    assert.equal(
+        board.read('ln line 100,300 -> 700,600').moved,
+        undefined,
+        'a line may cross a shape',
+    );
+    board.read('b circle at 1200,450 r=100');
+    assert.equal(board.read('ab arrow from a to b').moved, undefined);
+    // A label touching the connector, but not its ends, still moves.
+    assert.equal(board.read('x text "flow" at 800,450 size=s').moved, true);
+});

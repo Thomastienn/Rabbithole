@@ -98,7 +98,7 @@ test('board: a typed question gets its sentences one at a time and saves as a le
         [
             '> A hypha grows only at its tip.\nt1 text "tip" at 800,450 look=focus\nt2 text "x" at 9\n',
             'h1 arrow from t1 to nowhere\n> Tiny sacs',
-            ' carry new wall forward.\nv1 dot at 900,450',
+            ' carry new wall forward.\nv1 dot at 900,450\nw1 text "wall" at 800,450 size=s',
         ],
     ]);
     const { env, id, logs, connect } = await setup(t, provider);
@@ -129,9 +129,14 @@ test('board: a typed question gets its sentences one at a time and saves as a le
         [first.ops, second.ops],
         [
             [{ id: 't1', kind: 'text', look: 'focus', at: [800, 450], size: 'm', text: 'tip' }],
-            [{ id: 'v1', kind: 'dot', at: [900, 450] }],
+            [
+                { id: 'v1', kind: 'dot', at: [900, 450] },
+                { id: 'w1', kind: 'text', at: [800, 499], size: 's', text: 'wall' },
+            ],
         ],
+        'w1 landed on t1, so the guard moved it',
     );
+    assert.ok(logs.some((l) => /INFO board item moved id="w1"/.test(l)));
     assert.equal(logs.filter((l) => /WARN board op skipped/.test(l)).length, 2);
     assert.notEqual(first.id, second.id);
     assert.deepEqual(process.asked, ['How does a hypha grow at its tip?']);
