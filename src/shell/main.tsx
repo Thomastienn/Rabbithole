@@ -44,6 +44,8 @@ import '../styles/states.css';
 import '../styles/first-run.css';
 import '../styles/map.css';
 import '../styles/board.css';
+import '../styles/board-areas.css';
+import '../styles/board-snapshot.css';
 import '../styles/board-pen.css';
 import '../styles/settings.css';
 

@@ -238,7 +238,7 @@ export class Codex {
             thread,
             // Warms the app-server before the first question; ask reports a failed start.
             open: () => codex.ready().catch(() => {}),
-            async ask(text, emit, signal) {
+            async ask(text, emit, signal, images = []) {
                 let status = 'failed',
                     usage;
                 const tree = {
@@ -248,6 +248,7 @@ export class Codex {
                     system,
                     // A fresh thread gets the saved discussion, including captions already shown on a board.
                     messages: history.map((m) => ({ ...m, status: 'completed' })),
+                    images,
                 };
                 const onEvent = (e) => {
                     if (e.type === 'delta') emit(e);

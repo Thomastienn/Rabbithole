@@ -1,9 +1,10 @@
-import type { Voice } from './voice';
+import { DEFAULT_SPEED, type Voice } from './voice';
 
 // The board player: shows the tutor's sentences one at a time, each for as long as it takes to say,
 // and draws each sentence's ops in order over that time.
 // A voiced sentence starts on its first audio chunk and lasts as long as its audio plays.
-// Later tickets add speed, pause and interruptions here.
+// Times are board time, at the default 1.5×: the learner's speed scales it and pause stops it.
+// Later tickets add interruptions here.
 export type Phase = 'start' | 'end';
 export type Look = 'focus' | 'muted' | 'good' | 'wrong' | 'new';
 // A drawable op as the board session sends it (server/board/ops.mjs), in board pixels.
@@ -83,6 +84,49 @@ type Clock = {
     clearTimeout: (timer: unknown) => void;
 };
 
+// Board time over a real clock: it runs at speed / 1.5 and stands still while paused; its timers follow.
+function pacedClock(real: Clock) {
+    type Timer = { at: number; run: () => void; handle?: unknown };
+    const timers = new Set<Timer>();
+    let scale = 1,
+        paused = false,
+        base = 0,
+        since = real.now();
+    const now = () => (paused ? base : base + (real.now() - since) * scale);
+    const arm = (t: Timer) => {
+        t.handle = real.setTimeout(
+            () => {
+                timers.delete(t);
+                t.run();
+            },
+            Math.max(0, (t.at - now()) / scale),
+        );
+    };
+    const change = (set: () => void) => {
+        base = now();
+        since = real.now();
+        set();
+        for (const t of timers) {
+            real.clearTimeout(t.handle);
+            if (!paused) arm(t);
+        }
+    };
+    return {
+        now,
+        setTimeout(run: () => void, ms: number): unknown {
+            const t: Timer = { at: now() + ms, run };
+            timers.add(t);
+            if (!paused) arm(t);
+            return t;
+        },
+        clearTimeout(timer: unknown) {
+            if (timers.delete(timer as Timer)) real.clearTimeout((timer as Timer).handle);
+        },
+        scale: (s: number) => change(() => (scale = s)),
+        pause: (on: boolean) => change(() => (paused = on)),
+    };
+}
+
 // An estimated ten characters per second at 1× plays at fifteen at the default 1.5×.
 const CHARS_PER_SECOND = 15;
 
@@ -91,12 +135,14 @@ export function boardPlayer(
     draw: (op: Op, ms: number) => void,
     report: (sentence: Sentence, phase: Phase) => void,
     voice?: Voice,
-    clock: Clock = {
+    real: Clock = {
         now: () => performance.now(),
         setTimeout: (run, ms) => setTimeout(run, ms),
         clearTimeout: (timer) => clearTimeout(timer as number),
     },
 ) {
+    const clock = pacedClock(real);
+    let paused = false;
     let queue: Sentence[] = [],
         current: Sentence | undefined,
         timers: unknown[] = [],
@@ -105,7 +151,7 @@ export function boardPlayer(
     const pending = new Map<string, 'waiting' | 'chunked' | 'silent'>();
     const next = () => {
         const sentence = queue[0];
-        if (current || !sentence) return;
+        if (current || !sentence || paused) return;
         const audio = pending.get(sentence.id);
         if (audio === 'waiting') return;
         queue.shift();
@@ -182,7 +228,15 @@ export function boardPlayer(
             next();
         },
         // The sentence's speech streams in chunks; its first chunk starts it.
+        // A filler plays only while no sentence does, and the first sentence's speech cuts it off.
         chunk(id: string, bytes: Uint8Array) {
+            if (id === 'filler') {
+                if (current || playing || !voice) return;
+                playing = id;
+                const over = () => playing === id && (playing = undefined);
+                voice.chunk(id, bytes);
+                return voice.play(id, { duration() {}, ended: over, failed: over });
+            }
             const audio = pending.get(id);
             if (playing !== id && (!audio || audio === 'silent')) return;
             voice?.chunk(id, bytes);
@@ -200,8 +254,24 @@ export function boardPlayer(
                 next();
             }
         },
+        // Speech and board time change speed at once, mid-sentence.
+        speed(rate: number) {
+            clock.scale(rate / DEFAULT_SPEED);
+            voice?.speed(rate);
+        },
+        // Paused, nothing advances; sentences and audio still arriving queue up and play after resume.
+        pause(on: boolean) {
+            paused = on;
+            clock.pause(on);
+            voice?.pause(on);
+            if (!on) next();
+        },
+        // A timer in board time, for effects that outlast an op's draw, such as an erase fade.
+        wait: (run: () => void, ms: number) => clock.setTimeout(run, ms),
         // Drops what has not started; the sentence on show keeps its caption and drawn items stay.
         stop() {
+            paused = false;
+            clock.pause(false);
             timers.forEach(clock.clearTimeout);
             clock.clearTimeout(ending);
             voice?.stop();

@@ -65,7 +65,7 @@ function setup(t) {
             const note = (method, params) =>
                 send({ method, params: { threadId, turnId, ...params } });
             const { instructions, history } = previous;
-            server.turns.push({ threadId, turnId, effort, history: [...history] });
+            server.turns.push({ threadId, turnId, effort, input, history: [...history] });
             respond({ turn: { id: turnId } });
             turnStarted.resolve();
             if (server.hold) return;
@@ -137,6 +137,10 @@ test('Codex board: turns run on the shared app-server with the board prompt at l
     assert.equal(server.launches, 1);
     assert.equal(b.thread, thread);
     assert.deepEqual(server.turns[1].history, ['What are hyphae?', 'Why?', caption]);
+    await b.ask('Look.', () => {}, new AbortController().signal, [
+        { type: 'image/png', path: '/tmp/p1.png' },
+    ]);
+    assert.deepEqual(server.turns[2].input[1], { type: 'localImage', path: '/tmp/p1.png' });
 });
 
 test('Codex board: switching modes changes the effective prompt and carries the history both ways', async (t) => {

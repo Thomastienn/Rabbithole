@@ -1,12 +1,21 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
+import { Button } from '@astryxdesign/core/Button';
 import { IconButton } from '@astryxdesign/core/IconButton';
+import {
+    DropdownMenu,
+    DropdownMenuGroup,
+    DropdownMenuRadioGroup,
+    DropdownMenuRadioItem,
+} from '@astryxdesign/core/DropdownMenu';
 import { ChatComposer, ChatComposerInput, ChatSendButton } from '@astryxdesign/core/Chat';
 import {
     ChevronLeftIcon,
     ChevronRightIcon,
     ExclamationTriangleIcon,
     MicrophoneIcon,
+    PauseIcon,
     PencilIcon,
+    PlayIcon,
 } from '@heroicons/react/24/outline';
 import { holdEnter } from '../chat/Attachments';
 import type { Message } from '../chat/turn';
@@ -14,6 +23,8 @@ import { useBoard, type Drawn } from './useBoard';
 import BoardItem, { strokePath } from './BoardItem';
 import { follow } from './camera';
 import { labelRows } from './player';
+import { DEFAULT_SPEED } from './voice';
+import { BOARD_SPEEDS } from '../shell/preferences';
 import { componentParts } from './layout';
 import { inkStyle } from '../map/treeList';
 
@@ -30,6 +41,7 @@ const STATES = { thinking: 'Thinking', speaking: 'Speaking' } as const;
 // The board column (mockup Rabbithole-brd.1): the board field, the caption line and the board's composer.
 // The tutor's sentences show one at a time as the caption while their ops draw (mockup Rabbithole-brd.2).
 // With the pen on, the learner draws on the board in the conversation's ink (mockup Rabbithole-brd.14).
+// Speed and pause sit in the board's tools (mockup Rabbithole-brd.8).
 export default function Board({
     conversation,
     messages,
@@ -45,6 +57,12 @@ export default function Board({
     const [draft, setDraft] = useState('');
     const [pen, setPen] = useState(false);
     const [line, setLine] = useState<Point[]>();
+    const svg = useRef<SVGSVGElement>(null);
+    // Item entries are CSS animations in board time; their playback rate carries the speed, mid-entry too.
+    useLayoutEffect(() => {
+        for (const a of svg.current?.getAnimations?.({ subtree: true }) ?? [])
+            a.playbackRate = board.speed / DEFAULT_SPEED;
+    }, [board.items, board.speed]);
     const penDown = (e: PointerEvent<SVGSVGElement>) => {
         // An earlier reply's board is only looked at; strokes go on the latest one.
         if (!pen || board.stepped) return;
@@ -79,7 +97,7 @@ export default function Board({
     return (
         <section className="board-column" aria-label="Board" style={inkStyle(ink)}>
             <div className="board-field">
-                <div className={`board${pen ? ' pen-on' : ''}`}>
+                <div className={`board${pen ? ' pen-on' : ''}${board.paused ? ' paused' : ''}`}>
                     <div
                         className="board-scroller"
                         ref={scroller}
@@ -89,6 +107,7 @@ export default function Board({
                         }}
                     >
                         <svg
+                            ref={svg}
                             viewBox={`0 0 1600 ${scene.areas * 900}`}
                             role="img"
                             aria-label={
@@ -116,6 +135,15 @@ export default function Board({
                                     parts={parts.get(op.id)}
                                 />
                             ))}
+                            {/* The tutor heard: a soft pulse in the corner of the current area, which board items rarely use, until it speaks. */}
+                            {board.state === 'thinking' && (
+                                <circle
+                                    className="board-waiting"
+                                    cx={1544}
+                                    cy={(scene.areas - 1) * 900 + 844}
+                                    r={10}
+                                />
+                            )}
                             {line && (
                                 <g className="board-item">
                                     <path className="board-learner" d={strokePath(line)} />
@@ -171,8 +199,14 @@ export default function Board({
             </div>
             <div className="board-line">
                 <span role="status">
-                    {board.state !== 'idle' && (
-                        <span className={`board-state ${board.state}`}>{STATES[board.state]}</span>
+                    {board.paused ? (
+                        <span className="board-state paused">Paused</span>
+                    ) : (
+                        board.state !== 'idle' && (
+                            <span className={`board-state ${board.state}`}>
+                                {STATES[board.state]}
+                            </span>
+                        )
                     )}
                 </span>
                 <p
@@ -211,6 +245,51 @@ export default function Board({
                                 icon={<PencilIcon />}
                                 variant="ghost"
                                 onClick={() => setPen(!pen)}
+                            />
+                            <DropdownMenu
+                                presentation="popover"
+                                placement="above"
+                                alignment="start"
+                                menuWidth={180}
+                                renderTrigger={(props) => (
+                                    <Button
+                                        {...props}
+                                        className="model-picker board-speed"
+                                        label={`Speed, ${board.speed}×`}
+                                        variant="ghost"
+                                        size="sm"
+                                    >
+                                        {board.speed}×
+                                    </Button>
+                                )}
+                            >
+                                <DropdownMenuGroup title="Speed">
+                                    <DropdownMenuRadioGroup
+                                        label="Speed"
+                                        value={String(board.speed)}
+                                        onChange={(value) => board.changeSpeed(Number(value))}
+                                    >
+                                        {BOARD_SPEEDS.map((s) => (
+                                            <DropdownMenuRadioItem
+                                                key={s}
+                                                value={String(s)}
+                                                label={`${s}×`}
+                                                endContent={
+                                                    s === DEFAULT_SPEED ? 'Default' : undefined
+                                                }
+                                            />
+                                        ))}
+                                    </DropdownMenuRadioGroup>
+                                </DropdownMenuGroup>
+                            </DropdownMenu>
+                            <IconButton
+                                className="board-pause"
+                                label={board.paused ? 'Resume' : 'Pause'}
+                                aria-pressed={board.paused}
+                                icon={board.paused ? <PlayIcon /> : <PauseIcon />}
+                                variant="ghost"
+                                isDisabled={!board.paused && board.state !== 'speaking'}
+                                onClick={() => board.pause(!board.paused)}
                             />
                         </span>
                     }

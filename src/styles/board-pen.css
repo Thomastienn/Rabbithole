@@ -1,7 +1,8 @@
 /* The learner's pen on the board (mockup Rabbithole-brd.14): its toolbar button, the marks pill and the strokes. */
-/* The board's tool group: the mic, then the pen (mockup Rabbithole-brd.14). */
+/* The board's tool group: the mic, the pen (mockup Rabbithole-brd.14), then speed and pause (mockup Rabbithole-brd.8). */
 .board-tools {
     display: flex;
+    align-items: center;
     gap: 2px;
     margin-inline-start: -8px;
 }
