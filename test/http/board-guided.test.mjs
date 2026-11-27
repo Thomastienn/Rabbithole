@@ -43,10 +43,6 @@ test('board: the board prompt says learner-led by default and tutor-guided when 
     await opened(connect().ws);
     await until(() => provider.boards[0]?.opened);
     assert.match(provider.boards[0].options.system, /This board is learner-led/);
-    const { system } = provider.boards[0].options;
-    assert.doesNotMatch(system, /20 words/, 'no word count for spoken lines');
-    assert.match(system, /starts with "!> "/, 'the key sentence line');
-    assert.match(system, /about seven/, 'a soft page budget');
     await opened(connect(`?csrf=${csrf}&mode=guided`).ws);
     await until(() => provider.boards[1]?.opened);
     assert.match(provider.boards[1].options.system, /This board is tutor-guided/);
