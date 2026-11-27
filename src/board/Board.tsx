@@ -1,4 +1,11 @@
-import { useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
+import {
+    useEffect,
+    useLayoutEffect,
+    useRef,
+    useState,
+    type CSSProperties,
+    type PointerEvent,
+} from 'react';
 import { Button } from '@astryxdesign/core/Button';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import {
@@ -46,7 +53,8 @@ const MB = (bytes = 0) => Math.round(bytes / 1e6);
 // The tutor's sentences show one at a time as the caption while their ops draw (mockup Rabbithole-brd.2).
 // With the pen on, the learner draws on the board in the conversation's ink (mockup Rabbithole-brd.14).
 // Speed and pause sit in the board's tools (mockup Rabbithole-brd.8).
-// The mic turns on voice questions, downloading the speech models on its first press (mockup Rabbithole-brd.11).
+// The mic turns on voice questions, downloading the speech models on its first press (mockup Rabbithole-brd.11);
+// with push-to-talk on, it is held instead (mockup Rabbithole-brd.12).
 // The transcript rail beside it lists what was said; collapsed, the caption line carries the sentence (mockup Rabbithole-brd.15).
 export default function Board({
     conversation,
@@ -105,6 +113,39 @@ export default function Board({
     const { mic } = board;
     const percent = mic.total ? Math.floor(((mic.loaded ?? 0) * 100) / mic.total) : 0;
     const loading = mic.status === 'loading';
+    const ptt = board.pushToTalk;
+    const held = ptt && !!mic.hearing;
+    const column = useRef<HTMLElement>(null);
+    const hold = useRef(board.hold);
+    hold.current = board.hold;
+    // Push-to-talk: Space holds to talk unless focus is in a text field or the board is out of sight.
+    useEffect(() => {
+        if (!ptt) return;
+        const key = (down: boolean) => (e: KeyboardEvent) => {
+            const target = e.target as HTMLElement;
+            if (e.code !== 'Space' || column.current?.closest('[hidden]')) return;
+            if (
+                target.closest?.(
+                    'input, textarea, select, [contenteditable]:not([contenteditable=false])',
+                )
+            )
+                return;
+            e.preventDefault();
+            if (!e.repeat) hold.current(down);
+        };
+        const down = key(true),
+            up = key(false),
+            blur = () => hold.current(false);
+        window.addEventListener('keydown', down);
+        window.addEventListener('keyup', up);
+        window.addEventListener('blur', blur);
+        return () => {
+            window.removeEventListener('keydown', down);
+            window.removeEventListener('keyup', up);
+            window.removeEventListener('blur', blur);
+            hold.current(false);
+        };
+    }, [ptt]);
     const submit = (text: string) => {
         if (busy || !text.trim()) return;
         if (board.ask(text.trim())) setDraft('');
@@ -158,6 +199,7 @@ export default function Board({
             : undefined;
     return (
         <section
+            ref={column}
             className={`board-column${railOpen ? '' : ' rail-shut'}`}
             aria-label="Board"
             style={inkStyle(ink)}
@@ -274,12 +316,13 @@ export default function Board({
                 <span role="status">
                     {board.paused ? (
                         <span className="board-state paused">Paused</span>
+                    ) : held ? (
+                        <span className="board-state listening">Listening</span>
                     ) : board.state !== 'idle' ? (
                         <span className={`board-state ${board.state}`}>{STATES[board.state]}</span>
                     ) : (
-                        mic.status === 'on' && (
-                            <span className="board-state listening">Listening</span>
-                        )
+                        mic.status === 'on' &&
+                        !ptt && <span className="board-state listening">Listening</span>
                     )}
                 </span>
                 <p
@@ -303,36 +346,72 @@ export default function Board({
                     footerActions={
                         <span className="board-tools">
                             {/* Off when a board opens; downloading and hearing widen it to the icon's right. */}
-                            <Button
-                                className={`board-mic${loading ? ' load' : mic.hearing ? ' hear' : ''}`}
-                                label={
-                                    loading ? `Turn mic on, downloading ${percent}%` : 'Turn mic on'
-                                }
-                                aria-pressed={mic.status === 'on'}
-                                aria-busy={loading || undefined}
-                                icon={<MicrophoneIcon />}
-                                isIconOnly={!loading && !mic.hearing}
-                                variant="ghost"
-                                isDisabled={!board.ready}
-                                onClick={board.toggleMic}
-                            >
-                                {loading ? (
-                                    <>
-                                        {percent}%
-                                        <span className="board-mic-bar">
-                                            <b style={{ width: `${percent}%` }} />
-                                        </span>
-                                    </>
-                                ) : (
-                                    mic.hearing && (
-                                        <span className="board-level" aria-hidden>
-                                            {mic.levels?.map((h, i) => (
-                                                <s key={i} style={{ height: `${h * 16}px` }} />
-                                            ))}
-                                        </span>
-                                    )
-                                )}
-                            </Button>
+                            {ptt && !loading ? (
+                                // Push-to-talk (mockup Rabbithole-brd.12): a hold button, never a toggle.
+                                <Button
+                                    className="board-mic ptt"
+                                    label="Hold to talk"
+                                    aria-pressed={held}
+                                    aria-keyshortcuts="Space"
+                                    icon={<MicrophoneIcon />}
+                                    variant="ghost"
+                                    isDisabled={!board.ready}
+                                    onPointerDown={(e: PointerEvent<HTMLElement>) => {
+                                        e.currentTarget.setPointerCapture?.(e.pointerId);
+                                        board.hold(true);
+                                    }}
+                                    onPointerUp={() => board.hold(false)}
+                                    onPointerCancel={() => board.hold(false)}
+                                >
+                                    {held ? (
+                                        <>
+                                            Release to send
+                                            <span className="board-level" aria-hidden>
+                                                {mic.levels?.map((h, i) => (
+                                                    <s key={i} style={{ height: `${h * 16}px` }} />
+                                                ))}
+                                            </span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            Hold to talk<kbd>Space</kbd>
+                                        </>
+                                    )}
+                                </Button>
+                            ) : (
+                                <Button
+                                    className={`board-mic${loading ? ' load' : mic.hearing ? ' hear' : ''}`}
+                                    label={
+                                        loading
+                                            ? `${ptt ? 'Hold to talk' : 'Turn mic on'}, downloading ${percent}%`
+                                            : 'Turn mic on'
+                                    }
+                                    aria-pressed={mic.status === 'on'}
+                                    aria-busy={loading || undefined}
+                                    icon={<MicrophoneIcon />}
+                                    isIconOnly={!loading && !mic.hearing}
+                                    variant="ghost"
+                                    isDisabled={!board.ready}
+                                    onClick={board.toggleMic}
+                                >
+                                    {loading ? (
+                                        <>
+                                            {percent}%
+                                            <span className="board-mic-bar">
+                                                <b style={{ width: `${percent}%` }} />
+                                            </span>
+                                        </>
+                                    ) : (
+                                        mic.hearing && (
+                                            <span className="board-level" aria-hidden>
+                                                {mic.levels?.map((h, i) => (
+                                                    <s key={i} style={{ height: `${h * 16}px` }} />
+                                                ))}
+                                            </span>
+                                        )
+                                    )}
+                                </Button>
+                            )}
                             <IconButton
                                 className="board-pen"
                                 label="Pen"

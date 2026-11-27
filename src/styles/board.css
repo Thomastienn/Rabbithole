@@ -381,6 +381,36 @@
     border-radius: var(--radius-full);
     background: currentColor;
 }
+/* Push-to-talk (mockup Rabbithole-brd.12): the mic widens to "Hold to talk" with the Space key; held, it fills porcelain with level bars. */
+.board-composer .board-mic.ptt {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: auto;
+    padding: 0 10px 0 8px;
+    color: var(--color-text-primary);
+    font-size: 13px;
+    font-weight: 600;
+}
+/* Its label and the Space key, or the level bars, sit 6px apart like the icon and the label. */
+.board-composer .board-mic.ptt > span > span:last-child {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.board-composer .board-mic.ptt[aria-pressed='true'] {
+    color: var(--rabbithole-paper-ink);
+}
+.board-mic.ptt kbd {
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: var(--color-overlay-hover);
+    font: 600 11px var(--font-family-body);
+}
+.board-mic.ptt[aria-pressed='true'] kbd {
+    background: color-mix(in srgb, var(--rabbithole-paper-ink) 15%, transparent);
+    color: var(--rabbithole-paper-ink);
+}
 .board-state.listening::before {
     background: var(--rabbithole-paper);
 }

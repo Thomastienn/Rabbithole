@@ -4,7 +4,7 @@ import type { Message } from '../chat/turn';
 import { boardPlayer, type Op } from './player';
 import { streamedVoice } from './voice';
 import { levels, openMic } from './mic';
-import { savePreference, savedBoardSpeed } from '../shell/preferences';
+import { savePreference, savedBoardSpeed, savedPushToTalk } from '../shell/preferences';
 
 export type BoardState = 'idle' | 'thinking' | 'speaking';
 type Caption = { text: string; muted: boolean };
@@ -62,10 +62,15 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
     const [mic, setMic] = useState<Mic>(MIC_OFF);
     const closeMic = useRef<() => void>(undefined);
     const micOn = useRef(false);
+    // Push-to-talk, read from Settings on each render: frames go up only while Space or the mic is held.
+    const pushToTalk = savedPushToTalk();
+    const ptt = useRef(pushToTalk);
+    ptt.current = pushToTalk;
+    const holding = useRef(false);
     const stopMic = () => {
         closeMic.current?.();
         closeMic.current = undefined;
-        micOn.current = false;
+        micOn.current = holding.current = false;
         setMic(MIC_OFF);
     };
     // A question sent, typed or spoken: it shows muted until the tutor speaks, so the learner sees it was heard.
@@ -165,6 +170,8 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
                 else if (closeMic.current) {
                     micOn.current = m.status === 'on';
                     setMic({ status: m.status, loaded: m.loaded, total: m.total });
+                    // The first hold downloads the models and records once they are ready, if still held.
+                    if (micOn.current && ptt.current && holding.current) sendHold(true);
                 }
             }
             if (m.type === 'hearing')
@@ -229,12 +236,30 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
                 ws.send(JSON.stringify({ type: 'mic', on: false }));
             return stopMic();
         }
+        return startMic();
+    };
+    // Push-to-talk tells the server where a question starts and ends; the server stops the tutor as it starts.
+    function sendHold(down: boolean) {
+        const ws = socket.current;
+        if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'hold', on: down }));
+        setMic((mic) => ({ ...mic, hearing: down, levels: [0.2, 0.2, 0.2, 0.2] }));
+    }
+    // Holding Space or the mic with push-to-talk on; the first hold turns the mic on.
+    const hold = (down: boolean) => {
+        if (down === holding.current) return;
+        holding.current = down;
+        if (micOn.current) sendHold(down);
+        else if (down && !closeMic.current) void startMic();
+    };
+    const startMic = async () => {
+        const ws = socket.current;
         if (ws?.readyState !== WebSocket.OPEN) return;
         // A placeholder while the browser asks, so a second press cancels instead of asking twice.
         closeMic.current = () => {};
         try {
             const close = await openMic((samples) => {
                 if (!micOn.current || ws.readyState !== WebSocket.OPEN) return;
+                if (ptt.current && !holding.current) return;
                 ws.send(samples.buffer);
                 setMic((mic) =>
                     mic.hearing ? { ...mic, levels: levels(samples, mic.levels ?? []) } : mic,
@@ -283,6 +308,8 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         pause,
         mic,
         toggleMic,
+        pushToTalk,
+        hold,
         ready,
         notice,
         asked: asked || messages.some((m) => m.board),

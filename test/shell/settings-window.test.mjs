@@ -229,3 +229,18 @@ test('the desktop app shows the Discord status switch and reports its choice', a
     await page.act(async () => discord.click());
     assert.deepEqual(choices, [false]);
 });
+
+test('the Board page has push-to-talk, off by default, and keeps the choice for boards', async (t) => {
+    fakeServer(t, () => ({ first: null, events: [] }));
+    const page = await render(settings(), ui);
+    t.after(page.cleanup);
+    await page.act(async () => document.getElementById('settings-board').click());
+    assert.equal(document.getElementById('settings-section-board').textContent, 'Board');
+    const ptt = [...page.container.querySelectorAll('[role=switch]')].find(
+        (s) => s.labels[0]?.textContent === 'Push-to-talk',
+    );
+    assert.equal(ptt.checked, false);
+    await page.act(async () => ptt.click());
+    assert.equal(ptt.checked, true);
+    assert.equal(window.localStorage.getItem('rabbithole.push-to-talk'), 'on');
+});

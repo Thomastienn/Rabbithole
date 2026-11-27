@@ -520,3 +520,64 @@ test('board: the chosen speed is still set after a reload', async (t) => {
     const board = await mount(t, [], '1.75');
     assert.ok(button(board.container, 'Speed, 1.75×'));
 });
+
+test('board: with push-to-talk on, only speech while the mic or Space is held goes up, and letting go sends it', async (t) => {
+    const mic = fakeMic(t);
+    const install = mic.install;
+    mic.install = (w) => {
+        install(w);
+        w.localStorage.setItem('rabbithole.push-to-talk', 'on');
+    };
+    const board = await mount(t, [], undefined, false, mic);
+    const ptt = () => board.q('.board-mic');
+    // jsdom has no PointerEvent: a mouse event with the pointer's id and type stands in.
+    const pointer = (type) =>
+        board.act(async () =>
+            ptt().dispatchEvent(
+                Object.assign(new window.MouseEvent(type, { bubbles: true }), {
+                    pointerId: 1,
+                    pointerType: 'mouse',
+                }),
+            ),
+        );
+    const space = (type, target = document.body) =>
+        board.act(async () =>
+            target.dispatchEvent(new window.KeyboardEvent(type, { code: 'Space', bubbles: true })),
+        );
+    assert.equal(ptt().getAttribute('aria-label'), 'Hold to talk');
+    assert.equal(ptt().getAttribute('aria-keyshortcuts'), 'Space');
+    assert.equal(ptt().textContent, 'Hold to talkSpace');
+
+    // The first hold downloads the speech models and records nothing until they are ready.
+    await pointer('pointerdown');
+    assert.deepEqual(board.socket.sent, [{ type: 'mic', on: true }]);
+    await board.act(async () =>
+        board.socket.server({ type: 'mic', status: 'loading', loaded: 26e6, total: 64e6 }),
+    );
+    assert.match(ptt().getAttribute('aria-label'), /Hold to talk, downloading 40%/);
+    await board.act(async () => board.socket.server({ type: 'mic', status: 'on' }));
+    assert.deepEqual(board.socket.sent.at(-1), { type: 'hold', on: true });
+    assert.equal(ptt().getAttribute('aria-pressed'), 'true');
+    assert.match(ptt().textContent, /Release to send/);
+    assert.equal(ptt().querySelector('.board-level').children.length, 4);
+    assert.equal(board.q('.board-state').textContent, 'Listening');
+    await board.act(async () => mic.frame(new Float32Array(512)));
+    assert.deepEqual(board.socket.sent.at(-1), { audio: 2048 });
+    await pointer('pointerup');
+    assert.deepEqual(board.socket.sent.at(-1), { type: 'hold', on: false });
+    assert.equal(ptt().getAttribute('aria-pressed'), 'false');
+    assert.equal(board.q('.board-state'), null, 'nothing listens until held');
+
+    // Not held, the mic sends nothing, so voice detection never cuts in.
+    const sent = board.socket.sent.length;
+    await board.act(async () => mic.frame(new Float32Array(512).fill(0.5)));
+    assert.equal(board.socket.sent.length, sent);
+
+    // Space holds to talk, but types a space in the composer.
+    await space('keydown');
+    assert.deepEqual(board.socket.sent.at(-1), { type: 'hold', on: true });
+    await space('keyup');
+    assert.deepEqual(board.socket.sent.at(-1), { type: 'hold', on: false });
+    await space('keydown', board.q('[contenteditable=true]'));
+    assert.equal(board.socket.sent.length, sent + 2);
+});
