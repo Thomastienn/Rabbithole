@@ -1,8 +1,13 @@
 import { once } from 'node:events';
+import net from 'node:net';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import WebSocket, { WebSocketServer } from 'ws';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { edgeSpeech } from '../../server/board/speech.mjs';
+import { boardFillers } from '../../server/board/fillers.mjs';
 
 test('board speech warms one socket, streams before the clip ends, and closes on cancellation', async (t) => {
     const server = new WebSocketServer({ host: '127.0.0.1', port: 0 });
@@ -75,4 +80,80 @@ test('board speech warms one socket, streams before the clip ends, and closes on
     idle.close();
     await closed;
     await fresh();
+});
+
+test('board speech gives up on a sentence whose first audio is late, and drops its socket', async (t) => {
+    const server = new WebSocketServer({ host: '127.0.0.1', port: 0 });
+    t.after(() => {
+        for (const socket of server.clients) socket.terminate();
+        return new Promise((resolve) => server.close(resolve));
+    });
+    await once(server, 'listening');
+    const client = edgeSpeech(
+        undefined,
+        () => new WebSocket(`ws://127.0.0.1:${server.address().port}`),
+        50,
+    );
+    // Warmed first, so the timer runs only while the open socket sends nothing.
+    const connected = once(server, 'connection');
+    await client.warm();
+    const [peer] = await connected;
+    const dropped = once(peer, 'close');
+    await assert.rejects(
+        client.speak('Silent.', () => {}),
+        /no audio within 50 ms/,
+    );
+    await dropped;
+});
+
+test('board speech keeps the retry socket when a connect it gave up on fails later', async (t) => {
+    // The first socket hangs its handshake, then drops; the next one is a real server.
+    const hung = net.createServer((s) => setTimeout(() => s.destroy(), 200));
+    const server = new WebSocketServer({ host: '127.0.0.1', port: 0 });
+    t.after(() => {
+        hung.close();
+        for (const socket of server.clients) socket.terminate();
+        return new Promise((resolve) => server.close(resolve));
+    });
+    hung.listen(0, '127.0.0.1');
+    await Promise.all([once(hung, 'listening'), once(server, 'listening')]);
+    const ports = [hung.address().port, server.address().port];
+    const client = edgeSpeech(
+        undefined,
+        () => new WebSocket(`ws://127.0.0.1:${ports.shift()}`),
+        50,
+    );
+    await assert.rejects(
+        client.speak('Hung.', () => {}),
+        /no audio within 50 ms/,
+    );
+    const connected = once(server, 'connection');
+    await client.warm();
+    const [peer] = await connected;
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const dropped = once(peer, 'close');
+    client.close();
+    await dropped;
+});
+
+test('board fillers are synthesized once per voice and read back from disk after', async (t) => {
+    const dir = await mkdtemp(join(tmpdir(), 'fillers-'));
+    t.after(() => rm(dir, { recursive: true, force: true }));
+    const spoken = [];
+    const speech = () => ({
+        async speak(text, chunk) {
+            spoken.push(text);
+            chunk(Buffer.from(text));
+        },
+        close() {},
+    });
+    const clips = await boardFillers(dir, 'en-US-AriaNeural', speech);
+    assert.deepEqual(clips.map(String), ['Hmm.', 'Okay.', 'Good question.']);
+    assert.deepEqual(await boardFillers(dir, 'en-US-AriaNeural', speech), clips);
+    // A later run of the app finds them on disk.
+    const restarted = await import(`../../server/board/fillers.mjs?again`);
+    await restarted.boardFillers(dir, 'en-US-AriaNeural', speech);
+    assert.equal(spoken.length, 3, 'each filler is synthesized once');
+    await boardFillers(dir, 'other-voice', speech);
+    assert.equal(spoken.length, 6, 'another voice gets its own');
 });

@@ -167,6 +167,10 @@ export default function Board({
                                 parts={parts.get(op.id)}
                             />
                         ))}
+                        {/* The tutor heard: a soft pulse in the corner, which board items rarely use, until it speaks. */}
+                        {board.state === 'thinking' && (
+                            <circle className="board-waiting" cx={1544} cy={844} r={10} />
+                        )}
                         {line && (
                             <g className="board-item">
                                 <path className="board-learner" d={strokePath(line)} />

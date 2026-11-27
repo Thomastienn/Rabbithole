@@ -111,6 +111,10 @@ test('board: an empty board waits for a typed question with the mic off, then sh
     assert.equal(board.q('.board-empty'), null);
     assert.equal(board.q('.board-caption').textContent, 'How does a hypha grow?');
     assert.ok(board.q('.board-caption.muted'), 'the question shows muted while the tutor thinks');
+    assert.ok(
+        board.q('.board-waiting'),
+        'the board shows the tutor heard, as the question is sent',
+    );
     assert.ok(board.q('[role=status]').textContent, 'the learner hears a busy status');
     assert.ok(button(board.container, 'Send').disabled, 'Send waits for the tutor');
     assert.equal(board.q('[contenteditable=true]').textContent, '', 'the composer clears');
@@ -145,6 +149,7 @@ test('board: each sentence becomes the caption, reported as it shows, and leavin
             ],
         });
     });
+    assert.equal(board.q('.board-waiting'), null, 'the waiting cue goes as the tutor speaks');
     // The sentence on show draws its items at their board coordinates; the next one waits its turn.
     const drawn = [...board.container.querySelectorAll('svg .board-item')];
     assert.deepEqual(

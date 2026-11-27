@@ -76,6 +76,10 @@ export function createApp({
     videoEmbed = null,
     // Makes a board session's speech client (server/board/speech.mjs); off in tests, so boards play captions only.
     speech = null,
+    // The board's filler clips, a promise of audio buffers (server/board/fillers.mjs); off in tests like speech.
+    fillers = null,
+    // Times the board's filler; tests pass a fake one.
+    boardClock = { setTimeout, clearTimeout },
     // Renders library piece stills; off unless the server passes the sandbox snapshot, like suggestions in tests.
     pieceSnapshot = null,
     log = stdoutLog,
@@ -117,6 +121,8 @@ export function createApp({
         videoManim,
         videoEmbed,
         speech,
+        fillers,
+        boardClock,
         neighbourhood: (text, signal) => retrieveNeighbourhood(store, videoEmbed, text, signal),
         log,
         suggestions,

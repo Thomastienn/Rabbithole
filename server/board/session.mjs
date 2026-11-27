@@ -9,6 +9,7 @@ import { boardSystem } from './prompt.mjs';
 import { conversationHistory } from '../providers/conversationHistory.mjs';
 
 const STOPPED = 'The tutor stopped. Ask again to carry on.';
+const VOICE_UNAVAILABLE = 'The voice is unavailable, so the tutor carries on in captions.';
 // A free-space stroke goes to the tutor as this much of the board around it, in board pixels.
 const MARGIN = 40;
 
@@ -33,6 +34,7 @@ function strokeImage(points) {
 // Down: { type: 'state', state: 'idle' | 'thinking' | 'speaking' }, thinking with the turn's user and reply message ids, { type: 'notice', notice },
 // { type: 'sentence', id, text, ops, voiced } with the drawable ops written under it (server/board/ops.mjs),
 // then, when voiced, its speech as binary frames (one byte of id length, the id, the audio) and { type: 'audio-end', id },
+// a filler clip the same way under the id `filler` when a turn's first audio hasn't started after 1 s,
 // { type: 'stroke', item, mark } back for each pen stroke, with what it marks or null,
 // { type: 'board', items } once on open: the saved board, replayed from the op lines of every board message.
 export function boardSession(ctx, id, socket) {
@@ -55,7 +57,27 @@ export function boardSession(ctx, id, socket) {
         // The learner's strokes since the last question, as op lines and what each marks; they go with the next one.
         pending = [],
         // The last pen id handed out; never reused in a session, since an erase may be applied but not saved.
-        pen = 0;
+        pen = 0,
+        // The filler played last, so the next turn's filler differs.
+        lastFiller = -1;
+    // Filler clips load as the board opens, so the first slow turn has them ready.
+    const fillers = speech && ctx.fillers ? ctx.fillers() : null;
+    const clock = ctx.boardClock;
+    // The turn's first audio has started (or its first sentence has none): no filler from now on.
+    const heard = (current) => {
+        current.heard = true;
+        clock.clearTimeout(current.filler);
+    };
+    // A filler never repeats the last one and is never part of the reply.
+    const filler = async (current) => {
+        const clips = await fillers.catch(() => []);
+        if (current.heard || current.done) return;
+        const choices = clips.map((_, i) => i).filter((i) => i !== lastFiller);
+        if (!choices.length) return;
+        lastFiller = choices[Math.floor(Math.random() * choices.length)];
+        sendAudio('filler', clips[lastFiller]);
+        send({ type: 'audio-end', id: 'filler' });
+    };
     // The items drawn on this board so far, across its turns.
     const board = boardOps();
     store.boardOpLines(id).forEach((line) => board.read(line));
@@ -138,6 +160,7 @@ export function boardSession(ctx, id, socket) {
     const finish = (current, status) => {
         if (current.done) return;
         current.done = true;
+        heard(current);
         if (status === 'failed') current.job.controller.abort();
         const stopped = status === 'interrupted' ? (ctx.stopping ? 'shutdown' : 'learner') : null;
         save(current, status, stopped);
@@ -342,6 +365,7 @@ export function boardSession(ctx, id, socket) {
         };
         turn = current;
         speech?.warm();
+        if (fillers) current.filler = clock.setTimeout(() => filler(current), 1000);
         // The ids let the transcript rail branch from this turn's reply.
         send({ type: 'state', state: 'thinking', user, reply });
         current.job = ctx.jobs.start(
@@ -359,26 +383,48 @@ export function boardSession(ctx, id, socket) {
         );
     };
     // Speech runs one sentence ahead of playback: a sentence synthesizes once the one before it starts playing.
+    // A sentence with no audio yet is tried twice; when speech still fails, the rest of the turn is captions only.
     const speak = (current) => {
         const sentence = current.sentences[current.voiced];
         if (!speech || current.speaking || !sentence || current.voiced > current.shown) return;
         current.voiced++;
         current.speaking = true;
         const signal = current.job.controller.signal;
-        speech
-            .speak(sentence.text, (chunk) => !current.done && sendAudio(sentence.id, chunk), signal)
+        let spoke = false;
+        const say = () =>
+            speech.speak(
+                sentence.text,
+                (chunk) => {
+                    spoke = true;
+                    if (current.done) return;
+                    heard(current);
+                    sendAudio(sentence.id, chunk);
+                },
+                signal,
+            );
+        (current.silent
+            ? Promise.resolve()
+            : say().catch((error) => {
+                  if (spoke || signal.aborted) throw error;
+                  return say();
+              })
+        )
             .catch((error) => {
-                if (!signal.aborted)
-                    log(
-                        formatLog('warn', 'board', 'speech failed', {
-                            id: current.reply,
-                            cause: errorCause(error, [sentence.text]),
-                        }),
-                    );
+                if (signal.aborted) return;
+                log(
+                    formatLog('warn', 'board', 'speech failed', {
+                        id: current.reply,
+                        cause: errorCause(error, [sentence.text]),
+                    }),
+                );
+                if (spoke) return;
+                current.silent = true;
+                send({ type: 'notice', notice: VOICE_UNAVAILABLE });
             })
             .finally(() => {
                 current.speaking = false;
                 if (current.done) return;
+                heard(current);
                 send({ type: 'audio-end', id: sentence.id });
                 speak(current);
             });

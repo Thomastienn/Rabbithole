@@ -210,6 +210,37 @@ test('board player: a voiced sentence starts on its first audio chunk and lasts 
     assert.equal(voice.stopped, 1, 'stopping silences the voice');
 });
 
+test('board player: a filler plays while the tutor is silent and never over a sentence', () => {
+    const clock = fakeClock();
+    const voice = fakeVoice();
+    const shown = [];
+    const player = boardPlayer(
+        (s) => shown.push(s.text),
+        () => {},
+        () => {},
+        voice,
+        clock,
+    );
+    player.chunk('filler', new Uint8Array(4));
+    player.audioEnd('filler');
+    assert.deepEqual(
+        voice.playing.map((p) => p.id),
+        ['filler'],
+    );
+    assert.deepEqual(voice.ends, ['filler']);
+    assert.deepEqual(shown, [], 'a filler is not a caption');
+    player.add({ id: '1', text: 'Spoken.', voiced: true });
+    player.chunk('1', new Uint8Array(3));
+    assert.deepEqual(
+        voice.playing.map((p) => p.id),
+        ['filler', '1'],
+        'the sentence takes over',
+    );
+    player.chunk('filler', new Uint8Array(4));
+    assert.equal(voice.playing.length, 2, 'no filler over a sentence');
+    player.stop();
+});
+
 test('board player: an early audio end still draws every item before advancing', () => {
     const voice = fakeVoice();
     const drawn = [];
