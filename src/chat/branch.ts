@@ -5,7 +5,12 @@ import type { PartPicker } from '../media/VisualFrame.tsx';
 import { request } from '../serverAccess.ts';
 
 // at.y is the passage's top in its reply; below is its bottom, where the prompt flips to when above would hit the header.
-export type Anchor = Source & { at?: Point & { below?: number }; suggestion?: boolean };
+// at.x is the box's left edge, or right its right edge's distance from the reply's right. A sketch item's start..end is its sketch.
+export type Anchor = Source & {
+    at?: Point & { below?: number; right?: number };
+    suggestion?: boolean;
+    sketch?: { title: string; label: string };
+};
 // The open ask box; pending: the question was sent while its reply streams and waits for the reply to complete.
 export type BranchState = {
     parent: string;

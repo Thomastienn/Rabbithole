@@ -8,6 +8,7 @@ import DiscussionCard from '../media/DiscussionCard';
 import VideoCard from '../media/VideoCard';
 import VisualFrame from '../media/VisualFrame';
 import CopyButton from '../markdown/CopyButton';
+import { SketchAsk } from '../markdown/Sketch';
 import { withoutSketches } from '../markdown/markdownText';
 import { artifactsAt } from '../media/artifacts';
 import { visualsReady } from '../media/visualProgress';
@@ -180,110 +181,139 @@ export default function ChatThread({
                     />
                 )}
                 {message.role === 'assistant' ? (
-                    <Passage
-                        message={message}
-                        addresses={addresses}
-                        resources={tree.resources}
-                        suggestions={suggestions}
-                        briefs={tree.briefs?.filter((b) => b.message === message.id)}
-                        onVisualPart={openVisualPart}
-                        visualBranches={visualBranches}
-                        discussionBranches={discussionBranches}
-                        onArtifactAction={(artifactId, action, instruction) =>
-                            videoAction(tree.id, artifactId, action, instruction)
-                        }
-                        onDiscussionReply={replyDiscussion}
-                        inlineArtifacts={
-                            overview
-                                ? undefined
-                                : artifactsAt(tree.artifacts ?? [], tree.id, message.id).filter(
-                                      (a) =>
-                                          ['visual', 'video', 'discussion'].includes(a.kind) &&
-                                          a.position != null,
-                                  )
-                        }
-                        branched={trees.flatMap((t) =>
-                            t.parent === tree.id &&
-                            t.messageId === message.id &&
-                            !t.artifactId &&
-                            t.start !== null &&
-                            t.end !== null &&
-                            t.passage !== null
-                                ? [
-                                      {
-                                          start: t.start,
-                                          end: t.end,
-                                          text: t.passage,
-                                          child: t.id,
-                                          title: t.title,
-                                          ...previewOf(tree.branchPreviews?.[t.id]),
-                                      },
-                                  ]
-                                : [],
-                        )}
-                        index={index}
-                        reveal={
-                            validSource && source?.messageId === message.id ? source : undefined
-                        }
-                        form={
-                            branch?.parent === tree.id && branch.anchor.messageId === message.id
-                                ? {
-                                      at: branch.anchor.at,
-                                      node: (
-                                          <BranchForm
-                                              branch={branch}
-                                              branching={branching}
-                                              // A question about the streaming reply itself waits for it instead.
-                                              active={active && message.status !== 'streaming'}
-                                              submit={submitBranch}
-                                              // Ask here: a normal turn in this conversation, the passage quoted above the question.
-                                              askHere={
-                                                  active
-                                                      ? undefined
-                                                      : () => {
-                                                            closeBranch(false);
-                                                            void send(
-                                                                `${branch.anchor.text.replace(/^/gm, '> ')}\n\n${branch.question}`,
-                                                                tree,
-                                                            );
-                                                        }
-                                              }
-                                              close={closeBranch}
-                                              setQuestion={setQuestion}
-                                              explain={(anchor) =>
-                                                  explainBrief(branch.parent, anchor)
-                                              }
-                                              widen={widenPart}
-                                              pick={pickPart}
-                                              saved={
-                                                  tree.briefs?.find(
-                                                      (b) =>
-                                                          branch.anchor.artifactId === undefined &&
-                                                          b.message === branch.anchor.messageId &&
-                                                          b.start === branch.anchor.start &&
-                                                          b.end === branch.anchor.end,
-                                                  )?.explanation
-                                              }
-                                          />
-                                      ),
-                                      // Discussion offsets are inside a card line, not the reply text.
-                                      start:
-                                          branch.anchor.artifactId === undefined
-                                              ? branch.anchor.start
-                                              : undefined,
-                                      end:
-                                          branch.anchor.artifactId === undefined
-                                              ? branch.anchor.end
-                                              : undefined,
-                                  }
-                                : undefined
-                        }
-                        onOpenChild={(id) => void openConversation(id)}
-                        selecting={selectingMessage === message.id}
-                        openSelection={() => setSelectingMessage(message.id)}
-                        closeSelection={() => setSelectingMessage(undefined)}
-                        onBranch={(anchor, origin) => startBranch(tree.id, anchor, origin)}
-                    />
+                    <SketchAsk.Provider
+                        value={{
+                            ask: (anchor, origin) => startBranch(tree.id, anchor, origin),
+                            messageId: message.id,
+                            open:
+                                branch?.parent === tree.id && branch.anchor.messageId === message.id
+                                    ? branch.anchor
+                                    : undefined,
+                            branches: trees.flatMap((t) =>
+                                t.parent === tree.id &&
+                                t.messageId === message.id &&
+                                !t.artifactId &&
+                                t.label &&
+                                t.start != null &&
+                                t.end != null
+                                    ? [
+                                          {
+                                              start: t.start,
+                                              end: t.end,
+                                              label: t.label,
+                                              child: t.id,
+                                              ...addresses.get(t.id),
+                                          },
+                                      ]
+                                    : [],
+                            ),
+                            openChild: (id) => void openConversation(id),
+                        }}
+                    >
+                        <Passage
+                            message={message}
+                            addresses={addresses}
+                            resources={tree.resources}
+                            suggestions={suggestions}
+                            briefs={tree.briefs?.filter((b) => b.message === message.id)}
+                            onVisualPart={openVisualPart}
+                            visualBranches={visualBranches}
+                            discussionBranches={discussionBranches}
+                            onArtifactAction={(artifactId, action, instruction) =>
+                                videoAction(tree.id, artifactId, action, instruction)
+                            }
+                            onDiscussionReply={replyDiscussion}
+                            inlineArtifacts={
+                                overview
+                                    ? undefined
+                                    : artifactsAt(tree.artifacts ?? [], tree.id, message.id).filter(
+                                          (a) =>
+                                              ['visual', 'video', 'discussion'].includes(a.kind) &&
+                                              a.position != null,
+                                      )
+                            }
+                            branched={trees.flatMap((t) =>
+                                t.parent === tree.id &&
+                                t.messageId === message.id &&
+                                !t.artifactId &&
+                                t.start !== null &&
+                                t.end !== null &&
+                                t.passage !== null
+                                    ? [
+                                          {
+                                              start: t.start,
+                                              end: t.end,
+                                              text: t.passage,
+                                              child: t.id,
+                                              title: t.title,
+                                              ...previewOf(tree.branchPreviews?.[t.id]),
+                                          },
+                                      ]
+                                    : [],
+                            )}
+                            index={index}
+                            reveal={
+                                validSource && source?.messageId === message.id ? source : undefined
+                            }
+                            form={
+                                branch?.parent === tree.id && branch.anchor.messageId === message.id
+                                    ? {
+                                          at: branch.anchor.at,
+                                          node: (
+                                              <BranchForm
+                                                  branch={branch}
+                                                  branching={branching}
+                                                  // A question about the streaming reply itself waits for it instead.
+                                                  active={active && message.status !== 'streaming'}
+                                                  submit={submitBranch}
+                                                  // Ask here: a normal turn in this conversation, the passage quoted above the question.
+                                                  askHere={
+                                                      active
+                                                          ? undefined
+                                                          : () => {
+                                                                closeBranch(false);
+                                                                void send(
+                                                                    `${branch.anchor.text.replace(/^/gm, '> ')}\n\n${branch.question}`,
+                                                                    tree,
+                                                                );
+                                                            }
+                                                  }
+                                                  close={closeBranch}
+                                                  setQuestion={setQuestion}
+                                                  explain={(anchor) =>
+                                                      explainBrief(branch.parent, anchor)
+                                                  }
+                                                  widen={widenPart}
+                                                  pick={pickPart}
+                                                  saved={
+                                                      tree.briefs?.find(
+                                                          (b) =>
+                                                              branch.anchor.artifactId ===
+                                                                  undefined &&
+                                                              b.message ===
+                                                                  branch.anchor.messageId &&
+                                                              b.start === branch.anchor.start &&
+                                                              b.end === branch.anchor.end,
+                                                      )?.explanation
+                                                  }
+                                              />
+                                          ),
+                                          // Discussion offsets are inside a card line, and a sketch item's span its whole sketch, not reply text.
+                                          ...(branch.anchor.artifactId === undefined &&
+                                              !branch.anchor.sketch && {
+                                                  start: branch.anchor.start,
+                                                  end: branch.anchor.end,
+                                              }),
+                                      }
+                                    : undefined
+                            }
+                            onOpenChild={(id) => void openConversation(id)}
+                            selecting={selectingMessage === message.id}
+                            openSelection={() => setSelectingMessage(message.id)}
+                            closeSelection={() => setSelectingMessage(undefined)}
+                            onBranch={(anchor, origin) => startBranch(tree.id, anchor, origin)}
+                        />
+                    </SketchAsk.Provider>
                 ) : (
                     <>
                         {!!message.attachments?.length && (
