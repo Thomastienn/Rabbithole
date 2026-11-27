@@ -77,8 +77,8 @@ test('wide shows exactly one linked or reference image at full reply width with 
     }
 });
 
-test('wide claims one visual once and leaves outside media in plain flow', () => {
-    const source = 'Before.\n\n:::wide\n\n:::\n\nAfter.',
+test('wide claims one visual once, keeps its sketch after it and leaves outside media in plain flow', () => {
+    const source = 'Before.\n\n:::wide\n\n```sketch bars\nHeads: 6\n```\n:::\n\nAfter.',
         at = source.lastIndexOf('\n:::') + 1,
         visual = h(
             'figure',
@@ -108,6 +108,7 @@ test('wide claims one visual once and leaves outside media in plain flow', () =>
         );
         assert.equal(d.querySelectorAll('#inside').length, 1);
         assert.equal(d.querySelectorAll('.layout-wide #inside').length, flow ? 0 : 1);
+        assert.equal(!!d.querySelector('.layout-wide > .layout-media + figure.sketch'), !flow);
         assert.equal(d.querySelector('#before').closest('.reply-layout'), null);
         assert.equal(d.querySelector('#after').closest('.reply-layout'), null);
     }
@@ -426,6 +427,54 @@ for (const options of ['', '{side=right ratio=wide}'])
         await measure();
         assert.equal(figure.hasAttribute('data-stacked'), false);
         assert.equal(figure.dataset.side, options.includes('right') ? 'right' : undefined);
+    });
+
+// A sketch can be taller side by side (a flow turns vertical, bars stack), so it counts at its side-by-side height.
+for (const [side, back] of [
+    [200, true],
+    [300, false],
+])
+    test(`a stacked figure counts its ${side}px side-by-side sketch at that height, not as reflowing text`, async (t) => {
+        let observers = [];
+        const { container, act, cleanup } = await render(
+            h(
+                'div',
+                null,
+                renderMarkdown(
+                    `:::figure\n![A cat](${cat})\n\nShort.\n\n\`\`\`sketch bars\nA: 1\n\`\`\`\n:::`,
+                ),
+            ),
+            (w) => {
+                ui(w);
+                w.ResizeObserver = class {
+                    constructor(fn) {
+                        observers.push(fn);
+                    }
+                    observe() {}
+                    disconnect() {}
+                };
+                // Side by side each column is 300px wide; stacked, 600px, where the sketch is 200px tall.
+                w.HTMLElement.prototype.getBoundingClientRect = function () {
+                    const stacked = this.closest('.layout-figure')?.hasAttribute('data-stacked'),
+                        width = stacked ? 600 : 300;
+                    if (this.classList.contains('sketch'))
+                        return { width, height: stacked ? 200 : side };
+                    if (this.className === 'layout-text')
+                        return { width, height: stacked ? 220 : 400 };
+                    if (this.className === 'layout-media')
+                        return { width, height: stacked ? 400 : 200 };
+                    return { width: 0, height: 0 };
+                };
+            },
+        );
+        t.after(cleanup);
+        const figure = container.querySelector('.layout-figure'),
+            measure = () => act(async () => observers.forEach((fn) => fn()));
+        await measure();
+        assert.equal(figure.hasAttribute('data-stacked'), true);
+        // Side by side the 20px of prose doubles: 40px plus the sketch is under 1.5x the 200px media only at 200px.
+        await measure();
+        assert.equal(figure.hasAttribute('data-stacked'), !back);
     });
 
 test('a sided visual sits beside the section after it; without side or on a narrow reply it stays in flow', () => {

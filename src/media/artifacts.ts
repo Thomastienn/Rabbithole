@@ -28,6 +28,8 @@ export type Artifact = ArtifactSummary & {
     // A visual beside the section after its position; null sits in the flow.
     side?: 'left' | 'right' | null;
     // A visual or video keeps one previous version, a switch away.
+    // A visual expanded from the sketch at its position: 'hidden' while it shows there, 'shown' while the sketch does.
+    sketch?: 'hidden' | 'shown' | null;
     hasPrevious?: true;
     phase?:
         | 'planning'
