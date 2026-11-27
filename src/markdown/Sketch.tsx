@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
-import { drawSketch, type Palette } from '../sketch/sketch';
+import { drawSketch, type Palette, type Sketch as Drawing } from '../sketch/sketch';
 import './sketch.css';
 
 // Theme tokens by role (mockup Rabbithole-skt.1). As CSS variables, a theme switch recolours every sketch.
@@ -24,9 +24,6 @@ export default function Sketch({
     fence: 'open' | 'closed' | 'unfinished';
     live: boolean;
 }) {
-    const [build] = useState(
-        () => live && !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-    );
     const sketch = useMemo(
         () => (fence === 'closed' ? drawSketch(kind, body, THEME) : undefined),
         [kind, body, fence],
@@ -43,6 +40,13 @@ export default function Sketch({
     if (fence === 'open')
         return <div className="sketch-wait" role="status" aria-label="Drawing a sketch" />;
     if (!sketch || 'error' in sketch) return null;
+    return <SketchDrawing sketch={sketch} live={live} />;
+}
+
+function SketchDrawing({ sketch, live }: { sketch: Drawing; live: boolean }) {
+    const [build] = useState(
+        () => live && !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    );
     return (
         <figure
             className={build ? 'sketch sketch-build' : 'sketch'}
@@ -51,6 +55,7 @@ export default function Sketch({
                 build
                     ? ({
                           '--step': `${300 / Math.max(sketch.items.length - 1, 1)}ms`,
+                          '--fade': '200ms',
                       } as CSSProperties)
                     : undefined
             }

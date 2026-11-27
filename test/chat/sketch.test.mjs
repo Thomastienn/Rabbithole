@@ -163,8 +163,13 @@ test('only tutor sketches draw, waiting on a real closing fence while the reply 
     await act(async () => update({ text: closed, status: 'streaming' }));
     assert.equal(reply().querySelector('.sketch-wait'), null);
     assert.ok(reply().querySelector('figure.sketch').textContent.includes('465 m/s'));
-    assert.ok(reply().querySelector('figure.sketch-build'), 'it builds in as the reply reaches it');
+    const building = reply().querySelector('figure.sketch-build');
+    assert.ok(building, 'it builds in as the reply reaches it');
     await act(async () => update({ text: closed, status: 'completed' }));
+    assert.ok(
+        reply().querySelector('figure.sketch-build') === building,
+        'finishing keeps the build',
+    );
     await act(async () => reply().querySelector('.reply-copy').click());
     assert.equal(copied[0].trimEnd(), intro);
     assert.equal(previewText(closed, 'assistant'), intro);
@@ -197,32 +202,47 @@ test('a broken sketch shows nothing from its source and is logged with its kind 
     );
 });
 
-test('a streamed sketch builds in item by item over about half a second; saved or with reduced motion it shows at once', async () => {
-    const start = (el) => Number(el.style.getPropertyValue('--i'));
-    for (const [kind, body, items] of [
-        ['bars', speeds, 'dd'],
-        ['flow', freezing, 'svg > g'],
+test('streamed bars and flow sketches schedule their items over half a second', async () => {
+    for (const [kind, body, items, expectedOrder] of [
+        ['bars', speeds, '.sketch-bars > *', [0, 0, 1, 1, 2, 2]],
+        ['flow', freezing, 'svg > g', [0, 1, 2, 3, 4]],
     ]) {
         const { container, cleanup } = await render(
             h(Sketch, { kind, body, fence: 'closed', live: true }),
             (window) => ui(window).media('(prefers-reduced-motion: reduce)', false),
         );
-        const figure = container.querySelector('figure.sketch-build'),
-            order = [...figure.querySelectorAll(items)].map(start),
-            step = parseFloat(figure.style.getPropertyValue('--step'));
-        assert.deepEqual(
-            order,
-            drawSketch(kind, body, dark).items.map((_, i) => i),
-        );
-        // The last item starts at 300 ms and fades for 200 ms (sketch.css).
-        assert.equal(step * order.at(-1) + 200, 500);
-        await cleanup();
+        try {
+            const figure = container.querySelector('figure.sketch-build');
+            const order = [...figure.querySelectorAll(items)].map((item) =>
+                Number.parseInt(item.style.getPropertyValue('--i'), 10),
+            );
+            const step = parseFloat(figure.style.getPropertyValue('--step'));
+            const fade = parseFloat(figure.style.getPropertyValue('--fade'));
+            assert.deepEqual(order, expectedOrder);
+            assert.equal(step * order.at(-1) + fade, 500);
+        } finally {
+            await cleanup();
+        }
     }
-    const reduced = await render(
-        h(Sketch, { kind: 'bars', body: speeds, fence: 'closed', live: true }),
-        (window) => ui(window),
-    );
-    assert.equal(reduced.container.querySelector('.sketch-build'), null);
-    await reduced.cleanup();
     assert.equal(page(`\`\`\`sketch bars\n${speeds}\n\`\`\``).querySelector('.sketch-build'), null);
+});
+
+test('a sketch appears at once if Reduce Motion is enabled before its fence closes', async (t) => {
+    const preference = '(prefers-reduced-motion: reduce)';
+    let close, controls;
+    function Fixture() {
+        const [fence, setFence] = useState('open');
+        close = () => setFence('closed');
+        return h(Sketch, { kind: 'bars', body: speeds, live: true, fence });
+    }
+    const { container, act, cleanup } = await render(h(Fixture), (window) => {
+        controls = ui(window);
+        controls.media(preference, false);
+    });
+    t.after(cleanup);
+    assert.ok(container.querySelector('.sketch-wait'));
+    controls.media(preference, true);
+    await act(close);
+    assert.ok(container.querySelector('figure.sketch').textContent.includes('465 m/s'));
+    assert.ok(!container.querySelector('.sketch-build'), 'the sketch skips the entrance');
 });
