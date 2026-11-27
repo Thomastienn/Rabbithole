@@ -490,6 +490,6 @@ test('board ops: the page index lists each page with the ids and texts still on 
         assert.ok(board.read(line).item, line);
     assert.equal(
         board.index(),
-        'BOARD PAGES (* marks the open page)\nfirst "Page 1": a1 "a^2+b^2", b1\n* p2 "Table" parent=first from=a1: tb, r1 "1|2", fl, s1 "add"',
+        'BOARD PAGES (* marks the open page)\nfirst "Page 1": a1 "a^2+b^2", b1\n* p2 "Table" parent=first from=a1: tb "A|B", r1 "1|2", fl, s1 "add"',
     );
 });

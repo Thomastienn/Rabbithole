@@ -405,7 +405,7 @@ export function boardOps() {
                         (i) => where.get(i.id) === id && !MARKS.has(i.kind) && !erased.has(i.id),
                     )
                     .map((i) => {
-                        const text = i.text ?? i.cells?.join('|');
+                        const text = i.text ?? (i.cells ?? i.cols ?? i.sets)?.join('|');
                         return text ? `${i.id} "${text}"` : i.id;
                     });
                 const head = [

@@ -100,7 +100,7 @@ u1 box "1" at 800,450 w=120 h=120
 u2 math "1 \\times 1 = 1" at 800,620
 > Back to our rectangle.
 o1 open pg
-p1 pointer a1
+pt1 pointer a1
 ~> Does counting the squares make sense so far?`;
 
 const languageName = (code) => new Intl.DisplayNames(['en'], { type: 'language' }).of(code);
