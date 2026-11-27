@@ -80,9 +80,11 @@ them here.
 
 ## Escalation
 
-`needs-human` parks the PR until the owner answers, so use it only when no
-reasonable default exists: missing access, contradictory acceptance criteria,
-or a product decision only the owner can make. Run
+`needs-human` parks the PR until the owner answers, so use it only when the
+work cannot go on at all: missing access, or contradictory acceptance
+criteria. A product question or a mockup difference is not a reason: keep the
+worker's choice or pick a better one, list it under `Owner decisions:` in a PR
+comment, and approve. Red CI is never a reason either. Otherwise run
 `bd update <task> --add-label needs-human`,
 `bd note <task> "<the question, what you tried, the options>"` and
 `gh pr comment <pr> --body "<the same>"`, then end without approving.
