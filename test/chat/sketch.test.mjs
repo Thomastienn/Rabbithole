@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { JSDOM } from 'jsdom';
 import { drawSketch } from '../../src/sketch/sketch.ts';
 import { renderMarkdown } from '../../src/markdown/markdown.ts';
+import Sketch from '../../src/markdown/Sketch.tsx';
 import { previewText } from '../../src/markdown/markdownText.ts';
 import ChatThread from '../../src/chat/ChatThread.tsx';
 import { render } from '../support/render.mjs';
@@ -148,7 +149,7 @@ test('only tutor sketches draw, waiting on a real closing fence while the reply 
     }
     const copied = [];
     const { container, act, cleanup } = await render(h(Fixture), (window) => {
-        ui(window);
+        ui(window).media('(prefers-reduced-motion: reduce)', false);
         Object.defineProperty(window.navigator, 'clipboard', {
             value: { writeText: async (text) => void copied.push(text) },
         });
@@ -162,7 +163,13 @@ test('only tutor sketches draw, waiting on a real closing fence while the reply 
     await act(async () => update({ text: closed, status: 'streaming' }));
     assert.equal(reply().querySelector('.sketch-wait'), null);
     assert.ok(reply().querySelector('figure.sketch').textContent.includes('465 m/s'));
+    const building = reply().querySelector('figure.sketch-build');
+    assert.ok(building, 'it builds in as the reply reaches it');
     await act(async () => update({ text: closed, status: 'completed' }));
+    assert.ok(
+        reply().querySelector('figure.sketch-build') === building,
+        'finishing keeps the build',
+    );
     await act(async () => reply().querySelector('.reply-copy').click());
     assert.equal(copied[0].trimEnd(), intro);
     assert.equal(previewText(closed, 'assistant'), intro);
@@ -193,4 +200,49 @@ test('a broken sketch shows nothing from its source and is logged with its kind 
         previewText('Before.\n\n```sketch bars\nPressure push: strong', 'assistant'),
         'Before.',
     );
+});
+
+test('streamed bars and flow sketches schedule their items over half a second', async () => {
+    for (const [kind, body, items, expectedOrder] of [
+        ['bars', speeds, '.sketch-bars > *', [0, 0, 1, 1, 2, 2]],
+        ['flow', freezing, 'svg > g', [0, 1, 2, 3, 4]],
+    ]) {
+        const { container, cleanup } = await render(
+            h(Sketch, { kind, body, fence: 'closed', live: true }),
+            (window) => ui(window).media('(prefers-reduced-motion: reduce)', false),
+        );
+        try {
+            const figure = container.querySelector('figure.sketch-build');
+            const order = [...figure.querySelectorAll(items)].map((item) =>
+                Number.parseInt(item.style.getPropertyValue('--i'), 10),
+            );
+            const step = parseFloat(figure.style.getPropertyValue('--step'));
+            const fade = parseFloat(figure.style.getPropertyValue('--fade'));
+            assert.deepEqual(order, expectedOrder);
+            assert.equal(step * order.at(-1) + fade, 500);
+        } finally {
+            await cleanup();
+        }
+    }
+    assert.equal(page(`\`\`\`sketch bars\n${speeds}\n\`\`\``).querySelector('.sketch-build'), null);
+});
+
+test('a sketch appears at once if Reduce Motion is enabled before its fence closes', async (t) => {
+    const preference = '(prefers-reduced-motion: reduce)';
+    let close, controls;
+    function Fixture() {
+        const [fence, setFence] = useState('open');
+        close = () => setFence('closed');
+        return h(Sketch, { kind: 'bars', body: speeds, live: true, fence });
+    }
+    const { container, act, cleanup } = await render(h(Fixture), (window) => {
+        controls = ui(window);
+        controls.media(preference, false);
+    });
+    t.after(cleanup);
+    assert.ok(container.querySelector('.sketch-wait'));
+    controls.media(preference, true);
+    await act(close);
+    assert.ok(container.querySelector('figure.sketch').textContent.includes('465 m/s'));
+    assert.ok(!container.querySelector('.sketch-build'), 'the sketch skips the entrance');
 });
