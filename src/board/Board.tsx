@@ -19,6 +19,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { holdEnter } from '../chat/Attachments';
 import type { Message } from '../chat/turn';
+import type { ThreadProps } from '../chat/ChatThread';
+import TranscriptRail from './TranscriptRail';
 import { useBoard, type Drawn } from './useBoard';
 import BoardItem, { strokePath } from './BoardItem';
 import { follow } from './camera';
@@ -42,19 +44,23 @@ const STATES = { thinking: 'Thinking', speaking: 'Speaking' } as const;
 // The tutor's sentences show one at a time as the caption while their ops draw (mockup Rabbithole-brd.2).
 // With the pen on, the learner draws on the board in the conversation's ink (mockup Rabbithole-brd.14).
 // Speed and pause sit in the board's tools (mockup Rabbithole-brd.8).
+// The transcript rail beside it lists what was said; collapsed, the caption line carries the sentence (mockup Rabbithole-brd.15).
 export default function Board({
     conversation,
     messages,
     reload,
+    thread,
     ink = 0,
 }: {
     conversation: string;
     messages: Message[];
     reload: () => void;
+    thread: ThreadProps;
     ink?: number;
 }) {
     const board = useBoard(conversation, messages, reload);
     const [draft, setDraft] = useState('');
+    const [railOpen, setRailOpen] = useState(true);
     const [pen, setPen] = useState(false);
     const [line, setLine] = useState<Point[]>();
     const svg = useRef<SVGSVGElement>(null);
@@ -97,8 +103,59 @@ export default function Board({
         if (busy || !text.trim()) return;
         if (board.ask(text.trim())) setDraft('');
     };
+    // The rail: the conversation's turns, then this board's, each reply as far as it was shown.
+    const session = new Set(board.turns.flatMap((t) => [t.user, t.reply]));
+    const said: Message[] = [
+        ...messages
+            .filter((m) => !session.has(m.id) && m.text.trim())
+            // A board reply left halfway is what was said, so it branches like a completed one.
+            .map((m) =>
+                m.board && m.status === 'interrupted' ? { ...m, status: 'completed' } : m,
+            ),
+        ...board.turns.flatMap((t) => [
+            { id: t.user, role: 'user', text: t.question, status: 'completed', board: true },
+            ...(t.said.length
+                ? [
+                      {
+                          id: t.reply,
+                          role: 'assistant',
+                          text: t.said.join('\n'),
+                          status: 'completed',
+                          board: true,
+                      },
+                  ]
+                : []),
+        ]),
+    ];
+    const speaking = board.state === 'speaking' && board.turns.at(-1);
+    const now = speaking &&
+        speaking.said.length > 0 && {
+            id: speaking.reply,
+            start: speaking.said.join('\n').length - speaking.said.at(-1)!.length,
+            end: speaking.said.join('\n').length,
+        };
+    // Branching pauses the board at once; a turn in flight is saved up to the sentence shown before the child is made.
+    const branchFromRail = (e: React.FormEvent) => {
+        e.preventDefault();
+        board.pause(true);
+        void (board.state === 'idle' ? Promise.resolve() : board.leave()).then(() =>
+            thread.submitBranch(e),
+        );
+    };
+    const branch = thread.branch;
+    const askHere =
+        branch && !busy
+            ? () => {
+                  thread.closeBranch(false);
+                  submit(`${branch.anchor.text.replace(/^/gm, '> ')}\n\n${branch.question}`);
+              }
+            : undefined;
     return (
-        <section className="board-column" aria-label="Board" style={inkStyle(ink)}>
+        <section
+            className={`board-column${railOpen ? '' : ' rail-shut'}`}
+            aria-label="Board"
+            style={inkStyle(ink)}
+        >
             <div className="board-field">
                 <div className={`board${pen ? ' pen-on' : ''}${board.paused ? ' paused' : ''}`}>
                     <div
@@ -216,7 +273,7 @@ export default function Board({
                     className={`board-caption${board.caption?.muted ? ' muted' : ''}`}
                     aria-live="polite"
                 >
-                    {board.caption?.text}
+                    {!railOpen && board.caption?.text}
                 </p>
                 <span />
             </div>
@@ -321,6 +378,17 @@ export default function Board({
                     }
                 />
             </div>
+            <TranscriptRail
+                conversation={conversation}
+                messages={said}
+                now={now || undefined}
+                paused={board.paused}
+                open={railOpen}
+                toggle={() => setRailOpen(!railOpen)}
+                thread={thread}
+                submit={branchFromRail}
+                askHere={askHere}
+            />
         </section>
     );
 }

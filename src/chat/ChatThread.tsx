@@ -57,6 +57,19 @@ export type ThreadProps = Pick<ChatModel, 'modelLabel'> &
         openSettings: (section?: SettingsTab, focus?: string, opener?: HTMLElement | null) => void;
     };
 
+// The passage branches made from a reply, as Passage marks them.
+export const passageBranches = (trees: Summary[], parent: string, messageId: string) =>
+    trees.flatMap((t) =>
+        t.parent === parent &&
+        t.messageId === messageId &&
+        !t.artifactId &&
+        t.start !== null &&
+        t.end !== null &&
+        t.passage !== null
+            ? [{ start: t.start, end: t.end, text: t.passage, child: t.id, title: t.title }]
+            : [],
+    );
+
 // The focused chat's questions and replies, with their figures, branch form and feedback.
 export default function ChatThread({
     tree,
@@ -238,25 +251,10 @@ export default function ChatThread({
                                               a.position != null,
                                       )
                             }
-                            branched={trees.flatMap((t) =>
-                                t.parent === tree.id &&
-                                t.messageId === message.id &&
-                                !t.artifactId &&
-                                t.start !== null &&
-                                t.end !== null &&
-                                t.passage !== null
-                                    ? [
-                                          {
-                                              start: t.start,
-                                              end: t.end,
-                                              text: t.passage,
-                                              child: t.id,
-                                              title: t.title,
-                                              ...previewOf(tree.branchPreviews?.[t.id]),
-                                          },
-                                      ]
-                                    : [],
-                            )}
+                            branched={passageBranches(trees, tree.id, message.id).map((b) => ({
+                                ...b,
+                                ...previewOf(tree.branchPreviews?.[b.child]),
+                            }))}
                             index={index}
                             reveal={
                                 validSource && source?.messageId === message.id ? source : undefined

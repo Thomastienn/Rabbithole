@@ -1,7 +1,7 @@
 import '../support/tsx.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createElement as h } from 'react';
+import { createElement as h, useState } from 'react';
 import { render } from '../support/render.mjs';
 import { ui, button } from '../support/ui.mjs';
 const { default: Board } = await import('../../src/board/Board.tsx');
@@ -38,14 +38,37 @@ class FakeSocket {
     }
 }
 
-async function mount(t, messages = [], speed) {
+// The chat's branching state as the app hands it to the board; submitted keeps each branch sent from the rail.
+function Host({ submitted, ...props }) {
+    const [branch, setBranch] = useState();
+    const [selectingMessage, setSelectingMessage] = useState();
+    const thread = {
+        addresses: new Map(),
+        trees: [],
+        branch,
+        branching: false,
+        selectingMessage,
+        setSelectingMessage,
+        startBranch: (parent, anchor) => setBranch({ parent, anchor, question: 'What is it?' }),
+        setQuestion: (question) => setBranch((b) => ({ ...b, question })),
+        closeBranch: () => setBranch(undefined),
+        submitBranch: () => submitted.push(branch),
+        explainBrief: async () => '',
+        openConversation: () => {},
+    };
+    return h(Board, { ...props, thread });
+}
+
+// The rail starts collapsed here, so the caption line carries each sentence, unless rail is set.
+async function mount(t, messages = [], speed, rail = false) {
     const reloads = [];
+    const submitted = [];
     let dom;
     const saved = globalThis.WebSocket;
     globalThis.WebSocket = FakeSocket;
     t.after(() => (globalThis.WebSocket = saved));
     const view = await render(
-        h(Board, { conversation: 'c1', messages, reload: () => reloads.push('c1') }),
+        h(Host, { conversation: 'c1', messages, reload: () => reloads.push('c1'), submitted }),
         (w) => {
             dom = ui(w);
             if (speed) w.localStorage.setItem('rabbithole.board-speed', speed);
@@ -54,6 +77,7 @@ async function mount(t, messages = [], speed) {
     t.after(view.cleanup);
     const socket = FakeSocket.last;
     await view.act(async () => socket.open());
+    if (!rail) await view.act(async () => button(view.container, 'Collapse transcript').click());
     const q = (selector) => view.container.querySelector(selector);
     // The composer input is contenteditable: typing replaces its text and fires input.
     const type = async (text) => {
@@ -63,7 +87,15 @@ async function mount(t, messages = [], speed) {
             input.dispatchEvent(new window.Event('input', { bubbles: true }));
         });
     };
-    return { ...view, socket, q, type, reloads, frames: () => view.act(async () => dom.frames()) };
+    return {
+        ...view,
+        socket,
+        q,
+        type,
+        reloads,
+        submitted,
+        frames: () => view.act(async () => dom.frames()),
+    };
 }
 
 test('board: an empty board waits for a typed question with the mic off, then shows it was heard', async (t) => {
@@ -144,6 +176,67 @@ test('board: each sentence becomes the caption, reported as it shows, and leavin
     assert.deepEqual(board.reloads, ['c1'], 'the conversation reloads once the server has saved');
 });
 
+test('board: the rail lists what was said, collapses to the caption line, and branching from it pauses and saves first', async (t) => {
+    const board = await mount(
+        t,
+        [
+            { id: 'q1', role: 'user', text: 'What are hyphae?', status: 'completed' },
+            { id: 'r1', role: 'assistant', text: 'Hyphae are threads.', status: 'completed' },
+        ],
+        undefined,
+        true,
+    );
+    await board.type('Why?');
+    await board.act(async () => button(board.container, 'Send').click());
+    await board.act(async () => {
+        board.socket.server({ type: 'state', state: 'thinking', user: 'q2', reply: 'r2' });
+        board.socket.server({ type: 'state', state: 'speaking' });
+        board.socket.server({ type: 'sentence', id: '1', text: 'A hypha grows at its tip.' });
+        board.socket.server({ type: 'sentence', id: '2', text: 'Not yet spoken.' });
+    });
+    const said = () =>
+        [
+            ...board
+                .q('[role=log]')
+                .querySelectorAll('.board-rail-question, .board-rail-reply section'),
+        ].map((n) => n.textContent);
+    assert.deepEqual(said(), [
+        'What are hyphae?',
+        'Hyphae are threads.',
+        'Why?',
+        'A hypha grows at its tip.',
+    ]);
+    assert.equal(board.q('.board-caption').textContent, '', 'open, the rail carries the caption');
+    await board.act(async () => button(board.container, 'Collapse transcript').click());
+    assert.equal(board.q('[role=log]'), null);
+    assert.equal(board.q('.board-caption').textContent, 'A hypha grows at its tip.');
+    await board.act(async () => button(board.container, 'Show transcript').click());
+    // Select "hypha" in the spoken reply from the keyboard, ask, and send the branch.
+    await board.act(async () => button(board.container, 'Select passage in tutor reply 2').click());
+    const input = board.q('[role=log] textarea');
+    await board.act(async () => {
+        input.setSelectionRange(2, 7);
+        input.dispatchEvent(
+            new window.KeyboardEvent('keyup', { key: 'ArrowRight', shiftKey: true, bubbles: true }),
+        );
+    });
+    await board.act(async () => button(board.container, 'Ask about selection').click());
+    await board.act(async () => button(board.q('[role=log] form'), 'Send').click());
+    assert.equal(
+        button(board.container, 'Resume').getAttribute('aria-pressed'),
+        'true',
+        'the board pauses',
+    );
+    assert.match(board.q('.board-rail-head').textContent, /Paused/);
+    assert.deepEqual(board.socket.sent.at(-1), { type: 'leave' });
+    assert.deepEqual(board.submitted, [], 'the branch waits for the reply to be saved');
+    await board.act(async () => board.socket.close());
+    assert.deepEqual(
+        board.submitted.map((b) => b.anchor),
+        [{ messageId: 'r2', start: 2, end: 7, text: 'hypha', at: undefined }],
+    );
+});
+
 test('board: reopened, it holds the latest board reply’s last sentence and its whole board at once, with no hint', async (t) => {
     const board = await mount(t, [
         { id: 'q', role: 'user', text: 'Why?', status: 'completed', board: true },
@@ -154,7 +247,7 @@ test('board: reopened, it holds the latest board reply’s last sentence and its
             status: 'completed',
             board: true,
         },
-        { role: 'assistant', text: 'A later chat reply.' },
+        { id: 'later', role: 'assistant', text: 'A later chat reply.' },
     ]);
     assert.equal(board.q('.board-empty'), null);
     assert.equal(board.q('.board-caption.muted').textContent, 'Dr. Lin explains how.');
