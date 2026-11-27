@@ -26,7 +26,8 @@ import { useBoard, type Drawn } from './useBoard';
 import BoardItem, { strokePath } from './BoardItem';
 import { follow, slide } from './camera';
 import PageStrip, { BackChip, pagesOf } from './PageStrip';
-import { labelRows, type Op } from './player';
+import { labelRows } from './player';
+import { dimmed } from './spotlight';
 import { DEFAULT_SPEED } from './voice';
 import { BOARD_SPEEDS } from '../shell/preferences';
 import { componentParts } from './layout';
@@ -116,7 +117,6 @@ export default function Board({
     const onScreen = pages.find((p) => p.id === board.view) ?? pages.find((p) => p.id === open);
     const top = onScreen?.top ?? 0;
     const parent = pages.find((p) => p.id === onScreen?.parent);
-    // The spotlight follows only the tutor's page; a page the learner opened shows in full (mockup Rabbithole-bsk.3).
     const lit = onScreen?.id === open ? board.lit : undefined;
     const scroller = useRef<HTMLDivElement>(null);
     const followed = useRef<number>(undefined);
@@ -532,15 +532,6 @@ export default function Board({
         </section>
     );
 }
-
-// Whether the spotlight dims an item: one the lit set misses, a child going with its component and a wash with its
-// item. Pointers, the learner's strokes and muted items never dim.
-const dimmed = (op: Op, lit?: Set<string>) =>
-    !!lit &&
-    op.kind !== 'pointer' &&
-    op.kind !== 'stroke' &&
-    op.look !== 'muted' &&
-    !lit.has(op.kind === 'highlight' ? (op.names?.[0] ?? op.id) : (op.on ?? op.id));
 
 // What the board shows of its items: highlights under the rest, erased items fading out (or gone when replayed),
 // no pointer once its moment has passed, and one 1600×900 space per page.

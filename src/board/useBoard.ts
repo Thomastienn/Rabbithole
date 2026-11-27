@@ -3,6 +3,7 @@ import { boardSocket } from '../serverAccess';
 import type { Message } from '../chat/turn';
 import { boardPlayer, type Op } from './player';
 import { streamedVoice } from './voice';
+import { litBy } from './spotlight';
 import { levels, openMic } from './mic';
 import {
     savePreference,
@@ -31,16 +32,6 @@ export type Mic = {
     levels?: number[];
 };
 const MIC_OFF: Mic = { status: 'off' };
-// What a sentence's ops draw or name, for the spotlight (docs/board-sketches-spec.md): a child names its component,
-// a highlight, pointer or connector its items too; an erase or a page names none.
-const litBy = (ops: Op[] = []) =>
-    ops.flatMap((op) =>
-        op.kind === 'erase' || op.top !== undefined
-            ? []
-            : op.on
-              ? [op.on]
-              : [op.id, ...(op.names ?? [])],
-    );
 const BLOCKED =
     'The browser blocked the microphone. Allow it for this page, then press the mic again.';
 const NO_MIC =
