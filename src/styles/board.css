@@ -323,6 +323,10 @@
     from {
         clip-path: inset(0 100% 0 0);
     }
+    /* An end shape, since inset() cannot blend into none and would pop in halfway. */
+    to {
+        clip-path: inset(0 0 0 0);
+    }
 }
 @keyframes board-enter {
     from {
