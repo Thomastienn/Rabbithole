@@ -24,7 +24,9 @@ export type Op = {
         | 'table'
         | 'row'
         | 'venn'
-        | 'item';
+        | 'item'
+        | 'stroke'
+        | 'erase';
     // A component's child names its component; components and plots carry their own path and numbers.
     on?: string;
     d?: string;
@@ -45,6 +47,8 @@ export type Op = {
     size?: 's' | 'm' | 'l';
     text?: string;
     points?: [number, number][];
+    // The items an erase op removes.
+    ids?: string[];
 };
 // Point labels on one number line, in value order: a label that would touch its left neighbour's on the
 // same row goes to the second row, so a crowded run alternates rows (mockup Rabbithole-brd.5).

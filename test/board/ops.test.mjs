@@ -84,6 +84,71 @@ test('board ops: a malformed op or one naming an unknown id is skipped with its 
     assert.ok(board.read('bl text "bulb" at 1460,450').item, 'a skipped id stays free');
 });
 
+test('board ops: erase removes the items it names, and a learner stroke marks what it circles or points at', () => {
+    const board = boardOps();
+    board.read('load box at 370,548 w=140 h=112');
+    board.read('pivot text "pivot" at 560,760 size=s');
+    board.read('tip dot at 560,673');
+    const loop = [
+        [650, 620],
+        [470, 600],
+        [480, 800],
+        [690, 760],
+        [640, 615],
+    ];
+    assert.deepEqual(board.mark(loop), { verb: 'circled', ids: ['pivot', 'tip'] });
+    assert.deepEqual(
+        board.mark([
+            [640, 380],
+            [432, 500],
+        ]),
+        { verb: 'pointed at', ids: ['load'] },
+    );
+    assert.equal(
+        board.mark([
+            [1200, 100],
+            [1300, 120],
+        ]),
+        null,
+        'a stroke over no item marks nothing',
+    );
+    assert.deepEqual(board.read('p1 stroke circled=pivot,tip 650,620 470,600').item, {
+        id: 'p1',
+        kind: 'stroke',
+        points: [
+            [650, 620],
+            [470, 600],
+        ],
+    });
+    assert.ok(board.read('e1 erase p1 nowhere').error, 'an unknown id skips the whole erase');
+    assert.deepEqual(board.read('e1 erase p1 tip').item, {
+        id: 'e1',
+        kind: 'erase',
+        ids: ['tip', 'p1'],
+    });
+    assert.deepEqual(
+        board.items().map((i) => i.id),
+        ['load', 'pivot'],
+    );
+    assert.ok(board.read('e2 erase').error, 'erase needs an id');
+});
+
+test('board ops: a stroke over a plot marks its axes, and erasing the axes takes their plot', () => {
+    const board = boardOps();
+    board.read('a1 axes at 680,480 w=1080 h=680 x=0..5 y=0..32');
+    board.read('sq plot on a1 y=x^2');
+    const loop = [
+        [150, 120],
+        [1250, 120],
+        [1250, 820],
+        [150, 820],
+        [160, 130],
+    ];
+    assert.deepEqual(board.mark(loop), { verb: 'circled', ids: ['a1'] });
+    assert.deepEqual(board.read('e1 erase a1').item.ids, ['a1', 'sq']);
+    assert.deepEqual(board.items(), []);
+});
+
 test('board ops: the guard moves an overlapping or off-board item to the nearest free spot', () => {
     const board = boardOps();
     board.read('a box at 400,450 w=200 h=100');
@@ -255,6 +320,14 @@ test('board ops: flow, tree, table and venn children keep their words and are ch
     board.read('c0 node "Cats" in t1');
     assert.equal(board.read('c1 node "Big cats" in t1 under c0').item.under, 'c0');
     assert.equal(board.read('c2 node "Small cats" in t1 under=c0').item.under, 'c0');
+    board.read('c5 node "Lion" in t1 under c1');
+    board.read('t2 tree at 300,800 w=200 h=100');
+    board.read('d0 node "Dogs" in t2');
+    assert.deepEqual(
+        board.read('e9 erase c1').item.ids,
+        ['c1', 'c5'],
+        'a tree node goes with its subtree',
+    );
     board.read('p1 table at 800,450 w=1100 h=420 cols="Planet|One spin|One year"');
     assert.deepEqual(board.read('r1 row "Earth|1 day" in p1').item.cells, ['Earth', '1 day', '']);
     board.read('v1 venn at 800,470 w=1100 h=620 sets="Birds|Can fly"');
