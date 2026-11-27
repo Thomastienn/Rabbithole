@@ -60,7 +60,7 @@ function SketchDrawing({ sketch, live }: { sketch: Drawing; live: boolean }) {
                       } as CSSProperties)
                     : undefined
             }
-            aria-label={[sketch.title ? `Sketch: ${sketch.title}` : 'Sketch', sketch.frame]
+            aria-label={[sketch.title ? `Sketch: ${sketch.title}` : 'Sketch', sketch.about]
                 .filter(Boolean)
                 .join(', ')}
         >
