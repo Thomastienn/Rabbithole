@@ -62,6 +62,15 @@ export function savedPushToTalk() {
     }
 }
 
+// How a board runs: learner-led unless tutor-guided is chosen in Settings.
+export function savedTutorGuided() {
+    try {
+        return localStorage.getItem('rabbithole.board-mode') === 'guided';
+    } catch {
+        return false;
+    }
+}
+
 export function savePreference(
     key:
         | 'appearance'
@@ -73,6 +82,7 @@ export function savePreference(
         | 'discord-status'
         | 'board-speed'
         | 'push-to-talk'
+        | 'board-mode'
         | 'reading-font'
         | 'interface-font',
     value: string,

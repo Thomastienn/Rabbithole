@@ -71,6 +71,11 @@ export default function Board({
 }) {
     const board = useBoard(conversation, messages, reload);
     const [draft, setDraft] = useState('');
+    // Typing an answer holds a tutor's question open (mockup Rabbithole-brd.13).
+    const changeDraft = (text: string) => {
+        if (text.trim() && !draft.trim()) board.typing();
+        setDraft(text);
+    };
     const [railOpen, setRailOpen] = useState(true);
     const [pen, setPen] = useState(false);
     const [line, setLine] = useState<Point[]>();
@@ -168,7 +173,9 @@ export default function Board({
                 m.board && m.status === 'interrupted' ? { ...m, status: 'completed' } : m,
             ),
         ...board.turns.flatMap((t) => [
-            { id: t.user, role: 'user', text: t.question, status: 'completed', board: true },
+            ...(t.user
+                ? [{ id: t.user, role: 'user', text: t.question, status: 'completed', board: true }]
+                : []),
             ...(t.said.length
                 ? [
                       {
@@ -346,7 +353,7 @@ export default function Board({
                     className="board-composer"
                     elevation="none"
                     value={draft}
-                    onChange={setDraft}
+                    onChange={changeDraft}
                     onSubmit={submit}
                     sendButton={
                         busy ? <ChatSendButton isDisabled className="board-send-busy" /> : undefined
@@ -487,7 +494,7 @@ export default function Board({
                                 label="Your question"
                                 maxRows={4}
                                 value={draft}
-                                onChange={setDraft}
+                                onChange={changeDraft}
                                 // Typing stays open while the tutor thinks; only Enter waits for it.
                                 onKeyDown={(e) => busy && holdEnter(e)}
                                 placeholder="Ask a question"

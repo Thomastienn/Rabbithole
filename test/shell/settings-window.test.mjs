@@ -230,7 +230,7 @@ test('the desktop app shows the Discord status switch and reports its choice', a
     assert.deepEqual(choices, [false]);
 });
 
-test('the Board page has push-to-talk, off by default, and keeps the choice for boards', async (t) => {
+test('the Board page has push-to-talk off and learner-led by default, and keeps the choices for boards', async (t) => {
     fakeServer(t, () => ({ first: null, events: [] }));
     const page = await render(settings(), ui);
     t.after(page.cleanup);
@@ -243,4 +243,15 @@ test('the Board page has push-to-talk, off by default, and keeps the choice for 
     await page.act(async () => ptt.click());
     assert.equal(ptt.checked, true);
     assert.equal(window.localStorage.getItem('rabbithole.push-to-talk'), 'on');
+    const mode = (label) =>
+        [...page.container.querySelectorAll('[role=radio]')].find((r) =>
+            r.textContent.includes(label),
+        );
+    const text = () => page.container.textContent;
+    assert.equal(mode('Learner-led').getAttribute('aria-checked'), 'true');
+    assert.match(text(), /You ask whenever something is unclear\./);
+    await page.act(async () => mode('Tutor-guided').click());
+    assert.equal(mode('Tutor-guided').getAttribute('aria-checked'), 'true');
+    assert.match(text(), /gives a hint if you stay quiet/, 'the hint describes the choice');
+    assert.equal(window.localStorage.getItem('rabbithole.board-mode'), 'guided');
 });

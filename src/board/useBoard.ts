@@ -4,7 +4,12 @@ import type { Message } from '../chat/turn';
 import { boardPlayer, type Op } from './player';
 import { streamedVoice } from './voice';
 import { levels, openMic } from './mic';
-import { savePreference, savedBoardSpeed, savedPushToTalk } from '../shell/preferences';
+import {
+    savePreference,
+    savedBoardSpeed,
+    savedPushToTalk,
+    savedTutorGuided,
+} from '../shell/preferences';
 
 export type BoardState = 'idle' | 'thinking' | 'speaking';
 type Caption = { text: string; muted: boolean };
@@ -15,7 +20,8 @@ type Reply = { items: Drawn[]; caption: string };
 const still = (replies: Reply[]) =>
     replies.map((r) => ({ ...r, items: r.items.map((d) => ({ ...d, ms: 0 })) }));
 // A question asked on this board and the sentences of its reply shown so far, under their saved message ids.
-export type Turn = { user: string; reply: string; question: string; said: string[] };
+// A no-answer turn after a tutor's question has no user message.
+export type Turn = { user?: string; reply: string; question: string; said: string[] };
 // The mic: off, downloading the speech models (bytes), or on; hearing while the learner speaks, with four level bars.
 export type Mic = {
     status: 'off' | 'loading' | 'on';
@@ -85,7 +91,7 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         setReplies((rs) => [...rs, { items: [], caption: '' }]);
     };
     useEffect(() => {
-        const ws = boardSocket(conversation);
+        const ws = boardSocket(conversation, savedTutorGuided());
         socket.current = ws;
         const send = (message: object) => {
             if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(message));
@@ -139,13 +145,21 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
                 if (m.reply)
                     setTurns((all) => [
                         ...all,
-                        { user: m.user, reply: m.reply, question: question.current, said: [] },
+                        {
+                            user: m.user ?? undefined,
+                            reply: m.reply,
+                            question: m.user ? question.current : '',
+                            said: [],
+                        },
                     ]);
-                // Idle ends the reply: anything not yet shown is dropped and the last caption is held, muted.
+                // A no-answer turn draws its hint or carry-on as a step of its own.
+                if (m.reply && !m.user) setReplies((rs) => [...rs, { items: [], caption: '' }]);
+                // Idle ends the reply: anything not yet shown is dropped and the last caption is held,
+                // muted, except a question waiting for its answer, which stays in ink.
                 if (m.state === 'idle') {
                     player.stop();
                     setPaused(false);
-                    setCaption((c) => c && { ...c, muted: true });
+                    if (!m.waiting) setCaption((c) => c && { ...c, muted: true });
                     dropSilent();
                 }
             }
@@ -227,6 +241,11 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
     const draw = (points: [number, number][]) => {
         const ws = socket.current;
         if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'stroke', points }));
+    };
+    // The learner started typing: a question's wait holds open until they send.
+    const typing = () => {
+        const ws = socket.current;
+        if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'typing' }));
     };
     // One press turns the mic on, asking the browser for it first; another turns it off.
     const toggleMic = async () => {
@@ -325,6 +344,7 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         go,
         marks,
         ask,
+        typing,
         draw,
     };
 }

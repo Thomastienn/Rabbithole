@@ -1,34 +1,22 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import sharp from 'sharp';
+import { rm } from 'node:fs/promises';
 import { formatLog, errorCause } from '../log.mjs';
 import { validUsage } from '../store/usage.mjs';
 import { scriptReader } from './script.mjs';
 import { boardOps } from './ops.mjs';
 import { boardSystem } from './prompt.mjs';
 import { boardMic } from './mic.mjs';
+import { boardPen } from './pen.mjs';
 import { conversationHistory } from '../providers/conversationHistory.mjs';
 
 const STOPPED = 'The tutor stopped. Ask again to carry on.';
 const VOICE_UNAVAILABLE = 'The voice is unavailable, so the tutor carries on in captions.';
-// A free-space stroke goes to the tutor as this much of the board around it, in board pixels.
-const MARGIN = 40;
-
-// The PNG of a free-space stroke: its area of the 1600×900 board, dark ink on white; null when it lies off the board.
-// shortcut: draws only the learner's ink, not board items reaching into the crop; draw those too if tutors misread sketches.
-function strokeImage(points) {
-    const [xs, ys] = [points.map((p) => p[0]), points.map((p) => p[1])];
-    const [x, y] = [Math.max(0, Math.min(...xs) - MARGIN), Math.max(0, Math.min(...ys) - MARGIN)];
-    const [w, h] = [
-        Math.min(1600, Math.max(...xs) + MARGIN) - x,
-        Math.min(900, Math.max(...ys) + MARGIN) - y,
-    ];
-    if (w <= 0 || h <= 0) return null;
-    // A lone point still draws as a dot under the round cap.
-    const d = `M${points[0]}` + points.map((p) => `L${p}`).join('');
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="${x} ${y} ${w} ${h}"><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#fff"/><path d="${d}" fill="none" stroke="#111" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-    return sharp(Buffer.from(svg)).png().toBuffer();
-}
+// After a `?> ` question the board waits this long for an answer, then sends the next no-answer turn.
+export const WAIT_MS = 4000;
+// The no-answer turns: system turns, never learner messages (docs/board-spec.md, Tutor-guided).
+export const NO_ANSWER = [
+    '(No answer yet: the learner stayed quiet after your question. Give one short hint toward the answer, without mentioning the silence, and no "?> " line.)',
+    '(Still no answer. Give the answer and carry on teaching where you were, without mentioning the silence.)',
+];
 
 // One board session per open board: the conversation's own model process, its turns and their saving.
 // Up: { type: 'ask', text }, { type: 'mic', on }, { type: 'hold', on } as push-to-talk is held and let go, and, while on, mic audio as binary frames of 16 kHz mono float32 samples, { type: 'stroke', points } as the learner finishes a pen stroke, { type: 'progress', sentence, phase: 'start' | 'end' } as each caption shows and ends, { type: 'leave' }.
@@ -41,7 +29,8 @@ function strokeImage(points) {
 // from its op lines with the reply's last sentence as its caption,
 // { type: 'mic', status: 'loading' | 'on' | 'off', loaded, total } as the speech models download and the mic turns on or off,
 // { type: 'hearing', on } as the learner starts and stops speaking, and { type: 'heard', text } as a spoken question is sent.
-export function boardSession(ctx, id, socket) {
+// guided: the learner chose tutor-guided boards in Settings.
+export function boardSession(ctx, id, socket, guided = false) {
     const { store, log } = ctx;
     const send = (event) => {
         if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(event));
@@ -58,10 +47,8 @@ export function boardSession(ctx, id, socket) {
         turn = null,
         closed = false,
         count = 0,
-        // The learner's strokes since the last question, as op lines and what each marks; they go with the next one.
-        pending = [],
-        // The last pen id handed out; never reused in a session, since an erase may be applied but not saved.
-        pen = 0,
+        // The timer of the wait after a question, until an answer or the next no-answer turn.
+        waiting = null,
         // The filler played last, so the next turn's filler differs.
         lastFiller = -1;
     // Filler clips load as the board opens, so the first slow turn has them ready.
@@ -84,6 +71,12 @@ export function boardSession(ctx, id, socket) {
     };
     // The items drawn on this board so far, across its turns.
     let board;
+    const pen = boardPen(ctx, () => board);
+    // An answer starting, typed, spoken or drawn, holds the wait open: no hint comes.
+    const answering = () => {
+        clock.clearTimeout(waiting);
+        waiting = null;
+    };
     // Rebuilds the board from the saved turns, and returns them as replies.
     const load = () => {
         board = boardOps();
@@ -144,6 +137,7 @@ export function boardSession(ctx, id, socket) {
                 tutorStyle: store.tutorStyle(),
                 memoryNote: store.memoryNote(),
                 neighbourhood,
+                guided,
             }),
             history: conversationHistory(tree),
         });
@@ -197,7 +191,8 @@ export function boardSession(ctx, id, socket) {
             // As after a chat reply: familiarity from the learner's question and concepts from the reply,
             // but no suggestion marks or next questions (docs/board-spec.md).
             const answer = shownText(current);
-            ctx.startVerdicts(id, current.user, current.question, answer);
+            // A no-answer turn has no learner message, so it is no familiarity evidence.
+            if (current.user) ctx.startVerdicts(id, current.user, current.question, answer);
             ctx.boardSuggestions(id, current.reply, current.question, answer);
         } else if (current.sentences.length) {
             // Claude may have stored text the learner never saw. Replay the saved discussion next time.
@@ -206,31 +201,17 @@ export function boardSession(ctx, id, socket) {
         // Ops of sentences that never played leave the board; pen strokes waiting for the next question stay.
         if (status !== 'completed' && !closed) {
             load();
-            pending.forEach((s) => board.read(s.line));
+            pen.replay();
         }
         if (turn === current) turn = null;
         ctx.jobs.remove(current.job);
         current.ended.resolve();
-        send({ type: 'state', state: 'idle' });
-    };
-    // Free-space strokes as images, only for a chat model that reads images; the files go once the turn ends.
-    const sketches = async (current, tree, free) => {
-        if (!free.length || !(await ctx.readsImages({ provider: tree.provider, model }))) return [];
-        const drawn = [];
-        for (const s of free) {
-            const png = await strokeImage(s.points);
-            if (png) drawn.push({ id: s.line.split(' ')[0], png });
+        // A question waits for its answer; the hint turn always waits once more, then the tutor carries on.
+        if (status === 'completed' && !closed && turn === null) {
+            const next = current.noAnswer === 1 ? 2 : current.sentences.at(-1)?.question ? 1 : 0;
+            if (next) waiting = clock.setTimeout(() => ask(NO_ANSWER[next - 1], next), WAIT_MS);
         }
-        if (!drawn.length) return [];
-        await mkdir(ctx.dir, { recursive: true, mode: 0o700 });
-        current.files = await mkdtemp(join(ctx.dir, 'board-'));
-        return Promise.all(
-            drawn.map(async ({ id, png }) => {
-                const path = join(current.files, `${id}.png`);
-                await writeFile(path, png, { mode: 0o600 });
-                return { id, type: 'image/png', path };
-            }),
-        );
+        send({ type: 'state', state: 'idle', ...(waiting && { waiting: true }) });
     };
     const run = async (current, tree, text, free, signal) => {
         const started = performance.now();
@@ -251,7 +232,13 @@ export function boardSession(ctx, id, socket) {
             for (const line of lines) {
                 if (line.sentence !== undefined) {
                     flush();
-                    writing = { id: String(++count), text: line.sentence, ops: [], lines: [] };
+                    writing = {
+                        id: String(++count),
+                        text: line.sentence,
+                        question: line.question,
+                        ops: [],
+                        lines: [],
+                    };
                     continue;
                 }
                 const { item, moved, error } = writing
@@ -280,7 +267,7 @@ export function boardSession(ctx, id, socket) {
             if (!signal.aborted) await warm(tree, signal);
             if (signal.aborted) result = { status: 'interrupted' };
             else {
-                const images = await sketches(current, tree, free);
+                const images = await pen.sketches(current, tree, model, free);
                 const prompt = images.length
                     ? `${text} · images of ${images.map((i) => i.id).join(', ')} attached`
                     : text;
@@ -341,10 +328,12 @@ export function boardSession(ctx, id, socket) {
         send({ type: 'notice', notice: result.error ?? STOPPED });
         finish(current, 'failed');
     };
-    const ask = (text) => {
+    // A learner's question, or with noAnswer 1 or 2 a no-answer turn after the wait.
+    const ask = (text, noAnswer = 0) => {
         if (closed) return;
         // Sending mid-reply cuts in: the reply stops, saved up to the sentence heard, and the question starts a new turn.
         if (turn) stop(turn);
+        answering();
         const tree = store.tree(id);
         const supported = providerFor(tree)?.board;
         if (!supported || ctx.jobs.get('reply', id)) {
@@ -356,40 +345,26 @@ export function boardSession(ctx, id, socket) {
                 });
             return send({ type: 'state', state: 'idle' });
         }
-        const user = store.message(id, 'user', text, 'completed');
+        const user = noAnswer ? null : store.message(id, 'user', text, 'completed');
         const reply = store.message(id, 'assistant', '', 'streaming');
-        store.onBoard(user);
+        if (user) store.onBoard(user);
         store.onBoard(reply);
-        // The question carries what its strokes mark and their ids: "pen: circled t2 · pointed at t3 · strokes p1, p2".
-        const marks = Object.entries(
-            Object.groupBy(
-                pending.flatMap((s) => s.mark ?? []),
-                (m) => m.verb,
-            ),
-        ).map(([verb, ms]) => `${verb} ${[...new Set(ms.flatMap((m) => m.ids))].join(', ')}`);
-        if (pending.length)
-            store.saveBoardOps(
-                user,
-                pending.map((s) => s.line),
-            );
-        const strokes = pending.map((s) => s.line.split(' ')[0]);
+        // A no-answer turn leaves the pen's strokes for the learner's next question.
+        const { lines, note, free } = noAnswer ? { lines: [], free: [] } : pen.take();
+        if (lines.length) store.saveBoardOps(user, lines);
         // The provider got text the learner never heard, so a turn after a cut names where the learner stopped hearing.
         const last = tree.messages.at(-1);
         const cut =
             last?.board && last.role === 'assistant' && last.status === 'interrupted' && last.text
                 ? `(You were cut off. The last sentence the learner heard was "${last.text.split('\n').at(-1)}"; they did not hear the rest of that reply.)\n\n`
                 : '';
-        const prompt =
-            cut +
-            (strokes.length
-                ? `${text}\n\npen: ${[...marks, `strokes ${strokes.join(', ')}`].join(' · ')}`
-                : text);
-        const free = pending.filter((s) => !s.mark);
-        pending = [];
+        const prompt = cut + (note ? `${text}\n\n${note}` : text);
         const current = {
             reply,
             user,
-            question: text,
+            noAnswer,
+            // Quick thinking judges a no-answer turn's concepts against the learner's last question.
+            question: user ? text : (tree.messages.findLast((m) => m.role === 'user')?.text ?? ''),
             sentences: [],
             shown: 0,
             over: 0,
@@ -491,6 +466,7 @@ export function boardSession(ctx, id, socket) {
     function close() {
         if (closed) return;
         closed = true;
+        answering();
         if (turn) stop(turn);
         process?.close();
         speech?.close();
@@ -499,28 +475,19 @@ export function boardSession(ctx, id, socket) {
         if (ctx.stopping) socket.terminate();
         else socket.close();
     }
-    // A pen stroke becomes a board item of its own, `p<n>`, and its line waits for the next question.
-    const stroke = (points) => {
-        while (board.has(`p${++pen}`));
-        const n = pen;
-        const mark = board.mark(points);
-        const line = [
-            `p${n} stroke`,
-            mark && `${mark.verb.split(' ')[0]}=${mark.ids.join(',')}`,
-            ...points.map((p) => p.join(',')),
-        ]
-            .filter(Boolean)
-            .join(' ');
-        const { item } = board.read(line);
-        pending.push({ line, mark, points });
-        send({ type: 'stroke', item, mark });
-    };
     const isPoint = (p) =>
         Array.isArray(p) &&
         p.length === 2 &&
         p.every((v) => Number.isFinite(v) && Math.abs(v) < 1e5);
     const busy = () => turn;
-    const mic = boardMic(ctx.hearing, { send, log, ask, stop, busy, closed: () => closed });
+    const mic = boardMic(ctx.hearing, {
+        send: (event) => (event.type === 'hearing' && event.on && answering(), send(event)),
+        log,
+        ask,
+        stop,
+        busy,
+        closed: () => closed,
+    });
     socket.on('message', (data, binary) => {
         if (binary) return mic.audio(data);
         let m;
@@ -537,11 +504,17 @@ export function boardSession(ctx, id, socket) {
             m.points.length &&
             m.points.length <= 2000 &&
             m.points.every(isPoint)
-        )
-            stroke(m.points.map((p) => p.map(Math.round)));
+        ) {
+            answering();
+            send({ type: 'stroke', ...pen.stroke(m.points.map((p) => p.map(Math.round))) });
+        }
         if (m?.type === 'progress' && typeof m.sentence === 'string') progress(m.sentence, m.phase);
         if (m?.type === 'mic') m.on ? mic.on() : mic.off();
-        if (m?.type === 'hold') mic.hold(!!m.on);
+        if (m?.type === 'hold') {
+            if (m.on) answering();
+            mic.hold(!!m.on);
+        }
+        if (m?.type === 'typing') answering();
         if (m?.type === 'leave') close();
     });
     socket.on('close', close);

@@ -23,6 +23,8 @@ export function boardSockets(ctx, server) {
         )
             return refuse(403);
         if (!ctx.store.header(id)) return refuse(404);
-        sockets.handleUpgrade(req, socket, head, (ws) => boardSession(ctx, id, ws));
+        sockets.handleUpgrade(req, socket, head, (ws) =>
+            boardSession(ctx, id, ws, url.searchParams.get('mode') === 'guided'),
+        );
     });
 }

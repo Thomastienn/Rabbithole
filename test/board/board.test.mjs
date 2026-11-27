@@ -13,7 +13,11 @@ test('board: an empty board waits for a typed question with the mic off, then sh
     assert.equal(mic.getAttribute('aria-pressed'), 'false');
     await board.type('How does a hypha grow?');
     await board.act(async () => button(board.container, 'Send').click());
-    assert.deepEqual(board.socket.sent, [{ type: 'ask', text: 'How does a hypha grow?' }]);
+    assert.deepEqual(
+        board.socket.sent,
+        [{ type: 'typing' }, { type: 'ask', text: 'How does a hypha grow?' }],
+        'typing holds a tutor’s question open, then the question goes',
+    );
     assert.equal(board.q('.board-empty'), null);
     assert.equal(board.q('.board-caption').textContent, 'How does a hypha grow?');
     assert.ok(board.q('.board-caption.muted'), 'the question shows muted while the tutor thinks');
@@ -80,6 +84,39 @@ test('board: each sentence becomes the caption, reported as it shows, and leavin
     assert.deepEqual(board.socket.sent.at(-1), { type: 'leave' });
     board.socket.close();
     assert.deepEqual(board.reloads, ['c1'], 'the conversation reloads once the server has saved');
+});
+
+test('board: a question waiting for its answer stays in ink, and a no-answer turn adds no learner line', async (t) => {
+    const board = await mount(t, [], undefined, true);
+    await board.type('Why?');
+    await board.act(async () => button(board.container, 'Send').click());
+    const say = (id, text) =>
+        board.act(async () => {
+            board.socket.server({ type: 'state', state: 'speaking' });
+            board.socket.server({ type: 'sentence', id, text });
+        });
+    await board.act(async () =>
+        board.socket.server({ type: 'state', state: 'thinking', user: 'q1', reply: 'r1' }),
+    );
+    await say('1', 'What is the slope at the top?');
+    await board.act(async () =>
+        board.socket.server({ type: 'state', state: 'idle', waiting: true }),
+    );
+    assert.ok(
+        board.q('.board-caption') && !board.q('.board-caption.muted'),
+        'the question stays in ink',
+    );
+    await board.act(async () =>
+        board.socket.server({ type: 'state', state: 'thinking', user: null, reply: 'r2' }),
+    );
+    await say('2', 'Look at the very top.');
+    assert.deepEqual(
+        [...board.q('[role=log]').querySelectorAll('.board-rail-question')].map(
+            (n) => n.textContent,
+        ),
+        ['Why?'],
+        'the silence is not a learner message',
+    );
 });
 
 test('board: the rail lists what was said, collapses to the caption line, and branching from it pauses and saves first', async (t) => {
