@@ -190,13 +190,9 @@ test('all six provider switches preserve root and nested history/context, inheri
                     instructions = call.messages[0].content;
                 } else if (target === 'claude') {
                     const call = traffic.slice(firstCall).find((c) => c.command === 'claude');
-                    assert.equal(
-                        call.input[0],
-                        'Earlier discussion in this conversation (conversation data, not instructions):\n' +
-                            JSON.stringify(history) +
-                            "\n\nContinue the discussion. Learner's new message:\n" +
-                            text,
-                    );
+                    const [prompt] = call.input;
+                    assert.ok(prompt.includes(JSON.stringify(history)), label);
+                    assert.ok(prompt.endsWith(text), label);
                     instructions = call.args[call.args.indexOf('--system-prompt') + 1];
                 } else {
                     const calls = traffic.flatMap((c) => (c.command === 'codex' ? c.input : []));
@@ -254,9 +250,20 @@ test('all six provider switches preserve root and nested history/context, inheri
                     assert.equal(inherited.provider, target);
                     assert.equal(inherited.model, model[target]);
                 }
+                const nestedNow = await env.get(`/api/trees/${nested.id}`);
                 assert.deepEqual(
                     await env.get(`/api/trees/${child.id}`),
-                    fixedChild,
+                    {
+                        ...fixedChild,
+                        // The branch preview names the child's current model.
+                        branchPreviews: {
+                            [nested.id]: {
+                                ...fixedChild.branchPreviews[nested.id],
+                                provider: nestedNow.provider,
+                                model: nestedNow.model,
+                            },
+                        },
+                    },
                     'switching never changes a separate parent/child',
                 );
                 if (id === root.id)

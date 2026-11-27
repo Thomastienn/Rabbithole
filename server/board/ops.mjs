@@ -1,7 +1,22 @@
 // Board op lines (docs/board-spec.md, Op language): `<id> <kind> <args> [key=value]` on a fixed
-// 1600×900 board (ADR 0028). Tokens follow prototype/board-placement. Kinds so far: shapes, text, erase and
-// the learner's pen strokes.
-const KINDS = new Set(['circle', 'box', 'dot', 'line', 'arrow', 'text', 'erase', 'stroke']);
+// 1600×900 board (ADR 0028). Tokens follow prototype/board-placement. Kinds so far: shapes, text, components,
+// erase and the learner's pen strokes.
+import { COMPONENTS, component, child, layout } from './components.mjs';
+
+const KINDS = new Set([
+    'circle',
+    'box',
+    'dot',
+    'line',
+    'arrow',
+    'text',
+    'axes',
+    'plot',
+    'numberline',
+    'point',
+    'erase',
+    'stroke',
+]);
 const LOOKS = new Set(['focus', 'muted', 'good', 'wrong', 'new']);
 // Label font sizes in board pixels (mockup Rabbithole-brd.2).
 const TEXT_SIZES = { s: 32, m: 44, l: 64 };
@@ -17,7 +32,7 @@ const point = (word) => {
 };
 
 function tokens(line) {
-    const op = { strs: [], pts: [], ids: [], opts: {} };
+    const op = { strs: [], pts: [], vals: [], ids: [], opts: {} };
     const words = [...line.matchAll(TOKEN)].map((m) =>
         m[1] ? { k: m[1], v: m[2] } : m[3] !== undefined ? { s: m[3] } : { w: m[4] },
     );
@@ -33,10 +48,12 @@ function tokens(line) {
         else if (w === 'at') {
             op.at = point(rest[++i]?.w);
             if (!op.at) return { error: 'at needs X,Y' };
-        } else if (w === 'from' || w === 'to') {
-            op[w] = rest[++i]?.w;
-            if (!op[w]) return { error: `${w} needs an id` };
+        } else if (w === 'from' || w === 'to' || w === 'on' || w === 'in') {
+            const key = w === 'in' ? 'on' : w;
+            op[key] = rest[++i]?.w;
+            if (!op[key]) return { error: `${w} needs an id` };
         } else if (point(w)) op.pts.push(point(w));
+        else if (/^-?\d*\.?\d+(\/\d*\.?\d+)?$/.test(w)) op.vals.push(w);
         else if (op.kind === 'erase' && ID.test(w)) op.ids.push(w);
         else if (/^\w+=\S+$/.test(w)) op.opts[w.split('=')[0]] = w.slice(w.indexOf('=') + 1);
         else return { error: `unexpected token "${w}"` };
@@ -213,8 +230,12 @@ export function boardOps() {
             if (!op.ids.length) return { error: 'erase needs an id' };
             const unknown = op.ids.find((name) => !items.has(name));
             if (unknown) return { error: `unknown id ${unknown}` };
-            op.ids.forEach((name) => items.delete(name) && connectors.delete(name));
-            return { item: { id: op.id, kind: 'erase', ids: op.ids } };
+            // A component's children go with it.
+            const ids = [...items.values()]
+                .filter((i) => op.ids.includes(i.id) || op.ids.includes(i.on))
+                .map((i) => i.id);
+            ids.forEach((name) => items.delete(name) && connectors.delete(name));
+            return { item: { id: op.id, kind: 'erase', ids } };
         }
         if (op.kind === 'stroke') {
             if (!op.pts.length) return { error: 'stroke needs a point' };
@@ -223,7 +244,9 @@ export function boardOps() {
         if (op.kind === 'line' || op.kind === 'arrow') {
             if (op.from || op.to) {
                 const [a, b] = [items.get(op.from), items.get(op.to)];
-                if (!a || !b) return { error: `unknown id ${a ? op.to : op.from}` };
+                // A component's children live inside its box, so connectors join top-level items only.
+                if (!a || !b || a.on || b.on)
+                    return { error: `unknown id ${a && !a.on ? op.to : op.from}` };
                 const [ba, bb] = [bounds(a), bounds(b)];
                 item.points = [edge(ba, bb.c), edge(bb, ba.c)];
                 connectors.add(op.id);
@@ -231,8 +254,16 @@ export function boardOps() {
             else return { error: `${op.kind} needs two points or from ID to ID` };
             return { item };
         }
+        if (op.on || op.kind === 'plot' || op.kind === 'point') {
+            const error = child(op, item, items.get(op.on));
+            return error ? { error } : { item };
+        }
         if (!op.at) return { error: 'at needs X,Y' };
         item.at = op.at;
+        if (COMPONENTS.has(op.kind)) {
+            const error = component(op, item);
+            return error ? { error } : { item };
+        }
         if (op.kind === 'circle') item.r = positive(op.opts.r, 90);
         if (op.kind === 'box')
             [item.w, item.h] = [positive(op.opts.w, 280), positive(op.opts.h, 160)];
@@ -253,20 +284,28 @@ export function boardOps() {
             if (parsed.error) return parsed;
             const built = build(parsed.op);
             if (!built.item || built.item.kind === 'erase') return built;
+            // To the guard a component is one item at its box; its children stay inside it, unguarded.
+            if (built.item.on) {
+                items.set(built.item.id, built.item);
+                return built;
+            }
+            const others = [...items.values()].filter((other) => !other.on);
             // The learner's strokes stay where they were drawn.
-            const item =
-                built.item.kind === 'stroke'
-                    ? built.item
-                    : guard(built.item, [...items.values()], connectors);
+            const guarded =
+                built.item.kind === 'stroke' ? built.item : guard(built.item, others, connectors);
+            const item = COMPONENTS.has(guarded.kind) ? layout(guarded) : guarded;
             items.set(item.id, item);
-            return item === built.item ? { item } : { item, moved: true };
+            return guarded === built.item ? { item } : { item, moved: true };
         },
         has: (id) => items.has(id),
         items: () => [...items.values()],
         // What a learner stroke marks (docs/board-spec.md, Learner pen): a closed loop circles the items whose
         // centres it encloses; otherwise it points at the item nearest its end, within 40 board pixels.
         mark(points) {
-            const targets = [...items.values()].filter((i) => i.kind !== 'stroke');
+            // Only items with a place to circle or point at; a plot is a path inside its axes.
+            const targets = [...items.values()].filter(
+                (i) => i.kind !== 'stroke' && (i.at || i.points),
+            );
             const [start, end] = [points[0], points.at(-1)];
             const box = bounds({ points });
             const closed =
