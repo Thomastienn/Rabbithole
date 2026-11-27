@@ -4,7 +4,7 @@
 import { compare, pie, venn } from './comparisons.ts';
 import { equation, grid, sequence } from './maths.ts';
 import { plot } from './plot.ts';
-import { line, quadrant, spectrum } from './scales.ts';
+import { line, quadrant, spectrum } from './quantities.ts';
 import { cycle, parts, stack, timeline, tree } from './structure.ts';
 
 // The theme colours by role; the app passes CSS variables, tests pass hex values.
@@ -293,6 +293,15 @@ function bars(lines: Line[], p: Palette): Drawing {
     }));
     return { items, markup };
 }
+
+// Shared drawing pieces: a rounded coordinate, a ring marker and one item's group.
+export const at = (n: number) => +n.toFixed(1);
+export const ring = (x: number, y: number, focus: boolean, p: Palette) =>
+    focus
+        ? `<circle cx="${at(x)}" cy="${at(y)}" r="7" style="fill:${p.focus};stroke:${p.focus}"/>`
+        : `<circle cx="${at(x)}" cy="${at(y)}" r="6" style="fill:${p.ground};stroke:${p.muted}"/>`;
+// One group per item, in the items' order; `--i` is its place in the sketch's build.
+export const group = (k: number, parts: string) => `<g style="--i:${k}">${parts}</g>`;
 
 const KINDS = new Map<string, [Draw, string[]?]>([
     ['flow', [flow]],

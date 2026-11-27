@@ -1,10 +1,12 @@
 // Sketch kinds for structure: cycle, stack, tree, timeline and parts (mockup Rabbithole-skt.2).
 import {
     esc,
+    group,
     isFocus,
     LINE,
     plain,
     quoted,
+    ring,
     ROW,
     WIDTH,
     wrap,
@@ -13,7 +15,6 @@ import {
     type Palette,
     type SketchItem,
 } from './sketch.ts';
-import { group, ring } from './scales.ts';
 
 // Rings on 3px lines, rows 28px apart.
 const STEP = 28;

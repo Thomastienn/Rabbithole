@@ -16,6 +16,8 @@ import {
     readSaved,
 } from '../../media/video-workspace.mjs';
 import { formatLog, errorCause } from '../../log.mjs';
+import { sketchRequest } from '../../media/sketch-visual.mjs';
+import { visualTheme } from '../../media/visuals.mjs';
 
 // Validated cut TSX becomes a CommonJS function body; the player sandbox supplies require() for the kit and libraries.
 const compileCut = (code) =>
@@ -339,13 +341,56 @@ export async function mediaRoutes(req, res, url, ctx, body) {
         await rm(videoWork(dir, id), { recursive: true, force: true });
         return json(res, 200, { trashed: !!info, missing: !info });
     }
+    // Expand into visual: the sketch at a saved reply offset gets a visual in its place, once (ADR 0027).
+    const expand = url.pathname.match(
+        /^\/api\/trees\/([^/]+)\/messages\/([^/]+)\/sketches\/(\d+)$/,
+    );
+    if (expand) {
+        const [, id, messageId] = expand,
+            at = Number(expand[3]),
+            tree = store.tree(id),
+            message = tree?.messages.find((m) => m.id === messageId && m.role === 'assistant');
+        const request =
+            message && message.status !== 'streaming' && sketchRequest(message.text, at);
+        if (!request) return json(res, 404, { error: 'Sketch not found in this reply.' });
+        const existing = store.sketchVisual(id, messageId, at);
+        if (existing) return json(res, 200, live(existing));
+        const artifact = store.pendingArtifact(
+            id,
+            messageId,
+            request.title,
+            request.description,
+            'visual',
+            JSON.stringify({
+                selection: ctx.videoRoles(tree).chat,
+                theme: visualTheme(body?.theme),
+                request,
+                earlierTitles: tree.artifacts
+                    .filter(
+                        (a) => a.message === messageId && a.kind === 'visual' && a.position < at,
+                    )
+                    .map((a) => a.title),
+            }),
+            at,
+            null,
+            'hidden',
+        );
+        ctx.startDrawing(artifact);
+        return json(res, 200, live(artifact));
+    }
     const jobMatch = url.pathname.match(
-        /^\/api\/trees\/([^/]+)\/artifacts\/([^/]+)\/(cancel|retry|regenerate|install|previous)$/,
+        /^\/api\/trees\/([^/]+)\/artifacts\/([^/]+)\/(cancel|retry|regenerate|install|previous|sketch)$/,
     );
     if (!jobMatch) return false;
     const [, id, artifactId, action] = jobMatch,
         tree = store.tree(id),
         artifact = store.artifact(id, artifactId);
+    if (action === 'sketch') {
+        const switched = tree && store.switchSketch(id, artifactId);
+        if (!switched)
+            return json(res, 404, { error: 'This visual was not expanded from a sketch.' });
+        return json(res, 200, live(switched));
+    }
     if (action === 'regenerate') {
         if (!tree || !['visual', 'video'].includes(artifact?.kind))
             return json(res, 404, { error: 'Visual or video not found in this conversation.' });

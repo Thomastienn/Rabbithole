@@ -1,9 +1,12 @@
-// Sketch kinds on a scale: line, quadrant and spectrum.
+// The kinds that place items along a scale: line, quadrant and spectrum.
 import {
     CHAR,
+    at,
+    group,
+    ring,
+    NUMBER,
     esc,
     isFocus,
-    NUMBER,
     plain,
     quoted,
     wrap,
@@ -24,19 +27,12 @@ const ends = (l: Line) => {
     return parts.length === 2 && parts.every(Boolean) ? (parts as [string, string]) : undefined;
 };
 const minus = (s: string) => s.replace(/^-(?=[\d.])/, '−');
-const at = (n: number) => +n.toFixed(1);
 const write = (x: number, y: number, words: string, style: string, cls = '') =>
     `<text${cls ? ` class="${cls}"` : ''} x="${at(x)}" y="${at(y)}" style="${style}">${esc(words)}</text>`;
 const tone = (p: Palette, focus: boolean) =>
     focus ? `fill:${p.focus};font-weight:600` : `fill:${p.ink}`;
-export const ring = (x: number, y: number, focus: boolean, p: Palette) =>
-    focus
-        ? `<circle cx="${at(x)}" cy="${at(y)}" r="7" style="fill:${p.focus};stroke:${p.focus}"/>`
-        : `<circle cx="${at(x)}" cy="${at(y)}" r="6" style="fill:${p.ground};stroke:${p.muted}"/>`;
 const leader = (x: number, from: number, to: number, p: Palette) =>
     `<path class="sketch-leader" style="stroke:${p.seam}" d="M${at(x)} ${at(from)}V${at(to)}"/>`;
-// One group per item, in the items' order; `--i` is its place in the sketch's build.
-export const group = (k: number, parts: string) => `<g style="--i:${k}">${parts}</g>`;
 const withFocus = (parts: string[], focus: boolean) =>
     [...parts, ...(focus ? ['focus'] : [])].join(', ');
 
