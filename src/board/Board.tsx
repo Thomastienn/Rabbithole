@@ -52,7 +52,7 @@ const VIEW_MS = 400;
 // Speed and pause sit in the board's tools (mockup Rabbithole-brd.8).
 // The mic turns on voice questions, downloading the speech models on its first press (mockup Rabbithole-brd.11);
 // with push-to-talk on, it is held instead (mockup Rabbithole-brd.12).
-// The transcript rail beside it lists what was said; collapsed, the caption line carries the sentence (mockup Rabbithole-brd.15).
+// The transcript rail beside it lists what was said; the caption line carries the sentence, rail open or not (mockup Rabbithole-brd.15).
 export default function Board({
     conversation,
     messages,
@@ -358,7 +358,7 @@ export default function Board({
                     className={`board-caption${board.caption?.muted ? ' muted' : ''}`}
                     aria-live="polite"
                 >
-                    {!railOpen && board.caption?.text}
+                    {board.caption?.text}
                 </p>
                 <span />
             </div>

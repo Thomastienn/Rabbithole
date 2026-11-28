@@ -90,7 +90,7 @@ function Host({ submitted, ...props }) {
     return h(Board, { ...props, thread });
 }
 
-// The rail starts collapsed here, so the caption line carries each sentence, unless rail is set; mic installs a fake mic.
+// The rail starts collapsed here unless rail is set; mic installs a fake mic.
 export async function mount(t, messages = [], speed, rail = false, mic) {
     const reloads = [];
     const submitted = [];
