@@ -190,13 +190,14 @@ test('board player: a voiced sentence starts on its first audio chunk and lasts 
     advance(100);
     player.chunk('1', new Uint8Array(2));
     player.audioEnd('1');
-    voice.playing[0].duration(1800, 100); // the whole clip is in: 1.8 s at 1.5×, its first third 600 ms
-    assert.deepEqual(drawn.at(-1), ['a', 600, 200], 'the op entering is re-squeezed to the audio');
-    advance(100);
-    assert.deepEqual(drawn.at(-1), ['b', 700, 200], 'so are the ops not yet drawn');
-    advance(200);
-    assert.deepEqual(drawn.at(-1), ['c', 900, 200]);
-    advance(1500);
+    // The whole clip is in: 1.8 s at 1.5×, its first third ending at 1100. Left to draw: 165 ms of a, then b and c.
+    voice.playing[0].duration(1800, 100);
+    assert.deepEqual(drawn.at(-1), ['a', 600, 208], 'the op entering is re-squeezed to the audio');
+    advance(108);
+    assert.deepEqual(drawn.at(-1), ['b', 708, 196], 'so are the ops not yet drawn');
+    advance(196);
+    assert.deepEqual(drawn.at(-1), ['c', 904, 196], 'ending at the first third');
+    advance(1396);
     assert.deepEqual(
         reports,
         ['1 start'],
@@ -270,30 +271,38 @@ test('board player: a filler plays while the tutor is silent and never over a se
 });
 
 test('board player: an early audio end still draws every item before advancing', () => {
+    const clock = fakeClock();
     const voice = fakeVoice();
     const drawn = [];
     const player = boardPlayer(
         () => {},
-        (op, ms) => drawn.push([op.id, ms]),
+        (op, ms) => drawn.push([op.id, Math.round(ms)]),
         () => {},
         voice,
-        fakeClock(),
+        clock,
     );
     player.add({
         id: '1',
-        text: 'These two drawings take time.',
+        text: 'These three drawings take time.',
         voiced: true,
         ops: [
             { id: 'a', kind: 'dot' },
             { id: 'b', kind: 'dot' },
+            { id: 'c', kind: 'dot' },
         ],
     });
     player.chunk('1', new Uint8Array(1));
+    clock.advance(100);
     voice.playing[0].ended();
-    assert.deepEqual(drawn.slice(-2), [
-        ['a', 0],
-        ['b', 0],
-    ]);
+    assert.deepEqual(
+        drawn.slice(-3),
+        [
+            ['a', 100],
+            ['b', 0],
+            ['c', 0],
+        ],
+        'the op mid-entry finishes now and the rest appear at once',
+    );
 });
 
 test('board player: a later point reflows crowded labels to alternate rows in value order', () => {

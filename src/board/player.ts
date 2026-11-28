@@ -276,14 +276,17 @@ export function boardPlayer(
             const deadline = (audioElapsed === undefined ? started : now - audioElapsed) + ms / 3;
             const first = ops.findIndex((_, i) => !entries[i] || entries[i].end > now);
             if (first < 0) return;
-            let at = entries[first]?.start ?? now;
-            const rest = own.slice(first).reduce((a, b) => a + b, 0);
-            const fit = Math.max(0, Math.min(1, (deadline - at) / (rest || 1)));
+            // What is left to draw, at own lengths: the entering op's unfinished share, then the rest.
+            const entering = entries[first];
+            const left = own.slice(first);
+            if (entering) left[0] *= (entering.end - now) / (entering.end - entering.start);
+            const fit = Math.max(0, Math.min(1, (deadline - now) / left.reduce((a, b) => a + b)));
+            let at = now;
             for (let index = first; index < ops.length; index++) {
                 const op = ops[index];
                 const entry = entries[index];
-                const start = entry?.start ?? Math.max(at, now);
-                const end = Math.max(now, start + own[index] * fit);
+                const start = entry?.start ?? at;
+                const end = at + left[index - first] * fit;
                 at = end;
                 if (entry) {
                     if (entry.end === end) continue;
