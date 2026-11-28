@@ -27,6 +27,7 @@ test('board speech warms one socket, streams before the clip ends, and closes on
     await client.warm();
     const { peer, config } = await configured.promise;
     assert.match(config, /webm-24khz-16bit-mono-opus/);
+    assert.match(config, /"wordBoundaryEnabled":true/, 'it asks for word offsets');
 
     const received = [];
     const first = Promise.withResolvers();
@@ -46,8 +47,22 @@ test('board speech warms one socket, streams before the clip ends, and closes on
     await first.promise;
     assert.deepEqual(received, ['first']);
     send('second');
+    const boundary = (Offset, Text) => ({
+        Type: 'WordBoundary',
+        Data: { Offset, Duration: 1, text: { Text } },
+    });
+    peer.send(
+        `Path:audio.metadata\r\n\r\n${JSON.stringify({ Metadata: [boundary(1000000, 'Rock'), boundary(4500000, '&')] })}`,
+    );
     peer.send('Path:turn.end\r\n\r\n');
-    await clip;
+    assert.deepEqual(
+        await clip,
+        [
+            { text: 'Rock', at: 100 },
+            { text: '&', at: 450 },
+        ],
+        'it reports word offsets in ms with the audio',
+    );
     assert.deepEqual(received, ['first', 'second']);
 
     const controller = new AbortController();

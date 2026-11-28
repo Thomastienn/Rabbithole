@@ -231,8 +231,18 @@ export function boardPlayer(
         gap: unknown,
         playing: string | undefined,
         // The sentence on show: its ops and when each entered and ends, so a stop can finish the one mid-entry.
-        drawing: { ops: Op[]; entries: { start: number; end: number }[] } | undefined;
-    const pending = new Map<string, 'waiting' | 'chunked' | 'silent'>();
+        drawing: { ops: Op[]; entries: { start: number; end: number }[] } | undefined,
+        // The clip playing: its first sentence's id, when it started in board time and its length once known.
+        clip: { id: string; start: number; length?: number; over?: boolean } | undefined,
+        // The sentence on show in that clip, which follows its timing and its end.
+        follow:
+            | { retime: () => boolean; ended: () => void; failed: () => void; clip: typeof clip }
+            | undefined;
+    // A joined clip's sentences (docs/board-polish-spec.md, Joined speech), by each of their ids: their offsets in
+    // the clip in ms of audio, or the share of the clip before each when word boundaries were missing.
+    type Joined = { id: string; ids: string[]; at?: number[]; share?: number[] };
+    const joins = new Map<string, Joined>();
+    const pending = new Map<string, 'waiting' | 'chunked' | 'silent' | 'joined'>();
     const next = () => {
         const sentence = queue[0];
         if (current || !sentence || paused) return;
@@ -295,7 +305,7 @@ export function boardPlayer(
             timers.forEach(clock.clearTimeout);
             clock.clearTimeout(ending);
             current = undefined;
-            playing = undefined;
+            follow = undefined;
             ended = clock.now();
             last = sentence;
             report(sentence, 'end');
@@ -308,24 +318,71 @@ export function boardPlayer(
             (ending = clock.setTimeout(end, Math.max(0, estimate - (clock.now() - started))));
         show(sentence);
         report(sentence, 'start');
-        space(estimate);
-        if (voice && audio === 'chunked') {
-            playing = sentence.id;
-            voice.play(sentence.id, {
-                duration: (ms, elapsed) => current === sentence && space(ms, elapsed),
-                ended: () => {
-                    if (current !== sentence) return;
-                    space(0, 0);
-                    end();
-                },
-                failed: () => {
-                    if (current !== sentence) return;
-                    playing = undefined;
-                    space(estimate);
-                    byEstimate();
-                },
-            });
-        } else byEstimate();
+        // A joined sentence plays on in its group's clip; one whose clip ended or failed plays by its estimate.
+        const inClip =
+            voice && audio === 'chunked'
+                ? (clip = { id: sentence.id, start: started })
+                : audio === 'joined' && clip && !clip.over && joins.get(sentence.id)?.id === clip.id
+                  ? clip
+                  : undefined;
+        if (!inClip) {
+            space(estimate);
+            return byEstimate();
+        }
+        follow = {
+            clip: inClip,
+            // It starts at its offset and lasts to the next one's, or to the clip's end.
+            retime() {
+                const join = joins.get(sentence.id);
+                const k = join ? join.ids.indexOf(sentence.id) : 0;
+                const count = join?.ids.length ?? 1;
+                const offset = (i: number) =>
+                    i === 0
+                        ? 0
+                        : i === count
+                          ? inClip.length
+                          : join?.at
+                            ? join.at[i] / DEFAULT_SPEED
+                            : inClip.length !== undefined && join?.share
+                              ? join.share[i] * inClip.length
+                              : undefined;
+                const from = offset(k),
+                    to = offset(k + 1);
+                if (from === undefined || to === undefined) return false;
+                space(to - from, clock.now() - inClip.start - from);
+                clock.clearTimeout(ending);
+                if (k + 1 < count)
+                    ending = clock.setTimeout(end, Math.max(0, inClip.start + to - clock.now()));
+                return true;
+            },
+            ended() {
+                space(0, 0);
+                end();
+            },
+            failed() {
+                space(estimate);
+                byEstimate();
+            },
+        };
+        // Until its offsets and the clip's length are known, the estimate times its ops.
+        if (!follow.retime()) space(estimate);
+        if (inClip.id !== sentence.id) return;
+        playing = sentence.id;
+        // Clip events reach whichever of its sentences is on show.
+        const over = () => {
+            inClip.over = true;
+            if (playing === inClip.id) playing = undefined;
+            return follow?.clip === inClip ? follow : undefined;
+        };
+        voice!.play(sentence.id, {
+            duration(ms, elapsed) {
+                inClip.length = ms;
+                inClip.start = clock.now() - elapsed;
+                if (follow?.clip === inClip) follow.retime();
+            },
+            ended: () => over()?.ended(),
+            failed: () => over()?.failed(),
+        });
     };
     return {
         add(sentence: Sentence) {
@@ -350,6 +407,15 @@ export function boardPlayer(
                 pending.set(id, 'chunked');
                 next();
             }
+        },
+        // A joined clip's sentences and their offsets; the sentences after its first wait for them.
+        offsets(join: Joined) {
+            for (const id of join.ids) {
+                joins.set(id, join);
+                if (id !== join.id && pending.get(id) === 'waiting') pending.set(id, 'joined');
+            }
+            follow?.retime();
+            next();
         },
         // The sentence's speech is complete; with no chunk at all it plays by its estimate.
         audioEnd(id: string) {
@@ -392,7 +458,9 @@ export function boardPlayer(
             queue = [];
             current = undefined;
             playing = undefined;
+            clip = follow = undefined;
             pending.clear();
+            joins.clear();
         },
     };
 }
