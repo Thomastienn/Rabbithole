@@ -56,6 +56,7 @@ export type Op = {
         | 'send'
         | 'equation'
         | 'symbol'
+        | 'code'
         | 'stroke'
         | 'erase';
     // A component's child names its component; components and plots carry their own path and numbers.
@@ -89,6 +90,8 @@ export type Op = {
     to?: number;
     means?: string;
     token?: number;
+    // A code block's language, for its lines' highlighting.
+    lang?: string;
     look?: Look;
     at?: [number, number];
     r?: number;
@@ -188,7 +191,7 @@ function pacedClock(real: Clock) {
 
 // The board's component kinds; test/board/player.test.mjs keeps it equal to COMPONENTS in server/board/components.mjs.
 export const COMPONENT_KINDS = new Set([
-    ...['axes', 'numberline', 'flow', 'tree', 'table', 'venn'],
+    ...['axes', 'numberline', 'flow', 'tree', 'table', 'venn', 'code'],
     ...['cycle', 'stack', 'timeline', 'parts'],
     ...['bars', 'pie', 'spectrum', 'quadrant'],
     ...['compare', 'sequence', 'equation'],
@@ -295,6 +298,8 @@ export function boardPlayer(
                 const enter = () => {
                     entries[index] = { start: clock.now(), end };
                     draw(op, Math.max(0, end - clock.now()));
+                    // shortcut: the pen keeps its first length when a later audio length re-squeezes the op.
+                    voice?.pen(op, Math.max(0, end - clock.now()));
                 };
                 if (start <= now) enter();
                 else timers.push(clock.setTimeout(enter, start - now));
@@ -316,6 +321,7 @@ export function boardPlayer(
             (sentence.text.length / CHARS_PER_SECOND / (1 + (sentence.rate ?? 0) / 100)) * 1000;
         const byEstimate = () =>
             (ending = clock.setTimeout(end, Math.max(0, estimate - (clock.now() - started))));
+        voice?.room();
         show(sentence);
         report(sentence, 'start');
         // A joined sentence plays on in its group's clip; one whose clip ended or failed plays by its estimate.

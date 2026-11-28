@@ -21,8 +21,18 @@ export function fakeClock() {
 }
 
 export function fakeVoice() {
-    const voice = { chunks: [], ends: [], playing: [], stopped: 0, controls: [] };
+    const voice = {
+        chunks: [],
+        ends: [],
+        playing: [],
+        stopped: 0,
+        controls: [],
+        rooms: 0,
+        pens: [],
+    };
     return Object.assign(voice, {
+        room: () => voice.rooms++,
+        pen: (op, ms) => voice.pens.push([op.id, Math.round(ms)]),
         speed: (rate) => voice.controls.push(['speed', rate]),
         pause: (on) => voice.controls.push(['pause', on]),
         chunk: (id, bytes) => voice.chunks.push([id, bytes.length]),
