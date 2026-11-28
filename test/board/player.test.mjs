@@ -137,8 +137,18 @@ test('board player: a sentence’s ops start with it, one after another at their
 
 // A voice driven by the test: it records what the player plays and lets the test end or fail the audio.
 function fakeVoice() {
-    const voice = { chunks: [], ends: [], playing: [], stopped: 0, controls: [] };
+    const voice = {
+        chunks: [],
+        ends: [],
+        playing: [],
+        stopped: 0,
+        controls: [],
+        rooms: 0,
+        pens: [],
+    };
     return Object.assign(voice, {
+        room: () => voice.rooms++,
+        pen: (op, ms) => voice.pens.push([op.id, Math.round(ms)]),
         speed: (rate) => voice.controls.push(['speed', rate]),
         pause: (on) => voice.controls.push(['pause', on]),
         chunk: (id, bytes) => voice.chunks.push([id, bytes.length]),
@@ -147,6 +157,35 @@ function fakeVoice() {
         stop: () => voice.stopped++,
     });
 }
+
+test('board player: room tone starts with the reply and each op gets a pen sound at its draw length', () => {
+    const clock = fakeClock();
+    const voice = fakeVoice();
+    const player = boardPlayer(
+        () => {},
+        () => {},
+        () => {},
+        voice,
+        clock,
+    );
+    player.add({
+        id: '1',
+        text: 'A torch is just a loop, so let me draw its battery first.',
+        ops: [
+            { id: 'bat', kind: 'line' },
+            { id: '+', kind: 'dot' },
+        ],
+    });
+    assert.equal(voice.rooms, 1, 'the room tone starts with the first sentence');
+    assert.deepEqual(voice.pens, [['bat', 300]], 'the pen draws for as long as the op');
+    clock.advance(300);
+    assert.deepEqual(voice.pens, [
+        ['bat', 300],
+        ['+', 167],
+    ]);
+    player.stop();
+    assert.equal(voice.stopped, 1, 'stopping the reply stops the fills with the voice');
+});
 
 test('board player: a voiced sentence starts on its first audio chunk and lasts as long as its audio', () => {
     const clock = fakeClock();

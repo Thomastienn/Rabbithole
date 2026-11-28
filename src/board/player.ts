@@ -297,6 +297,8 @@ export function boardPlayer(
                 const enter = () => {
                     entries[index] = { start: clock.now(), end };
                     draw(op, Math.max(0, end - clock.now()));
+                    // shortcut: the pen keeps its first length when a later audio length re-squeezes the op.
+                    voice?.pen(op, Math.max(0, end - clock.now()));
                 };
                 if (start <= now) enter();
                 else timers.push(clock.setTimeout(enter, start - now));
@@ -318,6 +320,7 @@ export function boardPlayer(
             (sentence.text.length / CHARS_PER_SECOND / (1 + (sentence.rate ?? 0) / 100)) * 1000;
         const byEstimate = () =>
             (ending = clock.setTimeout(end, Math.max(0, estimate - (clock.now() - started))));
+        voice?.room();
         show(sentence);
         report(sentence, 'start');
         space(estimate);
