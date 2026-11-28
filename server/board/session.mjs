@@ -71,7 +71,6 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
         sendAudio('filler', clip);
         send({ type: 'audio-end', id: 'filler' });
     });
-    const filler = fillers.say;
     // A tool call shows on the board and in the transcript. The sentence before it is the tutor saying what it does,
     // so it is spoken now instead of after the call; with none since the last call, a filler says it.
     const toolEvent = (current, tool, sentences) => {
@@ -84,7 +83,7 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
             if (said) {
                 current.sentences.at(-1).breaks = true;
                 speak(current);
-            } else filler(current, 'tool', { tool }, () => true);
+            } else fillers.say(current, 'tool', { tool }, () => true);
         }
         const { output, resources, ...shown } = tool;
         send({ type: 'tool', tool: shown });
@@ -409,6 +408,7 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
             reply,
             user,
             noAnswer,
+            spoken,
             images: attached.images,
             // Quick thinking judges a no-answer turn's concepts against the learner's last question.
             question: user ? text : (tree.messages.findLast((m) => m.role === 'user')?.text ?? ''),
@@ -465,12 +465,9 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
         // One late filler at a time, dropped once any sentence audio comes.
         if (phase === 'late' && current.heard && !current.late) {
             const mark = voicedChunks;
-            current.late = filler(
-                current,
-                'late',
-                { said: current.sentences[index - 1]?.text },
-                () => voicedChunks === mark,
-            )?.finally(() => (current.late = null));
+            current.late = fillers
+                .say(current, 'late', { next: index }, () => voicedChunks === mark)
+                ?.finally(() => (current.late = null));
         }
         if (phase === 'end' && index < current.shown) {
             current.over = Math.max(current.over, index + 1);

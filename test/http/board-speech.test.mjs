@@ -262,8 +262,11 @@ test('board: an opening filler is written by quick thinking as the turn starts, 
         'one filler per slow turn, none once audio has started',
     );
     assert.equal(prompts.length, 3, 'each turn writes its opening filler as it starts');
-    assert.match(prompts[0], /"Why\?"[\s\S]*naming the topic/);
-    assert.match(prompts[1], /Do not repeat its last words, "Ah, hyphae\."/);
+    assert.match(prompts[0], /"Why\?"[\s\S]*If the topic is clear/);
+    assert.match(
+        prompts[1],
+        /Learner: "Why\?"\nYou: "One\."[\s\S]*Do not repeat your last words, "Ah, hyphae\."/,
+    );
     assert.deepEqual(
         messages(env, id)
             .filter((m) => m.role === 'assistant')
@@ -315,7 +318,7 @@ test('board: a later sentence the board reports late gets a written connector th
     await board.next('state', (e) => e.state === 'idle');
     // prompts[0] is the turn's opening filler, which never played: the first audio came at once.
     assert.deepEqual(played, ['And so 2', 'And so 3']);
-    assert.match(prompts[1], /last sentence was "One\."/);
+    assert.match(prompts[1], /said so far in this reply .*"One\."[\s\S]*next sentence is "Two\."/);
     assert.deepEqual(
         messages(env, id)
             .filter((m) => m.role === 'assistant')
@@ -383,7 +386,7 @@ test('board: tutor tools show on the board and in the transcript; the sentence b
     await until(() => played().length);
     assert.match(
         prompts.at(-1),
-        /its read_page tool with .*example\.com/,
+        /your read_page tool with .*example\.com/,
         'a call with no sentence',
     );
     const ids = board.events.filter((e) => e.type === 'sentence').map((e) => e.id);
