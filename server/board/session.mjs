@@ -6,10 +6,10 @@ import { boardOps } from './ops.mjs';
 import { boardSystem } from './prompt.mjs';
 import { boardMic } from './mic.mjs';
 import { boardPen } from './pen.mjs';
+import { boardVoicing } from './voicing.mjs';
 import { conversationHistory } from '../providers/conversationHistory.mjs';
 
 const STOPPED = 'The tutor stopped. Ask again to carry on.';
-const VOICE_UNAVAILABLE = 'The voice is unavailable, so the tutor carries on in captions.';
 // After a `?> ` question the board waits this long for an answer, then sends the next no-answer turn.
 export const WAIT_MS = 4000;
 // The no-answer turns: system turns, never learner messages (docs/board-spec.md, Tutor-guided).
@@ -22,7 +22,9 @@ export const NO_ANSWER = [
 // Up: { type: 'ask', text }, { type: 'mic', on }, { type: 'hold', on } as push-to-talk is held and let go, and, while on, mic audio as binary frames of 16 kHz mono float32 samples, { type: 'stroke', points } as the learner finishes a pen stroke, { type: 'view', page } as the learner opens a board page (no page: the view follows the tutor's page again), { type: 'progress', sentence, phase: 'start' | 'end' } as each caption shows and ends, { type: 'leave' }.
 // Down: { type: 'state', state: 'idle' | 'thinking' | 'speaking' }, thinking with the turn's user and reply message ids, { type: 'notice', notice },
 // { type: 'sentence', id, text, ops, voiced } with the drawable ops written under it (server/board/ops.mjs),
-// then, when voiced, its speech as binary frames (one byte of id length, the id, the audio) and { type: 'audio-end', id },
+// then, when voiced, its group's speech under the group's first sentence id as binary frames (one byte of id length, the id, the audio),
+// for a group of more than one { type: 'offsets', id, ids, at } with each sentence's start in the clip in ms, or share: the fraction
+// of the clip before it when word boundaries are missing, and { type: 'audio-end', id } (for each of its ids when it has no audio),
 // a filler clip the same way under the id `filler` when a turn's first audio hasn't started after 1 s,
 // { type: 'stroke', item, mark } back for each pen stroke, with what it marks or null, and { item } for each page opened,
 // { type: 'board', replies: [{ caption, items }] } once on open: the saved board, each reply's items replayed
@@ -270,7 +272,12 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
             if (current.files)
                 await rm(current.files, { recursive: true, force: true }).catch(() => {});
         }
-        if (result.status === 'completed' && !current.done) sentences.end();
+        if (result.status === 'completed' && !current.done) {
+            // The reply's end closes its last group.
+            current.written = true;
+            sentences.end();
+            speak(current);
+        }
         const usage = result.usage;
         // Account for the call even if playback stopped before the provider reported its totals.
         if (selection)
@@ -365,6 +372,8 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
             shown: 0,
             over: 0,
             voiced: 0,
+            // The first sentence of the group voiced last: the next group waits until it starts playing.
+            started: -1,
             ended: Promise.withResolvers(),
         };
         turn = current;
@@ -386,54 +395,7 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
             { settle: false },
         );
     };
-    // Speech runs one sentence ahead of playback: a sentence synthesizes once the one before it starts playing.
-    // A sentence with no audio yet is tried twice; when speech still fails, the rest of the turn is captions only.
-    const speak = (current) => {
-        const sentence = current.sentences[current.voiced];
-        if (!speech || current.speaking || !sentence || current.voiced > current.shown) return;
-        current.voiced++;
-        current.speaking = true;
-        const signal = current.job.controller.signal;
-        let spoke = false;
-        const say = () =>
-            speech.speak(
-                sentence.text,
-                (chunk) => {
-                    spoke = true;
-                    if (current.done) return;
-                    heard(current);
-                    sendAudio(sentence.id, chunk);
-                },
-                signal,
-                sentence.rate,
-            );
-        (current.silent
-            ? Promise.resolve()
-            : say().catch((error) => {
-                  if (spoke || signal.aborted) throw error;
-                  return say();
-              })
-        )
-            .catch((error) => {
-                if (signal.aborted) return;
-                log(
-                    formatLog('warn', 'board', 'speech failed', {
-                        id: current.reply,
-                        cause: errorCause(error, [sentence.text]),
-                    }),
-                );
-                if (spoke) return;
-                current.silent = true;
-                send({ type: 'notice', notice: VOICE_UNAVAILABLE });
-            })
-            .finally(() => {
-                current.speaking = false;
-                if (current.done) return;
-                heard(current);
-                send({ type: 'audio-end', id: sentence.id });
-                speak(current);
-            });
-    };
+    const speak = boardVoicing({ speech, send, sendAudio, heard, log });
     // The reply is complete once the model has finished and its last sentence has been shown in full.
     const settle = (current) => {
         if (current.generated && current.over === current.sentences.length)
