@@ -204,3 +204,26 @@ test('board: a drawing draws its paths in theme colour roles, and pointing at on
     await say([{ id: 'o1', kind: 'pointer', at: [640, 338], from: [800, 450], names: ['p2'] }]);
     assert.deepEqual(named(), ['dr', 'p1'], 'one path is lit and the pointer sits on it');
 });
+
+test('board: a pointer whose entry timer fires late still shows', async (t) => {
+    const board = await mount(t);
+    await board.type('Why?');
+    await board.act(async () => button(board.container, 'Send').click());
+    await board.act(async () => board.socket.server({ type: 'state', state: 'speaking' }));
+    await board.act(async () => {
+        board.socket.server({
+            type: 'sentence',
+            id: '1',
+            text: 'S1.',
+            ops: [
+                { id: 'c', kind: 'circle', at: [700, 300], r: 40 },
+                { id: 'p', kind: 'pointer', from: [800, 450], at: [700, 300], names: ['c'] },
+            ],
+        });
+        // A loaded machine: the pointer's entry timer fires after the sentence's draw deadline.
+        for (const t0 = Date.now(); Date.now() - t0 < 300;);
+    });
+    for (let ms = 0; !board.q('[data-item="p"]') && ms < 2000; ms += 10)
+        await board.act(() => new Promise((done) => setTimeout(done, 10)));
+    assert.ok(board.q('[data-item="p"]'));
+});
