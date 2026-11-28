@@ -157,6 +157,16 @@ export default function BoardItem({
             {op.kind === 'plot' && (
                 <path className="board-stroke board-plot" pathLength={1} d={op.d} />
             )}
+            {op.kind === 'path' && op.fit && (
+                <path
+                    className={`board-stroke board-drawn ink-${op.ink}${op.fill ? ` fill-${op.fill}` : ''}`}
+                    pathLength={1}
+                    transform={`translate(${op.fit[0]} ${op.fit[1]}) scale(${op.fit[2]})`}
+                    // 6 board pixels at any scale (mockup Rabbithole-bpl.9).
+                    style={{ strokeWidth: 6 / op.fit[2] }}
+                    d={op.d}
+                />
+            )}
             {op.kind === 'point' && (
                 <>
                     {row > 0 && (

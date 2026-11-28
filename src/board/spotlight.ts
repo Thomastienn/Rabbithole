@@ -24,4 +24,5 @@ export const dimmed = (op: Op, lit?: Set<string>) =>
     op.kind !== 'stroke' &&
     op.look !== 'muted' &&
     !lit.has(op.on ?? op.id) &&
-    !(op.kind === 'line' && lit.has(op.id));
+    // A code line or a drawing's path is lit alone when the tutor points at it (mockup Rabbithole-bpl.9).
+    !((op.kind === 'line' || op.kind === 'path') && lit.has(op.id));
