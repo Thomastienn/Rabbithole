@@ -18,7 +18,6 @@ export type Op = {
         | 'arrow'
         | 'text'
         | 'math'
-        | 'highlight'
         | 'pointer'
         | 'erase'
         | 'clear'
@@ -108,7 +107,7 @@ export type Op = {
     // A pointer glides from here; an erase names the items it fades out.
     from?: [number, number];
     ids?: string[];
-    // The items a highlight or pointer names, or a connector's two ends (server/board/ops.mjs).
+    // The items a pointer names, or a connector's two ends (server/board/ops.mjs).
     names?: string[];
     // A page, open or clear op: the top edge of the page it opens (ADR 0029), its title, parent page and the item
     // it explains; an open names its page.
@@ -135,7 +134,7 @@ export function labelRows(ops: Op[]) {
     return rows;
 }
 // voiced: the sentence's audio follows on the socket, so it waits for its first chunk or its audio end.
-// key: a `!> ` sentence, followed by the longer pause; rate: its prosody rate in percent, slower below 0.
+// key: a `!> ` sentence; rate: its prosody rate in percent, slower below 0; pause: the tutor's pause after it, in ms.
 export type Sentence = {
     id: string;
     text: string;
@@ -143,6 +142,7 @@ export type Sentence = {
     voiced?: boolean;
     key?: boolean;
     rate?: number;
+    pause?: number;
 };
 type Clock = {
     now: () => number;
@@ -193,10 +193,6 @@ function pacedClock(real: Clock) {
     };
 }
 
-// Pauses between sentences, in board time (docs/board-sketches-spec.md, Pacing): a beat after each sentence, and a
-// longer one after a key sentence or before one that opens a page or starts a component; the longer, never the sum.
-const BEAT_MS = 300;
-const CHANGE_MS = 900;
 // The board's component kinds; test/board/player.test.mjs keeps it equal to COMPONENTS in server/board/components.mjs.
 export const COMPONENT_KINDS = new Set([
     ...['axes', 'numberline', 'flow', 'tree', 'table', 'venn'],
@@ -205,14 +201,6 @@ export const COMPONENT_KINDS = new Set([
     ...['compare', 'sequence', 'equation'],
     'drawing',
 ]);
-const pauseBefore = (sentence: Sentence, after: Sentence | undefined) =>
-    after?.key ||
-    sentence.ops?.some(
-        (op) =>
-            op.kind === 'page' || op.kind === 'open' || (COMPONENT_KINDS.has(op.kind) && !op.on),
-    )
-        ? CHANGE_MS
-        : BEAT_MS;
 
 // How long an op takes to draw at 1×, in ms, by size (prototype/board-pacing); the learner's speed divides it.
 function drawMs(op: Op) {
@@ -247,7 +235,7 @@ export function boardPlayer(
         current: Sentence | undefined,
         timers: unknown[] = [],
         ending: unknown,
-        // When the last sentence ended, and the timer holding the next one for its pause.
+        // When the last sentence ended, and the timer holding the next one for the tutor's pause after it.
         ended: number | undefined,
         last: Sentence | undefined,
         gap: unknown,
@@ -260,7 +248,7 @@ export function boardPlayer(
         if (current || !sentence || paused) return;
         const audio = pending.get(sentence.id);
         if (audio === 'waiting' || gap) return;
-        const due = ended === undefined ? 0 : ended + pauseBefore(sentence, last) - clock.now();
+        const due = ended === undefined ? 0 : ended + (last?.pause ?? 0) - clock.now();
         if (due > 0) {
             gap = clock.setTimeout(() => {
                 gap = undefined;
@@ -310,6 +298,8 @@ export function boardPlayer(
                 const enter = () => {
                     entries[index] = { start: clock.now(), end };
                     draw(op, Math.max(0, end - clock.now()));
+                    // shortcut: the pen keeps its first length when a later audio length re-squeezes the op.
+                    voice?.pen(op, Math.max(0, end - clock.now()));
                 };
                 if (start <= now) enter();
                 else timers.push(clock.setTimeout(enter, start - now));
@@ -331,6 +321,7 @@ export function boardPlayer(
             (sentence.text.length / CHARS_PER_SECOND / (1 + (sentence.rate ?? 0) / 100)) * 1000;
         const byEstimate = () =>
             (ending = clock.setTimeout(end, Math.max(0, estimate - (clock.now() - started))));
+        voice?.room();
         show(sentence);
         report(sentence, 'start');
         space(estimate);

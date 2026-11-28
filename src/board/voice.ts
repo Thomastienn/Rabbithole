@@ -1,6 +1,9 @@
 // The tutor's voice: each sentence's audio streams into its own MediaSource and plays from its first chunk.
 // WebM Opus, because Firefox's MediaSource refuses MP3; chunked playback was proved in Chrome and Firefox
 // (Rabbithole-brd.7). Safari is the owner's check.
+import { boardFills } from './fills';
+import type { Op } from './player';
+
 export type Voice = {
     chunk(id: string, bytes: Uint8Array): void;
     end(id: string): void;
@@ -13,12 +16,15 @@ export type Voice = {
     speed(rate: number): void;
     pause(on: boolean): void;
     stop(): void;
+    // The room tone under a reply, and a pen sound for an op drawing for `ms` of board time (./fills.ts).
+    room(): void;
+    pen(op: Op, ms: number): void;
 };
 
 // Board time runs at the default 1.5×, the speed the caption estimate assumes.
 export const DEFAULT_SPEED = 1.5;
 
-export function streamedVoice(): Voice {
+export function streamedVoice(fills = boardFills()): Voice {
     type Clip = { chunks: Uint8Array[]; ended: boolean; feed?: () => void };
     const clips = new Map<string, Clip>();
     let release = () => {};
@@ -128,6 +134,7 @@ export function streamedVoice(): Voice {
             if (current) current.audio.playbackRate = r;
         },
         pause(on) {
+            fills.pause(on);
             if (!current) return;
             if (on) current.audio.pause();
             else current.start();
@@ -135,6 +142,9 @@ export function streamedVoice(): Voice {
         stop() {
             release();
             clips.clear();
+            fills.stop();
         },
+        room: () => fills.room(),
+        pen: (op, ms) => fills.pen(op, (ms * DEFAULT_SPEED) / rate),
     };
 }

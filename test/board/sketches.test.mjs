@@ -2,15 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { boardOps } from '../../server/board/ops.mjs';
 
-test('board ops: sketch children are checked, and highlight, pointer, pen and the index reach each one', () => {
+test('board ops: sketch children are checked, and pointer, pen and the index reach each one', () => {
     const board = boardOps();
     assert.deepEqual(board.read('w1 cycle at 800,450').item.w, 1200, 'a default box');
     for (const text of ['Evaporation', 'Condensation', 'Rain', 'Collection'])
         assert.ok(board.read(`c${text.length} stage "${text}" in w1`).item, text);
-    assert.deepEqual(board.read('h1 highlight c12').item, {
-        ...{ id: 'h1', kind: 'highlight', names: ['c12'], at: [1080, 244.5] },
-        ...{ w: 239.7, h: 117 },
-    });
+    // The pointer stops 12px right of the stage's box, 199.7 wide, at its middle.
+    assert.deepEqual(board.read('h1 pointer c12').item.at, [1080 + 199.7 / 2 + 12, 244.5]);
     assert.equal(board.read('n1 stack at 800,800 w=1100 h=600').moved, true, 'guarded as a box');
     board.read('p2 page');
     board.read('y1 timeline at 800,450');
@@ -54,7 +52,7 @@ test('board ops: sketch children are checked, and highlight, pointer, pen and th
     assert.match(board.index(), /y1 timeline \(e1 "Normans"\), r1 "A neuron" parts \(p1 "Axon"\)$/);
 });
 
-test('board ops: bars, pie, spectrum and quadrant children are range-checked and reach highlight and the index', () => {
+test('board ops: bars, pie, spectrum and quadrant children are range-checked and reach the pointer and the index', () => {
     const board = boardOps();
     assert.equal(board.read('g1 bars at 800,450').item.h, 520, 'a default box');
     for (const [id, text, value] of [
@@ -68,11 +66,8 @@ test('board ops: bars, pie, spectrum and quadrant children are range-checked and
             board.read(`${id} bar "${text}" value=${value} unit="min" in g1`).item.value,
             value,
         );
-    const wash = board.read('h1 highlight b3').item;
-    assert.deepEqual(
-        [wash.at[0] - wash.w / 2, wash.at[1] - wash.h / 2, wash.w, wash.h],
-        [180, 408, 496, 84], // the mockup rounds the value's width down to 495.9,
-    );
+    // The bar's row spans 200..656 by 428..472 (the mockup rounds the value's width down to 495.9).
+    assert.deepEqual(board.read('h1 pointer b3').item.at, [668, 450]);
     board.read('p2 page');
     board.read('a1 pie at 800,450');
     board.read('s1 slice "Nitrogen" value=78 in a1');

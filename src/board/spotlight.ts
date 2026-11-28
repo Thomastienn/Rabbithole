@@ -4,7 +4,7 @@ import type { Op } from './player';
 // sentence with ops drew or named stays lit and the rest of its page dims; a page the learner opened shows in full.
 // It only changes what is shown.
 
-// What a sentence's ops draw or name: a child names its component, a highlight, pointer or connector its items too;
+// What a sentence's ops draw or name: a child names its component, a pointer or connector its items too;
 // an erase or a page names none.
 export const litBy = (ops: Op[] = []) =>
     ops.flatMap((op) =>
@@ -15,13 +15,13 @@ export const litBy = (ops: Op[] = []) =>
               : [op.id, ...(op.names ?? [])],
     );
 
-// Whether an item dims: the lit set misses it, a child going with its component and a wash with its item.
+// Whether an item dims: the lit set misses it, a child going with its component.
 // Pointers, the learner's strokes and muted items never dim.
 export const dimmed = (op: Op, lit?: Set<string>) =>
     !!lit &&
     op.kind !== 'pointer' &&
     op.kind !== 'stroke' &&
     op.look !== 'muted' &&
-    !lit.has(op.kind === 'highlight' ? (op.names?.[0] ?? op.id) : (op.on ?? op.id)) &&
+    !lit.has(op.on ?? op.id) &&
     // A drawing's path is lit alone when the tutor points at it (mockup Rabbithole-bpl.9).
     !(op.kind === 'path' && lit.has(op.id));

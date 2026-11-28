@@ -49,17 +49,25 @@ const sentenceRate = (sentence) =>
         sentence.ops.some((op) => MATH.has(op.kind)) ? MATH_RATE : 0,
     );
 
-// A reply's sentences as the stream arrives: each with its ops read through the board's guard, its op lines
-// and its rate. A sentence goes to done() once its ops are all written: when the next sentence starts or the
+// A `pause S` line (docs/board-polish-spec.md): the tutor's pause after its sentence, S seconds of board time.
+const PAUSE = /^pause(\s|$)/;
+const pauseMs = (line) => {
+    const m = /^pause\s+(\d*\.?\d+)$/.exec(line);
+    return m && Math.round(Math.min(2, Math.max(0.2, +m[1])) * 1000);
+};
+
+// A reply's sentences as the stream arrives: each with its ops read through the board's guard, its op lines,
+// its rate and the pause the tutor wrote after it, which the reply's last sentence drops. A sentence goes to done() once its ops are all written: when the next sentence starts or the
 // reply ends. read(op) returns { item, moved, error }; moved(item) and skipped(error) report the guard's fixes.
 export function scriptSentences({ read, id, done, moved, skipped }) {
     const reader = scriptReader();
     let writing = null;
-    const flush = () => {
+    const flush = (last = false) => {
         if (!writing) return;
         const sentence = writing;
         writing = null;
         sentence.rate = sentenceRate(sentence);
+        if (last) delete sentence.pause;
         done(sentence);
     };
     const add = (lines, ended = false) => {
@@ -77,6 +85,12 @@ export function scriptSentences({ read, id, done, moved, skipped }) {
                 };
                 continue;
             }
+            if (writing && PAUSE.test(line.op)) {
+                const ms = pauseMs(line.op);
+                if (ms) writing.pause = ms;
+                else skipped('pause needs seconds');
+                continue;
+            }
             const {
                 item,
                 moved: fixed,
@@ -86,9 +100,9 @@ export function scriptSentences({ read, id, done, moved, skipped }) {
             if (item) {
                 writing.ops.push(item);
                 writing.lines.push(line.op);
-            } else skipped(error);
+            } else if (error) skipped(error);
         }
-        if (ended || reader.nextSentence()) flush();
+        if (ended || reader.nextSentence()) flush(ended);
     };
     return { feed: (text) => add(reader.feed(text)), end: () => add(reader.end(), true) };
 }

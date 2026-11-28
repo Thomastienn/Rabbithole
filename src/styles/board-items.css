@@ -84,17 +84,10 @@
     animation: board-write calc(var(--board-ms) / var(--terms)) cubic-bezier(0.65, 0, 0.35, 1)
         calc(var(--board-ms) * var(--term) / var(--terms)) both;
 }
-/* Highlight: a porcelain wash under its item that sweeps in left to right and stays. */
-.board-wash {
-    animation-name: board-write;
-    fill: color-mix(in srgb, var(--rabbithole-paper) 22%, transparent);
-}
-/* Pointer: a porcelain cursor edged in the board's ground. It glides in over the first half of its share
-   from where it last stopped, rests, and fades over the last 0.5s. */
+/* Pointer: a porcelain cursor edged in the board's ground. It glides from where it last stopped in 250ms at 1×
+   (board time runs at 1.5×) and stays until its sentence ends, when the board fades it as passed. */
 .board-item > .board-pointer {
-    animation:
-        board-glide calc(var(--board-ms) / 2) cubic-bezier(0.65, 0, 0.35, 1) both,
-        board-fade 500ms linear max(0ms, var(--board-ms) - 500ms) forwards;
+    animation: board-glide calc(250ms / 1.5) cubic-bezier(0.65, 0, 0.35, 1) both;
     fill: var(--rabbithole-paper);
     stroke: var(--color-background-muted);
     stroke-width: 3;
@@ -373,11 +366,9 @@
     .board-item {
         transition: none;
     }
-    /* The pointer fades in at its item instead of gliding, rests, then fades out. */
+    /* The pointer fades in at its item instead of gliding. */
     .board-item > .board-pointer {
-        animation:
-            board-enter 400ms linear both,
-            board-fade 500ms linear max(0ms, var(--board-ms) - 500ms) forwards;
+        animation: board-enter 400ms linear both;
     }
     .board-point-label,
     .board-part-box,
