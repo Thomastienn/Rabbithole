@@ -263,15 +263,12 @@ export default function Board({
                                         d={`M0 ${(i + 1) * 900}H1600`}
                                     />
                                 ))}
-                                {scene.shown.map(({ op, ms, passed }) => (
+                                {scene.shown.map(({ op, ms }) => (
                                     <BoardItem
                                         key={op.id}
                                         op={op}
                                         ms={ms}
-                                        gone={
-                                            scene.erased.get(op.id) ??
-                                            (passed ? POINTER_FADE_MS : undefined)
-                                        }
+                                        gone={scene.erased.get(op.id)}
                                         row={rows.get(op.id)}
                                         parts={scene.parts.get(op.id)}
                                         dim={dimmed(op, lit)}
@@ -535,14 +532,14 @@ export default function Board({
     );
 }
 
-// A passed pointer fades over this much board time.
-const POINTER_FADE_MS = 300;
-
-// What the board shows of its items: erased items fading out (or gone when replayed), no pointer when replayed,
-// and one 1600×900 space per page.
+// What the board shows of its items: erased items fading out (or gone when replayed), passed pointers fading over
+// 300ms, no pointer when replayed, and one 1600×900 space per page.
 function sceneOf(items: Drawn[]) {
     const erased = new Map(
-        items.flatMap(({ op, ms }) => (op.ids ?? []).map((id) => [id, ms] as const)),
+        items.flatMap(({ op, ms, passed }) => [
+            ...(op.ids ?? []).map((id) => [id, ms] as const),
+            ...(passed ? [[op.id, 300] as const] : []),
+        ]),
     );
     const shown = items.filter(({ op, ms }) => {
         if (op.kind === 'erase' || op.top !== undefined) return false;
