@@ -290,6 +290,38 @@ test('board player: a filler plays while the tutor is silent and never over a se
     player.stop();
 });
 
+test('board player: a later sentence whose voice is over 1 s late, after its pause, is reported late once', () => {
+    const clock = fakeClock();
+    const voice = fakeVoice();
+    const reports = [];
+    const player = boardPlayer(
+        () => {},
+        () => {},
+        (s, phase) => reports.push(`${s.id} ${phase}`),
+        voice,
+        clock,
+    );
+    player.add({ id: '1', text: 'First.', voiced: true });
+    clock.advance(5000);
+    assert.deepEqual(reports, [], 'the session times the filler before the first audio');
+    player.chunk('1', new Uint8Array(3));
+    player.add({ id: '2', text: 'Second.', voiced: true, pause: 500 });
+    player.add({ id: '3', text: 'Third.', voiced: true });
+    player.chunk('2', new Uint8Array(3));
+    voice.playing.at(-1).ended();
+    player.chunk('2', new Uint8Array(3));
+    voice.playing.at(-1).ended();
+    clock.advance(500);
+    clock.advance(999);
+    assert.deepEqual(reports.at(-1), '2 end', 'the pause comes before the wait counts');
+    clock.advance(1);
+    assert.deepEqual(reports.at(-1), '3 late');
+    clock.advance(5000);
+    assert.equal(reports.filter((r) => r.endsWith('late')).length, 1, 'reported once');
+    player.chunk('3', new Uint8Array(3));
+    assert.deepEqual(reports.at(-1), '3 start', 'its first audio starts it');
+});
+
 test('board player: an early audio end still draws every item before advancing', () => {
     const clock = fakeClock();
     const voice = fakeVoice();

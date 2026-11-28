@@ -1,7 +1,13 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-const FILLERS = { hmm: 'Hmm.', okay: 'Okay.', 'good-question': 'Good question.' };
+// The first OPENERS play before a reply's first audio; the short connectors after them play when a later sentence's voice is late.
+const OPENING = { hmm: 'Hmm.', okay: 'Okay.', 'good-question': 'Good question.' };
+const FILLERS = {
+    ...OPENING,
+    ...{ so: 'So...', right: 'Right,', now: 'Now,', and: 'And...', mm: 'Mm.' },
+};
+export const OPENERS = Object.keys(OPENING).length;
 const loaded = new Map();
 
 // The board's filler clips for one voice, synthesized once with speech() and kept under dir;

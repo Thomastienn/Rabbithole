@@ -133,7 +133,9 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
                 onLast((r) => ({ ...r, caption: s.text }));
             },
             // A retimed op comes again with its new entry time and replaces its first draw.
-            (op, ms) => {
+            // A late timer can squeeze an entry to 0 ms, which marks a replayed item, and a replayed pointer is hidden.
+            (op, entry) => {
+                const ms = Math.max(entry, 1);
                 if (viewed.current) {
                     look(undefined);
                     send({ type: 'view' });
