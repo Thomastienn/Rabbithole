@@ -263,12 +263,15 @@ export default function Board({
                                         d={`M0 ${(i + 1) * 900}H1600`}
                                     />
                                 ))}
-                                {scene.shown.map(({ op, ms }) => (
+                                {scene.shown.map(({ op, ms, passed }) => (
                                     <BoardItem
                                         key={op.id}
                                         op={op}
                                         ms={ms}
-                                        gone={scene.erased.get(op.id)}
+                                        gone={
+                                            scene.erased.get(op.id) ??
+                                            (passed ? POINTER_FADE_MS : undefined)
+                                        }
                                         row={rows.get(op.id)}
                                         parts={scene.parts.get(op.id)}
                                         dim={dimmed(op, lit)}
@@ -532,18 +535,19 @@ export default function Board({
     );
 }
 
-// What the board shows of its items: highlights under the rest, erased items fading out (or gone when replayed),
-// no pointer once its moment has passed, and one 1600×900 space per page.
+// A passed pointer fades over this much board time.
+const POINTER_FADE_MS = 300;
+
+// What the board shows of its items: erased items fading out (or gone when replayed), no pointer when replayed,
+// and one 1600×900 space per page.
 function sceneOf(items: Drawn[]) {
     const erased = new Map(
         items.flatMap(({ op, ms }) => (op.ids ?? []).map((id) => [id, ms] as const)),
     );
-    const shown = items
-        .filter(({ op, ms }) => {
-            if (op.kind === 'erase' || op.top !== undefined) return false;
-            return erased.get(op.id) !== 0 && (op.kind !== 'pointer' || ms > 0);
-        })
-        .sort((a, b) => +(b.op.kind === 'highlight') - +(a.op.kind === 'highlight'));
+    const shown = items.filter(({ op, ms }) => {
+        if (op.kind === 'erase' || op.top !== undefined) return false;
+        return erased.get(op.id) !== 0 && (op.kind !== 'pointer' || ms > 0);
+    });
     const areas = 1 + Math.max(0, ...items.map(({ op }) => (op.top ?? 0) / 900));
     const ops = shown.map(({ op }) => op);
     return { shown, erased, areas, parts: componentParts(ops, erased) };

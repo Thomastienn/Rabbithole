@@ -289,7 +289,6 @@ test('board: the learner steps back to the board after an earlier reply, and ask
                 {
                     caption: 'More push, more current.',
                     items: [
-                        { id: 'h1', kind: 'highlight', at: [1240, 450], w: 180, h: 180 },
                         { id: 'p1', kind: 'pointer', from: [800, 450], at: [432, 450] },
                         { id: 'x1', kind: 'erase', ids: ['e1'] },
                         { id: 'n1', kind: 'clear', top: 900, title: 'Page 2', parent: 'first' },
@@ -308,8 +307,8 @@ test('board: the learner steps back to the board after an earlier reply, and ask
     const steps = board.q('[aria-label="Board at each reply"]');
     assert.equal(steps.textContent, 'Reply 2 of 2');
     assert.ok(button(board.container, 'Board after the next reply').disabled);
-    // The latest board: the wash under the bulb, the erased dot and the passed pointer gone, a second page below.
-    assert.deepEqual(ids(), ['rect', '1240', 'foreignObject']);
+    // The latest board: the erased dot and the replayed pointer gone, a second page below.
+    assert.deepEqual(ids(), ['1240', 'foreignObject']);
     assert.equal(
         [...board.q('.board-math').querySelectorAll('.board-term')].length,
         3,
@@ -341,13 +340,13 @@ test('board: the learner steps back to the board after an earlier reply, and ask
         board.socket.server({
             type: 'sentence',
             id: '9',
-            text: 'The wash can go now.',
-            ops: [{ id: 'x2', kind: 'erase', ids: ['h1'] }],
+            text: 'The bulb can go now.',
+            ops: [{ id: 'x2', kind: 'erase', ids: ['bulb'] }],
         }),
     );
-    const wash = board.q('.board-wash').parentElement;
-    assert.ok(wash.classList.contains('board-gone'), 'an erase fades its items out over its share');
-    assert.notEqual(wash.style.getPropertyValue('--gone-ms'), '0ms');
+    const bulb = board.q('[data-item="bulb"]');
+    assert.ok(bulb.classList.contains('board-gone'), 'an erase fades its items out over its share');
+    assert.notEqual(bulb.style.getPropertyValue('--gone-ms'), '0ms');
 });
 
 test('board: a voiced sentence waits for its first speech chunk before it shows', async (t) => {

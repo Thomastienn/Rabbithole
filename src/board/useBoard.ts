@@ -14,8 +14,8 @@ import {
 
 export type BoardState = 'idle' | 'thinking' | 'speaking';
 type Caption = { text: string; muted: boolean };
-// A drawn board item and how long its entry takes.
-export type Drawn = { op: Op; ms: number };
+// A drawn board item and how long its entry takes; a pointer is passed once its sentence has ended.
+export type Drawn = { op: Op; ms: number; passed?: boolean };
 // One board reply: the items it drew and its last sentence.
 type Reply = { items: Drawn[]; caption: string };
 const still = (replies: Reply[]) =>
@@ -56,6 +56,14 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
     const dropSilent = () => setReplies((rs) => (rs.at(-1)?.caption ? rs : rs.slice(0, -1)));
     const onLast = (change: (reply: Reply) => Reply) =>
         setReplies((rs) => [...rs.slice(0, -1), change(rs.at(-1) ?? { items: [], caption: '' })]);
+    // A pointer fades when its sentence ends: the next one starts, the tutor stops, or the learner cuts in.
+    const passPointers = () =>
+        setReplies((rs) =>
+            rs.map((r) => ({
+                ...r,
+                items: r.items.map((d) => (d.op.kind === 'pointer' ? { ...d, passed: true } : d)),
+            })),
+        );
     // The page the learner opened (ADR 0029); none shows the open page. The tutor's next drawn item brings them back.
     const [view, setView] = useState<string>();
     const viewed = useRef<string>(undefined);
@@ -98,6 +106,7 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         setMarks(0);
         setNotice(undefined);
         setLit(undefined);
+        passPointers();
         setCaption({ text, muted: true });
         // Asking returns to the latest board, which the new reply draws on.
         setStep(undefined);
@@ -112,6 +121,7 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         const player = boardPlayer(
             (s) => {
                 setCaption({ text: s.text, muted: false });
+                passPointers();
                 // A sentence that draws or names nothing keeps the lit set it inherited.
                 const names = litBy(s.ops);
                 if (names.length) setLit(new Set(names));
@@ -183,6 +193,7 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
                     player.stop();
                     setPaused(false);
                     setLit(undefined);
+                    passPointers();
                     if (!m.waiting) setCaption((c) => c && { ...c, muted: true });
                     dropSilent();
                 }
