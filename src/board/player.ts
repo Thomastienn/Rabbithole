@@ -1,7 +1,7 @@
 import { DEFAULT_SPEED, type Voice } from './voice';
 
 // The board player: shows the tutor's sentences one at a time, each for as long as it takes to say,
-// and draws each sentence's ops in order over that time.
+// and draws each sentence's ops in order early in it.
 // A voiced sentence starts on its first audio chunk and lasts as long as its audio plays.
 // Times are board time, at the default 1.5×: the learner's speed scales it and pause stops it.
 export type Phase = 'start' | 'end';
@@ -206,6 +206,17 @@ const pauseBefore = (sentence: Sentence, after: Sentence | undefined) =>
         ? CHANGE_MS
         : BEAT_MS;
 
+// How long an op takes to draw at 1×, in ms, by size (prototype/board-pacing); the learner's speed divides it.
+function drawMs(op: Op) {
+    if (op.top !== undefined) return 400; // page or open: the slide to its page
+    if (COMPONENT_KINDS.has(op.kind) && !op.on) return 900;
+    if (op.on) return 400; // a component's child
+    if (op.kind === 'text' || op.kind === 'dot' || op.kind === 'point') return 250;
+    if (op.kind === 'pointer' || op.kind === 'erase') return 300;
+    if (op.kind === 'math') return 500;
+    return 450; // box, circle, line, arrow, plot
+}
+
 // An estimated ten characters per second at 1× plays at fifteen at the default 1.5×.
 const CHARS_PER_SECOND = 15;
 
@@ -254,32 +265,38 @@ export function boardPlayer(
         const ops = sentence.ops ?? [];
         const entries: { start: number; end: number }[] = [];
         drawing = { ops, entries };
-        // Retiming updates items already on the board as well as scheduling the rest.
+        // Draw first (docs/board-polish-spec.md): ops run one after another from the sentence start at their own
+        // lengths, squeezed (never stretched) to end within the first third of the sentence's `ms`. A later length
+        // re-squeezes the ops not yet finished; the one entering keeps its start.
+        const own = ops.map((op) => drawMs(op) / DEFAULT_SPEED);
         const space = (ms: number, audioElapsed?: number) => {
             timers.forEach(clock.clearTimeout);
             timers = [];
             const now = clock.now();
-            const elapsed = audioElapsed ?? now - started;
-            const share = ms / (ops.length || 1);
-            for (const [index, op] of ops.entries()) {
-                const endAt = now - elapsed + (index + 1) * share;
+            const deadline = (audioElapsed === undefined ? started : now - audioElapsed) + ms / 3;
+            const first = ops.findIndex((_, i) => !entries[i] || entries[i].end > now);
+            if (first < 0) return;
+            let at = entries[first]?.start ?? now;
+            const rest = own.slice(first).reduce((a, b) => a + b, 0);
+            const fit = Math.max(0, Math.min(1, (deadline - at) / (rest || 1)));
+            for (let index = first; index < ops.length; index++) {
+                const op = ops[index];
                 const entry = entries[index];
+                const start = entry?.start ?? Math.max(at, now);
+                const end = Math.max(now, start + own[index] * fit);
+                at = end;
                 if (entry) {
-                    const end = audioElapsed === undefined ? entry.start + share : endAt;
-                    if (entry.end === end || (entry.end <= now && end <= now)) continue;
+                    if (entry.end === end) continue;
                     entry.end = end;
-                    draw(op, Math.max(0, end - entry.start));
+                    draw(op, end - start);
                     continue;
                 }
                 const enter = () => {
-                    const start = clock.now();
-                    const end = audioElapsed === undefined ? start + share : endAt;
-                    entries[index] = { start, end };
-                    draw(op, Math.max(0, end - start));
+                    entries[index] = { start: clock.now(), end };
+                    draw(op, Math.max(0, end - clock.now()));
                 };
-                const wait = index * share - elapsed;
-                if (wait <= 0) enter();
-                else timers.push(clock.setTimeout(enter, wait));
+                if (start <= now) enter();
+                else timers.push(clock.setTimeout(enter, start - now));
             }
         };
         const end = () => {

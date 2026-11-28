@@ -74,8 +74,8 @@ test('board player: stopping drops the sentences and ops not yet shown and finis
         id: '1',
         text: 'One sentence that runs a while.',
         ops: [
-            { id: 'a', kind: 'dot' },
-            { id: 'b', kind: 'dot' },
+            { id: 'a', kind: 'line' },
+            { id: 'b', kind: 'line' },
         ],
     });
     player.add({ id: '2', text: 'Two.', ops: [{ id: 'c', kind: 'dot' }] });
@@ -85,12 +85,12 @@ test('board player: stopping drops the sentences and ops not yet shown and finis
     assert.deepEqual(reports, ['1 start']);
     assert.deepEqual(
         drawn,
-        ['a 1033', 'a 200'],
+        ['a 300', 'a 200'],
         'a, 50 ms into its entry, ends 150 ms after the stop; the rest is dropped',
     );
 });
 
-test('board player: a sentence’s ops share its time equally, in order', () => {
+test('board player: a sentence’s ops start with it, one after another at their own lengths, within its first third', () => {
     const clock = fakeClock();
     const drawn = [];
     let at = 0;
@@ -102,31 +102,36 @@ test('board player: a sentence’s ops share its time equally, in order', () => 
         undefined,
         clock,
     );
-    const op = (id) => ({ id, kind: 'line' });
-    // 57 characters last 3.8 s, 42 characters 2.8 s.
+    const op = (id, kind = 'line') => ({ id, kind });
+    // 57 characters last 3.8 s; a line draws in 450 ms at 1×, 300 ms at 1.5×, a dot in 167 ms.
     player.add({
         id: '1',
         text: 'A torch is just a loop, so let me draw its battery first.',
-        ops: [op('bat'), op('bt')],
+        ops: [op('bat'), op('+', 'dot')],
     });
+    // 27 characters last 1.8 s: four lines want 1.2 s, squeezed to its first 600 ms.
     player.add({
         id: '2',
-        text: 'Wire runs from the top, round to the bulb.',
-        ops: [op('w1'), op('w2'), op('w3')],
+        text: 'Wire runs round to the bulb',
+        ops: [op('w1'), op('w2'), op('w3'), op('w4')],
     });
-    assert.deepEqual(drawn, [['bat', 0, 1900]], 'the first op enters with its sentence');
-    advance(1900);
-    advance(1900);
+    assert.deepEqual(drawn, [['bat', 0, 300]], 'the first op enters with its sentence');
     advance(300);
-    advance(934);
-    advance(933);
-    assert.deepEqual(drawn, [
-        ['bat', 0, 1900],
-        ['bt', 1900, 1900],
-        ['w1', 4100, 933],
-        ['w2', 5034, 933],
-        ['w3', 5967, 933],
-    ]);
+    advance(3500);
+    advance(300);
+    for (let i = 0; i < 3; i++) advance(150);
+    assert.deepEqual(
+        drawn,
+        [
+            ['bat', 0, 300],
+            ['+', 300, 167],
+            ['w1', 4100, 150],
+            ['w2', 4250, 150],
+            ['w3', 4400, 150],
+            ['w4', 4550, 150],
+        ],
+        'never stretched to fill the sentence; squeezed to end at its first third',
+    );
     player.stop();
 });
 
@@ -158,8 +163,8 @@ test('board player: a voiced sentence starts on its first audio chunk and lasts 
         voice,
         clock,
     );
-    const op = (id) => ({ id, kind: 'dot' });
-    // 30 characters: an estimated 2 s, so each of three ops would get 667 ms.
+    const op = (id) => ({ id, kind: 'line' });
+    // 30 characters: an estimated 2 s, so three 300 ms lines squeeze into its first 667 ms.
     player.add({
         id: '1',
         text: 'A hypha grows only at its tip.',
@@ -179,17 +184,19 @@ test('board player: a voiced sentence starts on its first audio chunk and lasts 
     assert.deepEqual(voice.chunks, [['1', 3]]);
     assert.deepEqual(
         drawn,
-        [['a', 500, 667]],
+        [['a', 500, 222]],
         'the estimate times ops until the audio length is known',
     );
-    advance(300);
+    advance(100);
     player.chunk('1', new Uint8Array(2));
     player.audioEnd('1');
-    voice.playing[0].duration(3000, 300); // the whole clip is in: 3 s at 1.5×
-    assert.deepEqual(drawn.at(-1), ['a', 800, 1000], 'the first drawing uses the audio too');
-    advance(700);
-    assert.deepEqual(drawn.at(-1), ['b', 1500, 1000], 'the rest share the audio’s time');
-    advance(2000);
+    voice.playing[0].duration(1800, 100); // the whole clip is in: 1.8 s at 1.5×, its first third 600 ms
+    assert.deepEqual(drawn.at(-1), ['a', 600, 200], 'the op entering is re-squeezed to the audio');
+    advance(100);
+    assert.deepEqual(drawn.at(-1), ['b', 700, 200], 'so are the ops not yet drawn');
+    advance(200);
+    assert.deepEqual(drawn.at(-1), ['c', 900, 200]);
+    advance(1500);
     assert.deepEqual(
         reports,
         ['1 start'],
@@ -316,19 +323,19 @@ test('board player: a speed change retimes the sentence mid-way, and pause holds
         voice,
         clock,
     );
-    // 30 characters: 2 s of board time at 1.5×, 1 s for each op.
+    // 30 characters: 2 s of board time at 1.5×; each line takes 300 ms of it.
     player.add({
         id: '1',
         text: 'A hypha grows only at its tip.',
         ops: [{ id: 'a' }, { id: 'b' }],
     });
-    advance(500);
-    player.speed(0.75); // half the default: the remaining 1.5 s of board time now takes 3 s
+    advance(100);
+    player.speed(0.75); // half the default: the remaining 1.9 s of board time now takes 3.8 s
     assert.deepEqual(voice.controls, [['speed', 0.75]], 'speech changes speed at once');
-    advance(999);
+    advance(399);
     assert.deepEqual(drawn, [['a', 0]], 'the sentence carries on, not restarted');
     advance(1);
-    assert.deepEqual(drawn.at(-1), ['b', 1500]);
+    assert.deepEqual(drawn.at(-1), ['b', 500], 'the rest of the op takes twice as long');
     player.pause(true);
     player.add({ id: '2', text: 'Then it hardens.', voiced: true });
     player.chunk('2', new Uint8Array(4));
@@ -339,7 +346,7 @@ test('board player: a speed change retimes the sentence mid-way, and pause holds
     assert.deepEqual(voice.controls.at(-1), ['pause', true]);
     player.pause(false);
     assert.deepEqual(voice.controls.at(-1), ['pause', false]);
-    advance(1999);
+    advance(3399);
     assert.deepEqual(reports, ['1 start'], 'resume continues the same sentence where it stopped');
     advance(1);
     assert.deepEqual(reports, ['1 start', '1 end']);
