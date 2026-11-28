@@ -11,9 +11,12 @@ export const WIPE_DB = -32;
 const gainOf = (db: number) => 10 ** ((VOICE_DB + db) / 20);
 const r = (a: number, b: number) => a + Math.random() * (b - a);
 
+// One context for the page: each board session makes new fills, and contexts are never closed.
+let shared: AudioContext | undefined;
+
 // Without Web Audio (an old browser, the component tests) the board stays as quiet as before.
 export function boardFills(
-    make = typeof AudioContext === 'undefined' ? undefined : () => new AudioContext(),
+    make = typeof AudioContext === 'undefined' ? undefined : () => (shared ??= new AudioContext()),
 ) {
     let ctx: AudioContext | undefined;
     let white: AudioBuffer | undefined;
@@ -120,9 +123,10 @@ export function boardFills(
             const peak = gainOf(wipe ? WIPE_DB : PEN_DB) / 0.16;
             const short = ['text', 'math', 'dot', 'point'].includes(op.kind);
             for (let t = now; t < end - 0.03;) {
-                const len = wipe
-                    ? end - t
-                    : Math.min(short ? r(0.05, 0.12) : r(0.15, 0.38), end - t);
+                let len = wipe ? end - t : Math.min(short ? r(0.05, 0.12) : r(0.15, 0.38), end - t);
+                const gap = short ? r(0.02, 0.05) : r(0.04, 0.09);
+                // No room for another stroke: this one runs to the op's end, so the pen never stops early.
+                if (t + len + gap >= end - 0.03) len = end - t;
                 stroke(
                     t,
                     len,
@@ -131,7 +135,7 @@ export function boardFills(
                     wipe ? 0.6 : 1.1,
                     wipe ? 0.12 : 0.03,
                 );
-                t += len + (short ? r(0.02, 0.05) : r(0.04, 0.09));
+                t += len + gap;
             }
         },
         // Pausing suspends the whole context: the room and strokes mid-draw hold and carry on together.

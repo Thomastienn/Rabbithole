@@ -92,7 +92,7 @@ test('board fills: a pen sound for drawn ops, a softer wipe for erase, and none 
     const strokes = c.sources;
     assert.ok(strokes.length >= 2, 'a long op draws in several strokes');
     assert.ok(
-        Math.abs(Math.max(...strokes.map((s) => s.until)) - (10.01 + 0.9 + 0.02)) < 0.05,
+        Math.abs(Math.max(...strokes.map((s) => s.until)) - (10.01 + 0.9 + 0.02)) < 1e-9,
         'the strokes last the op’s draw length',
     );
     const peak = (g) => Math.max(...g.gain.events.map(([v]) => v));
