@@ -231,8 +231,8 @@ export class Codex {
             defaultFallback: !terra && m === selected,
         }));
     }
-    // A board runs its turns on this shared app-server with the board prompt at low effort (docs/board-spec.md).
-    board({ model, thread, system, history = [] }) {
+    // A board runs its turns on this shared app-server with the board prompt at low effort (docs/board-spec.md); with tutor tools, in a tools worker as chat does.
+    board({ model, thread, system, history = [], nativeTools = [], tools = [], mcp, runTool }) {
         const codex = this;
         return {
             thread,
@@ -249,9 +249,10 @@ export class Codex {
                     // A fresh thread gets the saved discussion, including captions already shown on a board.
                     messages: history.map((m) => ({ ...m, status: 'completed' })),
                     images,
+                    ...{ nativeTools, tools, mcp, runTool },
                 };
                 const onEvent = (e) => {
-                    if (e.type === 'delta') emit(e);
+                    if (e.type === 'delta' || e.type === 'tool') emit(e);
                     if (e.type === 'status') status = e.status;
                     if (e.type === 'usage')
                         usage = {

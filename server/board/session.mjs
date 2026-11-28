@@ -7,7 +7,8 @@ import { boardSystem } from './prompt.mjs';
 import { boardMic } from './mic.mjs';
 import { boardPen } from './pen.mjs';
 import { boardVoicing } from './voicing.mjs';
-import { OPENERS } from './fillers.mjs';
+import { sessionFillers } from './fillers.mjs';
+import { nativeTools as nativeToolsFor } from '../tools/runner.mjs';
 import { conversationHistory } from '../providers/conversationHistory.mjs';
 
 const STOPPED = 'The tutor stopped. Ask again to carry on.';
@@ -26,7 +27,8 @@ export const NO_ANSWER = [
 // then, when voiced, its group's speech under the group's first sentence id as binary frames (one byte of id length, the id, the audio),
 // for a group of more than one { type: 'offsets', id, ids, at } with each sentence's start in the clip in ms, or share: the fraction
 // of the clip before it when word boundaries are missing, and { type: 'audio-end', id } (for each of its ids when it has no audio),
-// a filler clip the same way under the id `filler` when a turn's first audio hasn't started after 1 s or a later sentence reports late,
+// a filler clip the same way under the id `filler` when a turn's first audio hasn't started after 1 s, a later sentence reports late
+// or a tool starts with no sentence saying so, { type: 'tool', tool: { id, name, input, status } } as a tutor tool runs and ends,
 // { type: 'stroke', item, mark } back for each pen stroke, with what it marks or null, and { item } for each page opened,
 // { type: 'board', replies: [{ caption, items }] } once on open: the saved board, each reply's items replayed
 // from its op lines with the reply's last sentence as its caption,
@@ -41,7 +43,10 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
     };
     // ctx.speech makes the session's edge-tts client for its Voice language (server/board/speech.mjs); off in tests.
     const speech = ctx.speech?.(lang) ?? null;
+    // Sentence audio sent so far: a filler written for a late voice is dropped once the voice comes.
+    let voicedChunks = 0;
     const sendAudio = (id, chunk) => {
+        if (id !== 'filler') voicedChunks++;
         if (socket.readyState === socket.OPEN)
             socket.send(Buffer.concat([Buffer.from([id.length]), Buffer.from(id), chunk]));
     };
@@ -54,30 +59,34 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
         // The timer of the wait after a question, until an answer or the next no-answer turn.
         waiting = null,
         // The learner started typing an answer: no wait starts until they send it.
-        drafting = false,
-        // The filler played last, so the next turn's filler differs.
-        lastFiller = -1;
-    // Filler clips load as the board opens, so the first slow turn has them ready.
-    const fillers = speech && ctx.fillers ? ctx.fillers(lang) : null;
+        drafting = false;
     const clock = ctx.boardClock;
     // The turn's first audio has started (or its first sentence has none): no filler from now on.
     const heard = (current) => {
         current.heard = true;
         clock.clearTimeout(current.filler);
     };
-    // A filler never repeats the last one and is never part of the reply. Before a turn's first audio it is one of
-    // the first OPENERS clips; once a later sentence's voice is late (the board reports it) one of the connectors after.
-    const filler = async (current, late = false) => {
-        if (!fillers) return;
-        const clips = await fillers.catch(() => []);
-        if (current.done || !current.heard !== !late) return;
-        const choices = clips
-            .map((_, i) => i)
-            .filter((i) => i !== lastFiller && i >= OPENERS === late);
-        if (!choices.length) return;
-        lastFiller = choices[Math.floor(Math.random() * choices.length)];
-        sendAudio('filler', clips[lastFiller]);
+    const fillers = sessionFillers(ctx, lang, speech, (clip) => {
+        sendAudio('filler', clip);
         send({ type: 'audio-end', id: 'filler' });
+    });
+    const filler = fillers.say;
+    // A tool call shows on the board and in the transcript. The sentence before it is the tutor saying what it does,
+    // so it is spoken now instead of after the call; with none since the last call, a filler says it.
+    const toolEvent = (current, tool, sentences) => {
+        if (store.live(id)) store.toolCall(id, current.reply, tool);
+        if (tool.status === 'running' && !current.tools.has(tool.id)) {
+            current.tools.add(tool.id);
+            sentences.cut();
+            const said = current.sentences.length > current.toolSaid;
+            current.toolSaid = current.sentences.length;
+            if (said) {
+                current.sentences.at(-1).breaks = true;
+                speak(current);
+            } else filler(current, 'tool', { tool }, () => true);
+        }
+        const { output, resources, ...shown } = tool;
+        send({ type: 'tool', tool: shown });
     };
     // The items drawn on this board so far, across its turns.
     let board;
@@ -119,6 +128,17 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
         },
         { settle: false },
     );
+    // Tutor tools as a chat turn gets them, without the app tools (docs/board-spec.md).
+    const toolsFor = async (tree, signal) => {
+        const capable = await ctx.toolCapable(tree).catch(() => false);
+        const settings = store.tutorTools();
+        return {
+            nativeTools: nativeToolsFor({ provider: tree.provider, capable, settings }),
+            tools: await ctx.tools
+                .tools({ provider: tree.provider, capable, settings, signal })
+                .catch(() => []),
+        };
+    };
     const providerFor = (tree) =>
         Object.hasOwn(ctx.providers, tree.provider ?? '') ? ctx.providers[tree.provider] : null;
     const version = (tree) =>
@@ -140,10 +160,16 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
             )
             .catch(() => null);
         model = tree.model ?? (await provider.model?.(tree)) ?? null;
+        const { nativeTools, tools } = await toolsFor({ ...tree, model }, signal);
         if (closed || signal.aborted) return;
         process = provider.board({
             model,
             thread: tree.thread,
+            nativeTools,
+            tools,
+            mcp: ctx.mcp,
+            runTool: (name, input, signal) =>
+                ctx.tools.run(name, input, { conversation: id, reply: turn?.reply, signal }),
             system: boardSystem({
                 ...tree,
                 tutorStyle: store.tutorStyle(),
@@ -152,6 +178,7 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
                 lang,
                 guided,
                 checkIns,
+                tools: nativeTools.length + tools.length > 0,
             }),
             history: conversationHistory(tree),
         });
@@ -188,6 +215,7 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
         if (current.done) return;
         current.done = true;
         heard(current);
+        current.quiet.abort();
         if (status === 'failed') current.job.controller.abort();
         const stopped = status === 'interrupted' ? (ctx.stopping ? 'shutdown' : 'learner') : null;
         save(current, status, stopped);
@@ -266,7 +294,11 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
                 selection = { provider: tree.provider, model };
                 result = await process.ask(
                     prompt,
-                    (e) => !current.done && sentences.feed(e.text),
+                    (e) =>
+                        current.done ||
+                        (e.type === 'tool'
+                            ? toolEvent(current, e.tool, sentences)
+                            : sentences.feed(e.text)),
                     signal,
                     images,
                 );
@@ -380,10 +412,18 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
             // The first sentence of the group voiced last: the next group waits until it starts playing.
             started: -1,
             ended: Promise.withResolvers(),
+            tree,
+            // Stops the turn's fillers as it ends.
+            quiet: new AbortController(),
+            // The tool calls seen, and the sentence count at the last one.
+            tools: new Set(),
+            toolSaid: 0,
         };
         turn = current;
         speech?.warm();
-        if (fillers) current.filler = clock.setTimeout(() => filler(current), 1000);
+        // The opening filler is written as the turn starts, and plays only when the first audio is over 1 s late.
+        const opening = fillers.opening(current);
+        if (opening) current.filler = clock.setTimeout(opening, 1000);
         // The ids let the transcript rail branch from this turn's reply.
         send({ type: 'state', state: 'thinking', user, reply });
         current.job = ctx.jobs.start(
@@ -415,7 +455,16 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
             save(current, 'streaming');
             speak(current);
         }
-        if (phase === 'late') filler(current, true);
+        // One late filler at a time, dropped once any sentence audio comes.
+        if (phase === 'late' && current.heard && !current.late) {
+            const mark = voicedChunks;
+            current.late = filler(
+                current,
+                'late',
+                { said: current.sentences[index - 1]?.text },
+                () => voicedChunks === mark,
+            )?.finally(() => (current.late = null));
+        }
         if (phase === 'end' && index < current.shown) {
             current.over = Math.max(current.over, index + 1);
             settle(current);
@@ -437,6 +486,7 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
         if (turn) stop(turn);
         process?.close();
         speech?.close();
+        fillers.close();
         ctx.jobs.remove(session);
         ended.resolve();
         if (ctx.stopping) socket.terminate();

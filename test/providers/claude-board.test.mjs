@@ -95,7 +95,8 @@ test('Claude board: one warm process for the whole board, in its own session at 
     assert.equal(flag(run, '--model'), 'sonnet');
     assert.equal(flag(run, '--effort'), 'low');
     assert.equal(flag(run, '--tools'), '');
-    assert.deepEqual(JSON.parse(flag(run, '--mcp-config')), { mcpServers: {} });
+    assert.deepEqual(JSON.parse(readFileSync(flag(run, '--mcp-config'))), { mcpServers: {} });
+    assert.equal(run.args.includes('--allowedTools'), false);
     assert.equal(run.env.CLAUDE_CODE_EFFORT_LEVEL, 'low');
     assert.equal(run.system, 'Board prompt.');
     assert.deepEqual(run.sent, ['Why?', 'And then?'], 'no saved discussion to replay');
@@ -119,6 +120,66 @@ test('Claude board: one warm process for the whole board, in its own session at 
             },
         },
     ]);
+});
+
+test('Claude board: tutor tools are its native web tools and app tools served over MCP for its whole life, and report to the turn asking', async (t) => {
+    const { launches, board, flag } = setup(t);
+    const opened = [];
+    const mcp = {
+        async open(toolset, emit, signal) {
+            opened.push({ toolset, emit, signal });
+            return {
+                url: 'http://127.0.0.1:9/mcp',
+                headers: { Authorization: 'Bearer x' },
+                close() {},
+            };
+        },
+    };
+    const tools = [{ name: 'run_python', description: 'Run.', parameters: {} }];
+    const b = board({ nativeTools: ['web_search', 'read_page'], tools, mcp, runTool: () => 'ok' });
+    await b.open();
+    const [run] = launches;
+    assert.equal(flag(run, '--tools'), 'WebSearch,WebFetch');
+    assert.deepEqual(run.args.slice(run.args.indexOf('--allowedTools') + 1).slice(0, 3), [
+        'WebSearch',
+        'WebFetch',
+        'mcp__rabbithole__run_python',
+    ]);
+    assert.deepEqual(JSON.parse(readFileSync(flag(run, '--mcp-config'))).mcpServers.rabbithole, {
+        type: 'http',
+        url: 'http://127.0.0.1:9/mcp',
+        headers: { Authorization: 'Bearer x' },
+    });
+    assert.equal(opened.length, 1);
+    assert.equal(opened[0].toolset.tools, tools);
+    // The CLI's web tool streams its start, then its arguments in the whole message, then its result.
+    const held = Promise.withResolvers();
+    run.hold = held.promise;
+    const events = [];
+    const asked = b.ask('Look it up.', (e) => events.push(e), new AbortController().signal);
+    await new Promise((resolve) => setImmediate(resolve));
+    opened[0].emit({ type: 'tool', tool: { id: 'p1', name: 'run_python', status: 'running' } });
+    const send = (o) => run.child.stdout.write(JSON.stringify(o) + '\n');
+    const use = { type: 'tool_use', id: 'w1', name: 'WebSearch', input: {} };
+    send({ type: 'stream_event', event: { type: 'content_block_start', content_block: use } });
+    send({ type: 'assistant', message: { content: [{ ...use, input: { query: 'hyphae' } }] } });
+    send({
+        type: 'user',
+        message: { content: [{ type: 'tool_result', tool_use_id: 'w1', content: 'found' }] },
+    });
+    held.resolve();
+    const calls = () =>
+        events.filter((e) => e.type === 'tool').map((e) => [e.tool.id, e.tool.status]);
+    await asked;
+    assert.deepEqual(calls(), [
+        ['p1', 'running'],
+        ['w1', 'running'],
+        ['w1', 'running'],
+        ['w1', 'done'],
+    ]);
+    assert.deepEqual(events.find((e) => e.tool?.input?.query)?.tool.input, { query: 'hyphae' });
+    b.close();
+    assert.equal(opened[0].signal.aborted, true, 'closing the board ends its tool server');
 });
 
 test('Claude board: it gets the saved chat once and keeps it out of the chat session', async (t) => {

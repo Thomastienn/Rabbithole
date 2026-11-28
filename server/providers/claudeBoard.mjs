@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { launchArgs } from './findCli.mjs';
+import { toolEvents } from './toolEvents.mjs';
 
 // shortcut: an idle board holds its CLI (about 200 MB) for 10 minutes, like the quick thinking runner; the next question after that waits for a start-up.
 const IDLE = 600000;
@@ -10,8 +11,13 @@ const IDLE = 600000;
 // One long-lived Claude Code CLI for one open board, fed one stream-json user message per learner turn.
 // It runs its own session with the board prompt at low effort: a resumed session keeps the system prompt it was
 // created with, so resuming the chat's session would answer in chat format. The saved discussion goes in once.
+// Tutor tools: nativeTools by name as a chat turn has them, and app tools served over mcp (server/tools/mcp.mjs) for the
+// process's whole life, each call run by runTool; tool events go to the turn asking.
 export class ClaudeBoard {
-    constructor(claude, { model, system, history = [] }) {
+    constructor(
+        claude,
+        { model, system, history = [], nativeTools = [], tools = [], mcp, runTool },
+    ) {
         this.claude = claude;
         this.model = model;
         // The conversation's session after a board turn: none, so the next chat turn replays the saved discussion.
@@ -20,13 +26,29 @@ export class ClaudeBoard {
         this.resumes = null;
         this.system = system;
         this.history = history;
+        this.native = nativeTools.map((name) => (name === 'web_search' ? 'WebSearch' : 'WebFetch'));
+        this.toolset = { tools, runTool };
+        this.mcp = mcp;
         this.idle = IDLE;
         this.child = null;
     }
-    // Starts the process when none runs and restarts the idle countdown.
+    // Starts the process when none runs and restarts the idle countdown. With app tools, their server opens first
+    // and this resolves once the process has started.
     open() {
         this.startIdleTimer();
         if (this.child) return;
+        if (!this.toolset.tools.length || this.served !== undefined) return this.start();
+        this.serving ??= (async () => {
+            this.stopped = new AbortController();
+            const emit = (event) => this.emit?.(event);
+            this.served = await this.mcp
+                .open(this.toolset, emit, this.stopped.signal)
+                .catch(() => null);
+            if (!this.child && !this.closed) this.start();
+        })();
+        return this.serving;
+    }
+    start() {
         const { claude } = this;
         let child;
         try {
@@ -35,6 +57,21 @@ export class ClaudeBoard {
             this.files ??= mkdtempSync(join(claude.cwd, 'board-'));
             const system = join(this.files, 'system.md');
             writeFileSync(system, this.system, { mode: 0o600 });
+            const { served } = this;
+            const mcpConfig = join(this.files, 'mcp.json');
+            writeFileSync(
+                mcpConfig,
+                JSON.stringify({
+                    mcpServers: served
+                        ? { rabbithole: { type: 'http', url: served.url, headers: served.headers } }
+                        : {},
+                }),
+                { mode: 0o600 },
+            );
+            const allowed = [
+                ...this.native,
+                ...(served ? this.toolset.tools.map((t) => `mcp__rabbithole__${t.name}`) : []),
+            ];
             // Until a turn completes there is no session to resume; a restart starts another fresh one.
             this.session = this.resumes ?? randomUUID();
             this.primed = !!this.resumes;
@@ -49,10 +86,11 @@ export class ClaudeBoard {
                     '--verbose',
                     '--include-partial-messages',
                     '--tools',
-                    '',
+                    this.native.join(','),
+                    ...(allowed.length ? ['--allowedTools', ...allowed] : []),
                     '--strict-mcp-config',
                     '--mcp-config',
-                    JSON.stringify({ mcpServers: {} }),
+                    mcpConfig,
                     '--setting-sources',
                     '',
                     '--disable-slash-commands',
@@ -97,7 +135,12 @@ export class ClaudeBoard {
     // One learner turn, with any images ({ type, path }) after its text: emits the text as it streams and resolves
     // with its status, usage and any reason it failed.
     ask(text, emit, signal, images = []) {
-        this.open();
+        const opening = this.open();
+        return opening
+            ? opening.then(() => this.turn(text, emit, signal, images))
+            : this.turn(text, emit, signal, images);
+    }
+    turn(text, emit, signal, images) {
         const child = this.child;
         if (!child)
             return Promise.resolve({
@@ -118,9 +161,13 @@ export class ClaudeBoard {
             let started = this.session;
             let thinking;
             const stop = () => this.end();
+            const native = toolEvents(emit);
+            this.emit = emit;
             const done = (result) => {
+                native.close();
                 this.onLine = null;
                 this.ended = null;
+                this.emit = null;
                 signal.removeEventListener('abort', stop);
                 if (this.child) this.startIdleTimer();
                 resolve(result);
@@ -139,6 +186,26 @@ export class ClaudeBoard {
                 }
                 if (m.type === 'system' && m.subtype === 'init') started = m.session_id ?? started;
                 const event = m.type === 'stream_event' && m.event;
+                // App tools report from the MCP server; the CLI's own web tools report here.
+                const block = event?.type === 'content_block_start' && event.content_block;
+                if (block?.type === 'tool_use' && this.native.includes(block.name))
+                    native.start(block.id, block.name, block.input);
+                // The start has no arguments yet; the whole message has them.
+                if (m.type === 'assistant')
+                    for (const use of m.message?.content ?? [])
+                        if (use.type === 'tool_use' && this.native.includes(use.name))
+                            native.start(use.id, use.name, use.input);
+                if (m.type === 'user')
+                    for (const result of m.message?.content ?? [])
+                        if (result.type === 'tool_result')
+                            native.finish(
+                                result.tool_use_id,
+                                typeof result.content === 'string'
+                                    ? result.content
+                                    : JSON.stringify(result.content),
+                                result.is_error,
+                                m.tool_use_result,
+                            );
                 if (event?.delta?.type === 'text_delta')
                     emit({ type: 'delta', text: event.delta.text });
                 if (event?.type === 'message_delta')
@@ -188,8 +255,12 @@ export class ClaudeBoard {
         this.ended?.();
     }
     close() {
+        this.closed = true;
         clearTimeout(this.timer);
         this.end();
+        this.stopped?.abort();
+        this.served?.close();
+        this.served = null;
         if (this.files) rmSync(this.files, { recursive: true, force: true });
         this.files = null;
     }

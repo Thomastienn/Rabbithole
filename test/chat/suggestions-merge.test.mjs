@@ -293,7 +293,7 @@ test('the usage task check widens to merge on an existing database and keeps eve
     old.record('brief:x', 'brief', { provider: 'claude', model: 'haiku' }, null, 6);
     const sql = old.db.prepare("SELECT sql FROM sqlite_master WHERE name='usage_events'").get().sql;
     old.db.exec(`ALTER TABLE usage_events RENAME TO usage_events_new;
-    ${sql.replace(",'merge'", '')};
+    ${sql.replace(",'merge'", '').replace(",'filler'", '')};
     INSERT INTO usage_events SELECT * FROM usage_events_new;
     DROP TABLE usage_events_new;`);
     assert.throws(() => old.record('merge:r', 'merge', {}, null), /CHECK/);
@@ -311,4 +311,7 @@ test('the usage task check widens to merge on an existing database and keeps eve
     );
     store.record('merge:r', 'merge', { provider: 'claude', model: 'haiku' }, null);
     assert.equal(store.usageEvents().events.at(-1).task, 'merge');
+    // Board fillers widen it once more, in the same upgrade.
+    store.record('filler:f', 'filler', { provider: 'claude', model: 'haiku' }, null);
+    assert.equal(store.usageEvents().events.at(-1).task, 'filler');
 });

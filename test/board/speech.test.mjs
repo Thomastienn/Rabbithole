@@ -3,11 +3,8 @@ import net from 'node:net';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import WebSocket, { WebSocketServer } from 'ws';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { edgeSpeech } from '../../server/board/speech.mjs';
-import { boardFillers } from '../../server/board/fillers.mjs';
+import { fillerPrompt } from '../../server/board/fillers.mjs';
 
 test('board speech warms one socket, streams before the clip ends, and closes on cancellation', async (t) => {
     const server = new WebSocketServer({ host: '127.0.0.1', port: 0 });
@@ -153,27 +150,23 @@ test('board speech keeps the retry socket when a connect it gave up on fails lat
     await dropped;
 });
 
-test('board fillers are synthesized once per voice and read back from disk after', async (t) => {
-    const dir = await mkdtemp(join(tmpdir(), 'fillers-'));
-    t.after(() => rm(dir, { recursive: true, force: true }));
-    const spoken = [];
-    const speech = () => ({
-        async speak(text, chunk) {
-            spoken.push(text);
-            chunk(Buffer.from(text));
-        },
-        close() {},
+test('board fillers: the quick thinking prompt names the moment, the words said last and the Voice language', () => {
+    const opening = fillerPrompt('opening', { question: 'Why recursion?' });
+    assert.match(opening, /"Why recursion\?"/);
+    assert.match(opening, /naming the topic of the question/);
+    assert.doesNotMatch(opening, /Do not repeat|Write them in/);
+    const late = fillerPrompt('late', {
+        question: 'Q',
+        said: 'A base case stops it.',
+        last: 'Ah, recursion.',
     });
-    const clips = await boardFillers(dir, 'en-US-AriaNeural', speech);
-    assert.deepEqual(clips.map(String), [
-        ...['Hmm.', 'Okay.', 'Good question.'],
-        ...['So...', 'Right,', 'Now,', 'And...', 'Mm.'],
-    ]);
-    assert.deepEqual(await boardFillers(dir, 'en-US-AriaNeural', speech), clips);
-    // A later run of the app finds them on disk.
-    const restarted = await import(`../../server/board/fillers.mjs?again`);
-    await restarted.boardFillers(dir, 'en-US-AriaNeural', speech);
-    assert.equal(spoken.length, 8, 'each filler is synthesized once');
-    await boardFillers(dir, 'other-voice', speech);
-    assert.equal(spoken.length, 16, 'another voice gets its own');
+    assert.match(late, /last sentence was "A base case stops it\."/);
+    assert.match(late, /Do not repeat its last words, "Ah, recursion\."/);
+    const tool = fillerPrompt('tool', {
+        question: 'Q',
+        tool: { name: 'read_page', input: { url: 'https://example.com' } },
+        lang: 'de',
+    });
+    assert.match(tool, /its read_page tool with .*example\.com/);
+    assert.match(tool, /Write them in German\./);
 });

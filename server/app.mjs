@@ -40,6 +40,7 @@ import { toolMcp } from './tools/mcp.mjs';
 import { retrieveNeighbourhood } from './neighbourhood.mjs';
 import { pieceStills } from './media/piece-stills.mjs';
 import { boardSockets } from './http/board-socket.mjs';
+import { boardFillers } from './board/fillers.mjs';
 
 // Matching order; each route answers only its own method and paths, and assets answers everything left.
 const ROUTES = [
@@ -76,8 +77,9 @@ export function createApp({
     videoEmbed = null,
     // Makes a board session's speech client for a Voice language (server/board/speech.mjs); off in tests, so boards play captions only.
     speech = null,
-    // The board's filler clips for a Voice language, a promise of audio buffers or null (server/board/fillers.mjs); off in tests like speech.
-    fillers = null,
+    // Writes the board's filler words with the quick thinking model (server/board/fillers.mjs); off in tests like verdicts.
+    // Tests pass a fake (tree, prompt, signal) => words instead.
+    fillers = false,
     // Loads the board's speech models for voice questions (server/board/hearing.mjs); tests pass a fake one.
     hearing = null,
     // Times the board's filler; tests pass a fake one.
@@ -201,6 +203,7 @@ export function createApp({
         : () => {};
     Object.assign(ctx, roles(ctx));
     Object.assign(ctx, quickCalls(ctx));
+    if (fillers === true) ctx.fillers = boardFillers(ctx);
     ctx.syncEndpoints();
     ctx.readyQuick();
     Object.assign(

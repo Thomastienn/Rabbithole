@@ -529,6 +529,21 @@ test('board: speed is 1.5× until the learner picks another, which is remembered
     assert.equal(board.q('[role=status]').textContent, 'Speaking');
 });
 
+test('board: the state label names a running tutor tool, and goes back once it ends', async (t) => {
+    const board = await mount(t, []);
+    await board.type('What does the page say?');
+    await board.act(async () => button(board.container, 'Send').click());
+    const tool = (status) => ({ type: 'tool', tool: { id: 't1', name: 'read_page', status } });
+    await board.act(async () => {
+        board.socket.server({ type: 'state', state: 'thinking', reply: 'r1' });
+        board.socket.server(tool('running'));
+    });
+    const label = () => board.q('.board-line [role=status]').textContent;
+    assert.equal(label(), 'Running read_page…');
+    await board.act(async () => board.socket.server(tool('done')));
+    assert.equal(label(), 'Thinking');
+});
+
 test('board: the chosen speed is still set after a reload', async (t) => {
     const board = await mount(t, [], '1.75');
     assert.ok(button(board.container, 'Speed, 1.75×'));

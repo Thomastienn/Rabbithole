@@ -3,15 +3,20 @@ import { formatLog, errorCause } from '../log.mjs';
 const VOICE_UNAVAILABLE = 'The voice is unavailable, so the tutor carries on in captions.';
 
 // A group of sentences voiced as one request (docs/board-polish-spec.md, Joined speech), once it is closed: a reply's
-// first sentence alone, then consecutive sentences until one carrying a pause, a change of rate, the reply's end
-// or JOIN sentences; null while the group is still open.
+// first sentence alone, then consecutive sentences until one carrying a pause, a change of rate, a tool call after it
+// (breaks), the reply's end or JOIN sentences; null while the group is still open.
 const JOIN = 4;
 const joined = ({ sentences: all, voiced: from, written }) => {
     if (!all[from]) return null;
     if (from === 0) return all.slice(0, 1);
     for (let i = from; ; i++) {
         const next = all[i + 1];
-        if (all[i].pause || i + 1 - from === JOIN || (next && next.rate !== all[from].rate))
+        if (
+            all[i].pause ||
+            all[i].breaks ||
+            i + 1 - from === JOIN ||
+            (next && next.rate !== all[from].rate)
+        )
             return all.slice(from, i + 1);
         if (!next) return written ? all.slice(from) : null;
     }

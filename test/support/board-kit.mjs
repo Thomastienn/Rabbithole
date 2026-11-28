@@ -3,7 +3,8 @@ import WebSocket from 'ws';
 import { open, until } from './diagram-kit.mjs';
 import { notify } from './events.mjs';
 
-// A Claude-like provider whose board process plays scripted output: each ask streams the next script in chunks.
+// A Claude-like provider whose board process plays scripted output: each ask streams the next script in chunks;
+// a chunk that is an object, such as a tool event, is emitted as it is.
 export function boardProvider(scripts, { status = 'completed' } = {}) {
     const provider = {
         boards: [],
@@ -31,7 +32,7 @@ export function boardProvider(scripts, { status = 'completed' } = {}) {
                     board.signals.push(signal);
                     for (const chunk of scripts.shift() ?? []) {
                         if (signal.aborted) return { status: 'interrupted' };
-                        emit({ type: 'delta', text: chunk });
+                        emit(typeof chunk === 'string' ? { type: 'delta', text: chunk } : chunk);
                         await new Promise((resolve) => setImmediate(resolve));
                     }
                     // A script ending in a held promise waits there until the learner leaves.

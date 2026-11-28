@@ -62,7 +62,7 @@ By default the board is **learner-led**: the tutor explains and never quizzes. A
 26. As a learner, I want the first words of an answer within about a second, so that it feels like talking to someone.
 27. As a learner, I want the board to react within a fraction of a second of my question, so that I know I was heard.
 28. As a learner, I want the tutor never silent and still for more than a second while it answers, so that my attention doesn't drift.
-29. As a learner, I want a short spoken filler such as "hmm" only when the answer is genuinely slow to start, and never twice in a row, so that it doesn't get annoying.
+29. As a learner, I want a short spoken filler about my question, such as "Ah, base cases.", only when the answer is genuinely slow to start, and never the same words twice in a row, so that it doesn't get annoying or sound canned.
 30. As a learner, I want the tutor to say what it is about to draw ("let me sketch the forces"), so that I know where to look.
 31. As a learner, I want one small change on the board per sentence, so that I can follow each step.
 32. As a learner, I want every board item to draw itself on, write in or fade in, never pop in, so that the board feels alive and is easy to follow.
@@ -165,7 +165,8 @@ By default the board is **learner-led**: the tutor explains and never quizzes. A
   > - Start at once. Your very first output is sentence 1, then its ops. Do not think about or plan the lesson before writing it.
   > - Plan as you go: decide where each element goes only when you draw it, using the space that is still free. Never lay out the whole board first, in your head or in writing.
 
-- **No tutor tools on a board in v1.** Each tool call would mean seconds of silence. Instead, the board's context gets what a chat turn gets: the inherited context, the memory note, and the learner's explored concepts and familiarity.
+- **Tutor tools on a board** (changed 2026-11-27; v1 had none). The board gets the tutor tools a chat turn gets, without the app tools, and its context still gets the inherited context, the memory note, and the learner's explored concepts and familiarity. A tool call means seconds of silence, so the tutor says what it is doing on a spoken line before each call, in its own words. That sentence is spoken as soon as the call starts, not after it. A call with no such sentence gets a filler about the call. The state label names the running tool, and the call is saved with the reply as a chat turn's is. The Claude board serves its app tools over MCP for the process's whole life; a Codex board runs each turn with tools in a tools worker, as chat does, which costs that turn a CLI start.
+- **A question only the learner can answer** (their topic, their material, where they got lost) goes on a `~> ` line, so it waits without the hint and answer turns. `?> ` is only for a question about what the tutor taught.
 
 ### Op language
 
@@ -206,7 +207,7 @@ By default the board is **learner-led**: the tutor explains and never quizzes. A
   - times out the first byte after 2.5 s and retries once
 - **When speech fails**, the sentence plays as a caption only, timed by its length, and the board carries on. A notice says the voice is unavailable.
 - **The voice:** one fixed voice per Voice language, from a small table; English is `en-US-AriaNeural`. There is no voice picker, and videos keep their own voice.
-- **Filler clips:** a few short clips ("hmm", "okay", "good question") are synthesized once per voice and kept locally. One plays only when a turn's first audio hasn't started after 1 s. They vary, and never play twice in a row.
+- **Fillers** (changed 2026-11-27; v1 had a fixed list of clips): the quick thinking model writes a filler's few words for its moment, in the Voice language, and edge-tts voices them. There is no fixed list. A turn's opening filler is written as the turn starts and names the question's topic; it plays only when the first audio hasn't started after 1 s. A later sentence the board reports late gets a connector that carries on from the last sentence, dropped if that voice comes first. A tool call without a spoken sentence before it gets one about the call. A filler never repeats the words said last and is never saved. Measured on Claude Haiku with a warm runner, writing and voicing one takes 0.9 to 1.6 s, so an opening filler is ready about when the 1 s wait ends.
 
 ### Speech recognition and voice detection
 
@@ -300,7 +301,7 @@ Good tests here check what the learner gets: what is said, drawn, saved and sent
   - the guard moving overlapping and off-board items
   - `clear` starting fresh space
   - the speech first-byte timeout, the retry, and the caption-only fallback
-  - a filler clip playing only after 1 s without audio, and never twice in a row
+  - a filler playing only after 1 s without audio, a late connector, a tool call's filler, and never the same words twice in a row
   - the tutor-guided wait, hint and carry-on, using the fake clock
   - push-to-talk replacing voice detection
   - leaving the board mid-reply
@@ -326,7 +327,6 @@ Good tests here check what the learner gets: what is said, drawn, saved and sent
 
 - Side boards: a board opening its own branch when a question drifts. A conversation has one board in v1.
 - The quick thinking model voicing the chat model's reasoning during long thinking, which matters only at higher effort.
-- Tutor tools on a board.
 - Local speech output (Kokoro or Piper). This is the fallback if edge-tts proves unreliable, and for offline use.
 - A voice picker, and audio replay of earlier replies.
 - Learner tools beyond the pen: highlighter, laser pointer and eraser.

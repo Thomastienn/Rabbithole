@@ -94,7 +94,7 @@ export function open(path) {
         // Durable usage: counts, time and attribution only, so deleting content never shrinks history. NULL counts = not reported.
         if (!this.db.prepare("SELECT 1 FROM sqlite_master WHERE name='usage_events'").get()) {
             this.db
-                .exec(`CREATE TABLE usage_events (id TEXT PRIMARY KEY, at INTEGER NOT NULL, provider TEXT, model TEXT, task TEXT NOT NULL CHECK(task IN ('chat','suggestions','compaction','diagram','video','title','verdict','brief','merge')),
+                .exec(`CREATE TABLE usage_events (id TEXT PRIMARY KEY, at INTEGER NOT NULL, provider TEXT, model TEXT, task TEXT NOT NULL CHECK(task IN ('chat','suggestions','compaction','diagram','video','title','verdict','brief','merge','filler')),
           input INTEGER, output INTEGER, cacheRead INTEGER, CHECK((input IS NULL) = (output IS NULL) AND (input IS NULL) = (cacheRead IS NULL)));
           CREATE INDEX usage_events_at ON usage_events(at);
           INSERT OR IGNORE INTO usage_events(id,at,task,input,output,cacheRead) SELECT 'chat:'||id,usage->>'at','chat',usage->>'input',usage->>'output',usage->>'cacheRead' FROM messages WHERE usage IS NOT NULL;
@@ -162,6 +162,23 @@ export function open(path) {
             this.transaction(() =>
                 this.db.exec(`ALTER TABLE usage_events RENAME TO usage_events_old;
           CREATE TABLE usage_events (id TEXT PRIMARY KEY, at INTEGER NOT NULL, provider TEXT, model TEXT, task TEXT NOT NULL CHECK(task IN ('chat','suggestions','compaction','diagram','video','title','verdict','brief','merge')),
+            input INTEGER, output INTEGER, cacheRead INTEGER, message TEXT REFERENCES messages(id) ON DELETE SET NULL, stage TEXT, cut INTEGER, reasoning INTEGER, ended INTEGER, CHECK((input IS NULL) = (output IS NULL) AND (input IS NULL) = (cacheRead IS NULL)));
+          INSERT INTO usage_events(id,at,provider,model,task,input,output,cacheRead,message,stage,cut,reasoning,ended)
+            SELECT id,at,provider,model,task,input,output,cacheRead,message,stage,cut,reasoning,ended FROM usage_events_old;
+          DROP TABLE usage_events_old;
+          CREATE INDEX usage_events_at ON usage_events(at);
+          CREATE INDEX usage_events_message ON usage_events(message);`),
+            );
+        // Board fillers written by quick thinking widen the task check again; this rebuild keeps every later column.
+        if (
+            !this.db
+                .prepare("SELECT sql FROM sqlite_master WHERE name='usage_events'")
+                .get()
+                .sql.includes("'filler'")
+        )
+            this.transaction(() =>
+                this.db.exec(`ALTER TABLE usage_events RENAME TO usage_events_old;
+          CREATE TABLE usage_events (id TEXT PRIMARY KEY, at INTEGER NOT NULL, provider TEXT, model TEXT, task TEXT NOT NULL CHECK(task IN ('chat','suggestions','compaction','diagram','video','title','verdict','brief','merge','filler')),
             input INTEGER, output INTEGER, cacheRead INTEGER, message TEXT REFERENCES messages(id) ON DELETE SET NULL, stage TEXT, cut INTEGER, reasoning INTEGER, ended INTEGER, CHECK((input IS NULL) = (output IS NULL) AND (input IS NULL) = (cacheRead IS NULL)));
           INSERT INTO usage_events(id,at,provider,model,task,input,output,cacheRead,message,stage,cut,reasoning,ended)
             SELECT id,at,provider,model,task,input,output,cacheRead,message,stage,cut,reasoning,ended FROM usage_events_old;

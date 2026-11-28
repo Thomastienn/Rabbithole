@@ -206,13 +206,13 @@ test('board: failed speech is retried once, then the turn carries on in captions
     assert.equal(of('notice').length, 1, 'one notice per turn');
 });
 
-test('board: a filler plays only when a turn’s first audio is over 1 s late, never the same twice, and is not saved', async (t) => {
+test('board: an opening filler is written by quick thinking as the turn starts, plays only when the first audio is over 1 s late, and is not saved', async (t) => {
     const provider = boardProvider([['> One.\n'], ['> Two.\n'], ['> Three.\n']]);
     let release = Promise.withResolvers();
     const client = {
         warm() {},
         async speak(text, chunk) {
-            if (text !== 'Three.') await release.promise;
+            if (['One.', 'Two.'].includes(text)) await release.promise;
             chunk(Buffer.from(text));
         },
         close() {},
@@ -223,11 +223,11 @@ test('board: a filler plays only when a turn’s first audio is over 1 s late, n
         setTimeout: (run) => (timers.push(run), run),
         clearTimeout: (run) => timers.includes(run) && timers.splice(timers.indexOf(run), 1),
     };
-    const fillers = Promise.resolve([Buffer.from('hmm'), Buffer.from('okay'), Buffer.from('ah')]);
-    // A fixed pick: without the no-repeat rule both slow turns would play 'hmm'.
-    t.mock.method(Math, 'random', () => 0);
+    const prompts = [];
+    const words = ['Ah, hyphae.', 'Right, the branches.', 'Okay, spores.'];
+    const fillers = async (tree, prompt) => (prompts.push(prompt), words[prompts.length - 1]);
     const { env, id, connect } = await setup(t, provider, {
-        app: { speech: () => client, fillers: () => fillers, boardClock },
+        app: { speech: () => client, fillers, boardClock },
     });
     const board = connect();
     await opened(board.ws);
@@ -258,9 +258,12 @@ test('board: a filler plays only when a turn’s first audio is over 1 s late, n
     await turn('Last?', false);
     assert.deepEqual(
         played,
-        ['hmm', 'okay'],
-        'one filler per slow turn, never the same twice in a row, none once audio has started',
+        ['Ah, hyphae.', 'Right, the branches.'],
+        'one filler per slow turn, none once audio has started',
     );
+    assert.equal(prompts.length, 3, 'each turn writes its opening filler as it starts');
+    assert.match(prompts[0], /"Why\?"[\s\S]*naming the topic/);
+    assert.match(prompts[1], /Do not repeat its last words, "Ah, hyphae\."/);
     assert.deepEqual(
         messages(env, id)
             .filter((m) => m.role === 'assistant')
@@ -270,7 +273,7 @@ test('board: a filler plays only when a turn’s first audio is over 1 s late, n
     );
 });
 
-test('board: a later sentence the board reports late gets a connector filler, never the same twice, not saved', async (t) => {
+test('board: a later sentence the board reports late gets a written connector that follows the last sentence, not saved', async (t) => {
     const provider = boardProvider([['> One.\n> Two.\n']]);
     const release = Promise.withResolvers();
     const client = {
@@ -283,10 +286,10 @@ test('board: a later sentence the board reports late gets a connector filler, ne
     };
     // A clock that never fires: only the board's late reports bring fillers here.
     const boardClock = { setTimeout: () => null, clearTimeout() {} };
-    const clips = ['hmm', 'okay', 'good', 'so', 'right', 'now'].map((c) => Buffer.from(c));
-    t.mock.method(Math, 'random', () => 0);
+    const prompts = [];
+    const fillers = async (tree, prompt) => (prompts.push(prompt), `And so ${prompts.length}`);
     const { env, id, connect } = await setup(t, provider, {
-        app: { speech: () => client, fillers: () => Promise.resolve(clips), boardClock },
+        app: { speech: () => client, fillers, boardClock },
     });
     const board = connect();
     await opened(board.ws);
@@ -310,7 +313,9 @@ test('board: a later sentence the board reports late gets a connector filler, ne
     board.send({ type: 'progress', sentence: two.id, phase: 'start' });
     board.send({ type: 'progress', sentence: two.id, phase: 'end' });
     await board.next('state', (e) => e.state === 'idle');
-    assert.deepEqual(played, ['so', 'right'], 'connectors only, never the same twice in a row');
+    // prompts[0] is the turn's opening filler, which never played: the first audio came at once.
+    assert.deepEqual(played, ['And so 2', 'And so 3']);
+    assert.match(prompts[1], /last sentence was "One\."/);
     assert.deepEqual(
         messages(env, id)
             .filter((m) => m.role === 'assistant')
@@ -320,9 +325,95 @@ test('board: a later sentence the board reports late gets a connector filler, ne
     );
 });
 
-test('board: a Voice language other than English speaks, prompts and recognizes in it, without English fillers', async (t) => {
+test('board: tutor tools show on the board and in the transcript; the sentence before a call is spoken at once, and a call with none gets a filler', async (t) => {
+    const tool = (id, status) => ({
+        type: 'tool',
+        tool: {
+            id,
+            name: 'read_page',
+            input: { url: 'https://example.com' },
+            status,
+            output: status === 'done' ? 'page text' : null,
+            elapsed: 5,
+        },
+    });
+    const provider = boardProvider([
+        [
+            '> One.\n> Let me read that page.',
+            tool('t1', 'running'),
+            tool('t1', 'done'),
+            tool('t2', 'running'),
+            tool('t2', 'done'),
+            '> It says hi.\n> Done.\n',
+        ],
+    ]);
+    const spoken = [];
+    const client = {
+        warm() {},
+        async speak(text, chunk) {
+            spoken.push(text);
+            notify();
+            chunk(Buffer.from(text));
+        },
+        close() {},
+    };
+    const prompts = [];
+    const fillers = async (tree, prompt) => (prompts.push(prompt), 'Reading it now.');
+    const boardClock = { setTimeout: () => null, clearTimeout() {} };
+    const { env, id, connect } = await setup(t, provider, {
+        app: { speech: () => client, fillers, boardClock },
+    });
+    const board = connect();
+    await opened(board.ws);
+    board.send({ type: 'ask', text: 'What does the page say?' });
+    await until(() => board.events.filter((e) => e.type === 'sentence').length === 4);
+    const { options } = provider.boards[0];
+    assert.deepEqual(options.nativeTools, ['web_search', 'read_page'], 'as a chat turn gets them');
+    assert.match(options.system, /Before each tool call, say on a spoken line what you are doing/);
+    assert.doesNotMatch(options.system, /Do not use tools/);
+    const order = board.events
+        .filter((e) => e.type === 'sentence' || e.type === 'tool')
+        .map((e) => (e.type === 'tool' ? `${e.tool.id} ${e.tool.status}` : e.text));
+    assert.deepEqual(order.slice(0, 3), ['One.', 'Let me read that page.', 't1 running']);
+    const tools = board.events.filter((e) => e.type === 'tool');
+    assert.ok(
+        tools.every((e) => !('output' in e.tool)),
+        'the board gets no tool output',
+    );
+    await until(() => played().length);
+    assert.match(
+        prompts.at(-1),
+        /its read_page tool with .*example\.com/,
+        'a call with no sentence',
+    );
+    const ids = board.events.filter((e) => e.type === 'sentence').map((e) => e.id);
+    // Fillers share the fake voice: the opening one is voiced as the turn starts, even though it never plays.
+    const said = () => spoken.filter((text) => text !== 'Reading it now.');
+    for (const sentence of ids) board.send({ type: 'progress', sentence, phase: 'start' });
+    await until(() => said().length === 3);
+    assert.deepEqual(
+        said(),
+        ['One.', 'Let me read that page.', 'It says hi. Done.'],
+        'the sentence before a call closes its group',
+    );
+    for (const sentence of ids) board.send({ type: 'progress', sentence, phase: 'end' });
+    await board.next('state', (e) => e.state === 'idle');
+    const reply = messages(env, id).at(-1);
+    assert.deepEqual(
+        env.store.toolCalls(reply.id).map((c) => [c.id, c.status]),
+        [
+            ['t1', 'done'],
+            ['t2', 'done'],
+        ],
+    );
+    function played() {
+        return board.events.filter((e) => e.type === 'audio' && e.id === 'filler');
+    }
+});
+
+test('board: a Voice language other than English speaks, prompts and recognizes in it', async (t) => {
     const provider = boardProvider([]);
-    const asked = { speech: [], fillers: [], hearing: [], downloaded: [] };
+    const asked = { speech: [], hearing: [], downloaded: [] };
     const hearing = (progress, lang) => {
         asked.hearing.push(lang);
         return Promise.resolve({ detector: () => async () => 0, recognize: async () => '' });
@@ -332,7 +423,6 @@ test('board: a Voice language other than English speaks, prompts and recognizes 
     const { env, connect } = await setup(t, provider, {
         app: {
             speech: (lang) => (asked.speech.push(lang), client),
-            fillers: (lang) => (asked.fillers.push(lang), null),
             hearing,
         },
     });
@@ -346,7 +436,7 @@ test('board: a Voice language other than English speaks, prompts and recognizes 
     );
     board.send({ type: 'mic', on: true });
     assert.equal((await board.next('mic')).status, 'on');
-    assert.deepEqual(asked, { speech: ['de'], fillers: ['de'], hearing: ['de'], downloaded: [] });
+    assert.deepEqual(asked, { speech: ['de'], hearing: ['de'], downloaded: [] });
 
     // A language outside the voice table is English, with no language line in the prompt.
     const other = connect(`?csrf=${csrf}&lang=xx`);

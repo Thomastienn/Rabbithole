@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { boardSocket } from '../serverAccess';
-import type { Message } from '../chat/turn';
+import { toolLine, type Message, type ToolCall } from '../chat/turn';
 import { boardPlayer, type Op } from './player';
 import { streamedVoice } from './voice';
 import { litBy } from './spotlight';
@@ -14,6 +14,7 @@ import {
 
 export type BoardState = 'idle' | 'thinking' | 'speaking';
 type Caption = { text: string; muted: boolean };
+const STATES = { thinking: 'Thinking', speaking: 'Speaking' } as const;
 // A drawn board item and how long its entry takes; a pointer is passed once its sentence has ended.
 export type Drawn = { op: Op; ms: number; passed?: boolean };
 // One board reply: the items it drew and its last sentence.
@@ -49,6 +50,8 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
     const [caption, setCaption] = useState<Caption>();
     // The tutor's question or check-in waits for the learner: the waiting cue shows until they speak, type or send.
     const [waiting, setWaiting] = useState(false);
+    // The tutor tool running now, if any: the state label names it.
+    const [tool, setTool] = useState<ToolCall>();
     const [replies, setReplies] = useState<Reply[]>([]);
     // The earlier reply the learner stepped back to; none shows the latest board.
     const [step, setStep] = useState<number>();
@@ -192,6 +195,7 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
                 // Idle ends the reply: anything not yet shown is dropped and the last caption is held,
                 // muted, except a question waiting for its answer, which stays in ink.
                 if (m.state === 'idle') {
+                    setTool(undefined);
                     player.stop();
                     setPaused(false);
                     setLit(undefined);
@@ -216,6 +220,10 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
                 onLast((r) => ({ ...r, items: [...r.items, { op: m.item, ms: 0 }] }));
                 if (m.mark) setMarks((n) => n + 1);
             }
+            if (m.type === 'tool')
+                setTool((t) =>
+                    m.tool.status === 'running' ? m.tool : t?.id === m.tool.id ? undefined : t,
+                );
             if (m.type === 'notice') setNotice(m.notice);
             if (m.type === 'mic') {
                 if (m.status === 'off') stopMic();
@@ -365,6 +373,8 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         });
     return {
         state,
+        // The state label: the running tutor tool, such as "Running read_page…", else the state.
+        label: tool ? toolLine([tool]) : STATES[state as keyof typeof STATES],
         turns,
         leave,
         speed,

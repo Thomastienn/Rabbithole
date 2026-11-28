@@ -41,7 +41,6 @@ function boardPoint(e: PointerEvent<SVGSVGElement>): Point {
     return [Math.round((e.clientX - r.left) * scale), Math.round((e.clientY - r.top) * scale)];
 }
 
-const STATES = { thinking: 'Thinking', speaking: 'Speaking' } as const;
 const MB = (bytes = 0) => Math.round(bytes / 1e6);
 // How long a page the learner opens takes to slide in.
 const VIEW_MS = 400;
@@ -348,7 +347,7 @@ export default function Board({
                     ) : held ? (
                         <span className="board-state listening">Listening</span>
                     ) : board.state !== 'idle' ? (
-                        <span className={`board-state ${board.state}`}>{STATES[board.state]}</span>
+                        <span className={`board-state ${board.state}`}>{board.label}</span>
                     ) : (
                         mic.status === 'on' &&
                         !ptt && <span className="board-state listening">Listening</span>

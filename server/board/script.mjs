@@ -104,5 +104,13 @@ export function scriptSentences({ read, id, done, moved, skipped }) {
         }
         if (ended || reader.nextSentence()) flush(ended);
     };
-    return { feed: (text) => add(reader.feed(text)), end: () => add(reader.end(), true) };
+    return {
+        feed: (text) => add(reader.feed(text)),
+        end: () => add(reader.end(), true),
+        // A tool call ends the line being written: the sentence above it is complete.
+        cut() {
+            add(reader.end());
+            flush();
+        },
+    };
 }

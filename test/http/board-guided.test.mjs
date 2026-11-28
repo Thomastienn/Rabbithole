@@ -46,6 +46,12 @@ test('board: the board prompt says learner-led by default and tutor-guided when 
     await opened(connect(`?csrf=${csrf}&mode=guided`).ws);
     await until(() => provider.boards[1]?.opened);
     assert.match(provider.boards[1].options.system, /This board is tutor-guided/);
+    // A question only the learner can answer waits without the hint and answer turns.
+    for (const { options } of provider.boards)
+        assert.match(
+            options.system,
+            /Use "\?> " only for a question about what you taught[^\n]*use a "~> " line: it ends your reply and waits without hints/,
+        );
 });
 
 test('board: the board prompt carries the check-ins level, with no check-in block for Off', async (t) => {

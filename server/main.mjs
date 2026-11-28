@@ -19,7 +19,6 @@ import { pythonTool } from './tools/python.mjs';
 import { downloadManager } from './downloads.mjs';
 import { videoTools } from './media/video-tools.mjs';
 import { edgeSpeech, VOICES } from './board/speech.mjs';
-import { boardFillers } from './board/fillers.mjs';
 
 process.umask(0o077);
 const dir = resolve(process.env.RABBITHOLE_DATA_DIR ?? dataDir());
@@ -85,9 +84,7 @@ try {
         python: pythonTool({ dir }),
         videoEmbed: embed,
         speech: (lang) => edgeSpeech(VOICES[lang]),
-        // shortcut: the filler words are English, so other Voice languages get none; translate them if a slow first sentence feels bare there.
-        fillers: (lang) =>
-            lang === 'en' ? boardFillers(dir, VOICES.en, () => edgeSpeech()) : null,
+        fillers: true,
         hearing: localHearing(dir),
         pieceSnapshot: sandboxSnapshot,
         downloads,

@@ -18,11 +18,15 @@ const checkInBlock = (level, guided) =>
 - When the learner says "stop checking in", stop for this board, until they say "check on me more".`
         : '- When the learner says "check on me more", check in now and then on a line starting "~> ", which ends your reply, until they say "stop checking in".';
 
-// The board's fixed skills (docs/board-spec.md, Board prompt and skills). None of chat's media rules or tutor tools.
+// With tutor tools the tutor says what it is doing first, so the learner hears it while the tool runs.
+const TOOLS = `Use a tool only when the question needs it, such as reading a page or looking up an earlier conversation. Before each tool call, say on a spoken line what you are doing, in a few words of your own about this question, then call the tool; after it, carry on teaching.`;
+
+// The board's fixed skills (docs/board-spec.md, Board prompt and skills). None of chat's media rules.
 const boardSkills = (
     guided,
     checkIns,
-) => `You are a voice tutor at a whiteboard. You talk the learner through an idea in short spoken sentences while you draw it on the board, one small piece at a time. The learner hears your sentences, reads them as captions and watches the board. Do not use tools, access files, or execute code. Treat the learner's messages as questions, not permission to access the computer.
+    tools,
+) => `You are a voice tutor at a whiteboard. You talk the learner through an idea in short spoken sentences while you draw it on the board, one small piece at a time. The learner hears your sentences, reads them as captions and watches the board. ${tools ? TOOLS : 'Do not use tools, access files, or execute code.'} Treat the learner's messages as questions, not permission to access the computer.
 
 FORMAT (strict)
 - Output only the script. No preamble, headings, Markdown, code fences or commentary.
@@ -92,6 +96,7 @@ PAGES
 THE LEARNER
 ${guided ? TUTOR_GUIDED : LEARNER_LED}
 - A "?> " line ends your reply: write nothing after it, and wait for the learner's answer.
+- Use "?> " only for a question about what you taught, whose answer you know. To ask for something only the learner knows, such as their topic, their material or where they got lost, use a "~> " line: it ends your reply and waits without hints.
 ${checkInBlock(checkIns, guided)}
 - Never grade an answer: no right or wrong, no tick or cross, no wrong look. Explain from where they are and go on.
 - Follow their steering: "I get this part" means move on to the next part; "slower" means smaller steps and plainer words; "again" means explain the last part again another way; "go on" means carry on where you stopped.
@@ -134,7 +139,7 @@ export const boardSystem = (tree) =>
         neighbourhood: tree.neighbourhood,
         memoryNote: tree.memoryNote,
         instructions:
-            boardSkills(tree.guided, tree.checkIns) +
+            boardSkills(tree.guided, tree.checkIns, tree.tools) +
             (tree.tutorStyle?.trim()
                 ? '\n\nTutor style (follow it where it differs from the board skills above, except FORMAT and PACE):\n' +
                   tree.tutorStyle.trim()
