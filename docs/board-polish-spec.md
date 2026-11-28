@@ -171,7 +171,7 @@ The app no longer adds pauses of its own. The tutor writes a pause only where th
 ### Fillers
 
 - The board's existing filler clips (synthesized once per voice and cached) keep playing before a reply's first audio.
-- They now also play when the next sentence is due but its voice hasn't arrived after about 1 s of board time. The 1 s threshold is a starting value to tune. That filler never repeats the last one, never overlaps a sentence and never enters the transcript. The first sentence's audio cuts a filler off, as it does today.
+- They now also play when the next sentence is due but its voice hasn't arrived after about 1 s of board time. The 1 s threshold is a starting value to tune. That filler never repeats the last one, never overlaps a sentence and never enters the transcript. A filler that has started finishes before the sentence plays (changed 2026-11-27).
 - The filler set may grow from the three current clips to include short connectors such as "So…", "Right," and "Mm." The prototype used "So...", "Okay,", "Right,", "Now,", "And..." and "Mm." with trimmed silence, 0.3–0.6 s each.
 
 ### Room tone and pen sounds

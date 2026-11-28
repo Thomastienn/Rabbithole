@@ -263,7 +263,8 @@ export function boardPlayer(
     const pending = new Map<string, 'waiting' | 'chunked' | 'silent' | 'joined'>();
     const next = () => {
         const sentence = queue[0];
-        if (current || !sentence || paused) return;
+        // A filler that has started finishes first; the sentence plays as it ends.
+        if (current || !sentence || paused || playing === 'filler') return;
         const audio = pending.get(sentence.id);
         if (gap) return;
         const due = ended === undefined ? 0 : ended + (last?.pause ?? 0) - clock.now();
@@ -423,12 +424,16 @@ export function boardPlayer(
             next();
         },
         // The sentence's speech streams in chunks; its first chunk starts it.
-        // A filler plays only while no sentence does, and the first sentence's speech cuts it off.
+        // A filler plays only while no sentence does, and the sentence after it waits for its end.
         chunk(id: string, bytes: Uint8Array) {
             if (id === 'filler') {
                 if (current || playing || !voice) return;
                 playing = id;
-                const over = () => playing === id && (playing = undefined);
+                const over = () => {
+                    if (playing !== id) return;
+                    playing = undefined;
+                    next();
+                };
                 voice.chunk(id, bytes);
                 return voice.play(id, { duration() {}, ended: over, failed: over });
             }
