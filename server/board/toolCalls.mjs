@@ -6,8 +6,9 @@ const WAIT_FILLS = 2;
 // in the transcript. The sentences before a call are the tutor saying what it does, so they are spoken now instead of
 // after the call; with none since the last call, a filler says it. voiced(): the sentence audio sent so far.
 export function boardToolCalls({ store, id, send, speak, fillers, clock, voiced }) {
-    // While an announced tool runs, each WAIT_FILL_MS of silence after its intent, then after the wait filler before,
-    // plays a wait filler written ahead, up to WAIT_FILLS. New speech, the tool's end or the turn's end drop them.
+    // While an announced tool runs and the tutor reads its result, each WAIT_FILL_MS of silence after its intent, then
+    // after the wait filler before, plays a wait filler written ahead, up to WAIT_FILLS. New speech or the turn's end
+    // drop them.
     const toolWait = (current, tool, from) => {
         const intent = current.sentences.length - 1;
         const write = () => fillers.later(current, 'wait', { tool, from });
@@ -42,9 +43,7 @@ export function boardToolCalls({ store, id, send, speak, fillers, clock, voiced 
     return {
         event(current, tool, sentences) {
             if (store.live(id)) store.toolCall(id, current.reply, tool);
-            if (tool.status !== 'running') {
-                if (current.wait?.id === tool.id) current.wait = null;
-            } else if (!current.tools.has(tool.id)) {
+            if (tool.status === 'running' && !current.tools.has(tool.id)) {
                 current.tools.add(tool.id);
                 sentences.cut();
                 const from = current.toolSaid;

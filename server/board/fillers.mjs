@@ -54,7 +54,7 @@ export function fillerPrompt(
               ? `Your next sentence is ${quoted(next, 200)}, but its voice is late. Say a short connector that leads from what you said into it, such as "And that means...", without saying any of its content.`
               : moment === 'wait'
                 ? // In prototype/board-silence, wait fillers restated the intent or reacted mid-reply, which sounds like starting over.
-                  `Your last words were ${intent.map((s) => quoted(s, 160)).join(' ')} ${DATA}, saying you are using ${using}: do not restate this. It is still running. Carry on from those words with one more sentence of up to 10 words while you wait, such as what you will look for in it or how it links to what you drew. Do not react to the question, such as "Good question". Never claim what the tool will find: no fact, name or number you have not already said.`
+                  `Your last words were ${intent.map((s) => quoted(s, 160)).join(' ')} ${DATA}, saying you are using ${using}: do not restate this. You are waiting for it or reading what it returned. Carry on from those words with one more sentence of up to 10 words while you wait, such as what you will look for in it or how it links to what you drew. Do not react to the question, such as "Good question". Never claim what the tool will find: no fact, name or number you have not already said.`
                 : `You are using ${using}. Say what you are doing, about this question in your own words, such as "Reading that page now."`,
     );
     if (last) lines.push(`Do not repeat your last words, ${quoted(last)}.`);

@@ -85,10 +85,9 @@ test('board tool wait: a wait filler is written as the announced tool starts and
     assert.equal(written.length, 2);
 });
 
-test('board tool wait: no filler plays once the tutor speaks again, the tool ends, or the turn ends', async () => {
+test('board tool wait: no filler plays once the tutor speaks again or the turn ends', async () => {
     for (const [case_, cut] of [
         ['new speech', (s) => s.speech()],
-        ['the tool ending before 1.5 s', (s) => s.calls.event(s.current, s.tool('done'), {})],
         ['the turn ending or stopping', (s) => (s.current.done = true)],
     ]) {
         const s = setup();
@@ -101,7 +100,6 @@ test('board tool wait: no filler plays once the tutor speaks again, the tool end
     }
     for (const [case_, cut] of [
         ['new speech', (s) => s.speech()],
-        ['the tool ending', (s) => s.calls.event(s.current, s.tool('done'), {})],
         ['the turn ending or stopping', (s) => (s.current.done = true)],
     ]) {
         const s = setup();
@@ -114,6 +112,15 @@ test('board tool wait: no filler plays once the tutor speaks again, the tool end
         await s.flush();
         assert.deepEqual(s.played, [1], `the second line is dropped on ${case_}`);
     }
+});
+
+test('board tool wait: the silence while the tutor reads the result still gets its fillers', async () => {
+    const s = setup();
+    s.calls.ended(s.current, 2);
+    s.calls.event(s.current, s.tool('done'), {});
+    s.clock.advance(1500);
+    await s.flush();
+    assert.deepEqual(s.played, [1]);
 });
 
 test('board tool wait: an intent already played when the tool starts starts the wait at once; a call with no intent gets the tool filler', async () => {
