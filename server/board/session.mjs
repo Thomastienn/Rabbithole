@@ -7,6 +7,7 @@ import { boardSystem } from './prompt.mjs';
 import { boardMic } from './mic.mjs';
 import { boardPen } from './pen.mjs';
 import { boardVoicing } from './voicing.mjs';
+import { OPENERS } from './fillers.mjs';
 import { conversationHistory } from '../providers/conversationHistory.mjs';
 
 const STOPPED = 'The tutor stopped. Ask again to carry on.';
@@ -19,13 +20,13 @@ export const NO_ANSWER = [
 ];
 
 // One board session per open board: the conversation's own model process, its turns and their saving.
-// Up: { type: 'ask', text }, { type: 'mic', on }, { type: 'hold', on } as push-to-talk is held and let go, and, while on, mic audio as binary frames of 16 kHz mono float32 samples, { type: 'stroke', points } as the learner finishes a pen stroke, { type: 'view', page } as the learner opens a board page (no page: the view follows the tutor's page again), { type: 'progress', sentence, phase: 'start' | 'end' } as each caption shows and ends, { type: 'leave' }.
+// Up: { type: 'ask', text }, { type: 'mic', on }, { type: 'hold', on } as push-to-talk is held and let go, and, while on, mic audio as binary frames of 16 kHz mono float32 samples, { type: 'stroke', points } as the learner finishes a pen stroke, { type: 'view', page } as the learner opens a board page (no page: the view follows the tutor's page again), { type: 'progress', sentence, phase: 'start' | 'end' | 'late' } as each caption shows and ends, or 1 s after it was due while its voice has not come, { type: 'leave' }.
 // Down: { type: 'state', state: 'idle' | 'thinking' | 'speaking' }, thinking with the turn's user and reply message ids, { type: 'notice', notice },
 // { type: 'sentence', id, text, ops, voiced } with the drawable ops written under it (server/board/ops.mjs),
 // then, when voiced, its group's speech under the group's first sentence id as binary frames (one byte of id length, the id, the audio),
 // for a group of more than one { type: 'offsets', id, ids, at } with each sentence's start in the clip in ms, or share: the fraction
 // of the clip before it when word boundaries are missing, and { type: 'audio-end', id } (for each of its ids when it has no audio),
-// a filler clip the same way under the id `filler` when a turn's first audio hasn't started after 1 s,
+// a filler clip the same way under the id `filler` when a turn's first audio hasn't started after 1 s or a later sentence reports late,
 // { type: 'stroke', item, mark } back for each pen stroke, with what it marks or null, and { item } for each page opened,
 // { type: 'board', replies: [{ caption, items }] } once on open: the saved board, each reply's items replayed
 // from its op lines with the reply's last sentence as its caption,
@@ -64,11 +65,15 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
         current.heard = true;
         clock.clearTimeout(current.filler);
     };
-    // A filler never repeats the last one and is never part of the reply.
-    const filler = async (current) => {
+    // A filler never repeats the last one and is never part of the reply. Before a turn's first audio it is one of
+    // the first OPENERS clips; once a later sentence's voice is late (the board reports it) one of the connectors after.
+    const filler = async (current, late = false) => {
+        if (!fillers) return;
         const clips = await fillers.catch(() => []);
-        if (current.heard || current.done) return;
-        const choices = clips.map((_, i) => i).filter((i) => i !== lastFiller);
+        if (current.done || !current.heard !== !late) return;
+        const choices = clips
+            .map((_, i) => i)
+            .filter((i) => i !== lastFiller && i >= OPENERS === late);
         if (!choices.length) return;
         lastFiller = choices[Math.floor(Math.random() * choices.length)];
         sendAudio('filler', clips[lastFiller]);
@@ -410,6 +415,7 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
             save(current, 'streaming');
             speak(current);
         }
+        if (phase === 'late') filler(current, true);
         if (phase === 'end' && index < current.shown) {
             current.over = Math.max(current.over, index + 1);
             settle(current);

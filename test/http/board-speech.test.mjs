@@ -270,6 +270,56 @@ test('board: a filler plays only when a turn’s first audio is over 1 s late, n
     );
 });
 
+test('board: a later sentence the board reports late gets a connector filler, never the same twice, not saved', async (t) => {
+    const provider = boardProvider([['> One.\n> Two.\n']]);
+    const release = Promise.withResolvers();
+    const client = {
+        warm() {},
+        async speak(text, chunk) {
+            if (text === 'Two.') await release.promise;
+            chunk(Buffer.from(text));
+        },
+        close() {},
+    };
+    // A clock that never fires: only the board's late reports bring fillers here.
+    const boardClock = { setTimeout: () => null, clearTimeout() {} };
+    const clips = ['hmm', 'okay', 'good', 'so', 'right', 'now'].map((c) => Buffer.from(c));
+    t.mock.method(Math, 'random', () => 0);
+    const { env, id, connect } = await setup(t, provider, {
+        app: { speech: () => client, fillers: () => Promise.resolve(clips), boardClock },
+    });
+    const board = connect();
+    await opened(board.ws);
+    const played = [];
+    board.ws.on('message', (data, binary) => {
+        if (binary && data.subarray(1, 1 + data[0]).toString() === 'filler')
+            played.push(data.subarray(1 + data[0]).toString());
+    });
+    board.send({ type: 'ask', text: 'Why?' });
+    const one = await board.next('sentence');
+    await board.next('audio-end', (e) => e.id === one.id);
+    board.send({ type: 'progress', sentence: one.id, phase: 'start' });
+    const two = await board.next('sentence');
+    board.send({ type: 'progress', sentence: one.id, phase: 'end' });
+    for (let i = 0; i < 2; i++) {
+        board.send({ type: 'progress', sentence: two.id, phase: 'late' });
+        await board.next('audio-end', (e) => e.id === 'filler');
+    }
+    release.resolve();
+    await board.next('audio-end', (e) => e.id === two.id);
+    board.send({ type: 'progress', sentence: two.id, phase: 'start' });
+    board.send({ type: 'progress', sentence: two.id, phase: 'end' });
+    await board.next('state', (e) => e.state === 'idle');
+    assert.deepEqual(played, ['so', 'right'], 'connectors only, never the same twice in a row');
+    assert.deepEqual(
+        messages(env, id)
+            .filter((m) => m.role === 'assistant')
+            .map((m) => m.text),
+        ['One.\nTwo.'],
+        'fillers are not saved in the reply',
+    );
+});
+
 test('board: a Voice language other than English speaks, prompts and recognizes in it, without English fillers', async (t) => {
     const provider = boardProvider([]);
     const asked = { speech: [], fillers: [], hearing: [], downloaded: [] };

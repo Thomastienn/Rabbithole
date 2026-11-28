@@ -165,12 +165,15 @@ test('board fillers are synthesized once per voice and read back from disk after
         close() {},
     });
     const clips = await boardFillers(dir, 'en-US-AriaNeural', speech);
-    assert.deepEqual(clips.map(String), ['Hmm.', 'Okay.', 'Good question.']);
+    assert.deepEqual(clips.map(String), [
+        ...['Hmm.', 'Okay.', 'Good question.'],
+        ...['So...', 'Right,', 'Now,', 'And...', 'Mm.'],
+    ]);
     assert.deepEqual(await boardFillers(dir, 'en-US-AriaNeural', speech), clips);
     // A later run of the app finds them on disk.
     const restarted = await import(`../../server/board/fillers.mjs?again`);
     await restarted.boardFillers(dir, 'en-US-AriaNeural', speech);
-    assert.equal(spoken.length, 3, 'each filler is synthesized once');
+    assert.equal(spoken.length, 8, 'each filler is synthesized once');
     await boardFillers(dir, 'other-voice', speech);
-    assert.equal(spoken.length, 6, 'another voice gets its own');
+    assert.equal(spoken.length, 16, 'another voice gets its own');
 });

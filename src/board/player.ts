@@ -4,7 +4,8 @@ import { DEFAULT_SPEED, type Voice } from './voice';
 // and draws each sentence's ops in order early in it.
 // A voiced sentence starts on its first audio chunk and lasts as long as its audio plays.
 // Times are board time, at the default 1.5×: the learner's speed scales it and pause stops it.
-export type Phase = 'start' | 'end';
+// late: the sentence was due a second ago and its voice has not come, so the session sends a filler.
+export type Phase = 'start' | 'end' | 'late';
 export type Look = 'focus' | 'muted' | 'good' | 'wrong' | 'new';
 export type Ink = 'blue' | 'green' | 'pink' | 'yellow' | 'ink' | 'muted';
 // A drawable op as the board session sends it (server/board/ops.mjs), in board pixels.
@@ -220,6 +221,8 @@ function drawMs(op: Op) {
 
 // An estimated ten characters per second at 1× plays at fifteen at the default 1.5×.
 const CHARS_PER_SECOND = 15;
+// How long a due sentence waits for its voice before a filler, in board ms (docs/board-polish-spec.md, Fillers).
+const LATE_MS = 1000;
 
 export function boardPlayer(
     show: (sentence: Sentence) => void,
@@ -242,6 +245,8 @@ export function boardPlayer(
         ended: number | undefined,
         last: Sentence | undefined,
         gap: unknown,
+        // The timer reporting the sentence due next as late while its voice has not come.
+        late: unknown,
         playing: string | undefined,
         // The sentence on show: its ops and when each entered and ends, so a stop can finish the one mid-entry.
         drawing: { ops: Op[]; entries: { start: number; end: number }[] } | undefined,
@@ -260,7 +265,7 @@ export function boardPlayer(
         const sentence = queue[0];
         if (current || !sentence || paused) return;
         const audio = pending.get(sentence.id);
-        if (audio === 'waiting' || gap) return;
+        if (gap) return;
         const due = ended === undefined ? 0 : ended + (last?.pause ?? 0) - clock.now();
         if (due > 0) {
             gap = clock.setTimeout(() => {
@@ -269,6 +274,14 @@ export function boardPlayer(
             }, due);
             return;
         }
+        // The session times the filler before a turn's first audio; this one covers a later sentence (ended is set).
+        if (audio === 'waiting') {
+            if (ended !== undefined && late === undefined)
+                late = clock.setTimeout(() => report(sentence, 'late'), LATE_MS);
+            return;
+        }
+        clock.clearTimeout(late);
+        late = undefined;
         queue.shift();
         pending.delete(sentence.id);
         current = sentence;
@@ -472,7 +485,8 @@ export function boardPlayer(
             timers.forEach(clock.clearTimeout);
             clock.clearTimeout(ending);
             clock.clearTimeout(gap);
-            gap = ended = undefined;
+            clock.clearTimeout(late);
+            gap = ended = late = undefined;
             voice?.stop();
             queue = [];
             current = undefined;
