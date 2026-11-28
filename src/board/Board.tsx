@@ -26,6 +26,7 @@ import { useBoard } from './useBoard';
 import BoardItem, { strokePath } from './BoardItem';
 import { follow, slide } from './camera';
 import PageStrip, { BackChip, pagesOf } from './PageStrip';
+import PenMarks from './PenMarks';
 import { labelRows } from './player';
 import { dimmed } from './spotlight';
 import { BOARD_TIME_SPEED } from './voice';
@@ -505,16 +506,7 @@ export default function Board({
                     }
                     input={
                         <>
-                            {board.marks > 0 && (
-                                <div className="board-tray">
-                                    <span className="board-marks">
-                                        <span aria-hidden />
-                                        {board.marks === 1
-                                            ? '1 mark goes with your question'
-                                            : `${board.marks} marks go with your question`}
-                                    </span>
-                                </div>
-                            )}
+                            <PenMarks marks={board.marks} unstroke={board.unstroke} />
                             <PendingAttachments
                                 files={files}
                                 remove={(i) => setFiles(files.filter((_, j) => j !== i))}

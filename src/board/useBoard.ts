@@ -74,8 +74,8 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         viewed.current = page;
         setView(page);
     };
-    // Pen strokes over board items since the last question; they go with the next one.
-    const [marks, setMarks] = useState(0);
+    // The learner's pen strokes since the last question, by id; they go with the next one.
+    const [strokes, setStrokes] = useState<string[]>([]);
     const restored = latest && { text: latest.text.trim().split('\n').at(-1) ?? '', muted: true };
     const [speed, setSpeed] = useState(savedBoardSpeed);
     const [paused, setPaused] = useState(false);
@@ -106,7 +106,7 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
     const shown = (text: string) => {
         question.current = text;
         setAsked(true);
-        setMarks(0);
+        setStrokes([]);
         setNotice(undefined);
         setLit(undefined);
         passPointers();
@@ -218,7 +218,14 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
             // A stroke joins the board it was drawn on, as the server replays it.
             if (m.type === 'stroke') {
                 onLast((r) => ({ ...r, items: [...r.items, { op: m.item, ms: 0 }] }));
-                if (m.mark) setMarks((n) => n + 1);
+                if (m.item.kind === 'stroke') setStrokes((s) => [...s, m.item.id]);
+            }
+            if (m.type === 'unstroke') {
+                const kept = (id: string) => !m.ids.includes(id);
+                setStrokes((s) => s.filter(kept));
+                setReplies((rs) =>
+                    rs.map((r) => ({ ...r, items: r.items.filter((d) => kept(d.op.id)) })),
+                );
             }
             if (m.type === 'tool')
                 setTool((t) =>
@@ -297,6 +304,11 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
     const draw = (points: [number, number][]) => {
         const ws = socket.current;
         if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'stroke', points }));
+    };
+    // Takes back the learner's last stroke, or all since the last question; the server answers with their ids.
+    const unstroke = (all: boolean) => {
+        const ws = socket.current;
+        if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'unstroke', all }));
     };
     // The learner opens a page; the session asks from it next (server/board/pen.mjs).
     const openPage = (page: string) => {
@@ -414,7 +426,8 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         go,
         view,
         openPage,
-        marks,
+        marks: strokes.length,
+        unstroke,
         ask,
         typing,
         draw,

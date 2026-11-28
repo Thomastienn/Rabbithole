@@ -307,6 +307,26 @@ test('board: a stroke in free space goes with the next question as a cropped ima
     assert.equal(existsSync(image.path), false, 'the file goes once the turn ends');
 });
 
+test('board: a stroke the learner takes back goes with no question', async (t) => {
+    const provider = boardProvider([['> Fine.\n']]);
+    const { connect } = await setup(t, provider);
+    const board = connect();
+    await opened(board.ws);
+    await until(() => provider.boards[0]?.opened);
+    for (const x of [1400, 1500]) {
+        board.send({ type: 'stroke', points: [[x, 100]] });
+        await board.next('stroke');
+    }
+    board.send({ type: 'unstroke', all: false });
+    assert.deepEqual((await board.next('unstroke')).ids, ['p2']);
+    board.send({ type: 'ask', text: 'Why?' });
+    const sentence = await board.next('sentence');
+    for (const phase of ['start', 'end'])
+        board.send({ type: 'progress', sentence: sentence.id, phase });
+    await board.next('state', (e) => e.state === 'idle');
+    assert.equal(provider.boards[0].asked[0], 'Why?\n\npen: strokes p1');
+});
+
 test('board: a stroke drawn after an erase that was never shown keeps its own id and comes back on reopen', async (t) => {
     // The reply fails before its erase sentence shows, so the erase of p1 is never saved.
     const provider = boardProvider([['> One.\n> Gone.\ne1 erase p1\n'], []], { status: 'failed' });

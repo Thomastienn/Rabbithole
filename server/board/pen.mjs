@@ -55,6 +55,16 @@ export function boardPen(ctx, board, send) {
             pending.push({ line, mark, points });
             return { item, mark };
         },
+        // The learner takes back their last stroke, or all of them, before asking: it leaves their board and the
+        // next question. Each erase is on its own, since one the tutor already erased would fail the rest.
+        unstroke(all) {
+            const strokes = pending.filter((s) => s.points).map((s) => s.line.split(' ')[0]);
+            const ids = all ? strokes : strokes.slice(-1);
+            if (!ids.length) return;
+            pending = pending.filter((s) => !ids.includes(s.line.split(' ')[0]));
+            for (const id of ids) board().read(`${next()} erase ${id}`);
+            send({ type: 'unstroke', ids });
+        },
         // The learner opened `page` (none: back to the tutor's page, the open page before their first view since the
         // last question). An `open` op waits with the strokes, so the strokes and the next reply land on that page
         // and replay there; a view straight back drops it. Mid-reply (busy) the view waits for settle(), since the

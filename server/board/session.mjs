@@ -22,7 +22,7 @@ export const NO_ANSWER = [
 ];
 
 // One board session per open board: the conversation's own model process, its turns and their saving.
-// Up: { type: 'ask', text }, { type: 'mic', on }, { type: 'hold', on } as push-to-talk is held and let go, and, while on, mic audio as binary frames of 16 kHz mono float32 samples, { type: 'stroke', points } as the learner finishes a pen stroke, { type: 'view', page } as the learner opens a board page (no page: the view follows the tutor's page again), { type: 'progress', sentence, phase: 'start' | 'end' | 'late' } as each caption shows and ends, or 1 s after it was due while its voice has not come, { type: 'leave' }.
+// Up: { type: 'ask', text }, { type: 'mic', on }, { type: 'hold', on } as push-to-talk is held and let go, and, while on, mic audio as binary frames of 16 kHz mono float32 samples, { type: 'stroke', points } as the learner finishes a pen stroke, { type: 'unstroke', all } as they take back their last stroke or all of them, { type: 'view', page } as the learner opens a board page (no page: the view follows the tutor's page again), { type: 'progress', sentence, phase: 'start' | 'end' | 'late' } as each caption shows and ends, or 1 s after it was due while its voice has not come, { type: 'leave' }.
 // Down: { type: 'state', state: 'idle' | 'thinking' | 'speaking' }, thinking with the turn's user and reply message ids, { type: 'notice', notice },
 // { type: 'sentence', id, text, ops, voiced } with the drawable ops written under it (server/board/ops.mjs),
 // then, when voiced, its group's speech under the group's first sentence id as binary frames (one byte of id length, the id, the audio),
@@ -30,7 +30,7 @@ export const NO_ANSWER = [
 // of the clip before it when word boundaries are missing, and { type: 'audio-end', id } (for each of its ids when it has no audio),
 // a filler clip the same way under the id `filler` when a turn's first audio hasn't started after 1 s, a later sentence reports late
 // or a tool starts with no sentence saying so, { type: 'tool', tool: { id, name, input, status } } as a tutor tool runs and ends,
-// { type: 'stroke', item, mark } back for each pen stroke, with what it marks or null, and { item } for each page opened,
+// { type: 'stroke', item, mark } back for each pen stroke, with what it marks or null, and { item } for each page opened, { type: 'unstroke', ids } for strokes taken back,
 // { type: 'board', replies: [{ caption, items }] } once on open: the saved board, each reply's items replayed
 // from its op lines with the reply's last sentence as its caption,
 // { type: 'mic', status: 'loading' | 'on' | 'off', loaded, total } as the speech models download and the mic turns on or off,
@@ -530,6 +530,7 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
             send({ type: 'stroke', ...pen.stroke(m.points.map((p) => p.map(Math.round))) });
         }
         if (m?.type === 'view') pen.view(m.page, !!turn);
+        if (m?.type === 'unstroke') pen.unstroke(m.all === true);
         if (m?.type === 'progress' && typeof m.sentence === 'string') progress(m.sentence, m.phase);
         if (m?.type === 'mic') m.on ? mic.on() : mic.off();
         if (m?.type === 'hold') {

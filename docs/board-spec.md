@@ -251,6 +251,7 @@ By default the board is **learner-led**: the tutor explains and never quizzes. A
 - The learner gets a pen only. A finished stroke is hit-tested against the board items, and the next learner message carries references such as "circled `t1`".
 - A stroke over no item is sent as a cropped image, only when the chat model reads images.
 - The pen alone sends nothing: its strokes go with the next spoken or typed question.
+- **Taking strokes back** (added 2026-11-28): until that question, the marks pill above the composer counts every waiting stroke. Its × removes them all, and Ctrl/Cmd+Z, outside text fields, removes the last one. A removed stroke leaves the board and the question, so the tutor never sees it. Strokes already sent, and the tutor's items, stay.
 - The learner's strokes are board items of their own, and the tutor may erase or keep them.
 
 ### Tutor-guided
