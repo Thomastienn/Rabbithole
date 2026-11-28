@@ -266,12 +266,14 @@ export function boardOps() {
     // The ids of removed `highlight` lines in saved boards, which read as nothing; an erase naming one skips it.
     const dropped = new Set();
     // An item still on the board that ops can name. Only erase reaches other pages, since the view shows the
-    // open one, and children on axes or a number line, which have no laid-out space.
+    // open one, and children on axes or a number line, which have no laid-out space; a drawing's path has its own.
     const target = (id, kind) => {
         const item = items.get(id);
         const named = !MARKS.has(item?.kind);
         const here = () =>
-            kind === 'erase' || ((!item.on || (!item.at && span(item))) && where.get(id) === open);
+            kind === 'erase' ||
+            ((!item.on || item.kind === 'path' || (!item.at && span(item))) &&
+                where.get(id) === open);
         return item && named && !erased.has(id) && here() ? item : undefined;
     };
     const positive = (value, fallback) =>
@@ -417,7 +419,7 @@ export function boardOps() {
         open: () => open,
         // The page index each model turn starts with (ADR 0029): every page with its parent, `from` item and the
         // ids and texts of what is still on it; kinds and coordinates are left out to keep it short, except that a
-        // sketch shows its kind with its children's ids and labels.
+        // sketch shows its kind with its children's ids and labels, and a drawing its kind and path count.
         index() {
             const lines = [...pages].map(([id, page]) => {
                 const live = [...items.values()].filter(
@@ -430,12 +432,18 @@ export function boardOps() {
                         (i.cells ?? i.cols ?? i.sets ?? i.vs ?? i.actors)?.join('|');
                     return text ? `${i.id} "${text}"` : i.id;
                 };
-                const sketch = new Set(live.filter((i) => SKETCHES.has(i.kind)).map((i) => i.id));
+                const sketch = new Set(
+                    live
+                        .filter((i) => SKETCHES.has(i.kind) || i.kind === 'drawing')
+                        .map((i) => i.id),
+                );
                 const on = live
                     .filter((i) => !sketch.has(i.on))
                     .map((i) => {
                         if (!sketch.has(i.id)) return name(i);
                         const kids = live.filter((c) => c.on === i.id).map(name);
+                        // A drawing's paths are its strokes, so it shows their count (mockup Rabbithole-bpl.9).
+                        if (i.kind === 'drawing') return `${i.id} drawing (${kids.length} paths)`;
                         return `${name(i)} ${i.kind}${kids.length ? ` (${kids.join(', ')})` : ''}`;
                     });
                 const head = [

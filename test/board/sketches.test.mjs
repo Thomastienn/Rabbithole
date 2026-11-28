@@ -157,3 +157,45 @@ test('board ops: compare, sequence and equation children are checked against the
     );
     assert.match(board.index(), /x1 "E = m c\^2" equation \(y1 "c"\)/);
 });
+
+test('board ops: a drawing scales its paths from 0-100 into its box, and bad paths are skipped with their reason', () => {
+    const board = boardOps();
+    assert.deepEqual(board.read('dr drawing at 470,450 w=620 h=620').item.w, 620);
+    assert.deepEqual(board.read('p1 path "M26 64H74V72H26Z" ink=ink fill=pink in dr').item, {
+        ...{ id: 'p1', kind: 'path', on: 'dr', ink: 'ink', fill: 'pink', d: 'M26 64H74V72H26Z' },
+        ...{ fit: [160, 140, 6.2], at: [470, 561.6], w: 297.6, h: 49.6 },
+    });
+    const leaf = board.read('p2 path "m51 42c9-4 20-11 25-20" ink=green in dr').item;
+    assert.equal(leaf.fill, undefined, 'fill may be left out');
+    assert.deepEqual([leaf.at, leaf.w, leaf.h], [[553.7, 338.4], 155, 124], 'relative points');
+    assert.equal(Math.round(board.read('t1 pointer p2').item.at[0]), 643, 'a path is a board item');
+    const ring = [
+        [140, 120],
+        [800, 120],
+        [800, 780],
+        [140, 780],
+        [145, 125],
+    ];
+    assert.deepEqual(board.mark(ring), { verb: 'circled', ids: ['dr'] }, 'the whole drawing');
+    for (const [line, cause] of [
+        [
+            'b1 path "M51 42 url(x)" ink=green in dr',
+            'path needs "d" of SVG path commands and numbers only',
+        ],
+        ['b2 path "M1 1L2 2" ink=red in dr', 'ink is blue|green|pink|yellow|ink|muted'],
+        ['b3 path "M1 1L2 2" ink=ink fill=#f00 in dr', 'fill is blue|green|pink|yellow|ink|muted'],
+        [`b4 path "M${' 1'.repeat(300)}" ink=ink in dr`, 'path data is over 600 characters'],
+        ['b5 path "M1 1L2 2" ink=ink in zz', 'unknown parent zz'],
+    ])
+        assert.deepEqual(board.read(line), { error: cause }, line);
+    assert.match(board.index(), /: dr drawing \(2 paths\)$/m, 'the index counts its paths');
+    for (let i = 3; i <= 24; i++) assert.ok(board.read(`q${i} path "M1 1L2 2" in dr`).item);
+    assert.deepEqual(board.read('q25 path "M1 1L2 2" in dr'), { error: 'dr already has 24 paths' });
+    board.read('n2 page');
+    board.read('wd drawing at 800,450 w=1200 h=400');
+    assert.deepEqual(
+        board.read('w1 path "M0 0L100 100" in wd').item.fit,
+        [600, 1150, 4],
+        'the square scales by the smaller side and centres, on page 2 900 down',
+    );
+});

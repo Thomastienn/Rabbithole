@@ -21,6 +21,7 @@ export const COMPONENTS = new Set([
     'tree',
     'table',
     'venn',
+    'drawing',
     'code',
     ...SKETCHES,
 ]);
@@ -42,6 +43,7 @@ export const PARENTS = {
     aspect: 'compare',
     send: 'sequence',
     symbol: 'equation',
+    path: 'drawing',
 };
 // Default boxes, in board pixels.
 const SIZES = {
@@ -64,6 +66,7 @@ const SIZES = {
     compare: [1100, 500],
     sequence: [1200, 700],
     equation: [1200, 500],
+    drawing: [600, 600],
     code: [900, 640],
 };
 const words = (text) => (text ?? '').split('|').map((word) => word.trim());
@@ -205,7 +208,8 @@ export function component(op, item) {
         item.lang = op.opts.lang ?? 'plaintext';
         return /^[\w+#-]{1,20}$/.test(item.lang) ? null : 'lang is a language name like py';
     }
-    if (['tree', 'cycle', 'stack', 'timeline', 'bars', 'pie'].includes(op.kind)) return null;
+    if (['drawing', 'tree', 'cycle', 'stack', 'timeline', 'bars', 'pie'].includes(op.kind))
+        return null;
     if (op.kind === 'spectrum') {
         item.ends = ends(op.opts.ends ?? op.strs[0]);
         return item.ends ? null : 'spectrum needs ends="low..high"';
@@ -323,6 +327,7 @@ export function child(op, item, parent, items) {
         return null;
     }
     if (op.kind in LABELLED) return labelled(op, item, parent, items);
+    if (op.kind === 'path') return drawn(op, item, parent, items);
     const s = scale(parent);
     const inside = (v, [lo, hi]) => v >= lo && v <= hi;
     if (op.kind === 'point') {
@@ -347,6 +352,68 @@ export function child(op, item, parent, items) {
         item.text = op.strs[0].trim();
         item.size = op.opts.size ?? 's';
     }
+    return null;
+}
+
+// A drawing's colour names (docs/board-polish-spec.md, Drawing component): theme roles the client maps to tokens.
+const INKS = new Set(['blue', 'green', 'pink', 'yellow', 'ink', 'muted']);
+// Model-written markup reaching the page: SVG path commands, numbers, spaces and commas only (ADR 0030).
+const PATH_DATA = /^[MLHVCSQTAZ\d\s,.-]+$/i;
+const PATH_MAX = 600;
+const PATHS_MAX = 24;
+const ARGS = { M: 2, L: 2, T: 2, H: 1, V: 1, C: 6, S: 4, Q: 4, A: 7, Z: 0 };
+
+// The box a path's points and control points span, in its drawing's 0-100 units; an arc counts its end point only.
+function extent(d) {
+    const [xs, ys] = [[], []];
+    let [x, y, sx, sy] = [0, 0, 0, 0];
+    for (const [, cmd, args] of d.matchAll(/([a-z])([^a-z]*)/gi)) {
+        const n = (args.match(/-?(\d+\.?\d*|\.\d+)/g) ?? []).map(Number);
+        const [C, rel] = [cmd.toUpperCase(), cmd !== cmd.toUpperCase()];
+        if (C === 'Z') [x, y] = [sx, sy];
+        for (let i = 0; ARGS[C] && i + ARGS[C] <= n.length; i += ARGS[C]) {
+            const a = n.slice(i, i + ARGS[C]);
+            const [ox, oy] = rel ? [x, y] : [0, 0];
+            if (C === 'H') x = ox + a[0];
+            else if (C === 'V') y = oy + a[0];
+            else {
+                const pairs = C === 'A' ? [5] : a.map((_, k) => k).filter((k) => k % 2 === 0);
+                for (const k of pairs) (xs.push(ox + a[k]), ys.push(oy + a[k + 1]));
+                [x, y] = [xs.at(-1), ys.at(-1)];
+                if (C === 'M' && i === 0) [sx, sy] = [x, y];
+            }
+            (xs.push(x), ys.push(y));
+        }
+    }
+    return xs.length && [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+}
+
+// A drawing's path: its data checked, its colour names, and where its 0-100 square sits in the drawing's box
+// (scaled by the smaller side and centred), with its own extent for the spotlight, pointer and pen.
+function drawn(op, item, parent, items) {
+    const d = op.strs[0]?.trim() ?? '';
+    if (!PATH_DATA.test(d)) return 'path needs "d" of SVG path commands and numbers only';
+    if (d.length > PATH_MAX) return `path data is over ${PATH_MAX} characters`;
+    const siblings = [...items.values()].filter((other) => other.on === parent.id);
+    if (siblings.length >= PATHS_MAX) return `${parent.id} already has ${PATHS_MAX} paths`;
+    for (const key of ['ink', 'fill']) {
+        const name = op.opts[key];
+        if (name === undefined) {
+            if (key === 'ink') item.ink = 'ink';
+            continue;
+        }
+        if (!INKS.has(name)) return `${key} is ${[...INKS].join('|')}`;
+        item[key] = name;
+    }
+    const box = extent(d);
+    if (!box) return 'path needs "d" with points';
+    const s = Math.min(parent.w, parent.h) / 100;
+    const [left, top] = [parent.at[0] - 50 * s, parent.at[1] - 50 * s];
+    item.d = d;
+    item.fit = [r1(left), r1(top), s];
+    const [x0, y0, x1, y1] = box.map((v, i) => (i % 2 ? top : left) + v * s);
+    item.at = [r1((x0 + x1) / 2), r1((y0 + y1) / 2)];
+    [item.w, item.h] = [r1(x1 - x0), r1(y1 - y0)];
     return null;
 }
 

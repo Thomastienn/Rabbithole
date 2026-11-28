@@ -6,6 +6,7 @@ import { DEFAULT_SPEED, type Voice } from './voice';
 // Times are board time, at the default 1.5×: the learner's speed scales it and pause stops it.
 export type Phase = 'start' | 'end';
 export type Look = 'focus' | 'muted' | 'good' | 'wrong' | 'new';
+export type Ink = 'blue' | 'green' | 'pink' | 'yellow' | 'ink' | 'muted';
 // A drawable op as the board session sends it (server/board/ops.mjs), in board pixels.
 export type Op = {
     id: string;
@@ -58,6 +59,8 @@ export type Op = {
         | 'symbol'
         | 'code'
         | 'stroke'
+        | 'drawing'
+        | 'path'
         | 'erase';
     // A component's child names its component; components and plots carry their own path and numbers.
     on?: string;
@@ -90,6 +93,10 @@ export type Op = {
     to?: number;
     means?: string;
     token?: number;
+    // A drawing path's colour roles and where its 0-100 square sits: left, top and scale in board pixels.
+    ink?: Ink;
+    fill?: Ink;
+    fit?: [number, number, number];
     // A code block's language, for its lines' highlighting.
     lang?: string;
     look?: Look;
@@ -195,11 +202,14 @@ export const COMPONENT_KINDS = new Set([
     ...['cycle', 'stack', 'timeline', 'parts'],
     ...['bars', 'pie', 'spectrum', 'quadrant'],
     ...['compare', 'sequence', 'equation'],
+    'drawing',
 ]);
 
 // How long an op takes to draw at 1×, in ms, by size (prototype/board-pacing); the learner's speed divides it.
 function drawMs(op: Op) {
     if (op.top !== undefined) return 400; // page or open: the slide to its page
+    if (op.kind === 'drawing') return 0; // it only sets the box its paths draw in
+    if (op.kind === 'path') return 450; // about a box's length
     if (COMPONENT_KINDS.has(op.kind) && !op.on) return 900;
     if (op.on) return 400; // a component's child
     if (op.kind === 'text' || op.kind === 'dot' || op.kind === 'point') return 250;
@@ -281,7 +291,10 @@ export function boardPlayer(
             const entering = entries[first];
             const left = own.slice(first);
             if (entering) left[0] *= (entering.end - now) / (entering.end - entering.start);
-            const fit = Math.max(0, Math.min(1, (deadline - now) / left.reduce((a, b) => a + b)));
+            const fit = Math.max(
+                0,
+                Math.min(1, (deadline - now) / (left.reduce((a, b) => a + b) || 1)),
+            );
             let at = now;
             for (let index = first; index < ops.length; index++) {
                 const op = ops[index];
