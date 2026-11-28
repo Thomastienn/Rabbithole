@@ -75,6 +75,7 @@ compare vs="A|B" w=W h=H, then: aspect "name" values="a|b" in CM, one value per 
 sequence actors="A|B|C" w=W h=H, then: send "message" by=A to=B in SQ; without to= it is a note on its actor; a send without "in SQ" is dropped
 equation "E = m c^2" w=W h=H, symbols and operators separated by spaces, then: symbol "m" means="few words" in EQ
 drawing w=W h=H, then: path "d" ink=NAME fill=NAME in DR, one per stroke, in order: a small picture of an object or scene drawn live. d is SVG path data (M L H V C S Q T A Z and numbers) in the drawing's own 0-100 units on both axes; about 12 paths at most. ink= and fill= are blue, green, pink, yellow, ink or muted; fill= may be left out
+code lang="py" w=W h=H, then: line "    code" in CB, one line of code each, in order; leading spaces are its indentation, "" is a blank line, and strings inside use single quotes. About 12 lines per block; beyond that, open a new page for the rest
 pointer ID: glides to an item to draw the learner's eye, then fades when the sentence ends
 erase ID ID ...: fades items out and frees their space
 page "title" from=ID: opens a new empty page titled with the idea it explains, in a few words; from= names the item on the page open now that it explains, and may be left out. New items land on the open page

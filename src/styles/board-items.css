@@ -312,6 +312,24 @@
 .board-part-text.end {
     text-anchor: end;
 }
+/* A code block (mockup Rabbithole-bpl.8): a panel of the raised surface with no border, fading in, and lines in the
+   theme's code face, spaces kept, each token in the theme's syntax role colour as chat code fences use it. */
+.board-part-box.panel {
+    animation-name: board-enter;
+    fill: var(--color-background-popover);
+    stroke: none;
+}
+.board-part-text.code {
+    font-family: var(--font-family-code);
+    font-variant-ligatures: none;
+    white-space: pre;
+}
+.board-part-text.code tspan {
+    fill: currentColor;
+}
+.board-part-text.code .astryx-token-comment {
+    font-style: italic;
+}
 @keyframes board-draw {
     from {
         stroke-dashoffset: 1;

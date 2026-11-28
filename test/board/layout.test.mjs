@@ -490,3 +490,33 @@ test('board layout: an equation hangs each meaning off its symbol, the rightmost
         'the speed of light@945.5,400',
     ]);
 });
+
+test('board layout: a code block stacks its lines top-aligned, shrinking as one and then clipping', () => {
+    const block = (w, h, ...texts) => [
+        { id: 'cb', kind: 'code', lang: 'py', at: [800, 450], w, h },
+        ...texts.map((text, i) => ({ id: `l${i + 1}`, kind: 'line', on: 'cb', text })),
+    ];
+    const size = (ops, id) => componentParts(ops).get(id)?.[0].size;
+    const factorial = block(900, 640, 'def factorial(n):', '    if n <= 1:', '        return 1');
+    assert.deepEqual(draw(factorial, 'cb'), ['panel 350,130,900,640']);
+    assert.deepEqual(
+        ['l1', 'l2', 'l3'].map((id) => draw(factorial, id)[0]),
+        ['def factorial(n):@390,190', '    if n <= 1:@390,235', '        return 1@390,280'],
+        'rows 45 apart at 30, indentation kept',
+    );
+    const long = '    total = compute_total(cart.prices, discount, tax)';
+    const checkout = (w, h) => block(w, h, 'def checkout(cart):', long, '    return total');
+    assert.equal(size(checkout(1080, 260), 'l2'), 30, '53 characters fit at 30');
+    assert.equal(size(checkout(760, 240), 'l1'), 21, 'the whole block shrinks to the longest line');
+    assert.deepEqual(draw(checkout(760, 240), 'l2'), [`${long}@460,415`]);
+    assert.deepEqual(
+        draw(checkout(560, 220), 'l2'),
+        ['    total = compute_total(cart.prices, …@560,422'],
+        'at the 20 minimum a long line clips with an ellipsis inside the box',
+    );
+    const tall = block(560, 300, ...Array.from({ length: 7 }, (_, i) => `x${i}`));
+    assert.equal(size(tall, 'l7'), 22, 'rows shrink the block to fit down too');
+    const crowded = block(560, 200, ...Array.from({ length: 9 }, (_, i) => `x${i}`));
+    assert.equal(size(crowded, 'l1'), 20);
+    assert.equal(size(crowded, 'l9'), undefined, 'a row past the bottom is left out');
+});

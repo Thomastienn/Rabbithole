@@ -7,7 +7,8 @@ import { equationTokens } from '../../src/board/sketchRows.ts';
 // Sketches (docs/board-sketches-spec.md: cycle + stage, stack + layer, timeline + event, parts + part, mockup
 // Rabbithole-bsk.4; bars + bar, pie + slice, spectrum + place, quadrant + spot, mockup Rabbithole-bsk.5) are checked
 // the same way (src/board/sketchLayout.ts), as are compare + aspect, sequence + send and equation + symbol
-// (src/board/sketchRows.ts, mockup Rabbithole-bsk.6).
+// (src/board/sketchRows.ts, mockup Rabbithole-bsk.6). `code` + `line` (docs/board-polish-spec.md, mockup
+// Rabbithole-bpl.8) is checked here too and laid out in src/board/layout.ts; a `line` is a code line only `in CB`.
 export const SKETCHES = new Set([
     ...['cycle', 'stack', 'timeline', 'parts'],
     ...['bars', 'pie', 'spectrum', 'quadrant'],
@@ -21,6 +22,7 @@ export const COMPONENTS = new Set([
     'table',
     'venn',
     'drawing',
+    'code',
     ...SKETCHES,
 ]);
 export const PARENTS = {
@@ -65,6 +67,7 @@ const SIZES = {
     sequence: [1200, 700],
     equation: [1200, 500],
     drawing: [600, 600],
+    code: [900, 640],
 };
 const words = (text) => (text ?? '').split('|').map((word) => word.trim());
 const FUNCS = {
@@ -200,6 +203,11 @@ export function component(op, item) {
         item.dir = op.opts.dir ?? 'right';
         return item.dir === 'right' || item.dir === 'down' ? null : 'dir is right or down';
     }
+    if (op.kind === 'code') {
+        // Any language name; one Prism does not know renders plain (src/markdown/codeTokens.ts).
+        item.lang = op.opts.lang ?? 'plaintext';
+        return /^[\w+#-]{1,20}$/.test(item.lang) ? null : 'lang is a language name like py';
+    }
     if (['drawing', 'tree', 'cycle', 'stack', 'timeline', 'bars', 'pie'].includes(op.kind))
         return null;
     if (op.kind === 'spectrum') {
@@ -306,10 +314,18 @@ export function layout(item) {
 export function child(op, item, parent, items) {
     if (!op.on) return `${op.kind} needs on ID`;
     if (!parent) return `unknown parent ${op.on}`;
-    const kind = PARENTS[op.kind] ?? (op.kind === 'dot' || op.kind === 'text' ? 'axes' : null);
+    const kind =
+        PARENTS[op.kind] ??
+        (op.kind === 'dot' || op.kind === 'text' ? 'axes' : op.kind === 'line' ? 'code' : null);
     if (!kind) return `${op.kind} cannot go on a component`;
     if (parent.kind !== kind) return `${op.kind} needs ${kind}, not ${parent.kind} ${parent.id}`;
     item.on = parent.id;
+    if (op.kind === 'line') {
+        if (op.strs.length !== 1 || op.pts.length || op.vals.length) return 'line needs one "code"';
+        // Leading spaces are the code's indentation.
+        item.text = op.strs[0].trimEnd();
+        return null;
+    }
     if (op.kind in LABELLED) return labelled(op, item, parent, items);
     if (op.kind === 'path') return drawn(op, item, parent, items);
     const s = scale(parent);
