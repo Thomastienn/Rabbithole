@@ -8,9 +8,9 @@ import { boardProvider, messages, opened, setup } from '../support/board-kit.mjs
 test('board: a typed question gets its sentences one at a time and saves as a learner message and a reply', async (t) => {
     const provider = boardProvider([
         [
-            '> A hypha grows only at its tip.\nt1 text "tip" at 800,450 look=focus\nt2 text "x" at 9\n',
+            '> A hypha grows only at its tip.\nt1 text "tip" at 800,450 look=focus\nt2 text "x" at 9\npause soon\npause 5\n',
             'h1 arrow from t1 to nowhere\n> Tiny sacs',
-            ' carry new wall forward.\nv1 dot at 900,450\nw1 text "wall" at 800,450 size=s',
+            ' carry new wall forward.\nv1 dot at 900,450\nw1 text "wall" at 800,450 size=s\npause 1',
         ],
         ['> They join.\nj1 arrow from t1 to v1\n'],
     ]);
@@ -52,7 +52,9 @@ test('board: a typed question gets its sentences one at a time and saves as a le
         'w1 landed on t1, so the guard moved it',
     );
     assert.ok(logs.some((l) => /INFO board item moved id="w1"/.test(l)));
-    assert.equal(logs.filter((l) => /WARN board op skipped/.test(l)).length, 2);
+    assert.equal(logs.filter((l) => /WARN board op skipped/.test(l)).length, 3);
+    // A `pause S` line is clamped to 2 s; the reply's last sentence drops its pause.
+    assert.deepEqual([first.pause, second.pause], [2000, undefined]);
     assert.notEqual(first.id, second.id);
     assert.deepEqual(process.asked, ['How does a hypha grow at its tip?']);
 
