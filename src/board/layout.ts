@@ -14,7 +14,7 @@ export type Part = { key: string; t: [number, number] } & (
           w: number;
           h: number;
           rx?: number;
-          look?: 'slice' | 'slice-alt';
+          look?: 'slice' | 'slice-alt' | 'panel';
       }
     | {
           kind: 'line';
@@ -27,7 +27,9 @@ export type Part = { key: string; t: [number, number] } & (
           x: number;
           y: number;
           text: string;
-          look?: 'head' | 'set' | 'sm' | 'note' | 'name' | 'math' | 'mathop';
+          look?: 'head' | 'set' | 'sm' | 'note' | 'name' | 'math' | 'mathop' | 'code';
+          // A code line's language, for its highlighting.
+          lang?: string;
           anchor?: 'start' | 'end';
           // Font size in board pixels, when the look's own size does not apply.
           size?: number;
@@ -65,20 +67,22 @@ function lay(ops: Op[]) {
         if (parent.kind === 'tree') tree(children, left, top, w, h, parts);
         if (parent.kind === 'table') table(parent, children, left, top, w, h, parts);
         if (parent.kind === 'venn') venn(parent, children, cx, cy, w, h, parts);
+        if (parent.kind === 'code') code(parent, children, left, top, w, h, parts);
         sketchParts(parent, children, { left, top, w, h }, parts);
     }
     return parts;
 }
 
 // The space a child's boxes, circles and text take, for highlights, the pointer and the pen; lines are left out.
-// Text is measured at about 0.52 of its size per character, from 0.75 of its size above its baseline to 0.25 below.
+// Text is measured at about 0.52 of its size per character (code at MONO_EM), from 0.75 of its size above its
+// baseline to 0.25 below.
 export function partsBox(parts: Part[] = []) {
     const boxes = parts.flatMap((p): [number, number, number, number][] => {
         if (p.kind === 'box') return [[p.x, p.y, p.x + p.w, p.y + p.h]];
         if (p.kind === 'circle') return [[p.x - p.r, p.y - p.r, p.x + p.r, p.y + p.r]];
         if (p.kind === 'line') return [];
         const size = p.size ?? (p.look === 'head' ? 28 : p.look === 'sm' ? 30 : 32);
-        const w = p.text.length * 0.52 * size;
+        const w = p.text.length * (p.look === 'code' ? MONO_EM : 0.52) * size;
         const x = p.anchor === 'start' ? p.x : p.anchor === 'end' ? p.x - w : p.x - w / 2;
         return [[x, p.y - 0.75 * size, x + w, p.y + 0.25 * size]];
     });
@@ -90,6 +94,52 @@ export function partsBox(parts: Part[] = []) {
         w: r1(x1 - x0),
         h: r1(y1 - y0),
     };
+}
+
+// A monospace character is about 0.6 of its size wide.
+const MONO_EM = 0.6;
+// A code block (mockup Rabbithole-bpl.8): its panel, and its lines top-aligned 40 in from the panel's left, the
+// first baseline 36 + 0.8 × size below its top, rows 1.5 × size apart and 36 + 0.2 × size clear of its bottom. The
+// block shares one size, the largest from 30 down to 20 at which every line fits across and every row fits down;
+// at 20 a long line clips with an ellipsis and a row past the bottom is left out.
+function code(
+    c: Op,
+    lines: Op[],
+    left: number,
+    top: number,
+    w: number,
+    h: number,
+    parts: Map<string, Part[]>,
+) {
+    parts.set(c.id, [
+        { key: 'panel', t: [0, 1], kind: 'box', look: 'panel', x: left, y: top, w, h, rx: 16 },
+    ]);
+    const longest = Math.max(0, ...lines.map((l) => (l.text ?? '').length));
+    const baseline = (size: number, i: number) =>
+        Math.round(top + 36 + 0.8 * size) + i * Math.round(1.5 * size);
+    const fitsDown = (size: number, i: number) => baseline(size, i) + 0.2 * size + 36 <= top + h;
+    let size = 30;
+    while (size > 20 && (longest * MONO_EM * size > w - 80 || !fitsDown(size, lines.length - 1)))
+        size--;
+    const room = Math.floor((w - 80) / (MONO_EM * size));
+    lines.forEach((line, i) => {
+        if (!fitsDown(size, i)) return;
+        const text = line.text ?? '';
+        parts.set(line.id, [
+            {
+                key: 'code',
+                t: [0, 1],
+                kind: 'text',
+                look: 'code',
+                anchor: 'start',
+                x: r1(left + 40),
+                y: baseline(size, i),
+                size,
+                lang: c.lang,
+                text: text.length > room ? `${text.slice(0, room - 1)}…` : text,
+            },
+        ]);
+    });
 }
 
 // Steps share the box in equal columns (or rows, down), each box at most 260 wide; an arrow joins each step to

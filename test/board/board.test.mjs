@@ -255,6 +255,44 @@ test('board: a number line point arriving later moves a crowded label up onto a 
     assert.equal(board.q('.board-leader').getAttribute('d'), 'M1040 420V500');
 });
 
+test('board: a code block colours its lines in the theme syntax roles, and an unknown lang stays plain', async (t) => {
+    const { loadLanguage } = await import('../../src/markdown/codeTokens.ts');
+    await loadLanguage('py');
+    const board = await mount(t, []);
+    const block = (id, lang, x) => [
+        { id, kind: 'code', lang, at: [x, 450], w: 700, h: 300 },
+        { id: `${id}l1`, kind: 'line', on: id, text: '    return "a"  # c' },
+    ];
+    await board.act(async () =>
+        board.socket.server({
+            type: 'board',
+            replies: [
+                {
+                    caption: 'Code.',
+                    items: [...block('py', 'py', 400), ...block('cb', 'pseudo', 1200)],
+                },
+            ],
+        }),
+    );
+    const tokens = (id) =>
+        [...board.container.querySelectorAll(`[data-item="${id}"] tspan`)].map((e) => [
+            e.textContent,
+            e.getAttribute('class'),
+        ]);
+    assert.deepEqual(tokens('pyl1'), [
+        ['return', 'astryx-token-keyword'],
+        ['"a"', 'astryx-token-string'],
+        ['# c', 'astryx-token-comment'],
+    ]);
+    assert.equal(
+        board.q('[data-item="pyl1"] text').textContent,
+        '    return "a"  # c',
+        'indent kept',
+    );
+    assert.deepEqual(tokens('cbl1'), [], 'no grammar, plain ink');
+    assert.ok(board.q('[data-item="py"] .board-part-box.panel'), 'the panel');
+});
+
 test('board: disconnecting holds the last caption and keeps a typed draft', async (t) => {
     const board = await mount(t);
     await board.type('Keep this draft');

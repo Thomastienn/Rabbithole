@@ -69,6 +69,7 @@ quadrant x="low..high" y="low..high" w=W h=H, then: spot "label" X,Y in QD; X an
 compare vs="A|B" w=W h=H, then: aspect "name" values="a|b" in CM, one value per side
 sequence actors="A|B|C" w=W h=H, then: send "message" by=A to=B in SQ; without to= it is a note on its actor
 equation "E = m c^2" w=W h=H, symbols and operators separated by spaces, then: symbol "m" means="few words" in EQ
+code lang="py" w=W h=H, then: line "    code" in CB, one line of code each, in order; leading spaces are its indentation, "" is a blank line, and strings inside use single quotes. About 12 lines per block; beyond that, open a new page for the rest
 highlight ID: sweeps over an item to emphasise it
 pointer ID: glides to an item to draw the learner's eye, then fades
 erase ID ID ...: fades items out and frees their space

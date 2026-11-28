@@ -1,8 +1,16 @@
-import { useLayoutEffect, useRef, type CSSProperties } from 'react';
+import {
+    useEffect,
+    useLayoutEffect,
+    useRef,
+    useSyncExternalStore,
+    type CSSProperties,
+} from 'react';
+import { ensureHighlightStyles } from '@astryxdesign/core/CodeBlock';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import type { Op } from './player';
 import type { Part } from './layout';
+import { codeTokens, grammars } from '../markdown/codeTokens';
 
 // Math in KaTeX's own faces, centred on its point (mockup Rabbithole-brd.4). Each top-level group is a term that
 // writes in after the one before, sharing the op's time, drawn where it ends up so the formula never shifts.
@@ -129,7 +137,9 @@ export default function BoardItem({
             )}
             {op.kind === 'stroke' && <path className="board-learner" d={strokePath(points)} />}
             {op.kind === 'dot' && <circle className="board-dot" cx={x} cy={y} r={14} />}
-            {op.kind === 'line' && <path className="board-stroke" pathLength={1} d={path} />}
+            {op.kind === 'line' && !op.on && (
+                <path className="board-stroke" pathLength={1} d={path} />
+            )}
             {op.kind === 'arrow' && (
                 <path
                     className="board-stroke"
@@ -185,6 +195,7 @@ export default function BoardItem({
                 : !parts.length &&
                   op.kind !== 'point' &&
                   op.kind !== 'math' &&
+                  op.kind !== 'line' &&
                   op.text &&
                   label('s')}
         </g>
@@ -229,7 +240,29 @@ function ComponentPart({ part, ms }: { part: Part; ms: number }) {
                 ...(part.size && { fontSize: part.size }),
             }}
         >
-            {part.text}
+            {part.look === 'code' ? <CodeLine text={part.text} lang={part.lang} /> : part.text}
         </text>
     );
+}
+
+// A code line's Prism tokens in the theme's syntax roles, the way chat code fences colour them; plain until its
+// grammar loads, and plain for good when Prism has none.
+// shortcut: each line is tokenized alone, so a string or comment spanning lines colours only its first line.
+function CodeLine({ text, lang = 'plaintext' }: { text: string; lang?: string }) {
+    useEffect(ensureHighlightStyles, []);
+    useSyncExternalStore(grammars.subscribe, grammars.version, grammars.version);
+    const tokens = codeTokens(text, lang)[0] ?? [];
+    let at = 0;
+    return [...tokens, { start: text.length, end: text.length, type: '' }].flatMap((t) => {
+        const out = [
+            text.slice(at, t.start),
+            t.end > t.start && (
+                <tspan key={t.start} className={`astryx-token-${t.type}`}>
+                    {text.slice(t.start, t.end)}
+                </tspan>
+            ),
+        ];
+        at = t.end;
+        return out;
+    });
 }

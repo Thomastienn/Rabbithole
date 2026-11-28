@@ -329,7 +329,7 @@ export function boardOps() {
         }
         // Points on a page start at its top left.
         const placed = ([x, y]) => [x, y + top()];
-        if (op.kind === 'line' || op.kind === 'arrow') {
+        if ((op.kind === 'line' || op.kind === 'arrow') && !op.on) {
             if (op.from || op.to) {
                 const [a, b] = [target(op.from), target(op.to)];
                 if (!a || !b) return { error: `unknown id ${a ? op.to : op.from}` };
@@ -345,7 +345,11 @@ export function boardOps() {
             // Erased items stay in `items` for replay, so a node's parent is looked for among the rest.
             const live = new Map([...items].filter(([id]) => !erased.has(id)));
             const error = child(op, item, target(op.on), live);
-            return error ? { error } : { item };
+            if (error) return { error };
+            // A code line past the last row its block fits is left out (src/board/layout.ts).
+            if (op.kind === 'line' && !componentParts([...live.values(), item]).has(item.id))
+                return { error: `no room for ${op.id} in ${op.on}` };
+            return { item };
         }
         if (!op.at) return { error: 'at needs X,Y' };
         item.at = placed(op.at);
