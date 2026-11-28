@@ -6,10 +6,10 @@ import { boardOps } from './ops.mjs';
 import { boardSystem } from './prompt.mjs';
 import { boardMic } from './mic.mjs';
 import { boardPen } from './pen.mjs';
+import { boardVoicing } from './voicing.mjs';
 import { conversationHistory } from '../providers/conversationHistory.mjs';
 
 const STOPPED = 'The tutor stopped. Ask again to carry on.';
-const VOICE_UNAVAILABLE = 'The voice is unavailable, so the tutor carries on in captions.';
 // After a `?> ` question the board waits this long for an answer, then sends the next no-answer turn.
 export const WAIT_MS = 4000;
 // The no-answer turns: system turns, never learner messages (docs/board-spec.md, Tutor-guided).
@@ -17,47 +17,6 @@ export const NO_ANSWER = [
     '(No answer yet: the learner stayed quiet after your question. Give one short hint toward the answer, without mentioning the silence, and no "?> " line.)',
     '(Still no answer. Give the answer and carry on teaching where you were, without mentioning the silence.)',
 ];
-
-// A group of sentences voiced as one request (docs/board-polish-spec.md, Joined speech), once it is closed: a reply's
-// first sentence alone, then consecutive sentences until one carrying a pause, a change of rate, the reply's end
-// or JOIN sentences; null while the group is still open.
-const JOIN = 4;
-const joined = ({ sentences: all, voiced: from, written }) => {
-    if (!all[from]) return null;
-    if (from === 0) return all.slice(0, 1);
-    for (let i = from; ; i++) {
-        const next = all[i + 1];
-        if (all[i].pause || i + 1 - from === JOIN || (next && next.rate !== all[from].rate))
-            return all.slice(from, i + 1);
-        if (!next) return written ? all.slice(from) : null;
-    }
-};
-// Each sentence's start in its group's clip, in ms: the offset of its first word, the words matched in order
-// in the joined text; null when a word cannot be matched or a sentence has none.
-const wordOffsets = (texts, words) => {
-    const text = texts.join(' ');
-    const starts = texts.map((_, i) => texts.slice(0, i).join(' ').length + (i && 1));
-    const at = [0];
-    let cursor = 0;
-    for (const word of words) {
-        const index = word.text ? text.indexOf(word.text, cursor) : -1;
-        if (index < 0) return null;
-        cursor = index + word.text.length;
-        const k = starts.findLastIndex((start) => start <= index);
-        at[k] ??= Math.round(word.at);
-    }
-    return texts.every((_, i) => at[i] !== undefined) ? at : null;
-};
-// The fallback: each sentence starts at the share of the group's characters before it.
-const shares = (texts) => {
-    const total = texts.reduce((n, t) => n + t.length, 0);
-    let before = 0;
-    return texts.map((t) => {
-        const share = before / total;
-        before += t.length;
-        return share;
-    });
-};
 
 // One board session per open board: the conversation's own model process, its turns and their saving.
 // Up: { type: 'ask', text }, { type: 'mic', on }, { type: 'hold', on } as push-to-talk is held and let go, and, while on, mic audio as binary frames of 16 kHz mono float32 samples, { type: 'stroke', points } as the learner finishes a pen stroke, { type: 'view', page } as the learner opens a board page (no page: the view follows the tutor's page again), { type: 'progress', sentence, phase: 'start' | 'end' } as each caption shows and ends, { type: 'leave' }.
@@ -436,72 +395,7 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
             { settle: false },
         );
     };
-    // Speech runs one group ahead of playback (docs/board-polish-spec.md, Joined speech): a group synthesizes once
-    // the group before it starts playing, as one request whose audio goes under its first sentence's id.
-    // A group with no audio yet is tried twice; when speech still fails, the rest of the turn is captions only.
-    const speak = (current) => {
-        const group = joined(current);
-        if (!speech || current.speaking || !group || current.shown <= current.started) return;
-        current.started = current.voiced;
-        current.voiced += group.length;
-        current.speaking = true;
-        const signal = current.job.controller.signal;
-        const [first] = group;
-        const texts = group.map((s) => s.text);
-        let spoke = false,
-            words;
-        const say = () =>
-            speech.speak(
-                texts.join(' '),
-                (chunk) => {
-                    spoke = true;
-                    if (current.done) return;
-                    heard(current);
-                    sendAudio(first.id, chunk);
-                },
-                signal,
-                first.rate,
-            );
-        (current.silent
-            ? Promise.resolve()
-            : say().catch((error) => {
-                  if (spoke || signal.aborted) throw error;
-                  return say();
-              })
-        )
-            .then(
-                (w) => (words = w),
-                (error) => {
-                    if (signal.aborted) return;
-                    log(
-                        formatLog('warn', 'board', 'speech failed', {
-                            id: current.reply,
-                            cause: errorCause(error, texts),
-                        }),
-                    );
-                    if (spoke) return;
-                    current.silent = true;
-                    send({ type: 'notice', notice: VOICE_UNAVAILABLE });
-                },
-            )
-            .finally(() => {
-                current.speaking = false;
-                if (current.done) return;
-                heard(current);
-                if (spoke && group.length > 1) {
-                    const at = Array.isArray(words) && wordOffsets(texts, words);
-                    send({
-                        type: 'offsets',
-                        id: first.id,
-                        ids: group.map((s) => s.id),
-                        ...(at ? { at } : { share: shares(texts) }),
-                    });
-                }
-                // A group that never spoke plays each of its sentences by its caption estimate.
-                for (const s of spoke ? [first] : group) send({ type: 'audio-end', id: s.id });
-                speak(current);
-            });
-    };
+    const speak = boardVoicing({ speech, send, sendAudio, heard, log });
     // The reply is complete once the model has finished and its last sentence has been shown in full.
     const settle = (current) => {
         if (current.generated && current.over === current.sentences.length)
