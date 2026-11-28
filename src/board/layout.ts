@@ -16,14 +16,18 @@ export type Part = { key: string; t: [number, number] } & (
           rx?: number;
           look?: 'slice' | 'slice-alt';
       }
-    | { kind: 'line'; d: string; look: 'edge' | 'rule' | 'seam' | 'leader' | 'slice' | 'slice-alt' }
+    | {
+          kind: 'line';
+          d: string;
+          look: 'edge' | 'rule' | 'seam' | 'gap' | 'leader' | 'slice' | 'slice-alt';
+      }
     | { kind: 'circle'; x: number; y: number; r: number; look?: 'station' }
     | {
           kind: 'text';
           x: number;
           y: number;
           text: string;
-          look?: 'head' | 'set' | 'sm' | 'note';
+          look?: 'head' | 'set' | 'sm' | 'note' | 'name' | 'math' | 'mathop';
           anchor?: 'start' | 'end';
           // Font size in board pixels, when the look's own size does not apply.
           size?: number;

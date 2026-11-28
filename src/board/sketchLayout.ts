@@ -1,5 +1,6 @@
 import type { Op } from './player';
 import type { Part } from './layout.ts';
+import { EM, r1, rowParts, scaleOf } from './sketchRows.ts';
 
 // Board sketches (docs/board-sketches-spec.md, mockups Rabbithole-bsk.4 and bsk.5): cycle, stack, timeline, parts,
 // bars, pie, spectrum and quadrant, laid out
@@ -8,12 +9,8 @@ import type { Part } from './layout.ts';
 type Box = { left: number; top: number; w: number; h: number };
 type Parts = Map<string, Part[]>;
 
-// A character is about 0.52 of its font size wide.
-const EM = 0.52;
-const r1 = (v: number) => Math.round(v * 10) / 10;
 const widest = (texts: (string | undefined)[], size: number) =>
     Math.max(0, ...texts.map((text) => (text ?? '').length * EM * size));
-const scaleOf = (n: number) => (n > 8 ? 26 / 32 : 1);
 const station = (x: number, y: number, r: number, t: [number, number]): Part => ({
     key: 'station',
     t,
@@ -70,6 +67,7 @@ export function sketchParts(parent: Op, children: Op[], box: Box, parts: Parts) 
     if (parent.kind === 'pie') pie(children, box, parts);
     if (parent.kind === 'spectrum') spectrum(parent, children, box, parts);
     if (parent.kind === 'quadrant') quadrant(parent, children, box, parts);
+    rowParts(parent, children, box, parts);
 }
 
 // A rounded loop 40 inside the box's sides, its top run 50 below the top and its bottom run 90 above the bottom. The

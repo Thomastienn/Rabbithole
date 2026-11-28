@@ -190,6 +190,12 @@
 }
 /* Mockup Rabbithole-bsk.5: a spectrum's leaders are 3px muted; slices and their swatches are 5px ink edges over
    fills of 16% and 6% ink, alternating, 30% in focus, never told apart by hue. */
+/* Compare, sequence and equation (mockup Rabbithole-bsk.6): semibold side and actor names, 3px muted leaders, a
+   lifeline broken in the board's ground where an arrow crosses it, and the formula in the system's math face with
+   its symbols in italic. */
+.board-part-text.name {
+    font-weight: 600;
+}
 .board-part-leader {
     stroke: var(--color-text-secondary);
     stroke-width: 3;
@@ -215,12 +221,25 @@
     ) {
     fill: color-mix(in srgb, currentColor 30%, transparent);
 }
+.board-part-gap {
+    stroke: var(--color-background-muted);
+    stroke-width: 9;
+    stroke-linecap: butt;
+}
+.board-part-text.math {
+    font-family: math;
+    font-style: italic;
+}
+.board-part-text.mathop {
+    font-family: math;
+}
 .board-part-box,
 .board-part-circle,
 .board-part-edge,
+.board-part-gap,
+.board-part-leader,
 .board-part-rule,
 .board-part-seam,
-.board-part-leader,
 .board-part-slice,
 .board-part-slice-alt,
 .board-part-text {
@@ -309,9 +328,10 @@
     .board-part-box,
     .board-part-circle,
     .board-part-edge,
+    .board-part-gap,
+    .board-part-leader,
     .board-part-rule,
     .board-part-seam,
-    .board-part-leader,
     .board-part-slice,
     .board-part-slice-alt,
     .board-part-text {

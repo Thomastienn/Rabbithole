@@ -51,6 +51,12 @@ export type Op = {
         | 'place'
         | 'quadrant'
         | 'spot'
+        | 'compare'
+        | 'aspect'
+        | 'sequence'
+        | 'send'
+        | 'equation'
+        | 'symbol'
         | 'stroke'
         | 'erase';
     // A component's child names its component; components and plots carry their own path and numbers.
@@ -75,6 +81,15 @@ export type Op = {
     unit?: string;
     xy?: [number, number];
     ends?: string[];
+    // A compare's sides and an aspect's value per side; a sequence's actors and a send's actors, as indices into
+    // them (no `to` for a note); a symbol's meaning and its token in the equation (src/board/sketchRows.ts).
+    vs?: string[];
+    values?: string[];
+    actors?: string[];
+    by?: number;
+    to?: number;
+    means?: string;
+    token?: number;
     look?: Look;
     at?: [number, number];
     r?: number;
@@ -180,6 +195,7 @@ export const COMPONENT_KINDS = new Set([
     ...['axes', 'numberline', 'flow', 'tree', 'table', 'venn'],
     ...['cycle', 'stack', 'timeline', 'parts'],
     ...['bars', 'pie', 'spectrum', 'quadrant'],
+    ...['compare', 'sequence', 'equation'],
 ]);
 const pauseBefore = (sentence: Sentence, after: Sentence | undefined) =>
     after?.key ||
