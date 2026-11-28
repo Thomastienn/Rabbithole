@@ -25,8 +25,8 @@ const FIRST_BYTE_MS = 2500;
 
 // A small edge-tts client that keeps one socket for a board session's sentences: the library opens a socket
 // per request and returns whole clips, and reusing one cut the first byte from about 350 ms to 80 ms.
-// speak() streams one request's audio chunks and resolves at its turn.end with its words, [{ text, at }] with at
-// in ms of audio, from the word-boundary metadata the config message asks for; one request at a time.
+// speak() streams one request's audio chunks and resolves at its turn.end with its words, [{ text, at, end }] with
+// where each starts and ends in ms of audio, from the word-boundary metadata the config message asks for; one request at a time.
 // It rejects when the first audio chunk takes longer than firstByte ms.
 export function edgeSpeech(
     voice = VOICES.en,
@@ -106,7 +106,11 @@ export function edgeSpeech(
                                 for (const b of protocol.parseMetadata(body))
                                     // Offsets come in 100 ns ticks.
                                     if (b.type === 'WordBoundary')
-                                        words.push({ text: b.text, at: b.offset / 10000 });
+                                        words.push({
+                                            text: b.text,
+                                            at: b.offset / 10000,
+                                            end: (b.offset + b.duration) / 10000,
+                                        });
                             return path === 'turn.end' && done();
                         }
                         const frame = protocol.parseBinaryFrame(new Uint8Array(data));

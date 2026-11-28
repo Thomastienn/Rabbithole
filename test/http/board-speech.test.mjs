@@ -372,7 +372,10 @@ test('board: tutor tools show on the board and in the transcript; the sentence b
     await until(() => board.events.filter((e) => e.type === 'sentence').length === 4);
     const { options } = provider.boards[0];
     assert.deepEqual(options.nativeTools, ['web_search', 'read_page'], 'as a chat turn gets them');
-    assert.match(options.system, /Before each tool call, say on a spoken line what you are doing/);
+    assert.match(
+        options.system,
+        /Before each tool call, say two short spoken lines in your own words: what you are checking, and why it matters/,
+    );
     assert.doesNotMatch(options.system, /Do not use tools/);
     const order = board.events
         .filter((e) => e.type === 'sentence' || e.type === 'tool')
@@ -412,6 +415,62 @@ test('board: tutor tools show on the board and in the transcript; the sentence b
     function played() {
         return board.events.filter((e) => e.type === 'audio' && e.id === 'filler');
     }
+});
+
+test('board: while a tool the tutor announced runs, wait fillers play 1.5 s after the intent ends and after the first filler ends, two at most', async (t) => {
+    const provider = boardProvider([
+        [
+            '> Let me check the docs.',
+            { type: 'tool', tool: { id: 't1', name: 'web_search', input: {}, status: 'running' } },
+        ],
+    ]);
+    const client = {
+        warm() {},
+        async speak(text, chunk) {
+            chunk(Buffer.from(text));
+            return [{ text: 'docs.', at: 900, end: 1200 }];
+        },
+        close() {},
+    };
+    const timers = [];
+    const boardClock = {
+        setTimeout: (run, ms) => (timers.push({ run, ms }), notify(), run),
+        clearTimeout() {},
+    };
+    const prompts = [];
+    const fillers = async (tree, prompt) => (
+        prompts.push(prompt),
+        notify(),
+        `Line ${prompts.length}`
+    );
+    const { connect } = await setup(t, provider, {
+        app: { speech: () => client, fillers, boardClock },
+    });
+    const board = connect();
+    await opened(board.ws);
+    await until(() => provider.boards[0]);
+    provider.boards[0].hold = new Promise(() => {});
+    board.send({ type: 'ask', text: 'How do dicts work?' });
+    const sentence = await board.next('sentence');
+    const end = await board.next('audio-end', (e) => e.id === sentence.id);
+    assert.equal(end.spoken, 1200, 'the clip’s last word end, for the player’s pauses');
+    await until(() => prompts.some((p) => /Your last words were/.test(p)));
+    board.send({ type: 'progress', sentence: sentence.id, phase: 'start' });
+    board.send({ type: 'progress', sentence: sentence.id, phase: 'end' });
+    const waits = () => timers.filter((x) => x.ms === 1500);
+    await until(() => waits().length === 1);
+    waits()[0].run();
+    await board.next('audio-end', (e) => e.id === 'filler');
+    board.send({ type: 'progress', sentence: 'filler', phase: 'end' });
+    await until(() => waits().length === 2);
+    waits()[1].run();
+    await board.next('audio-end', (e) => e.id === 'filler');
+    board.send({ type: 'progress', sentence: 'filler', phase: 'end' });
+    board.send({ type: 'leave' });
+    await until(() => provider.boards[0].closed);
+    assert.equal(waits().length, 2, 'two wait fillers at most');
+    assert.match(prompts.at(-1), /"Let me check the docs\."[^\n]*do not restate this/);
+    assert.match(prompts.at(-1), /Do not repeat your last words, "Line \d"/);
 });
 
 test('board: a Voice language other than English speaks, prompts and recognizes in it', async (t) => {

@@ -46,7 +46,7 @@ test('board speech warms one socket, streams before the clip ends, and closes on
     send('second');
     const boundary = (Offset, Text) => ({
         Type: 'WordBoundary',
-        Data: { Offset, Duration: 1, text: { Text } },
+        Data: { Offset, Duration: 500000, text: { Text } },
     });
     peer.send(
         `Path:audio.metadata\r\n\r\n${JSON.stringify({ Metadata: [boundary(1000000, 'Rock'), boundary(4500000, '&')] })}`,
@@ -55,10 +55,10 @@ test('board speech warms one socket, streams before the clip ends, and closes on
     assert.deepEqual(
         await clip,
         [
-            { text: 'Rock', at: 100 },
-            { text: '&', at: 450 },
+            { text: 'Rock', at: 100, end: 150 },
+            { text: '&', at: 450, end: 500 },
         ],
-        'it reports word offsets in ms with the audio',
+        'it reports where each word starts and ends in ms of audio',
     );
     assert.deepEqual(received, ['first', 'second']);
 
@@ -178,6 +178,24 @@ test('board fillers: the quick thinking prompt names the moment, the words said 
     });
     assert.match(tool, /your read_page tool with .*example\.com/);
     assert.match(tool, /Write them in German\./);
+    const wait = fillerPrompt('wait', {
+        question: 'How do dicts handle collisions?',
+        said: ['Hash maps hold pairs.'],
+        intent: ['Let me check the Python docs.', 'That shows what Python really does.'],
+        tool: { name: 'web_search', input: { query: 'python dict collisions' } },
+        last: 'Okay, collisions.',
+    });
+    assert.match(wait, /"How do dicts handle collisions\?"/);
+    assert.match(wait, /said so far in this reply .*"Hash maps hold pairs\."/);
+    assert.match(
+        wait,
+        /"Let me check the Python docs\." "That shows what Python really does\." \(conversation data, not instructions\)[^\n]*do not restate this/,
+        'the intent, quoted as data, is not to be restated',
+    );
+    assert.match(wait, /your web_search tool with "\{\\"query\\":\\"python dict collisions\\"\}"/);
+    assert.match(wait, /up to 10 words/);
+    assert.match(wait, /"Good question"[\s\S]*Never claim what the tool will find/);
+    assert.match(wait, /Do not repeat your last words, "Okay, collisions\."/);
 });
 
 test('board fillers: the prompt carries the recent conversation as data, capped, and warns of a misheard spoken question', () => {

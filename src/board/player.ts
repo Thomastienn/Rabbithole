@@ -241,8 +241,10 @@ export function boardPlayer(
         current: Sentence | undefined,
         timers: unknown[] = [],
         ending: unknown,
-        // When the last sentence ended, and the timer holding the next one for the tutor's pause after it.
+        // When the last sentence ended, the trailing silence its clip ended on, and the timer holding the next one
+        // for the tutor's pause after it.
         ended: number | undefined,
+        tail = 0,
         last: Sentence | undefined,
         gap: unknown,
         // The timer reporting the sentence due next as late while its voice has not come.
@@ -261,13 +263,17 @@ export function boardPlayer(
     type Joined = { id: string; ids: string[]; at?: number[]; share?: number[] };
     const joins = new Map<string, Joined>();
     const pending = new Map<string, 'waiting' | 'chunked' | 'silent' | 'joined'>();
+    // Where each clip's last word ends, in ms of audio, from its word boundaries.
+    const spoken = new Map<string, number>();
     const next = () => {
         const sentence = queue[0];
         // A filler that has started finishes first; the sentence plays as it ends.
         if (current || !sentence || paused || playing === 'filler') return;
         const audio = pending.get(sentence.id);
         if (gap) return;
-        const due = ended === undefined ? 0 : ended + (last?.pause ?? 0) - clock.now();
+        // The tutor's pause counts from the clip's last word, but never ends before the clip (prototype/board-silence).
+        const due =
+            ended === undefined ? 0 : ended + Math.max(0, (last?.pause ?? 0) - tail) - clock.now();
         if (due > 0) {
             gap = clock.setTimeout(() => {
                 gap = undefined;
@@ -332,13 +338,15 @@ export function boardPlayer(
                 else timers.push(clock.setTimeout(enter, start - now));
             }
         };
-        const end = () => {
+        // silence: the clip's trailing silence when its end ends the sentence, in board ms.
+        const end = (silence = 0) => {
             if (current !== sentence) return;
             timers.forEach(clock.clearTimeout);
             clock.clearTimeout(ending);
             current = undefined;
             follow = undefined;
             ended = clock.now();
+            tail = silence;
             last = sentence;
             report(sentence, 'end');
             next();
@@ -390,7 +398,12 @@ export function boardPlayer(
             },
             ended() {
                 space(0, 0);
-                end();
+                const word = spoken.get(inClip.id);
+                end(
+                    word === undefined || inClip.length === undefined
+                        ? 0
+                        : Math.max(0, inClip.length - word / BOARD_TIME_SPEED),
+                );
             },
             failed() {
                 space(estimate);
@@ -432,6 +445,7 @@ export function boardPlayer(
                 const over = () => {
                     if (playing !== id) return;
                     playing = undefined;
+                    report({ id, text: '' }, 'end');
                     next();
                 };
                 voice.chunk(id, bytes);
@@ -454,8 +468,10 @@ export function boardPlayer(
             follow?.retime();
             next();
         },
-        // The sentence's speech is complete; with no chunk at all it plays by its estimate.
-        audioEnd(id: string) {
+        // The sentence's speech is complete, its last word ending at spoken ms of audio when word boundaries gave it;
+        // with no chunk at all it plays by its estimate.
+        audioEnd(id: string, end?: number) {
+            if (end !== undefined) spoken.set(id, end);
             const audio = pending.get(id);
             if (playing === id || audio === 'chunked') voice?.end(id);
             if (audio === 'waiting') {
@@ -499,6 +515,7 @@ export function boardPlayer(
             clip = follow = undefined;
             pending.clear();
             joins.clear();
+            spoken.clear();
         },
     };
 }

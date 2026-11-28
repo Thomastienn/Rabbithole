@@ -18,8 +18,8 @@ const checkInBlock = (level, guided) =>
 - When the learner says "stop checking in", stop for this board, until they say "check on me more".`
         : '- When the learner says "check on me more", check in now and then on a line starting "~> ", which ends your reply, until they say "stop checking in".';
 
-// With tutor tools the tutor says what it is doing first, so the learner hears it while the tool runs.
-const TOOLS = `Use a tool only when the question needs it, such as reading a page or looking up an earlier conversation. Before each tool call, say on a spoken line what you are doing, in a few words of your own about this question, then call the tool; after it, carry on teaching.`;
+// With tutor tools the tutor says what it is doing and why first, so the learner hears it while the tool runs.
+const TOOLS = `Use a tool only when the question needs it, such as reading a page or looking up an earlier conversation. Before each tool call, say two short spoken lines in your own words: what you are checking, and why it matters for this question. Then call the tool; after it, carry on teaching.`;
 
 // The board's voice mode (docs/board-spec.md, Board prompt and skills), after chat's teaching skills and tutor style. None of chat's media rules.
 const boardSkills = (guided, checkIns, tools) => `VOICE MODE

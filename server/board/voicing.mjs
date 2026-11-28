@@ -112,8 +112,11 @@ export function boardVoicing({ speech, send, sendAudio, heard, log }) {
                         ...(at ? { at } : { share: shares(texts) }),
                     });
                 }
-                // A group that never spoke plays each of its sentences by its caption estimate.
-                for (const s of spoke ? [first] : group) send({ type: 'audio-end', id: s.id });
+                // A group that never spoke plays each of its sentences by its caption estimate. spoken: where its
+                // last word ends in ms of audio, so the player counts a pause from it; none without word boundaries.
+                const spoken = spoke && Array.isArray(words) ? words.at(-1)?.end : undefined;
+                for (const s of spoke ? [first] : group)
+                    send({ type: 'audio-end', id: s.id, ...(spoken && { spoken }) });
                 speak(current);
             });
     };

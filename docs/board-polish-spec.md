@@ -146,7 +146,7 @@ The app no longer adds pauses of its own. The tutor writes a pause only where th
 - A new op line `pause S`, where S is in seconds of board time, belongs to the sentence above it and means "pause this long after this sentence". The op reader clamps S to 0.2–2 and skips a malformed pause with a logged error, like any bad op. It draws nothing.
 - The player's fixed pauses (the beat after each sentence, and the longer pause before a page, before a component and after a key sentence) are removed. With no `pause` op, the next sentence follows straight on.
 - The rules from the earlier pacing spec stay, applied to the tutor's pauses:
-  - A pause counts from the end of the sentence and overlaps any wait for the next sentence.
+  - A pause counts from the end of the sentence and overlaps any wait for the next sentence. Since 2026-11-28 it counts from the clip's last spoken word (docs/board-spec.md, Pauses from the last word).
   - Cutting in drops any pause still to come.
   - The reply's last line gets no pause.
   - Speed scales a pause.

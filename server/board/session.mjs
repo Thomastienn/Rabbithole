@@ -8,6 +8,7 @@ import { boardMic, SPOKEN } from './mic.mjs';
 import { boardPen } from './pen.mjs';
 import { boardVoicing } from './voicing.mjs';
 import { sessionFillers } from './fillers.mjs';
+import { boardToolCalls } from './toolCalls.mjs';
 import { attachBoardFiles, boardAsk } from './files.mjs';
 import { nativeTools as nativeToolsFor } from '../tools/runner.mjs';
 import { conversationHistory } from '../providers/conversationHistory.mjs';
@@ -22,14 +23,15 @@ export const NO_ANSWER = [
 ];
 
 // One board session per open board: the conversation's own model process, its turns and their saving.
-// Up: { type: 'ask', text }, { type: 'mic', on }, { type: 'hold', on } as push-to-talk is held and let go, and, while on, mic audio as binary frames of 16 kHz mono float32 samples, { type: 'stroke', points } as the learner finishes a pen stroke, { type: 'unstroke', all } as they take back their last stroke or all of them, { type: 'view', page } as the learner opens a board page (no page: the view follows the tutor's page again), { type: 'progress', sentence, phase: 'start' | 'end' | 'late' } as each caption shows and ends, or 1 s after it was due while its voice has not come, { type: 'leave' }.
+// Up: { type: 'ask', text }, { type: 'mic', on }, { type: 'hold', on } as push-to-talk is held and let go, and, while on, mic audio as binary frames of 16 kHz mono float32 samples, { type: 'stroke', points } as the learner finishes a pen stroke, { type: 'unstroke', all } as they take back their last stroke or all of them, { type: 'view', page } as the learner opens a board page (no page: the view follows the tutor's page again), { type: 'progress', sentence, phase: 'start' | 'end' | 'late' } as each caption shows and ends, or 1 s after it was due while its voice has not come, and with sentence `filler` as a filler ends, { type: 'leave' }.
 // Down: { type: 'state', state: 'idle' | 'thinking' | 'speaking' }, thinking with the turn's user and reply message ids, { type: 'notice', notice },
 // { type: 'sentence', id, text, ops, voiced } with the drawable ops written under it (server/board/ops.mjs),
 // then, when voiced, its group's speech under the group's first sentence id as binary frames (one byte of id length, the id, the audio),
 // for a group of more than one { type: 'offsets', id, ids, at } with each sentence's start in the clip in ms, or share: the fraction
-// of the clip before it when word boundaries are missing, and { type: 'audio-end', id } (for each of its ids when it has no audio),
+// of the clip before it when word boundaries are missing, and { type: 'audio-end', id, spoken } with where its last word ends in ms of audio,
+// when word boundaries give it (for each of its ids when it has no audio),
 // a filler clip the same way under the id `filler` when a turn's first audio hasn't started after 1 s, a later sentence reports late
-// or a tool starts with no sentence saying so, { type: 'tool', tool: { id, name, input, status } } as a tutor tool runs and ends,
+// or a tool starts with no sentence saying so, and up to two while a tool the tutor announced runs on (server/board/toolCalls.mjs), { type: 'tool', tool: { id, name, input, status } } as a tutor tool runs and ends,
 // { type: 'stroke', item, mark } back for each pen stroke, with what it marks or null, and { item } for each page opened, { type: 'unstroke', ids } for strokes taken back,
 // { type: 'board', replies: [{ caption, items }] } once on open: the saved board, each reply's items replayed
 // from its op lines with the reply's last sentence as its caption,
@@ -71,23 +73,16 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
         sendAudio('filler', clip);
         send({ type: 'audio-end', id: 'filler' });
     });
-    // A tool call shows on the board and in the transcript. The sentence before it is the tutor saying what it does,
-    // so it is spoken now instead of after the call; with none since the last call, a filler says it.
-    const toolEvent = (current, tool, sentences) => {
-        if (store.live(id)) store.toolCall(id, current.reply, tool);
-        if (tool.status === 'running' && !current.tools.has(tool.id)) {
-            current.tools.add(tool.id);
-            sentences.cut();
-            const said = current.sentences.length > current.toolSaid;
-            current.toolSaid = current.sentences.length;
-            if (said) {
-                current.sentences.at(-1).breaks = true;
-                speak(current);
-            } else fillers.say(current, 'tool', { tool }, () => true);
-        }
-        const { output, resources, ...shown } = tool;
-        send({ type: 'tool', tool: shown });
-    };
+    const speak = boardVoicing({ speech, send, sendAudio, heard, log });
+    const toolCalls = boardToolCalls({
+        store,
+        id,
+        send,
+        speak,
+        fillers,
+        clock,
+        voiced: () => voicedChunks,
+    });
     // The items drawn on this board so far, across its turns.
     let board;
     const pen = boardPen(ctx, () => board, send);
@@ -298,7 +293,7 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
                     (e) =>
                         current.done ||
                         (e.type === 'tool'
-                            ? toolEvent(current, e.tool, sentences)
+                            ? toolCalls.event(current, e.tool, sentences)
                             : sentences.feed(e.text)),
                     signal,
                     images,
@@ -447,7 +442,6 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
             { settle: false },
         );
     };
-    const speak = boardVoicing({ speech, send, sendAudio, heard, log });
     // The reply is complete once the model has finished and its last sentence has been shown in full.
     const settle = (current) => {
         if (current.generated && current.over === current.sentences.length)
@@ -455,6 +449,7 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
     };
     const progress = (sentence, phase) => {
         const current = turn;
+        if (current && sentence === 'filler' && phase === 'end') toolCalls.fillerEnded(current);
         const index = current?.sentences.findIndex((s) => s.id === sentence) ?? -1;
         if (index < 0) return;
         if (phase === 'start' && index >= current.shown) {
@@ -470,6 +465,7 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
                 ?.finally(() => (current.late = null));
         }
         if (phase === 'end' && index < current.shown) {
+            toolCalls.ended(current, index);
             current.over = Math.max(current.over, index + 1);
             settle(current);
         }

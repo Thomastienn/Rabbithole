@@ -214,7 +214,7 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
                 );
             if (m.type === 'sentence' && !cut.current) player.add(m);
             if (m.type === 'offsets') player.offsets(m);
-            if (m.type === 'audio-end') player.audioEnd(m.id);
+            if (m.type === 'audio-end') player.audioEnd(m.id, m.spoken);
             // A stroke joins the board it was drawn on, as the server replays it.
             if (m.type === 'stroke') {
                 onLast((r) => ({ ...r, items: [...r.items, { op: m.item, ms: 0 }] }));
