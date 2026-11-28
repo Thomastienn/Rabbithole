@@ -198,9 +198,9 @@ function ComponentPart({ part, ms }: { part: Part; ms: number }) {
     if (part.kind === 'box')
         return (
             <rect
-                className="board-stroke board-part-box"
+                className={`board-stroke board-part-box${part.look ? ` ${part.look}` : ''}`}
                 pathLength={1}
-                rx={18}
+                rx={part.rx ?? 18}
                 style={{ ...timing, x: part.x, y: part.y, width: part.w, height: part.h }}
             />
         );

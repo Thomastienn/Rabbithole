@@ -246,6 +246,129 @@ test('board layout: an erased child keeps its place while the rest reflow withou
     assert.equal(parts.get('event2')[1].y, 505, 'fading where it was');
 });
 
+// Quantity sketches (mockup Rabbithole-bsk.5): the numbers are the mockup's.
+test('board layout: bars share rows, the largest so far taking the full length and rescaling the rest', () => {
+    const box = { id: 'g1', kind: 'bars', at: [800, 450], w: 1200, h: 520 };
+    const list = [
+        ['Mercury', 3.2],
+        ['Venus', 6],
+        ['Earth', 8.3],
+        ['Mars', 12.7],
+        ['Jupiter', 43],
+    ].map(([text, value]) => ({ text, value, unit: 'min' }));
+    assert.deepEqual(draw(sketch(box, 'bar', list.slice(0, 1)), 'bar1'), [
+        'Mercury@200,461',
+        'bar 356.5,428,823.5,44',
+        '3.2 min@1204,461',
+    ]);
+    const five = sketch(box, 'bar', list);
+    assert.deepEqual(draw(five, 'bar1'), [
+        'Mercury@200,269',
+        'bar 356.5,236,61.3,44',
+        '3.2 min@441.8,269',
+    ]);
+    assert.deepEqual(draw(five, 'bar5')[1], 'bar 356.5,620,823.5,44');
+    const ten = sketch(
+        box,
+        'bar',
+        [37, 33, 29, 23, 22, 22, 22, 22, 21, 19].map((value, i) => ({
+            text: i === 6 ? 'Mexico City' : `C${i}`,
+            value,
+        })),
+    );
+    assert.deepEqual(draw(ten, 'bar1').slice(1), ['bar 388.7,198,791.3,36', '37@1204,225']);
+    assert.deepEqual(draw(ten, 'bar10')[1], 'bar 388.7,666,406.3,36', 'still inside the box');
+});
+
+test('board layout: a pie sweeps each slice on from the last, its legend showing shares so far', () => {
+    const box = { id: 'a1', kind: 'pie', at: [800, 450], w: 1200, h: 600 };
+    const list = [
+        { text: 'Nitrogen', value: 78 },
+        { text: 'Oxygen', value: 21 },
+        { text: 'Argon and others', value: 1 },
+    ];
+    assert.deepEqual(draw(sketch(box, 'slice', list.slice(0, 1)), 'slice1'), [
+        'slice M220 450A264 264 0 1 1 748 450A264 264 0 1 1 220 450Z' +
+            'M338.8 450A145.2 145.2 0 1 0 629.2 450A145.2 145.2 0 1 0 338.8 450Z',
+        'swatch 858,432,36,36',
+        'Nitrogen@918,461',
+        '100%@1083.1,460',
+    ]);
+    assert.equal(draw(sketch(box, 'slice', list.slice(0, 2)), 'slice1')[3], '79%@1083.1,420');
+    const three = sketch(box, 'slice', list);
+    assert.deepEqual(draw(three, 'slice1'), [
+        'slice M484 186A264 264 0 1 1 224.7 400.5L341.4 422.8A145.2 145.2 0 1 0 484 304.8Z',
+        'swatch 858,352,36,36',
+        'Nitrogen@918,381',
+        '78%@1216.2,380',
+    ]);
+    assert.equal(componentParts(three).get('slice2')[0].look, 'slice-alt', 'fills alternate');
+});
+
+test('board layout: a pie in a narrow box shrinks its ring so the legend ends inside the box', () => {
+    const box = { id: 'a1', kind: 'pie', at: [400, 300], w: 600, h: 400 };
+    const share = componentParts(sketch(box, 'slice', [{ text: 'Argon and others', value: 1 }]))
+        .get('slice1')
+        .at(-1);
+    assert.ok(
+        share.x + 4 * 0.52 * share.size <= 700.1, // 0.1 for rounding to tenths
+        `"100%" ends at the box's right, not past it`,
+    );
+});
+
+test('board layout: a spectrum shares its line in slots, dropping every second place from five', () => {
+    const box = { id: 'h1', kind: 'spectrum', at: [800, 450], w: 1300, h: 440 };
+    box.ends = ['acid', 'alkaline'];
+    assert.deepEqual(draw([box], 'h1'), [
+        'line M150 330H1450',
+        'acid@150,290',
+        'alkaline@1450,290',
+    ]);
+    const list = [
+        ['Lemon juice', 'pH 2'],
+        ['Coffee', 'pH 5'],
+        ['Water', 'pH 7'],
+        ['Baking soda', 'pH 9'],
+        ['Bleach', 'pH 13'],
+    ].map(([text, note]) => ({ text, note }));
+    assert.deepEqual(draw(sketch(box, 'place', list.slice(0, 1)), 'place1'), [
+        'station 800,330,14',
+        'Lemon juice@800,394',
+        'pH 2@800,434',
+    ]);
+    assert.equal(draw(sketch(box, 'place', list.slice(0, 2)), 'place1')[0], 'station 475,330,14');
+    const five = sketch(box, 'place', list);
+    assert.deepEqual(draw(five, 'place2'), [
+        'leader M540 352V480',
+        'station 540,330,14',
+        'Coffee@540,520',
+        'pH 5@540,560',
+    ]);
+    assert.deepEqual(draw(five, 'place3')[1], 'Water@800,394', 'odd places stay up');
+});
+
+test('board layout: a quadrant places each spot at its coordinates, twins sharing a station', () => {
+    const box = { id: 'k1', kind: 'quadrant', at: [800, 450], w: 1300, h: 780 };
+    box.ends = ['cheap', 'costly', 'dirty', 'clean'];
+    assert.deepEqual(draw([box], 'k1'), [
+        'axes M350 450H1250M800 780V120M1234 466L1250 450L1234 434M816 136L800 120L784 136',
+        'cheap@326,460',
+        'costly@1274,460',
+        'clean@800,96',
+        'dirty@800,824',
+    ]);
+    const spots = sketch(box, 'spot', [
+        { text: 'Coal', xy: [2, 1] },
+        { text: 'Nuclear', xy: [8, 8] },
+        { text: 'Solar', xy: [3, 9] },
+        { text: 'Wind', xy: [3, 9] },
+    ]);
+    assert.deepEqual(draw(spots, 'spot1'), ['station 530,714,14', 'Coal@560,725']);
+    assert.deepEqual(draw(spots, 'spot2'), ['station 1070,252,14', 'Nuclear@1040,263']);
+    assert.deepEqual(draw(spots, 'spot3'), ['station 620,186,14', 'Solar@650,197']);
+    assert.deepEqual(draw(spots, 'spot4'), ['Wind@650,241']);
+});
+
 // Compare, sequence and equation (mockup Rabbithole-bsk.6): the numbers are the mockup's.
 test('board layout: a compare widens its aspect column to the longest name and stacks rows down', () => {
     const box = {

@@ -2,7 +2,8 @@ import type { Op } from './player';
 import type { Part } from './layout.ts';
 import { EM, r1, rowParts, scaleOf } from './sketchRows.ts';
 
-// Board sketches (docs/board-sketches-spec.md, mockup Rabbithole-bsk.4): cycle, stack, timeline and parts, laid out
+// Board sketches (docs/board-sketches-spec.md, mockups Rabbithole-bsk.4 and bsk.5): cycle, stack, timeline, parts,
+// bars, pie, spectrum and quadrant, laid out
 // from their box and every child drawn so far, in board pixels. Stations are 14-radius circles in the board's
 // ground, labels 32 and notes 28; past eight children both shrink to 26/32 of that so the pieces still share the box.
 type Box = { left: number; top: number; w: number; h: number };
@@ -23,7 +24,7 @@ const edge = (
     key: string,
     d: string,
     t: [number, number],
-    look: 'edge' | 'rule' = 'edge',
+    look: Extract<Part, { kind: 'line' }>['look'] = 'edge',
 ): Part => ({
     key,
     t,
@@ -62,6 +63,10 @@ export function sketchParts(parent: Op, children: Op[], box: Box, parts: Parts) 
     if (parent.kind === 'stack') stack(children, box, parts);
     if (parent.kind === 'timeline') timeline(children, box, parts);
     if (parent.kind === 'parts') whole(parent, children, box, parts);
+    if (parent.kind === 'bars') bars(children, box, parts);
+    if (parent.kind === 'pie') pie(children, box, parts);
+    if (parent.kind === 'spectrum') spectrum(parent, children, box, parts);
+    if (parent.kind === 'quadrant') quadrant(parent, children, box, parts);
     rowParts(parent, children, box, parts);
 }
 
@@ -241,6 +246,185 @@ function whole(p: Op, list: Op[], { left, top, h }: Box, parts: Parts) {
             ...(part.note
                 ? [text('note', noteX, y + 10 * k, part.note, 28 * k, [0.8, 1], 'start', true)]
                 : []),
+        ]);
+    });
+}
+
+// Bars in rows at most 96 apart, centred in the box: the label at the box's left, the bar 40 past the widest label and
+// the value 24 past the bar's end. The largest value so far reaches 220 short of the box's right, so a larger one
+// rescales the rest. Bars are 44 high, 36 past eight.
+function bars(list: Op[], { left, top, w, h }: Box, parts: Parts) {
+    const n = list.length;
+    const k = scaleOf(n);
+    const row = rows(n, 96, h, top + h / 2);
+    const x = r1(
+        left +
+            widest(
+                list.map((b) => b.text),
+                32 * k,
+            ) +
+            40,
+    );
+    const full = left + w - 220 - x;
+    const most = Math.max(...list.map((b) => b.value ?? 0)) || 1;
+    const bh = n > 8 ? 36 : 44;
+    list.forEach((b, i) => {
+        const y = row(i);
+        const len = r1((full * (b.value ?? 0)) / most);
+        const said = `${b.value ?? ''}${b.unit ? ` ${b.unit}` : ''}`;
+        parts.set(b.id, [
+            text('label', left, y + 11 * k, b.text ?? '', 32 * k, [0, 1 / 3], 'start'),
+            {
+                key: 'bar',
+                t: [1 / 3, 2 / 3],
+                kind: 'box',
+                x,
+                y: r1(y - bh / 2),
+                w: len,
+                h: bh,
+                rx: bh / 2,
+            },
+            text('value', r1(x + len + 24), y + 11 * k, said, 32 * k, [2 / 3, 1], 'start'),
+        ]);
+    });
+}
+
+// A ring 20 inside the box's left and 36 inside its top and bottom, its hole 0.55 across. Slices sweep clockwise from
+// the top in the order given, each its value's share of the slices so far, their fills alternating. The legend sits
+// 110 right of the ring in rows at most 80 apart: a 36 swatch, the label 60 past it, the share 32 past the widest label.
+function pie(list: Op[], { left, top, w, h }: Box, parts: Parts) {
+    const n = list.length;
+    const k = scaleOf(n);
+    const labels = widest(
+        list.map((s) => s.text),
+        32 * k,
+    );
+    // The ring shrinks in a narrow box so the legend (swatch, label, a "100%" share) still ends inside it.
+    const R = r1(Math.min(h / 2 - 36, (w - 130 - (60 + labels + 32 + 4 * EM * 28 * k)) / 2));
+    const r = r1(R * 0.55);
+    const [cx, cy] = [left + 20 + R, top + h / 2];
+    const total = list.reduce((sum, s) => sum + (s.value ?? 0), 0) || 1;
+    const on = (a: number, rad: number) =>
+        `${r1(cx + rad * Math.sin(a))} ${r1(cy - rad * Math.cos(a))}`;
+    const ring = (rad: number, sweep: 0 | 1) =>
+        `M${r1(cx - rad)} ${cy}A${rad} ${rad} 0 1 ${sweep} ${r1(cx + rad)} ${cy}` +
+        `A${rad} ${rad} 0 1 ${sweep} ${r1(cx - rad)} ${cy}Z`;
+    const row = rows(n, 80, h, cy);
+    const sx = r1(cx + R + 110);
+    const labelX = sx + 60;
+    const shareX = r1(labelX + labels + 32);
+    let from = 0;
+    list.forEach((s, i) => {
+        const share = (s.value ?? 0) / total;
+        const to = from + share * 2 * Math.PI;
+        const big = to - from > Math.PI ? 1 : 0;
+        const d =
+            share >= 1
+                ? ring(R, 1) + ring(r, 0)
+                : `M${on(from, R)}A${R} ${R} 0 ${big} 1 ${on(to, R)}L${on(to, r)}` +
+                  `A${r} ${r} 0 ${big} 0 ${on(from, r)}Z`;
+        from = to;
+        const look = i % 2 ? 'slice-alt' : 'slice';
+        const y = row(i);
+        const size = r1(36 * k);
+        parts.set(s.id, [
+            edge('slice', d, [0, 0.5], look),
+            {
+                key: 'swatch',
+                t: [0.5, 0.65],
+                kind: 'box',
+                x: sx,
+                y: r1(y - size / 2),
+                w: size,
+                h: size,
+                rx: 8,
+                look,
+            },
+            text('label', labelX, y + 11 * k, s.text ?? '', 32 * k, [0.65, 0.85], 'start'),
+            text(
+                'share',
+                shareX,
+                y + 10 * k,
+                `${Math.round(share * 100)}%`,
+                28 * k,
+                [0.85, 1],
+                'start',
+                true,
+            ),
+        ]);
+    });
+}
+
+// A line across the box 100 below its top, its ends written 40 above it at either end. Places share the line in equal
+// slots in the order given: a station on the line, the name 64 below it and the note 40 under that. From five places
+// every second one drops 126 to a lower row on a leader, so names never collide.
+function spectrum(p: Op, list: Op[], { left, top, w }: Box, parts: Parts) {
+    const n = list.length;
+    const k = scaleOf(n);
+    const y = top + 100;
+    const [low, high] = p.ends ?? [];
+    parts.set(p.id, [
+        edge('line', `M${left} ${y}H${left + w}`, [0, 0.6]),
+        text('low', left, y - 40, low ?? '', 28, [0.6, 1], 'start', true),
+        text('high', left + w, y - 40, high ?? '', 28, [0.6, 1], 'end', true),
+    ]);
+    list.forEach((place, i) => {
+        const x = r1(left + (w * (i + 0.5)) / n);
+        const lower = n >= 5 && i % 2 === 1;
+        const nameY = y + 64 * k + (lower ? 126 : 0);
+        const at = lower ? 0.2 : 0;
+        parts.set(place.id, [
+            ...(lower
+                ? [edge('leader', `M${x} ${y + 22}V${r1(nameY - 40 * k)}`, [0, at], 'leader')]
+                : []),
+            station(x, y, r1(14 * k), [at, 0.4]),
+            text('name', x, nameY, place.text ?? '', 32 * k, [0.4, place.note ? 0.75 : 1]),
+            ...(place.note
+                ? [text('note', x, nameY + 40 * k, place.note, 28 * k, [0.75, 1], undefined, true)]
+                : []),
+        ]);
+    });
+}
+
+// Two axes crossing at the box's middle, 200 inside its sides and 60 inside its top and bottom, with arrowheads at the
+// high ends and the end names 24 past each end (44 below the bottom). A spot sits at its X,Y from 0 to 10, its label
+// 30 to its right, or to its left past 7 across; spots never move. A spot where an earlier one is shares its station,
+// its label 44 below.
+function quadrant(p: Op, list: Op[], { left, top, w, h }: Box, parts: Parts) {
+    const k = scaleOf(list.length);
+    const [x0, x1, y0, y1] = [left + 200, left + w - 200, top + 60, top + h - 60];
+    const [cx, cy] = [left + w / 2, top + h / 2];
+    const [xlo, xhi, ylo, yhi] = p.ends ?? [];
+    parts.set(p.id, [
+        edge(
+            'axes',
+            `M${x0} ${cy}H${x1}M${cx} ${y1}V${y0}` +
+                `M${x1 - 16} ${cy + 16}L${x1} ${cy}L${x1 - 16} ${cy - 16}` +
+                `M${cx + 16} ${y0 + 16}L${cx} ${y0}L${cx - 16} ${y0 + 16}`,
+            [0, 0.6],
+        ),
+        text('xlo', x0 - 24, cy + 10, xlo ?? '', 28, [0.6, 1], 'end', true),
+        text('xhi', x1 + 24, cy + 10, xhi ?? '', 28, [0.6, 1], 'start', true),
+        text('yhi', cx, y0 - 24, yhi ?? '', 28, [0.6, 1], undefined, true),
+        text('ylo', cx, y1 + 44, ylo ?? '', 28, [0.6, 1], undefined, true),
+    ]);
+    list.forEach((spot, i) => {
+        const [X, Y] = spot.xy ?? [0, 0];
+        const x = r1(x0 + ((x1 - x0) * X) / 10);
+        const y = r1(y1 - ((y1 - y0) * Y) / 10);
+        const twin = list.slice(0, i).filter((o) => o.xy?.[0] === X && o.xy?.[1] === Y).length;
+        const leftward = X > 7;
+        parts.set(spot.id, [
+            ...(twin ? [] : [station(x, y, r1(14 * k), [0, 0.4])]),
+            text(
+                'label',
+                leftward ? x - 30 : x + 30,
+                y + 11 * k + 44 * twin,
+                spot.text ?? '',
+                32 * k,
+                [twin ? 0 : 0.4, 1],
+                leftward ? 'end' : 'start',
+            ),
         ]);
     });
 }

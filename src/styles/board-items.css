@@ -188,6 +188,8 @@
 .board-item.focus .board-part-rule {
     stroke: currentColor;
 }
+/* Mockup Rabbithole-bsk.5: a spectrum's leaders are 3px muted; slices and their swatches are 5px ink edges over
+   fills of 16% and 6% ink, alternating, 30% in focus, never told apart by hue. */
 /* Compare, sequence and equation (mockup Rabbithole-bsk.6): semibold side and actor names, 3px muted leaders, a
    lifeline broken in the board's ground where an arrow crosses it, and the formula in the system's math face with
    its symbols in italic. */
@@ -197,6 +199,27 @@
 .board-part-leader {
     stroke: var(--color-text-secondary);
     stroke-width: 3;
+}
+.board-part-slice,
+.board-part-slice-alt,
+.board-part-box.slice,
+.board-part-box.slice-alt {
+    stroke-width: 5;
+    fill: color-mix(in srgb, currentColor 16%, transparent);
+    fill-rule: evenodd;
+}
+.board-part-slice-alt,
+.board-part-box.slice-alt {
+    fill: color-mix(in srgb, currentColor 6%, transparent);
+}
+.board-item.focus
+    :is(
+        .board-part-slice,
+        .board-part-slice-alt,
+        .board-part-box.slice,
+        .board-part-box.slice-alt
+    ) {
+    fill: color-mix(in srgb, currentColor 30%, transparent);
 }
 .board-part-gap {
     stroke: var(--color-background-muted);
@@ -217,6 +240,8 @@
 .board-part-leader,
 .board-part-rule,
 .board-part-seam,
+.board-part-slice,
+.board-part-slice-alt,
 .board-part-text {
     transition-property: x, y, width, height, cx, cy, r, d, translate, font-size;
     transition-duration: 400ms;
@@ -307,6 +332,8 @@
     .board-part-leader,
     .board-part-rule,
     .board-part-seam,
+    .board-part-slice,
+    .board-part-slice-alt,
     .board-part-text {
         transition: none;
     }

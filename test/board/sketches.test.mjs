@@ -54,6 +54,53 @@ test('board ops: sketch children are checked, and highlight, pointer, pen and th
     assert.match(board.index(), /y1 timeline \(e1 "Normans"\), r1 "A neuron" parts \(p1 "Axon"\)$/);
 });
 
+test('board ops: bars, pie, spectrum and quadrant children are range-checked and reach highlight and the index', () => {
+    const board = boardOps();
+    assert.equal(board.read('g1 bars at 800,450').item.h, 520, 'a default box');
+    for (const [id, text, value] of [
+        ['b1', 'Mercury', 3.2],
+        ['b2', 'Venus', 6],
+        ['b3', 'Earth', 8.3],
+        ['b4', 'Mars', 12.7],
+        ['b5', 'Jupiter', 43],
+    ])
+        assert.equal(
+            board.read(`${id} bar "${text}" value=${value} unit="min" in g1`).item.value,
+            value,
+        );
+    const wash = board.read('h1 highlight b3').item;
+    assert.deepEqual(
+        [wash.at[0] - wash.w / 2, wash.at[1] - wash.h / 2, wash.w, wash.h],
+        [180, 408, 496, 84], // the mockup rounds the value's width down to 495.9,
+    );
+    board.read('p2 page');
+    board.read('a1 pie at 800,450');
+    board.read('s1 slice "Nitrogen" value=78 in a1');
+    board.read('t1 spectrum ends="acid..alkaline" at 800,450 w=1300 h=440');
+    assert.equal(board.read('q1 place "Water" in t1').item.text, 'Water', 'note may be left out');
+    board.read('k1 quadrant x="cheap..costly" y="dirty..clean" at 800,450 w=1300 h=780');
+    assert.deepEqual(board.read('m1 spot "Coal" 2,1 in k1').item.xy, [2, 1]);
+    for (const [line, cause] of [
+        ['x1 bar "Less" value=-1 in g1', 'unknown parent g1'],
+        ['x2 slice "Gone" value=-5 in a1', 'slice value must be above 0'],
+        ['x3 slice "Nothing" in a1', 'slice needs value=N'],
+        ['x4 spot "Far" 11,2 in k1', 'spot X and Y are from 0 to 10'],
+        ['x5 spot "Under" 3,-1 in k1', 'spot X and Y are from 0 to 10'],
+        ['x6 spot "Nowhere" in k1', 'spot needs X,Y'],
+        ['x7 spectrum at 800,450', 'spectrum needs ends="low..high"'],
+        ['x8 quadrant x="a..b" at 800,450', 'quadrant needs x="low..high" y="low..high"'],
+        ['x9 place "Lost" in a1', 'place needs spectrum, not pie a1'],
+    ])
+        assert.equal(board.read(line).error, cause, line);
+    board.read('p3 page');
+    board.read('g2 bars at 800,450');
+    assert.equal(board.read('x10 bar "Less" value=-1 in g2').error, 'bar value must be 0 or more');
+    assert.match(
+        board.index(),
+        /a1 pie \(s1 "Nitrogen"\), t1 spectrum \(q1 "Water"\), k1 quadrant \(m1 "Coal"\)/,
+    );
+});
+
 test('board ops: compare, sequence and equation children are checked against their sketch', () => {
     const board = boardOps();
     assert.deepEqual(

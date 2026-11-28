@@ -43,6 +43,14 @@ export type Op = {
         | 'event'
         | 'parts'
         | 'part'
+        | 'bars'
+        | 'bar'
+        | 'pie'
+        | 'slice'
+        | 'spectrum'
+        | 'place'
+        | 'quadrant'
+        | 'spot'
         | 'compare'
         | 'aspect'
         | 'sequence'
@@ -67,6 +75,12 @@ export type Op = {
     whole?: string;
     note?: string;
     when?: string;
+    // A bar's or slice's value and a bar's unit, a spot's X,Y from 0 to 10, a spectrum's two ends or a quadrant's
+    // x ends then y ends.
+    value?: number;
+    unit?: string;
+    xy?: [number, number];
+    ends?: string[];
     // A compare's sides and an aspect's value per side; a sequence's actors and a send's actors, as indices into
     // them (no `to` for a note); a symbol's meaning and its token in the equation (src/board/sketchRows.ts).
     vs?: string[];
@@ -180,6 +194,7 @@ const CHANGE_MS = 900;
 export const COMPONENT_KINDS = new Set([
     ...['axes', 'numberline', 'flow', 'tree', 'table', 'venn'],
     ...['cycle', 'stack', 'timeline', 'parts'],
+    ...['bars', 'pie', 'spectrum', 'quadrant'],
     ...['compare', 'sequence', 'equation'],
 ]);
 const pauseBefore = (sentence: Sentence, after: Sentence | undefined) =>
