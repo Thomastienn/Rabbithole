@@ -122,7 +122,7 @@ test('board: a question waiting for its answer stays in ink with the waiting cue
     );
 });
 
-test('board: the rail lists what was said, collapses to the caption line, and branching from it pauses and saves first', async (t) => {
+test('board: the rail lists what was said, the caption shows open or collapsed, and branching from it pauses and saves first', async (t) => {
     const board = await mount(
         t,
         [
@@ -152,7 +152,11 @@ test('board: the rail lists what was said, collapses to the caption line, and br
         'Why?',
         'A hypha grows at its tip.',
     ]);
-    assert.equal(board.q('.board-caption').textContent, '', 'open, the rail carries the caption');
+    assert.equal(
+        board.q('.board-caption').textContent,
+        'A hypha grows at its tip.',
+        'open, the caption still shows',
+    );
     await board.act(async () => button(board.container, 'Collapse transcript').click());
     assert.equal(board.q('[role=log]'), null);
     assert.equal(board.q('.board-caption').textContent, 'A hypha grows at its tip.');
