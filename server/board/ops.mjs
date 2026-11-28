@@ -301,7 +301,8 @@ export function boardOps() {
         }
         if (MARKS.has(op.kind)) {
             if (!op.refs.length) return { error: `${op.kind} needs an id` };
-            if (op.kind === 'erase') op.refs = op.refs.filter((ref) => !dropped.has(ref));
+            if (op.kind === 'erase')
+                op.refs = op.refs.filter((ref) => !dropped.has(ref) || items.has(ref));
             if (!op.refs.length) return {};
             const unknown = op.refs.find((ref) => !target(ref, op.kind));
             if (unknown) return { error: `unknown id ${unknown}` };

@@ -118,6 +118,8 @@ test('board ops: math, pointer and erase name their items, an old highlight read
     assert.ok(read('p0 pointer bulb'), 'the highlighted item still resolves');
     assert.deepEqual(board.read('x0 erase h1'), {});
     assert.deepEqual(read('x1 erase e1 h1'), { id: 'x1', kind: 'erase', ids: ['e1'] });
+    assert.ok(read('h2 dot at 800,800'), "a dropped highlight's id is free again");
+    assert.deepEqual(read('x9 erase h2').ids, ['h2'], 'and an erase reaches the item that took it');
     assert.match(board.read('p3 pointer e1').error, /unknown id e1/, 'erased items are gone');
     assert.deepEqual(read('n1 clear'), {
         id: 'n1',
