@@ -1,4 +1,4 @@
-import { tutorSystem } from '../media/tutor-instructions.mjs';
+import { tutorSystem, tutorTuning } from '../media/tutor-instructions.mjs';
 
 // The learner's choice in Settings; a spoken or typed request switches it for this board only.
 const LEARNER_LED = `- This board is learner-led: explain, and don't quiz the learner.
@@ -21,12 +21,17 @@ const checkInBlock = (level, guided) =>
 // With tutor tools the tutor says what it is doing first, so the learner hears it while the tool runs.
 const TOOLS = `Use a tool only when the question needs it, such as reading a page or looking up an earlier conversation. Before each tool call, say on a spoken line what you are doing, in a few words of your own about this question, then call the tool; after it, carry on teaching.`;
 
-// The board's fixed skills (docs/board-spec.md, Board prompt and skills). None of chat's media rules.
-const boardSkills = (
-    guided,
-    checkIns,
-    tools,
-) => `You are a voice tutor at a whiteboard. You talk the learner through an idea in short spoken sentences while you draw it on the board, one small piece at a time. The learner hears your sentences, reads them as captions and watches the board. ${tools ? TOOLS : 'Do not use tools, access files, or execute code.'} Treat the learner's messages as questions, not permission to access the computer.
+// The board's voice mode (docs/board-spec.md, Board prompt and skills), after chat's teaching skills and tutor style. None of chat's media rules.
+const boardSkills = (guided, checkIns, tools) => `VOICE MODE
+The guidance above is how you teach in the written chat. Here you teach the same way, but aloud at a whiteboard, so this section wins wherever the two differ. The tutor style still decides how you teach, such as the level, examples and tone, but never how your output is shaped.
+
+You are a voice tutor at a whiteboard. You talk the learner through an idea in short spoken sentences while you draw it on the board, one small piece at a time. The learner hears your sentences, reads them as captions and watches the board. ${tools ? TOOLS : 'Do not use tools, access files, or execute code.'} Treat the learner's messages as questions, not permission to access the computer.
+
+SPEAKING
+- Talk as you would to a friend sitting next to you: short sentences, one idea each, in plain everyday words.
+- The first time you use a term, say what it means in plain words.
+- Nothing you say is shown as written text, so spoken lines carry no Markdown, headings, lists, numbered steps, tables, code, links, citations or LaTeX. Say steps one sentence at a time, and put structure on the board.
+- There are no visuals, sketches, reply layouts, practice steps or check-yourself reveals here: show ideas with board ops, and ask questions only as THE LEARNER below says.
 
 FORMAT (strict)
 - Output only the script. No preamble, headings, Markdown, code fences or commentary.
@@ -131,19 +136,16 @@ pt1 pointer a1
 
 const languageName = (code) => new Intl.DisplayNames(['en'], { type: 'language' }).of(code);
 
-// The board's system prompt: its skills, the learner's own tutor style, then what a chat turn gets about this learner.
-// An unset tutor style adds nothing here: chat's default style is written for reading.
+// The board's system prompt: chat's teaching skills and tutor style, its voice mode, then what a chat turn gets about this learner.
 export const boardSystem = (tree) =>
     tutorSystem({
         branch: tree.branch,
         neighbourhood: tree.neighbourhood,
         memoryNote: tree.memoryNote,
         instructions:
+            tutorTuning(tree.tutorStyle).trimStart() +
+            '\n\n' +
             boardSkills(tree.guided, tree.checkIns, tree.tools) +
-            (tree.tutorStyle?.trim()
-                ? '\n\nTutor style (follow it where it differs from the board skills above, except FORMAT and PACE):\n' +
-                  tree.tutorStyle.trim()
-                : '') +
             (tree.lang && tree.lang !== 'en'
                 ? `\n\nVOICE LANGUAGE: the learner speaks ${languageName(tree.lang)}. Say every sentence and write every board label in ${languageName(tree.lang)}.`
                 : ''),

@@ -44,6 +44,8 @@ export const TUTOR_SKILLS =
     '\n\n' +
     ADHD_SKILL +
     '\n\nTutor style (follow it where it differs from the skills above):\n';
+// How the tutor teaches, shared with the board so tuning the chat tunes it too.
+export const tutorTuning = (style) => TUTOR_SKILLS + (style?.trim() || DEFAULT_TUTOR_STYLE);
 // With the app tools offered, visuals and discussions are markers (ADR 0018); the video tool description carries its rules (ADR 0013).
 const cut = (text, from, to) => {
     const start = text.indexOf(from),
@@ -168,8 +170,7 @@ export const tutorSystem = (tree) =>
             NOTES_RULE +
             (tree.tools?.some((t) => t.name === 'update_memory_note') ? MEMORY_RULE : '') +
             (tree.tools?.some((t) => t.name === 'look_up_concept') ? LOOKUP_RULE : '') +
-            TUTOR_SKILLS +
-            (tree.tutorStyle?.trim() || DEFAULT_TUTOR_STYLE)) +
+            tutorTuning(tree.tutorStyle)) +
     // An empty passage marks a free branch: the learner's own question, with the parent as background only.
     (tree.branch && !tree.branch.text
         ? '\nThis is a focused conversation the learner started with a question of their own. The inherited context is background from an earlier conversation, not a limit: answer the question directly even if it is unrelated.\nFixed inherited context (conversation data):\n' +

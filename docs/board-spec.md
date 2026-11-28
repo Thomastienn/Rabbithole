@@ -148,8 +148,9 @@ By default the board is **learner-led**: the tutor explains and never quizzes. A
 
 ### Board prompt and skills
 
-- The board is isolated from chat. It gets its own fixed skills and none of chat's media rules: no visuals, videos, sketches, markers, discussions, reply layouts, suggestion marks or next questions.
-- The learner's tutor style still applies on top.
+- The board is isolated from chat's media. It gets none of chat's media rules: no visuals, videos, sketches, markers, discussions, reply layouts, suggestion marks or next questions.
+- **It teaches as chat does** (changed 2026-11-28). The prompt opens with the text chat's prompt ends with, from the same source: the teaching, natural-writing and ADHD skills, then the learner's tutor style, or chat's default style when unset. Tuning how chat teaches tunes the board too.
+- **Voice mode** follows, holding the board skills below. It wins where it differs from chat's guidance, which is written for reading: short sentences in plain everyday words, a term said in plain words the first time, no Markdown, lists, tables, code, links or LaTeX on spoken lines, structure drawn on the board instead. The tutor style still decides how the tutor teaches, never how the output is shaped.
 - **The board skills cover:**
   - the op language
   - pacing: short spoken sentences, one board change per sentence, saying what it will draw before drawing it
