@@ -56,6 +56,7 @@ export type Op = {
         | 'send'
         | 'equation'
         | 'symbol'
+        | 'code'
         | 'stroke'
         | 'erase';
     // A component's child names its component; components and plots carry their own path and numbers.
@@ -89,6 +90,8 @@ export type Op = {
     to?: number;
     means?: string;
     token?: number;
+    // A code block's language, for its lines' highlighting.
+    lang?: string;
     look?: Look;
     at?: [number, number];
     r?: number;
@@ -188,7 +191,7 @@ function pacedClock(real: Clock) {
 
 // The board's component kinds; test/board/player.test.mjs keeps it equal to COMPONENTS in server/board/components.mjs.
 export const COMPONENT_KINDS = new Set([
-    ...['axes', 'numberline', 'flow', 'tree', 'table', 'venn'],
+    ...['axes', 'numberline', 'flow', 'tree', 'table', 'venn', 'code'],
     ...['cycle', 'stack', 'timeline', 'parts'],
     ...['bars', 'pie', 'spectrum', 'quadrant'],
     ...['compare', 'sequence', 'equation'],
