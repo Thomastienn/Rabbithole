@@ -294,10 +294,15 @@ function bars(list: Op[], { left, top, w, h }: Box, parts: Parts) {
 // A ring 20 inside the box's left and 36 inside its top and bottom, its hole 0.55 across. Slices sweep clockwise from
 // the top in the order given, each its value's share of the slices so far, their fills alternating. The legend sits
 // 110 right of the ring in rows at most 80 apart: a 36 swatch, the label 60 past it, the share 32 past the widest label.
-function pie(list: Op[], { left, top, h }: Box, parts: Parts) {
+function pie(list: Op[], { left, top, w, h }: Box, parts: Parts) {
     const n = list.length;
     const k = scaleOf(n);
-    const R = h / 2 - 36;
+    const labels = widest(
+        list.map((s) => s.text),
+        32 * k,
+    );
+    // The ring shrinks in a narrow box so the legend (swatch, label, a "100%" share) still ends inside it.
+    const R = r1(Math.min(h / 2 - 36, (w - 130 - (60 + labels + 32 + 4 * EM * 28 * k)) / 2));
     const r = r1(R * 0.55);
     const [cx, cy] = [left + 20 + R, top + h / 2];
     const total = list.reduce((sum, s) => sum + (s.value ?? 0), 0) || 1;
@@ -309,14 +314,7 @@ function pie(list: Op[], { left, top, h }: Box, parts: Parts) {
     const row = rows(n, 80, h, cy);
     const sx = r1(cx + R + 110);
     const labelX = sx + 60;
-    const shareX = r1(
-        labelX +
-            widest(
-                list.map((s) => s.text),
-                32 * k,
-            ) +
-            32,
-    );
+    const shareX = r1(labelX + labels + 32);
     let from = 0;
     list.forEach((s, i) => {
         const share = (s.value ?? 0) / total;

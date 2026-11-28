@@ -305,6 +305,17 @@ test('board layout: a pie sweeps each slice on from the last, its legend showing
     assert.equal(componentParts(three).get('slice2')[0].look, 'slice-alt', 'fills alternate');
 });
 
+test('board layout: a pie in a narrow box shrinks its ring so the legend ends inside the box', () => {
+    const box = { id: 'a1', kind: 'pie', at: [400, 300], w: 600, h: 400 };
+    const share = componentParts(sketch(box, 'slice', [{ text: 'Argon and others', value: 1 }]))
+        .get('slice1')
+        .at(-1);
+    assert.ok(
+        share.x + 4 * 0.52 * share.size <= 700.1, // 0.1 for rounding to tenths
+        `"100%" ends at the box's right, not past it`,
+    );
+});
+
 test('board layout: a spectrum shares its line in slots, dropping every second place from five', () => {
     const box = { id: 'h1', kind: 'spectrum', at: [800, 450], w: 1300, h: 440 };
     box.ends = ['acid', 'alkaline'];
