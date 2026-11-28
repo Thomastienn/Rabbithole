@@ -215,7 +215,7 @@ A small diagram the tutor writes in its reply from a fixed set of kinds, such as
 _Avoid_: Mini visual, quick visual, diagram
 
 **Board**:
-The surface a conversation can switch to, where the tutor talks the learner through an idea aloud while drawing it, one small change at a time in step with its words. What the tutor says is its reply in the conversation; the board shows ideas as pictures, with as little text as possible. The learner cuts in by voice or typing whenever they want and can draw on it with a pen to show what they mean. A conversation has at most one board, which holds a pool of board pages.
+The surface a conversation can switch to, where the tutor talks the learner through an idea aloud while drawing it, one small change at a time: each change lands as the tutor starts the sentence about it, so the learner sees the picture first and hears it explained. What the tutor says is its reply in the conversation; the board shows ideas as pictures, with as little text as possible. The learner cuts in by voice or typing whenever they want and can draw on it with a pen to show what they mean. A conversation has at most one board, which holds a pool of board pages.
 _Avoid_: Whiteboard, canvas, interactive mode, lesson
 
 **Board page**:
@@ -233,6 +233,14 @@ _Avoid_: Comprehension check, quiz, question
 **Spotlight**:
 How a board shows the learner where to look while the tutor speaks: the board items the tutor is talking about stay bright and the rest of the board page dims. The whole page comes back whenever the tutor stops and waits, or the learner pauses or cuts in. The spotlight only changes what is shown, never what is drawn or saved.
 _Avoid_: Focus (a look), highlight (an op), dimming mode
+
+**Caption**:
+The sentence the tutor is saying right now, shown under the board so the learner can read along while watching. It is always there while the tutor speaks, whether or not the transcript beside the board is open; the transcript keeps what was already said.
+_Avoid_: Subtitle, transcript line
+
+**Drawing**:
+A small picture the tutor draws live on a board page, stroke by stroke, in the colours the app's theme offers, so the learner watches it being made. A drawing is a board item. It is never a saved piece reused from the piece library, and it is not a sketch.
+_Avoid_: Icon, illustration, set piece, sketch
 
 **Learner-led**:
 The default way a board runs: the tutor explains and keeps going with check-ins now and then, and the learner asks whenever something is unclear; the tutor never quizzes the learner.
