@@ -1,6 +1,6 @@
 import type { Op } from './player';
 import type { Part } from './layout.ts';
-import { rowParts } from './sketchRows.ts';
+import { EM, r1, rowParts, scaleOf } from './sketchRows.ts';
 
 // Board sketches (docs/board-sketches-spec.md, mockup Rabbithole-bsk.4): cycle, stack, timeline and parts, laid out
 // from their box and every child drawn so far, in board pixels. Stations are 14-radius circles in the board's
@@ -8,12 +8,8 @@ import { rowParts } from './sketchRows.ts';
 type Box = { left: number; top: number; w: number; h: number };
 type Parts = Map<string, Part[]>;
 
-// A character is about 0.52 of its font size wide.
-const EM = 0.52;
-const r1 = (v: number) => Math.round(v * 10) / 10;
 const widest = (texts: (string | undefined)[], size: number) =>
     Math.max(0, ...texts.map((text) => (text ?? '').length * EM * size));
-const scaleOf = (n: number) => (n > 8 ? 26 / 32 : 1);
 const station = (x: number, y: number, r: number, t: [number, number]): Part => ({
     key: 'station',
     t,

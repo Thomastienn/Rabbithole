@@ -8,10 +8,11 @@ type Box = { left: number; top: number; w: number; h: number };
 type Parts = Map<string, Part[]>;
 
 // A character is about 0.52 of its font size wide; a math glyph about 0.546.
-const EM = 0.52;
+export const EM = 0.52;
 const MATH_EM = 0.546;
-const r1 = (v: number) => Math.round(v * 10) / 10;
-const scaleOf = (n: number) => (n > 8 ? 26 / 32 : 1);
+export const r1 = (v: number) => Math.round(v * 10) / 10;
+// Past eight children every sketch shrinks its pieces by 26/32.
+export const scaleOf = (n: number) => (n > 8 ? 26 / 32 : 1);
 const line = (
     key: string,
     d: string,
