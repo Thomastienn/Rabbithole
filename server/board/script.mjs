@@ -86,7 +86,7 @@ export function scriptSentences({ read, id, done, moved, skipped }) {
             if (item) {
                 writing.ops.push(item);
                 writing.lines.push(line.op);
-            } else skipped(error);
+            } else if (error) skipped(error);
         }
         if (ended || reader.nextSentence()) flush();
     };

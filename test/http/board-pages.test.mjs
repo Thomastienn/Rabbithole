@@ -9,7 +9,7 @@ test('board: pages and opens are saved as op lines and reopen on the page the la
         [
             '> Forces push.\nf1 box at 400,450\n> Friction first.\ns1 page "Friction" from=f1\nr1 dot at 800,450\n',
         ],
-        ['> Back to the forces.\no1 open first\nh1 highlight f1\n'],
+        ['> Back to the forces.\no1 open first\nh1 pointer f1\n'],
         // A board saved before pages: its clear still opens a fresh untitled page.
         ['> Fresh space.\nn1 clear\nd1 dot at 800,450\n'],
         ['> Still here.\n'],
@@ -47,7 +47,7 @@ test('board: pages and opens are saved as op lines and reopen on the page the la
         'BOARD PAGES (* marks the open page)\nfirst "Page 1": f1\n* s1 "Friction" parent=first from=f1: r1',
     );
     assert.deepEqual(back[0], { id: 'o1', kind: 'open', page: 'first', top: 0 });
-    assert.equal(back[1].kind, 'highlight', 'f1 is on the open page again');
+    assert.equal(back[1].kind, 'pointer', 'f1 is on the open page again');
     // The chat snapshot of each reply ends on its page.
     assert.equal(messages(env, id)[3].snapshot.findLast((i) => i.top !== undefined).top, 0);
     await answer('More?', 1);

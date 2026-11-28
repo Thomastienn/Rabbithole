@@ -17,7 +17,6 @@ export type Op = {
         | 'arrow'
         | 'text'
         | 'math'
-        | 'highlight'
         | 'pointer'
         | 'erase'
         | 'clear'
@@ -104,7 +103,7 @@ export type Op = {
     // A pointer glides from here; an erase names the items it fades out.
     from?: [number, number];
     ids?: string[];
-    // The items a highlight or pointer names, or a connector's two ends (server/board/ops.mjs).
+    // The items a pointer names, or a connector's two ends (server/board/ops.mjs).
     names?: string[];
     // A page, open or clear op: the top edge of the page it opens (ADR 0029), its title, parent page and the item
     // it explains; an open names its page.

@@ -14,7 +14,6 @@ const KINDS = new Set([
     ...COMPONENTS,
     ...Object.keys(PARENTS),
     'math',
-    'highlight',
     'pointer',
     'erase',
     'clear',
@@ -23,7 +22,7 @@ const KINDS = new Set([
     'stroke',
 ]);
 // Kinds that name other items instead of placing one; they cannot be named themselves (only `open` names a page).
-const MARKS = new Set(['highlight', 'pointer', 'erase', 'clear', 'page', 'open']);
+const MARKS = new Set(['pointer', 'erase', 'clear', 'page', 'open']);
 // Each board page (ADR 0029) is a 1600×900 space this far below the page made before it; the view shows one.
 const AREA = 900;
 // The page a board starts on when it draws before any `page` op.
@@ -264,11 +263,13 @@ export function boardOps() {
         item.on && !item.at
             ? partsBox(componentParts([...items.values()], erased).get(item.id))
             : bounds(item);
-    // An item still on the board that ops can name; erase can also name a highlight. Only erase reaches other
-    // pages, since the view shows the open one, and children on axes or a number line, which have no laid-out space.
+    // The ids of removed `highlight` lines in saved boards, which read as nothing; an erase naming one skips it.
+    const dropped = new Set();
+    // An item still on the board that ops can name. Only erase reaches other pages, since the view shows the
+    // open one, and children on axes or a number line, which have no laid-out space.
     const target = (id, kind) => {
         const item = items.get(id);
-        const named = !MARKS.has(item?.kind) || (kind === 'erase' && item.kind === 'highlight');
+        const named = !MARKS.has(item?.kind);
         const here = () =>
             kind === 'erase' || ((!item.on || (!item.at && span(item))) && where.get(id) === open);
         return item && named && !erased.has(id) && here() ? item : undefined;
@@ -300,6 +301,9 @@ export function boardOps() {
         }
         if (MARKS.has(op.kind)) {
             if (!op.refs.length) return { error: `${op.kind} needs an id` };
+            if (op.kind === 'erase')
+                op.refs = op.refs.filter((ref) => !dropped.has(ref) || items.has(ref));
+            if (!op.refs.length) return {};
             const unknown = op.refs.find((ref) => !target(ref, op.kind));
             if (unknown) return { error: `unknown id ${unknown}` };
             if (op.kind === 'erase') {
@@ -314,11 +318,9 @@ export function boardOps() {
             if (op.refs.length > 1) return { error: `${op.kind} takes one id` };
             const b = span(items.get(op.refs[0]));
             const [w, h] = b.round ? [2 * b.r, 2 * b.r] : [b.w, b.h];
-            // `names` keeps the item a highlight or pointer names, for the spotlight (docs/board-sketches-spec.md).
+            // `names` keeps the item a pointer names, for the spotlight (docs/board-sketches-spec.md).
             item.names = [op.refs[0]];
-            // A highlight washes 20px past its item's box; the pointer's tip stops 12px right of it, at its middle.
-            if (op.kind === 'highlight')
-                return { item: { ...item, at: b.c, w: w + 40, h: h + 40 } };
+            // The pointer's tip stops 12px right of its item, at its middle.
             item.from = pointer;
             pointer = item.at = [b.c[0] + w / 2 + 12, b.c[1]];
             return { item };
@@ -383,6 +385,9 @@ export function boardOps() {
     }
     return {
         read(line) {
+            // The highlight op was removed (docs/board-polish-spec.md); saved boards' lines read as nothing.
+            const old = /^\s*([A-Za-z_][\w-]*)\s+highlight(\s|$)/.exec(line);
+            if (old) return (dropped.add(old[1]), {});
             const parsed = tokens(line);
             if (parsed.error) return parsed;
             const built = build(parsed.op);
@@ -442,12 +447,12 @@ export function boardOps() {
             });
             return `BOARD PAGES (* marks the open page)\n${lines.join('\n') || '(none yet)'}`;
         },
-        // The board as it stands, for a still snapshot: no erased items, erases or passed pointers, highlights
-        // under the rest, and the page and open ops that say which page it shows.
+        // The board as it stands, for a still snapshot: no erased items, erases or passed pointers, and the page
+        // and open ops that say which page it shows.
         items: () =>
-            [...items.values()]
-                .filter((i) => !erased.has(i.id) && i.kind !== 'erase' && i.kind !== 'pointer')
-                .sort((a, b) => +(b.kind === 'highlight') - +(a.kind === 'highlight')),
+            [...items.values()].filter(
+                (i) => !erased.has(i.id) && i.kind !== 'erase' && i.kind !== 'pointer',
+            ),
         // What a learner stroke marks (docs/board-spec.md, Learner pen): a closed loop circles the items whose
         // centres it encloses; otherwise it points at the item nearest its end, within 40 board pixels.
         // `page` is the page on the learner's screen, the open page unless they opened another mid-reply.

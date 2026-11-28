@@ -99,16 +99,6 @@ export default function BoardItem({
                 } as CSSProperties
             }
         >
-            {op.kind === 'highlight' && (
-                <rect
-                    className="board-wash"
-                    x={x - op.w! / 2}
-                    y={y - op.h! / 2}
-                    width={op.w}
-                    height={op.h}
-                    rx={28}
-                />
-            )}
             {op.kind === 'pointer' && (
                 <g
                     className="board-pointer"
