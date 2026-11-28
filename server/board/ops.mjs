@@ -415,7 +415,10 @@ export function boardOps() {
                     (i) => where.get(i.id) === id && !MARKS.has(i.kind) && !erased.has(i.id),
                 );
                 const name = (i) => {
-                    const text = i.text ?? i.whole ?? (i.cells ?? i.cols ?? i.sets)?.join('|');
+                    const text =
+                        i.text ??
+                        i.whole ??
+                        (i.cells ?? i.cols ?? i.sets ?? i.vs ?? i.actors)?.join('|');
                     return text ? `${i.id} "${text}"` : i.id;
                 };
                 const sketch = new Set(live.filter((i) => SKETCHES.has(i.kind)).map((i) => i.id));

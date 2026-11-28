@@ -1,10 +1,16 @@
+import { equationTokens } from '../../src/board/sketchRows.ts';
+
 // Board components (docs/board-spec.md, Op language): `axes` + `plot` and `numberline` + `point`, whose geometry is
 // computed here (mockup Rabbithole-brd.5), and `flow` + `step`, `tree` + `node`, `table` + `row` and `venn` + `item`,
 // which are only checked here: their children reflow on every arrival, so the client lays them out from all the
 // children drawn so far (src/board/layout.ts, mockup Rabbithole-brd.6). The tutor gives a component's box.
 // Sketches (docs/board-sketches-spec.md: cycle + stage, stack + layer, timeline + event, parts + part) are checked the
-// same way (src/board/sketchLayout.ts, mockup Rabbithole-bsk.4).
-export const SKETCHES = new Set(['cycle', 'stack', 'timeline', 'parts']);
+// same way (src/board/sketchLayout.ts, mockup Rabbithole-bsk.4), as are compare + aspect, sequence + send and
+// equation + symbol (src/board/sketchRows.ts, mockup Rabbithole-bsk.6).
+export const SKETCHES = new Set([
+    ...['cycle', 'stack', 'timeline', 'parts'],
+    ...['compare', 'sequence', 'equation'],
+]);
 export const COMPONENTS = new Set([
     'axes',
     'numberline',
@@ -25,6 +31,9 @@ export const PARENTS = {
     layer: 'stack',
     event: 'timeline',
     part: 'parts',
+    aspect: 'compare',
+    send: 'sequence',
+    symbol: 'equation',
 };
 // Default boxes, in board pixels.
 const SIZES = {
@@ -40,6 +49,9 @@ const SIZES = {
     stack: [1100, 600],
     timeline: [1000, 640],
     parts: [1300, 560],
+    compare: [1100, 500],
+    sequence: [1200, 700],
+    equation: [1200, 500],
 };
 const words = (text) => (text ?? '').split('|').map((word) => word.trim());
 const FUNCS = {
@@ -176,6 +188,25 @@ export function component(op, item) {
         item.whole = (op.opts.whole ?? op.strs[0])?.trim();
         return item.whole ? null : 'parts needs whole="…"';
     }
+    if (op.kind === 'compare') {
+        item.vs = words(op.opts.vs ?? op.strs[0]);
+        return item.vs.length === 2 && item.vs.every(Boolean) ? null : 'compare needs vs="A|B"';
+    }
+    if (op.kind === 'sequence') {
+        item.actors = words(op.opts.actors ?? op.strs[0]);
+        const unique = new Set(item.actors.map((actor) => actor.toLowerCase()));
+        return item.actors.length >= 2 &&
+            item.actors.every(Boolean) &&
+            unique.size === item.actors.length
+            ? null
+            : 'sequence needs actors="A|B|C"';
+    }
+    if (op.kind === 'equation') {
+        item.text = op.strs[0]?.trim();
+        return item.text && equationTokens(item.text).some((token) => token.symbol)
+            ? null
+            : 'equation needs "symbols separated by spaces"';
+    }
     if (op.kind === 'table') {
         item.cols = words(op.opts.cols ?? op.strs[0]);
         return item.cols.some(Boolean) ? null : 'table needs cols="A|B|C"';
@@ -280,9 +311,13 @@ export function child(op, item, parent, items) {
     return null;
 }
 
-const LABELLED = { step: 1, node: 1, row: 1, item: 1, stage: 1, layer: 1, event: 1, part: 1 };
+const LABELLED = {
+    ...{ step: 1, node: 1, row: 1, item: 1, stage: 1, layer: 1, event: 1, part: 1 },
+    ...{ aspect: 1, send: 1, symbol: 1 },
+};
 // A flow, tree, table, Venn or sketch child: its words, for a node its parent node, for an item its sets, for a
-// layer or part its optional note and for an event its date.
+// layer or part its optional note, for an event its date, for an aspect its value per side, for a send its actors
+// (indices into the sequence's) and for a symbol its meaning and its token in the equation.
 function labelled(op, item, parent, items) {
     const label = op.strs[0]?.trim();
     if (!label) return `${op.kind} needs a "label"`;
@@ -300,6 +335,30 @@ function labelled(op, item, parent, items) {
     if (op.kind === 'event') {
         item.when = op.opts.when?.trim();
         if (!item.when) return 'event needs when="…"';
+    }
+    if (op.kind === 'aspect') {
+        item.values = words(op.opts.values);
+        if (item.values.length !== parent.vs.length || !item.values.every(Boolean))
+            return `aspect needs values="a|b", one per side of ${parent.id}`;
+    }
+    if (op.kind === 'send') {
+        const actor = (name) =>
+            parent.actors.findIndex((a) => a.toLowerCase() === name?.trim().toLowerCase());
+        item.by = actor(op.opts.by);
+        if (item.by < 0) return `send needs by= one of ${parent.actors.join('|')}`;
+        if (op.opts.to !== undefined) {
+            item.to = actor(op.opts.to);
+            if (item.to < 0 || item.to === item.by)
+                return `send needs to= another of ${parent.actors.join('|')}`;
+        }
+    }
+    if (op.kind === 'symbol') {
+        item.means = op.opts.means?.trim();
+        if (!item.means) return 'symbol needs means="…"';
+        item.token = equationTokens(parent.text).findIndex(
+            (token) => token.symbol && (token.base === label || token.text === label),
+        );
+        if (item.token < 0) return `symbol needs one of ${parent.id}'s symbols`;
     }
     if (op.kind === 'node') {
         const nodes = [...items.values()].filter((other) => other.on === parent.id);
