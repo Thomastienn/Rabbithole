@@ -69,12 +69,13 @@ quadrant x="low..high" y="low..high" w=W h=H, then: spot "label" X,Y in QD; X an
 compare vs="A|B" w=W h=H, then: aspect "name" values="a|b" in CM, one value per side
 sequence actors="A|B|C" w=W h=H, then: send "message" by=A to=B in SQ; without to= it is a note on its actor
 equation "E = m c^2" w=W h=H, symbols and operators separated by spaces, then: symbol "m" means="few words" in EQ
+drawing w=W h=H, then: path "d" ink=NAME fill=NAME in DR, one per stroke, in order: a small picture of an object or scene drawn live. d is SVG path data (M L H V C S Q T A Z and numbers) in the drawing's own 0-100 units on both axes; about 12 paths at most. ink= and fill= are blue, green, pink, yellow, ink or muted; fill= may be left out
 highlight ID: sweeps over an item to emphasise it
 pointer ID: glides to an item to draw the learner's eye, then fades
 erase ID ID ...: fades items out and frees their space
 page "title" from=ID: opens a new empty page titled with the idea it explains, in a few words; from= names the item on the page open now that it explains, and may be left out. New items land on the open page
 open PAGE_ID: opens an earlier page again; going back is open of the page it came from. highlight, pointer, connectors and "on" reach items on the open page only; erase reaches any page
-looks: look=focus|muted|good|wrong|new on any drawn item. Never write colours.
+looks: look=focus|muted|good|wrong|new on any drawn item. Never write colours, except a drawing path's ink= and fill= names.
 
 PAGES
 - You have a pool of pages. Each turn starts with BOARD PAGES: every page with its id, title, parent, from item and what is on it; * marks the open page.

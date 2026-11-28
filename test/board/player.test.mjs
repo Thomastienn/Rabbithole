@@ -135,6 +135,34 @@ test('board player: a sentence’s ops start with it, one after another at their
     player.stop();
 });
 
+test('board player: a drawing sets its box at once and each path draws in about a box’s length', () => {
+    const clock = fakeClock();
+    const drawn = [];
+    let at = 0;
+    const player = boardPlayer(
+        () => {},
+        (op, ms) => drawn.push([op.id, at, Math.round(ms)]),
+        () => {},
+        undefined,
+        clock,
+    );
+    // 57 characters last 3.8 s; a path draws in 450 ms at 1×, 300 ms at 1.5×.
+    player.add({ id: '2', text: 'A pot.', ops: [{ id: 'dr', kind: 'drawing' }] });
+    player.add({
+        id: '3',
+        text: 'A torch is just a loop, so let me draw its battery first.',
+        ops: [
+            { id: 'p1', kind: 'path', on: 'dr' },
+            { id: 'p2', kind: 'path', on: 'dr' },
+        ],
+    });
+    for (let i = 0; i < 60; i++) ((at += 100), clock.advance(100));
+    const [dr, p1, p2] = drawn;
+    assert.equal(dr[2], 0, 'the drawing only sets the box');
+    assert.deepEqual([p1[2], p2[2], p2[1] - p1[1]], [300, 300, 300]);
+    player.stop();
+});
+
 // A voice driven by the test: it records what the player plays and lets the test end or fail the audio.
 function fakeVoice() {
     const voice = { chunks: [], ends: [], playing: [], stopped: 0, controls: [] };

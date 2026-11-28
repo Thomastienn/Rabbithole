@@ -22,4 +22,6 @@ export const dimmed = (op: Op, lit?: Set<string>) =>
     op.kind !== 'pointer' &&
     op.kind !== 'stroke' &&
     op.look !== 'muted' &&
-    !lit.has(op.kind === 'highlight' ? (op.names?.[0] ?? op.id) : (op.on ?? op.id));
+    !lit.has(op.kind === 'highlight' ? (op.names?.[0] ?? op.id) : (op.on ?? op.id)) &&
+    // A drawing's path is lit alone when the tutor points at it (mockup Rabbithole-bpl.9).
+    !(op.kind === 'path' && lit.has(op.id));

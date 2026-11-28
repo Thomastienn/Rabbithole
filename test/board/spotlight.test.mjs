@@ -120,3 +120,63 @@ test('board: while the tutor speaks, what its latest sentence drew or named stay
     await board.act(async () => button(board.container, 'Send').click());
     assert.deepEqual(named(), [], 'a cut-in shows the whole page at once');
 });
+
+test('board: a drawing draws its paths in theme colour roles, and pointing at one path lights it alone', async (t) => {
+    const board = await mount(t);
+    const named = () =>
+        [...board.container.querySelectorAll('svg .board-item.board-dim')]
+            .map((g) => g.dataset.item)
+            .sort();
+    const until = async (ready) => {
+        for (let ms = 0; !ready() && ms < 5000; ms += 10)
+            await board.act(() => new Promise((done) => setTimeout(done, 10)));
+        assert.ok(ready());
+    };
+    let n = 0;
+    const say = async (ops) => {
+        const text = `S${++n}.`;
+        await board.act(async () =>
+            board.socket.server({ type: 'sentence', id: String(n), text, ops }),
+        );
+        await until(() => board.q('.board-caption').textContent === text);
+    };
+    const path = (id, d, extra) => ({
+        id,
+        kind: 'path',
+        on: 'dr',
+        d,
+        fit: [160, 140, 6.2],
+        at: [470, 450],
+        w: 100,
+        h: 100,
+        ink: 'green',
+        ...extra,
+    });
+    await board.type('Why?');
+    await board.act(async () => button(board.container, 'Send').click());
+    await board.act(async () => board.socket.server({ type: 'state', state: 'speaking' }));
+    await say([
+        { id: 'dr', kind: 'drawing', at: [470, 450], w: 620, h: 620 },
+        path('p1', 'M26 64H74V72H26Z', { ink: 'ink', fill: 'pink' }),
+        path('p2', 'M51 42C60 38 71 31 76 22'),
+    ]);
+    await until(() => board.q('[data-item="p2"] path'));
+    const pot = board.q('[data-item="p1"] path');
+    assert.equal(pot.getAttribute('class'), 'board-stroke board-drawn ink-ink fill-pink');
+    assert.equal(pot.getAttribute('transform'), 'translate(160 140) scale(6.2)');
+    assert.equal(pot.getAttribute('d'), 'M26 64H74V72H26Z');
+    assert.equal(
+        (board.q('[data-item="p1"]').outerHTML + board.q('[data-item="p2"]').outerHTML).match(
+            /#[0-9a-f]{3}|rgb|hsl|fill=|stroke=/i,
+        ),
+        null,
+        'no raw colour values: the theme tokens colour it through its role classes',
+    );
+    assert.equal(
+        board.q('[data-item="dr"]').children.length,
+        0,
+        'the drawing itself draws nothing',
+    );
+    await say([{ id: 'o1', kind: 'pointer', at: [640, 338], from: [800, 450], names: ['p2'] }]);
+    assert.deepEqual(named(), ['dr', 'p1'], 'one path is lit and the pointer sits on it');
+});
