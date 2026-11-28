@@ -21,14 +21,14 @@ export type Voice = {
     pen(op: Op, ms: number): void;
 };
 
-// Board time runs at the default 1.5×, the speed the caption estimate assumes.
-export const DEFAULT_SPEED = 1.5;
+// Board time runs at 1.5×, the speed the caption estimate assumes; the learner's speed scales it.
+export const BOARD_TIME_SPEED = 1.5;
 
 export function streamedVoice(fills = boardFills()): Voice {
     type Clip = { chunks: Uint8Array[]; ended: boolean; feed?: () => void };
     const clips = new Map<string, Clip>();
     let release = () => {};
-    let rate = DEFAULT_SPEED,
+    let rate = BOARD_TIME_SPEED,
         current: { audio: HTMLAudioElement; start: () => void } | undefined;
     const clip = (id: string) => {
         let c = clips.get(id);
@@ -109,8 +109,8 @@ export function streamedVoice(fills = boardFills()): Voice {
                         return fail();
                     }
                     on.duration(
-                        (source.duration * 1000) / DEFAULT_SPEED,
-                        (audio.currentTime * 1000) / DEFAULT_SPEED,
+                        (source.duration * 1000) / BOARD_TIME_SPEED,
+                        (audio.currentTime * 1000) / BOARD_TIME_SPEED,
                     );
                 };
                 buffer.addEventListener('updateend', () => c.feed?.());
@@ -145,6 +145,6 @@ export function streamedVoice(fills = boardFills()): Voice {
             fills.stop();
         },
         room: () => fills.room(),
-        pen: (op, ms) => fills.pen(op, (ms * DEFAULT_SPEED) / rate),
+        pen: (op, ms) => fills.pen(op, (ms * BOARD_TIME_SPEED) / rate),
     };
 }

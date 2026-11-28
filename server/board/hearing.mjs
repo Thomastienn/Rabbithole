@@ -85,8 +85,8 @@ export const MODELS = {
 const RATE = 16000;
 // Silero reads 512 samples, 32 ms, at a time.
 export const FRAME = 512;
-// About 300 ms of silence ends a question; under 160 ms of speech is a click, not a question.
-const END_FRAMES = Math.ceil((0.3 * RATE) / FRAME);
+// About 800 ms of silence ends a question, so a pause between phrases does not split it; under 160 ms of speech is a click, not a question.
+const END_FRAMES = Math.ceil((0.8 * RATE) / FRAME);
 const MIN_FRAMES = 5;
 // Kept from before speech starts, so the first syllable is not clipped.
 const LEAD_FRAMES = 3;
@@ -211,12 +211,13 @@ export function localHearing(dir, download) {
                 detector,
                 // Whisper is told the language, so it neither guesses nor translates; it hears 30 s at a
                 // time, and a push-to-talk question may run to 60 s.
+                // Moonshine's default cap is 6 tokens per whole second, so 1.8 s of speech got 6 tokens and under 1 s none.
                 recognize: async (audio) =>
                     (
                         await asr(
                             audio,
                             lang === 'en'
-                                ? {}
+                                ? { max_new_tokens: Math.ceil((audio.length / RATE) * 6) + 8 }
                                 : { language: lang, task: 'transcribe', chunk_length_s: 30 },
                         )
                     ).text.trim(),

@@ -4,7 +4,7 @@ import { validUsage } from '../store/usage.mjs';
 import { scriptSentences } from './script.mjs';
 import { boardOps } from './ops.mjs';
 import { boardSystem } from './prompt.mjs';
-import { boardMic } from './mic.mjs';
+import { boardMic, SPOKEN } from './mic.mjs';
 import { boardPen } from './pen.mjs';
 import { boardVoicing } from './voicing.mjs';
 import { sessionFillers } from './fillers.mjs';
@@ -366,8 +366,8 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
         send({ type: 'notice', notice: result.error ?? STOPPED });
         finish(current, 'failed');
     };
-    // A learner's question with its prepared files, or with noAnswer 1 or 2 a no-answer turn after the wait.
-    const ask = (text, noAnswer = 0, files = []) => {
+    // A learner's question with its prepared files, or with noAnswer 1 or 2 a no-answer turn after the wait; spoken if recognized from speech.
+    const ask = (text, noAnswer = 0, files = [], spoken = false) => {
         if (closed) return;
         // Sending mid-reply cuts in: the reply stops, saved up to the sentence heard, and the question starts a new turn.
         if (turn) stop(turn);
@@ -401,7 +401,10 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
                 ? `(You were cut off. The last sentence the learner heard was "${last.text.split('\n').at(-1)}"; they did not hear the rest of that reply.)\n\n`
                 : '';
         const attached = attachBoardFiles(ctx, id, user, text, files);
-        const prompt = cut + (note ? `${attached.prompt}\n\n${note}` : attached.prompt);
+        const prompt =
+            cut +
+            (spoken ? SPOKEN : '') +
+            (note ? `${attached.prompt}\n\n${note}` : attached.prompt);
         const current = {
             reply,
             user,
@@ -504,7 +507,7 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
     const mic = boardMic(ctx.hearing, lang, {
         send: (event) => (event.type === 'hearing' && event.on && answering(), send(event)),
         log,
-        ask,
+        ask: (text) => ask(text, 0, [], true),
         stop,
         busy,
         closed: () => closed,

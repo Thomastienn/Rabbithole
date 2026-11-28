@@ -484,10 +484,10 @@ test('board: the pen draws a stroke that waits for the question, and an erase op
     assert.ok(gone[0].querySelector('.board-learner'), 'p1 fades out');
 });
 
-test('board: speed is 1.5× until the learner picks another, which is remembered, and pause holds the reply', async (t) => {
+test('board: speed is 1.25× until the learner picks another, which is remembered, and pause holds the reply', async (t) => {
     const board = await mount(t);
     const pill = () => board.q('.board-speed');
-    assert.equal(pill().textContent, '1.5×', 'speech plays at 1.5× by default');
+    assert.equal(pill().textContent, '1.25×', 'speech plays at 1.25× by default');
     await board.act(async () => pill().click());
     await board.frames();
     const items = [
@@ -499,16 +499,16 @@ test('board: speed is 1.5× until the learner picks another, which is remembered
         items.map((e) => [e.textContent.trim(), e.getAttribute('aria-checked')]),
         [
             ['1×', 'false'],
-            ['1.25×', 'false'],
-            ['1.5×Default', 'true'],
+            ['1.25×Default', 'true'],
+            ['1.5×', 'false'],
             ['1.75×', 'false'],
             ['2×', 'false'],
         ],
     );
-    await board.act(async () => items[1].click());
-    assert.equal(pill().textContent, '1.25×');
-    assert.ok(button(board.container, 'Speed, 1.25×'), 'the pill is named with its speed');
-    assert.equal(localStorage.getItem('rabbithole.board-speed'), '1.25');
+    await board.act(async () => items[2].click());
+    assert.equal(pill().textContent, '1.5×');
+    assert.ok(button(board.container, 'Speed, 1.5×'), 'the pill is named with its speed');
+    assert.equal(localStorage.getItem('rabbithole.board-speed'), '1.5');
 
     const pause = () => board.q('.board-pause');
     assert.ok(pause().disabled, 'nothing to pause before a reply');

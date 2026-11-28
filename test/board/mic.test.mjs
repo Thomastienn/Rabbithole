@@ -101,15 +101,20 @@ test('board: with push-to-talk on, only speech while the mic or Space is held go
     assert.equal(ptt().getAttribute('aria-keyshortcuts'), 'Space');
     assert.equal(ptt().textContent, 'Hold to talkSpace');
 
-    // The first hold downloads the speech models and records nothing until they are ready.
+    // The first hold downloads the speech models and records at once; the server keeps it until they are ready.
     await pointer('pointerdown');
-    assert.deepEqual(board.socket.sent, [{ type: 'mic', on: true }]);
+    assert.deepEqual(board.socket.sent, [
+        { type: 'mic', on: true },
+        { type: 'hold', on: true },
+    ]);
     await board.act(async () =>
         board.socket.server({ type: 'mic', status: 'loading', loaded: 26e6, total: 64e6 }),
     );
     assert.match(ptt().getAttribute('aria-label'), /Hold to talk, downloading 40%/);
+    await board.act(async () => mic.frame(new Float32Array(512)));
+    assert.deepEqual(board.socket.sent.at(-1), { audio: 2048 }, 'held audio goes up while loading');
     await board.act(async () => board.socket.server({ type: 'mic', status: 'on' }));
-    assert.deepEqual(board.socket.sent.at(-1), { type: 'hold', on: true });
+    assert.equal(board.socket.sent.length, 3, 'the hold is not sent twice');
     assert.equal(ptt().getAttribute('aria-pressed'), 'true');
     assert.match(ptt().textContent, /Release to send/);
     assert.equal(ptt().querySelector('.board-level').children.length, 4);
@@ -135,7 +140,7 @@ test('board: with push-to-talk on, only speech while the mic or Space is held go
     assert.equal(board.socket.sent.length, sent + 2);
 });
 
-test('board: with push-to-talk on, letting go of the mic while the models download neither turns it off nor records once they are ready', async (t) => {
+test('board: with push-to-talk on, letting go of the mic while the models download sends the hold without turning the mic off', async (t) => {
     const mic = fakeMic(t);
     const install = mic.install;
     mic.install = (w) => {
@@ -158,8 +163,13 @@ test('board: with push-to-talk on, letting go of the mic while the models downlo
     // A browser follows pointerup with a click on the same button.
     await fire('pointerup');
     await fire('click');
-    assert.deepEqual(board.socket.sent, [{ type: 'mic', on: true }]);
+    const sent = [
+        { type: 'mic', on: true },
+        { type: 'hold', on: true },
+        { type: 'hold', on: false },
+    ];
+    assert.deepEqual(board.socket.sent, sent);
     await board.act(async () => board.socket.server({ type: 'mic', status: 'on' }));
-    assert.deepEqual(board.socket.sent, [{ type: 'mic', on: true }], 'nothing is held');
+    assert.deepEqual(board.socket.sent, sent, 'nothing is held');
     assert.equal(board.q('.board-mic').getAttribute('aria-pressed'), 'false');
 });

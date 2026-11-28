@@ -1,9 +1,9 @@
-import { DEFAULT_SPEED, type Voice } from './voice';
+import { BOARD_TIME_SPEED, type Voice } from './voice';
 
 // The board player: shows the tutor's sentences one at a time, each for as long as it takes to say,
 // and draws each sentence's ops in order early in it.
 // A voiced sentence starts on its first audio chunk and lasts as long as its audio plays.
-// Times are board time, at the default 1.5×: the learner's speed scales it and pause stops it.
+// Times are board time, at 1.5×: the learner's speed scales it and pause stops it.
 // late: the sentence was due a second ago and its voice has not come, so the session sends a filler.
 export type Phase = 'start' | 'end' | 'late';
 export type Look = 'focus' | 'muted' | 'good' | 'wrong' | 'new';
@@ -219,7 +219,7 @@ function drawMs(op: Op) {
     return 450; // box, circle, line, arrow, plot
 }
 
-// An estimated ten characters per second at 1× plays at fifteen at the default 1.5×.
+// An estimated ten characters per second at 1× plays at fifteen at 1.5×.
 const CHARS_PER_SECOND = 15;
 // How long a due sentence waits for its voice before a filler, in board ms (docs/board-polish-spec.md, Fillers).
 const LATE_MS = 1000;
@@ -293,7 +293,7 @@ export function boardPlayer(
         // Draw first (docs/board-polish-spec.md): ops run one after another from the sentence start at their own
         // lengths, squeezed (never stretched) to end within the first third of the sentence's `ms`. A later length
         // re-squeezes the ops not yet finished; the one entering keeps its start.
-        const own = ops.map((op) => drawMs(op) / DEFAULT_SPEED);
+        const own = ops.map((op) => drawMs(op) / BOARD_TIME_SPEED);
         const space = (ms: number, audioElapsed?: number) => {
             timers.forEach(clock.clearTimeout);
             timers = [];
@@ -375,7 +375,7 @@ export function boardPlayer(
                         : i === count
                           ? inClip.length
                           : join?.at
-                            ? join.at[i] / DEFAULT_SPEED
+                            ? join.at[i] / BOARD_TIME_SPEED
                             : inClip.length !== undefined && join?.share
                               ? join.share[i] * inClip.length
                               : undefined;
@@ -465,7 +465,7 @@ export function boardPlayer(
         },
         // Speech and board time change speed at once, mid-sentence.
         speed(rate: number) {
-            clock.scale(rate / DEFAULT_SPEED);
+            clock.scale(rate / BOARD_TIME_SPEED);
             voice?.speed(rate);
         },
         // Paused, nothing advances; sentences and audio still arriving queue up and play after resume.

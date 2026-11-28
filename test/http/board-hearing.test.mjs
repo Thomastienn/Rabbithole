@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { until } from '../support/diagram-kit.mjs';
 import { boardProvider, messages, opened, setup } from '../support/board-kit.mjs';
 import { FRAME, speechFiles } from '../../server/board/hearing.mjs';
+import { SPOKEN } from '../../server/board/mic.mjs';
 
 // Fake ears: a frame is speech when its samples are 1; the first load downloads with progress, later ones don't.
 function fakeHearing({ fail = 0, held } = {}) {
@@ -63,31 +64,31 @@ test('board: the mic is off until pressed, the first press downloads, a pause af
     assert.ok(!board.events.some((e) => e.type === 'hearing'), 'nothing listened while off');
 
     // A click is not a question.
-    speak(board, 2, 14);
+    speak(board, 2, 28);
     assert.equal((await board.next('hearing')).on, true);
     assert.equal((await board.next('hearing')).on, false);
 
-    speak(board, 8, 12);
+    speak(board, 8, 26);
     assert.equal((await board.next('hearing')).on, true);
     assert.equal((await board.next('hearing')).on, false);
     assert.equal((await board.next('heard')).text, 'Why is there no eclipse every month?');
     assert.equal((await board.next('state')).state, 'thinking');
-    // The utterance with three frames of lead-in; only its words go to the tutor.
-    assert.deepEqual(hearing.heard, [(3 + 8 + 10) * FRAME]);
+    // The utterance with three frames of lead-in; only its words go to the tutor, marked as transcribed.
+    assert.deepEqual(hearing.heard, [(3 + 8 + 25) * FRAME]);
     await until(() => provider.boards[0].asked.length);
-    assert.deepEqual(provider.boards[0].asked, ['Why is there no eclipse every month?']);
+    assert.deepEqual(provider.boards[0].asked, [`${SPOKEN}Why is there no eclipse every month?`]);
 
     // While the tutor speaks, a short sound does not stop it; about 150 ms of speech does at once,
     // and the pause after it asks the question.
     const sentence = await board.next('sentence');
     board.send({ type: 'progress', sentence: sentence.id, phase: 'start' });
-    speak(board, 4, 14);
+    speak(board, 4, 26);
     await board.next('hearing', (m) => !m.on);
     assert.ok(!board.events.some((e) => e.state === 'idle'), 'a click does not cut in');
     speak(board, 5, 0);
     assert.equal((await board.next('state')).state, 'idle');
     assert.ok(!board.events.some((e) => e.type === 'heard'), 'stopped before the pause ends');
-    speak(board, 0, 10);
+    speak(board, 0, 26);
     assert.equal((await board.next('heard')).text, 'Why is there no eclipse every month?');
     assert.equal((await board.next('state')).state, 'thinking');
     const next = await board.next('sentence');
@@ -121,7 +122,7 @@ test('board: a question typed while speech is recognized is not cut off by the s
     await opened(board.ws);
     board.send({ type: 'mic', on: true });
     await board.next('mic', (m) => m.status === 'on');
-    speak(board, 8, 12);
+    speak(board, 8, 26);
     await until(() => hearing.heard.length);
     board.send({ type: 'ask', text: 'Why is the Moon lit?' });
     assert.equal((await board.next('state')).state, 'thinking');
@@ -131,12 +132,43 @@ test('board: a question typed while speech is recognized is not cut off by the s
     board.send({ type: 'progress', sentence: reply.id, phase: 'end' });
     await board.next('state', (m) => m.state === 'idle');
     assert.deepEqual(
+        provider.boards[0].asked,
+        ['Why is the Moon lit?'],
+        'a typed question is not marked',
+    );
+    assert.deepEqual(
         messages(env, id).map((m) => [m.role, m.text, m.status]),
         [
             ['user', 'Why is the Moon lit?', 'completed'],
             ['assistant', 'Because it is lit.', 'completed'],
         ],
     );
+});
+
+test('board: speech that goes on while the last utterance is recognized is heard too', async (t) => {
+    const provider = boardProvider([['> The orbit is tilted.\n'], ['> By five degrees.\n']]);
+    const recognized = Promise.withResolvers();
+    const hearing = fakeHearing({ held: recognized.promise });
+    const { connect } = await setup(t, provider, { app: { hearing } });
+    const board = connect();
+    await opened(board.ws);
+    board.send({ type: 'mic', on: true });
+    await board.next('mic', (m) => m.status === 'on');
+    speak(board, 8, 28);
+    await until(() => hearing.heard.length);
+    // The rest of the sentence arrives while the first part is still recognized.
+    speak(board, 8, 28);
+    board.send({ type: 'mic', on: true });
+    await board.next('mic', (m) => m.status === 'on');
+    recognized.resolve();
+    // The second part cuts in on the turn the first started and is asked in turn.
+    const said = 'Why is there no eclipse every month?';
+    assert.equal((await board.next('heard')).text, said);
+    assert.equal((await board.next('state')).state, 'thinking');
+    assert.equal((await board.next('state')).state, 'idle');
+    assert.equal((await board.next('heard')).text, said);
+    assert.equal((await board.next('sentence')).text, 'By five degrees.');
+    assert.deepEqual(hearing.heard, [(8 + 25) * FRAME, (3 + 8 + 25) * FRAME]);
 });
 
 test('board: a failed speech model download turns the mic off with a notice, and the next press tries again', async (t) => {
@@ -243,8 +275,8 @@ test('board: a hold pressed again while the last one is recognized keeps its aud
     recognized.resolve();
     await board.next('heard');
     // Speech and a long pause while still held: voice detection would end the question on its own.
-    speak(board, 8, 12);
+    speak(board, 8, 26);
     board.send({ type: 'hold', on: false });
     await until(() => hearing.heard.length === 2);
-    assert.deepEqual(hearing.heard, [4 * FRAME, 20 * FRAME]);
+    assert.deepEqual(hearing.heard, [4 * FRAME, 34 * FRAME]);
 });

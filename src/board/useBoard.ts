@@ -229,9 +229,13 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
                 if (m.status === 'off') stopMic();
                 else if (closeMic.current) {
                     micOn.current = m.status === 'on';
-                    setMic({ status: m.status, loaded: m.loaded, total: m.total });
-                    // The first hold downloads the models and records once they are ready, if still held.
-                    if (micOn.current && ptt.current && holding.current) sendHold(true);
+                    // A hold pressed while the models download stays shown as held.
+                    setMic((mic) => ({
+                        ...mic,
+                        status: m.status,
+                        loaded: m.loaded,
+                        total: m.total,
+                    }));
                 }
             }
             if (m.type === 'hearing' && m.on) setWaiting(false);
@@ -323,11 +327,13 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         setMic((mic) => ({ ...mic, hearing: down, levels: [0.2, 0.2, 0.2, 0.2] }));
     }
     // Holding Space or the mic with push-to-talk on; the first hold turns the mic on.
+    // The server keeps a hold's audio from the mic's request on, even while the models download;
+    // it ignores one sent while the browser still asks, so startMic sends it again.
     const hold = (down: boolean) => {
         if (down === holding.current) return;
         holding.current = down;
-        if (micOn.current) sendHold(down);
-        else if (down && !closeMic.current) void startMic();
+        if (closeMic.current) sendHold(down);
+        else if (down) void startMic();
     };
     const startMic = async () => {
         const ws = socket.current;
@@ -336,8 +342,8 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         closeMic.current = () => {};
         try {
             const close = await openMic((samples) => {
-                if (!micOn.current || ws.readyState !== WebSocket.OPEN) return;
-                if (ptt.current && !holding.current) return;
+                if (ws.readyState !== WebSocket.OPEN) return;
+                if (ptt.current ? !holding.current : !micOn.current) return;
                 ws.send(samples.buffer);
                 setMic((mic) =>
                     mic.hearing ? { ...mic, levels: levels(samples, mic.levels ?? []) } : mic,
@@ -352,6 +358,7 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         }
         setNotice(undefined);
         ws.send(JSON.stringify({ type: 'mic', on: true }));
+        if (ptt.current && holding.current) sendHold(true);
     };
     const changeSpeed = (rate: number) => {
         setSpeed(rate);

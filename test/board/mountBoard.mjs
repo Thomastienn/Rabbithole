@@ -90,7 +90,8 @@ function Host({ submitted, ...props }) {
     return h(Board, { ...props, thread });
 }
 
-// The rail starts collapsed here unless rail is set; mic installs a fake mic.
+// The rail starts collapsed here unless rail is set; mic installs a fake mic. Boards start hands-free here;
+// push-to-talk tests switch it on in mic.install.
 export async function mount(t, messages = [], speed, rail = false, mic) {
     const reloads = [];
     const submitted = [];
@@ -103,6 +104,7 @@ export async function mount(t, messages = [], speed, rail = false, mic) {
         (w) => {
             dom = ui(w);
             if (speed) w.localStorage.setItem('rabbithole.board-speed', speed);
+            w.localStorage.setItem('rabbithole.push-to-talk', 'off');
             mic?.install(w);
         },
     );

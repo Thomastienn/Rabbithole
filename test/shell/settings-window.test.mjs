@@ -230,7 +230,7 @@ test('the desktop app shows the Discord status switch and reports its choice', a
     assert.deepEqual(choices, [false]);
 });
 
-test('the Board page has Voice language, English by default, push-to-talk off and learner-led by default, keeping the choices for boards', async (t) => {
+test('the Board page has Voice language, English by default, push-to-talk on and learner-led by default, keeping the choices for boards', async (t) => {
     let downloaded = false;
     const calls = fakeServer(t, (path) =>
         path.startsWith('/api/settings/voice-models')
@@ -287,10 +287,10 @@ test('the Board page has Voice language, English by default, push-to-talk off an
     const ptt = [...page.container.querySelectorAll('[role=switch]')].find(
         (s) => s.labels[0]?.textContent === 'Push-to-talk',
     );
-    assert.equal(ptt.checked, false);
-    await page.act(async () => ptt.click());
     assert.equal(ptt.checked, true);
-    assert.equal(window.localStorage.getItem('rabbithole.push-to-talk'), 'on');
+    await page.act(async () => ptt.click());
+    assert.equal(ptt.checked, false);
+    assert.equal(window.localStorage.getItem('rabbithole.push-to-talk'), 'off');
     const mode = (label) =>
         [...page.container.querySelectorAll('[role=radio]')].find((r) =>
             r.textContent.includes(label),

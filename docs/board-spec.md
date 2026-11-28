@@ -22,7 +22,7 @@ A conversation can switch to a **board**. The tutor talks the learner through th
 
 The learner mostly watches and listens. Whenever something is unclear, they cut in, by voice once they turn the mic on, or by typing. The tutor stops at once, answers on the same board, then picks the topic up again. The learner can draw on the board with a pen to show what they mean ("this bit here?"). The tutor answers quickly: the board reacts within a fraction of a second, the first words follow in about a second, and the board is never still and silent for more than a second while the tutor is answering.
 
-By default the board is **learner-led**: the tutor explains and never quizzes. A learner who wants it can choose **tutor-guided**, where the tutor checks in with short questions and gives a hint when the learner doesn't answer. Speech plays at 1.5× by default, and the learner can change it. Everything said on a board is an ordinary reply in the conversation, so branching, the knowledge graph and familiarity work as they do in chat.
+By default the board is **learner-led**: the tutor explains and never quizzes. A learner who wants it can choose **tutor-guided**, where the tutor checks in with short questions and gives a hint when the learner doesn't answer. Speech plays at 1.25× by default, and the learner can change it. Everything said on a board is an ordinary reply in the conversation, so branching, the knowledge graph and familiarity work as they do in chat.
 
 ## User Stories
 
@@ -67,7 +67,7 @@ By default the board is **learner-led**: the tutor explains and never quizzes. A
 31. As a learner, I want one small change on the board per sentence, so that I can follow each step.
 32. As a learner, I want every board item to draw itself on, write in or fade in, never pop in, so that the board feels alive and is easy to follow.
 33. As a learner, I want each drawing to take about as long as the sentence that goes with it, so that what I hear and what I see match.
-34. As a learner, I want speech at 1.5× by default, so that it moves fast enough to keep my attention.
+34. As a learner, I want speech at 1.25× by default, so that it moves fast enough to keep my attention.
 35. As a learner, I want to change the speed, and have it apply instantly to both speech and drawing, so that I set my own pace.
 36. As a learner, I want the speed I choose remembered, so that I set it once.
 37. As a learner, I want captions of what the tutor says, in the rail or as one line under the board when the rail is collapsed, so that I can read along or watch without sound.
@@ -219,7 +219,8 @@ By default the board is **learner-led**: the tutor explains and never quizzes. A
   - **Silero voice detection (about 1 MB)** for both
 - **The first mic press** starts the download and shows progress on the mic button. Typing works meanwhile.
 - **Audio settings:** the browser captures the mic with echo cancellation, noise suppression and auto gain on.
-- **Cutting in:** when voice detection hears about 150 ms of speech while the tutor is speaking, the server sends a stop at once. End of speech is about 300 ms of silence, which is kept short because it sits in the 1 s budget. Then the utterance is recognized and sent as the learner's message.
+- **Cutting in:** when voice detection hears about 150 ms of speech while the tutor is speaking, the server sends a stop at once. End of speech is about 800 ms of silence, so a pause between phrases does not split the question. That wait sits in the latency budget, so a spoken question misses 1 s (changed 2026-11-27; 300 ms kept only the first words). Then the utterance is recognized and sent as the learner's message.
+- **Transcribed questions:** the prompt for a spoken question starts with a note that it was transcribed from speech, so the tutor reads misheard words for the meaning intended. The saved and shown question is only what was heard.
 - **Push-to-talk:** with it on, voice detection is replaced by holding Space or the mic button.
 - **Desktop:** the desktop app must grant the mic permission to the app's own page.
 
@@ -234,7 +235,7 @@ By default the board is **learner-led**: the tutor explains and never quizzes. A
   - A sentence lasts as long as its audio plays. Its ops share that time in order.
   - Before a sentence's audio length is known, it is estimated at 15 characters per second at 1.5×, as in the prototype.
   - Speed is applied on the client, with `playbackRate` and `preservesPitch`, so a change is instant. Animation durations scale with it.
-- **Speed:** 1.5× by default, and the learner's choice is remembered in the browser.
+- **Speed:** 1.25× by default, and the learner's choice is remembered in the browser.
 - **Playback** starts on the first audio chunk of a sentence.
 - **Interruptions:**
   - Audio stops at once.
@@ -282,7 +283,7 @@ By default the board is **learner-led**: the tutor explains and never quizzes. A
 - **Settings:** a new Board section holds:
   - Voice language, English by default
   - learner-led or tutor-guided
-  - push-to-talk, off by default
+  - push-to-talk, on by default
 - This is a new screen, and it needs a mockup at `docs/mockups/<issue-id>.html` before its tickets are published (label `new-ui`). The board's look is designed with Impeccable.
 
 ### Privacy
@@ -339,8 +340,8 @@ Good tests here check what the learner gets: what is said, drawn, saved and sent
 
 ## Further Notes
 
-- **The latency budget for a spoken question** is about 1.0–1.4 s to first audio:
-  - end-of-speech detection, about 300 ms
+- **The latency budget for a spoken question** is about 1.5–1.9 s to first audio:
+  - end-of-speech detection, about 800 ms
   - recognition, about 0.1–0.3 s
   - Sonnet's first sentence, 0.66–0.84 s median
   - edge-tts on an open socket, about 80 ms

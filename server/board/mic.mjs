@@ -4,6 +4,9 @@ import { FRAME, utterances } from './hearing.mjs';
 const SPEECH_FAILED =
     "The speech model didn't download. Check your connection, then press the mic to try again.";
 const SPEECH_UNAVAILABLE = 'Voice questions are unavailable here, so type your question.';
+// Goes before a spoken question in the prompt only; the saved and shown question is what was heard.
+export const SPOKEN =
+    "(Transcribed from the learner's speech, so words may be misheard: read it for the meaning they intended.)\n\n";
 
 // A board session's mic: off as the board opens; on once the learner asks for it and the speech models are ready.
 // It listens while the tutor thinks or speaks (busy): about 150 ms of speech cuts the tutor off.
@@ -15,9 +18,9 @@ export function boardMic(hearing, lang, { send, log, ask, stop, busy, closed }) 
     let ears = null,
         mic = null,
         scoring = Promise.resolve(),
-        recognizing = false,
         held = null,
         heldSamples = 0,
+        kept = null,
         rest = new Float32Array(0);
     const on = async () => {
         if (mic) return send({ type: 'mic', status: 'on' });
@@ -33,26 +36,28 @@ export function boardMic(hearing, lang, { send, log, ask, stop, busy, closed }) 
             if (ears !== asked || closed()) return;
             mic = { models, score: models.detector(), cut: utterances() };
             send({ type: 'mic', status: 'on' });
+            // A hold let go while the models loaded is asked now.
+            const said = kept;
+            kept = null;
+            if (said) void hear(mic, said);
         } catch (error) {
             if (ears !== asked) return;
-            ears = null;
+            ears = held = kept = null;
             log(formatLog('warn', 'board', 'speech model failed', { cause: errorCause(error) }));
             send({ type: 'notice', notice: SPEECH_FAILED });
             send({ type: 'mic', status: 'off' });
         }
     };
     const off = () => {
-        ears = mic = held = null;
+        ears = mic = held = kept = null;
         rest = new Float32Array(0);
         send({ type: 'mic', status: 'off' });
     };
     const hear = async (current, said) => {
-        recognizing = true;
         const text = await current.models.recognize(said).catch((error) => {
             log(formatLog('warn', 'board', 'recognition failed', { cause: errorCause(error) }));
             return '';
         });
-        recognizing = false;
         // A question typed during recognition already started a turn; this one must not cut it.
         if (!text || mic !== current || closed() || busy()) return;
         send({ type: 'heard', text });
@@ -61,7 +66,8 @@ export function boardMic(hearing, lang, { send, log, ask, stop, busy, closed }) 
     // Held audio never meets voice detection, even while the last question is still recognized.
     const hold = (down) => {
         const current = mic;
-        if (!current) return;
+        // While the models load (ears, no mic yet) a hold still keeps its audio, asked once they are ready.
+        if (!current && !ears) return;
         if (down) {
             if (held) return;
             held = [];
@@ -75,19 +81,21 @@ export function boardMic(hearing, lang, { send, log, ask, stop, busy, closed }) 
         held.reduce((at, s) => (said.set(s, at), at + s.length), 0);
         held = null;
         send({ type: 'hearing', on: false });
-        if (said.length) void hear(current, said);
+        if (!said.length) return;
+        if (current) void hear(current, said);
+        else kept = said;
     };
     // Mic audio: 16 kHz mono float32 samples, cut into Silero frames and scored one at a time.
     const listen = (samples) => {
-        const current = mic;
-        if (!current) return;
         // A hold keeps at most a minute of speech.
         if (held) {
             if (heldSamples + samples.length > 60 * 16000) return;
             heldSamples += samples.length;
             return void held.push(samples.slice());
         }
-        if (recognizing) return;
+        const current = mic;
+        if (!current) return;
+        // Audio heard during recognition queues behind it on scoring, so the rest of a sentence is not lost.
         const all = new Float32Array(rest.length + samples.length);
         all.set(rest);
         all.set(samples, rest.length);
@@ -96,7 +104,7 @@ export function boardMic(hearing, lang, { send, log, ask, stop, busy, closed }) 
             const frame = all.slice(at, at + FRAME);
             scoring = scoring
                 .then(async () => {
-                    if (mic !== current || recognizing) return;
+                    if (mic !== current) return;
                     const said = current.cut.push(frame, (await current.score(frame)) > 0.5);
                     if (said === 'start') return send({ type: 'hearing', on: true });
                     if (said === 'speech') return busy() && stop(busy());
@@ -105,7 +113,6 @@ export function boardMic(hearing, lang, { send, log, ask, stop, busy, closed }) 
                     if (said !== 'end') await hear(current, said);
                 })
                 .catch((error) => {
-                    recognizing = false;
                     log(
                         formatLog('warn', 'board', 'voice detection failed', {
                             cause: errorCause(error),

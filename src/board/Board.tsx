@@ -28,8 +28,8 @@ import { follow, slide } from './camera';
 import PageStrip, { BackChip, pagesOf } from './PageStrip';
 import { labelRows } from './player';
 import { dimmed } from './spotlight';
-import { DEFAULT_SPEED } from './voice';
-import { BOARD_SPEEDS } from '../shell/preferences';
+import { BOARD_TIME_SPEED } from './voice';
+import { BOARD_SPEEDS, DEFAULT_BOARD_SPEED } from '../shell/preferences';
 import { sceneOf } from './scene';
 import { inkStyle } from '../map/treeList';
 
@@ -92,7 +92,7 @@ export default function Board({
     // Item entries are CSS animations in board time; their playback rate carries the speed, mid-entry too.
     useLayoutEffect(() => {
         for (const a of svg.current?.getAnimations?.({ subtree: true }) ?? [])
-            a.playbackRate = board.speed / DEFAULT_SPEED;
+            a.playbackRate = board.speed / BOARD_TIME_SPEED;
     }, [board.items, board.speed]);
     const penDown = (e: PointerEvent<SVGSVGElement>) => {
         // An earlier reply's board is only looked at; strokes go on the latest one.
@@ -483,7 +483,9 @@ export default function Board({
                                                 value={String(s)}
                                                 label={`${s}×`}
                                                 endContent={
-                                                    s === DEFAULT_SPEED ? 'Default' : undefined
+                                                    s === DEFAULT_BOARD_SPEED
+                                                        ? 'Default'
+                                                        : undefined
                                                 }
                                             />
                                         ))}

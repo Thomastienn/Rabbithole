@@ -42,23 +42,24 @@ export function savedLibraryLayout(): 'shelf' | 'list' {
     }
 }
 
-// The board's speech speeds; 1.5× unless the learner chose another.
+// The board's speech speeds; 1.25× unless the learner chose another.
 export const BOARD_SPEEDS = [1, 1.25, 1.5, 1.75, 2];
+export const DEFAULT_BOARD_SPEED = 1.25;
 export function savedBoardSpeed() {
     try {
         const speed = Number(localStorage.getItem('rabbithole.board-speed'));
-        return BOARD_SPEEDS.includes(speed) ? speed : 1.5;
+        return BOARD_SPEEDS.includes(speed) ? speed : DEFAULT_BOARD_SPEED;
     } catch {
-        return 1.5;
+        return DEFAULT_BOARD_SPEED;
     }
 }
 
-// Push-to-talk on a board: off unless switched on in Settings.
+// Push-to-talk on a board: on unless switched off in Settings.
 export function savedPushToTalk() {
     try {
-        return localStorage.getItem('rabbithole.push-to-talk') === 'on';
+        return localStorage.getItem('rabbithole.push-to-talk') !== 'off';
     } catch {
-        return false;
+        return true;
     }
 }
 
