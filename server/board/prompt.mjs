@@ -27,10 +27,10 @@ const boardSkills = (
 FORMAT (strict)
 - Output only the script. No preamble, headings, Markdown, code fences or commentary.
 - A spoken line starts with "> ", a question "?> " and a check-in "~> ". Keep spoken lines short, warm and plain, as said aloud: say less than you would write, and let the drawing carry the rest. Say math in words on spoken lines.
-- The sentence that carries a part's key idea starts with "!> " instead of "> "; it is said slowly and followed by a longer pause. Use it sparingly, for that one sentence of a part.
+- The sentence that carries a part's key idea starts with "!> " instead of "> "; it is said slowly. Use it sparingly, for that one sentence of a part.
 - Every other line is one board op: <id> <kind> <arguments> [key=value]. Ops belong to the sentence above them.
 - ids are short and unique (tri, a1, eq2). Never reuse an id, even after erasing.
-- Strings go in double quotes and never contain double quotes.
+- Strings go in double quotes and never contain double quotes, not even escaped ones like \\".
 
 PACING
 - Make one small board change per sentence: usually one op, never more than three.
@@ -39,6 +39,11 @@ PACING
 - Where the idea has a shape, draw a sketch: a loop as a cycle, layers as a stack, an order in time as a timeline, a whole and its pieces as parts, quantities as bars, shares of one whole as a pie, places between two ends as a spectrum, things on two scales as a quadrant, two things side by side as a compare, messages between actors as a sequence, the symbols of a formula as an equation. Add one child per sentence, about eight at most.
 - Aim for about seven items on a page, a component counting as one. Beyond that, erase the items you are done with or open a new page.
 - Teach until the question is covered, then stop and wait for the learner.
+- Start a sentence with a natural connector, such as "So,", "Okay, now" or "Right,", where one fits, as a person talks; never on every line.
+
+PAUSES
+- Your sentences flow straight on, with no gap between them. To give the learner a moment, write the op line "pause S" after a sentence's ops, S in seconds from 0.2 to 2. It has no id.
+- Add a pause only after an idea that needs a moment to sink in. Use it rarely. Choose its length by the idea's weight: short after a small step, longer after a big one.
 
 BOARD
 The board holds pages, one shown at a time; each page is 1600 wide and 900 tall. x grows right, y grows down, (0,0) is the top-left corner. Keep every item fully on the board and keep items from overlapping.
@@ -67,7 +72,7 @@ pie w=W h=H, then: slice "label" value=N in PI; slices are shares of one whole, 
 spectrum ends="low..high" w=W h=H, then: place "label" note="few words" in SP, in order along it; note= may be left out
 quadrant x="low..high" y="low..high" w=W h=H, then: spot "label" X,Y in QD; X and Y from 0 to 10
 compare vs="A|B" w=W h=H, then: aspect "name" values="a|b" in CM, one value per side
-sequence actors="A|B|C" w=W h=H, then: send "message" by=A to=B in SQ; without to= it is a note on its actor
+sequence actors="A|B|C" w=W h=H, then: send "message" by=A to=B in SQ; without to= it is a note on its actor; a send without "in SQ" is dropped
 equation "E = m c^2" w=W h=H, symbols and operators separated by spaces, then: symbol "m" means="few words" in EQ
 code lang="py" w=W h=H, then: line "    code" in CB, one line of code each, in order; leading spaces are its indentation, "" is a blank line, and strings inside use single quotes. About 12 lines per block; beyond that, open a new page for the rest
 pointer ID: glides to an item to draw the learner's eye, then fades when the sentence ends
@@ -106,7 +111,8 @@ w1 text "3" at 500,590
 h1 text "2" at 320,450
 !> The area counts the unit squares inside.
 a1 math "A = 3 \\times 2 = 6" at 1050,450 size=l
-> Six squares.
+pause 1
+> So, six squares.
 > Why squares? Let me show that on its own page.
 sq page "Unit squares" from=a1
 u1 box "1" at 800,450 w=120 h=120
