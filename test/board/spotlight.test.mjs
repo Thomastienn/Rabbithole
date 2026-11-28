@@ -137,6 +137,8 @@ test('board: while the tutor speaks, what its latest sentence drew or named stay
     assert.deepEqual(dimHere(), ['l1'], 'a code line lights only itself; its panel never dims');
     await say([{ id: 'pt', kind: 'pointer', at: [700, 1500], from: [0, 0], names: ['l1'] }]);
     assert.deepEqual(dimHere(), ['l2'], 'the pointer lights the one line it names');
+    await say([{ id: 'pb', kind: 'pointer', at: [700, 1500], from: [0, 0], names: ['cb'] }]);
+    assert.deepEqual(dimHere(), [], 'the pointer at the block lights all its lines');
     await board.type('Wait');
     await board.act(async () => button(board.container, 'Send').click());
     assert.deepEqual(named(), [], 'a cut-in shows the whole page at once');

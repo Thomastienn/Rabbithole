@@ -16,11 +16,12 @@ export const litBy = (ops: Op[] = []) =>
     );
 
 // Whether an item dims: the lit set misses it, a child going with its component.
-// Pointers, the learner's strokes, muted items and code panels never dim; a code line dims on its own.
+// Pointers, the learner's strokes, muted items and code panels never dim; a code line dims unless it or its block is lit.
 export const dimmed = (op: Op, lit?: Set<string>) =>
     !!lit &&
     op.kind !== 'pointer' &&
     op.kind !== 'code' &&
     op.kind !== 'stroke' &&
     op.look !== 'muted' &&
-    !lit.has(op.kind === 'line' ? op.id : (op.on ?? op.id));
+    !lit.has(op.on ?? op.id) &&
+    !(op.kind === 'line' && lit.has(op.id));
