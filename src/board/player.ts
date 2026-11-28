@@ -43,6 +43,14 @@ export type Op = {
         | 'event'
         | 'parts'
         | 'part'
+        | 'bars'
+        | 'bar'
+        | 'pie'
+        | 'slice'
+        | 'spectrum'
+        | 'place'
+        | 'quadrant'
+        | 'spot'
         | 'stroke'
         | 'erase';
     // A component's child names its component; components and plots carry their own path and numbers.
@@ -61,6 +69,12 @@ export type Op = {
     whole?: string;
     note?: string;
     when?: string;
+    // A bar's or slice's value and a bar's unit, a spot's X,Y from 0 to 10, a spectrum's two ends or a quadrant's
+    // x ends then y ends.
+    value?: number;
+    unit?: string;
+    xy?: [number, number];
+    ends?: string[];
     look?: Look;
     at?: [number, number];
     r?: number;
@@ -165,6 +179,7 @@ const CHANGE_MS = 900;
 export const COMPONENT_KINDS = new Set([
     ...['axes', 'numberline', 'flow', 'tree', 'table', 'venn'],
     ...['cycle', 'stack', 'timeline', 'parts'],
+    ...['bars', 'pie', 'spectrum', 'quadrant'],
 ]);
 const pauseBefore = (sentence: Sentence, after: Sentence | undefined) =>
     after?.key ||

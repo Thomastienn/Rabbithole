@@ -188,11 +188,41 @@
 .board-item.focus .board-part-rule {
     stroke: currentColor;
 }
+/* Mockup Rabbithole-bsk.5: a spectrum's leaders are 3px muted; slices and their swatches are 5px ink edges over
+   fills of 16% and 6% ink, alternating, 30% in focus, never told apart by hue. */
+.board-part-leader {
+    stroke: var(--color-text-secondary);
+    stroke-width: 3;
+}
+.board-part-slice,
+.board-part-slice-alt,
+.board-part-box.slice,
+.board-part-box.slice-alt {
+    stroke-width: 5;
+    fill: color-mix(in srgb, currentColor 16%, transparent);
+    fill-rule: evenodd;
+}
+.board-part-slice-alt,
+.board-part-box.slice-alt {
+    fill: color-mix(in srgb, currentColor 6%, transparent);
+}
+.board-item.focus
+    :is(
+        .board-part-slice,
+        .board-part-slice-alt,
+        .board-part-box.slice,
+        .board-part-box.slice-alt
+    ) {
+    fill: color-mix(in srgb, currentColor 30%, transparent);
+}
 .board-part-box,
 .board-part-circle,
 .board-part-edge,
 .board-part-rule,
 .board-part-seam,
+.board-part-leader,
+.board-part-slice,
+.board-part-slice-alt,
 .board-part-text {
     transition-property: x, y, width, height, cx, cy, r, d, translate, font-size;
     transition-duration: 400ms;
@@ -281,6 +311,9 @@
     .board-part-edge,
     .board-part-rule,
     .board-part-seam,
+    .board-part-leader,
+    .board-part-slice,
+    .board-part-slice-alt,
     .board-part-text {
         transition: none;
     }

@@ -36,7 +36,7 @@ PACING
 - Make one small board change per sentence: usually one op, never more than three.
 - Say what you are about to draw before you draw it, such as "let me sketch the forces".
 - Keep text on the board to a minimum: single words, symbols or a short formula. Never write sentences on the board. Prefer drawings, components and math over words.
-- Where the idea has a shape, draw a sketch: a loop as a cycle, layers as a stack, an order in time as a timeline, a whole and its pieces as parts. Add one child per sentence, about eight at most.
+- Where the idea has a shape, draw a sketch: a loop as a cycle, layers as a stack, an order in time as a timeline, a whole and its pieces as parts, quantities as bars, shares of one whole as a pie, places between two ends as a spectrum, things on two scales as a quadrant. Add one child per sentence, about eight at most.
 - Aim for about seven items on a page, a component counting as one. Beyond that, erase the items you are done with or open a new page.
 - Teach until the question is covered, then stop and wait for the learner.
 
@@ -62,6 +62,10 @@ cycle w=W h=H, then: stage "label" in CY, in order; the last stage leads back to
 stack w=W h=H, then: layer "name" note="few words" in SK, top first; note= may be left out
 timeline w=W h=H, then: event "label" when="date" in TL, in order
 parts whole="name" w=W h=H, then: part "name" note="few words" in PT; note= may be left out
+bars w=W h=H, then: bar "label" value=N unit="min" in BR; unit= may be left out; N is 0 or more
+pie w=W h=H, then: slice "label" value=N in PI; slices are shares of one whole, N above 0
+spectrum ends="low..high" w=W h=H, then: place "label" note="few words" in SP, in order along it; note= may be left out
+quadrant x="low..high" y="low..high" w=W h=H, then: spot "label" X,Y in QD; X and Y from 0 to 10
 highlight ID: sweeps over an item to emphasise it
 pointer ID: glides to an item to draw the learner's eye, then fades
 erase ID ID ...: fades items out and frees their space

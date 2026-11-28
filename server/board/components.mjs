@@ -2,9 +2,13 @@
 // computed here (mockup Rabbithole-brd.5), and `flow` + `step`, `tree` + `node`, `table` + `row` and `venn` + `item`,
 // which are only checked here: their children reflow on every arrival, so the client lays them out from all the
 // children drawn so far (src/board/layout.ts, mockup Rabbithole-brd.6). The tutor gives a component's box.
-// Sketches (docs/board-sketches-spec.md: cycle + stage, stack + layer, timeline + event, parts + part) are checked the
-// same way (src/board/sketchLayout.ts, mockup Rabbithole-bsk.4).
-export const SKETCHES = new Set(['cycle', 'stack', 'timeline', 'parts']);
+// Sketches (docs/board-sketches-spec.md: cycle + stage, stack + layer, timeline + event, parts + part, mockup
+// Rabbithole-bsk.4; bars + bar, pie + slice, spectrum + place, quadrant + spot, mockup Rabbithole-bsk.5) are checked
+// the same way (src/board/sketchLayout.ts).
+export const SKETCHES = new Set([
+    ...['cycle', 'stack', 'timeline', 'parts'],
+    ...['bars', 'pie', 'spectrum', 'quadrant'],
+]);
 export const COMPONENTS = new Set([
     'axes',
     'numberline',
@@ -25,6 +29,10 @@ export const PARENTS = {
     layer: 'stack',
     event: 'timeline',
     part: 'parts',
+    bar: 'bars',
+    slice: 'pie',
+    place: 'spectrum',
+    spot: 'quadrant',
 };
 // Default boxes, in board pixels.
 const SIZES = {
@@ -40,6 +48,10 @@ const SIZES = {
     stack: [1100, 600],
     timeline: [1000, 640],
     parts: [1300, 560],
+    bars: [1200, 520],
+    pie: [1200, 600],
+    spectrum: [1300, 440],
+    quadrant: [1300, 780],
 };
 const words = (text) => (text ?? '').split('|').map((word) => word.trim());
 const FUNCS = {
@@ -127,6 +139,11 @@ const range = (text = '-5..5') => {
     const m = /^(-?\d*\.?\d+)\.\.(-?\d*\.?\d+)$/.exec(text);
     return m && +m[1] < +m[2] ? [+m[1], +m[2]] : null;
 };
+// A sketch's two end names, from "low..high", or null.
+const ends = (text) => {
+    const pair = (text ?? '').split('..').map((word) => word.trim());
+    return pair.length === 2 && pair.every(Boolean) ? pair : null;
+};
 const value = (word) => (NUMBER.test(word ?? '') ? expression(word)(0) : NaN);
 
 // Evenly spaced ticks that include both ends, and 0 when it is inside: the fewest-pieces whole step, else halves.
@@ -170,8 +187,16 @@ export function component(op, item) {
         item.dir = op.opts.dir ?? 'right';
         return item.dir === 'right' || item.dir === 'down' ? null : 'dir is right or down';
     }
-    if (op.kind === 'tree' || op.kind === 'cycle' || op.kind === 'stack' || op.kind === 'timeline')
-        return null;
+    if (['tree', 'cycle', 'stack', 'timeline', 'bars', 'pie'].includes(op.kind)) return null;
+    if (op.kind === 'spectrum') {
+        item.ends = ends(op.opts.ends ?? op.strs[0]);
+        return item.ends ? null : 'spectrum needs ends="low..high"';
+    }
+    if (op.kind === 'quadrant') {
+        const [x, y] = [ends(op.opts.x), ends(op.opts.y)];
+        item.ends = x && y && [...x, ...y];
+        return item.ends ? null : 'quadrant needs x="low..high" y="low..high"';
+    }
     if (op.kind === 'parts') {
         item.whole = (op.opts.whole ?? op.strs[0])?.trim();
         return item.whole ? null : 'parts needs whole="…"';
@@ -280,9 +305,13 @@ export function child(op, item, parent, items) {
     return null;
 }
 
-const LABELLED = { step: 1, node: 1, row: 1, item: 1, stage: 1, layer: 1, event: 1, part: 1 };
+const LABELLED = {
+    ...{ step: 1, node: 1, row: 1, item: 1, stage: 1, layer: 1, event: 1, part: 1 },
+    ...{ bar: 1, slice: 1, place: 1, spot: 1 },
+};
 // A flow, tree, table, Venn or sketch child: its words, for a node its parent node, for an item its sets, for a
-// layer or part its optional note and for an event its date.
+// layer, part or place its optional note, for an event its date, for a bar its value and optional unit, for a slice
+// its value and for a spot its X,Y from 0 to 10.
 function labelled(op, item, parent, items) {
     const label = op.strs[0]?.trim();
     if (!label) return `${op.kind} needs a "label"`;
@@ -295,8 +324,21 @@ function labelled(op, item, parent, items) {
         return null;
     }
     item.text = label;
-    if ((op.kind === 'layer' || op.kind === 'part') && op.opts.note?.trim())
+    if (['layer', 'part', 'place'].includes(op.kind) && op.opts.note?.trim())
         item.note = op.opts.note.trim();
+    if (op.kind === 'bar' || op.kind === 'slice') {
+        item.value = value(op.opts.value ?? op.vals[0]);
+        if (Number.isNaN(item.value)) return `${op.kind} needs value=N`;
+        // A slice of nothing has no share to draw.
+        if (op.kind === 'bar' ? item.value < 0 : item.value <= 0)
+            return `${op.kind} value must be ${op.kind === 'bar' ? '0 or more' : 'above 0'}`;
+        if (op.kind === 'bar' && op.opts.unit?.trim()) item.unit = op.opts.unit.trim();
+    }
+    if (op.kind === 'spot') {
+        item.xy = op.pts[0];
+        if (!item.xy) return 'spot needs X,Y';
+        if (!item.xy.every((v) => v >= 0 && v <= 10)) return 'spot X and Y are from 0 to 10';
+    }
     if (op.kind === 'event') {
         item.when = op.opts.when?.trim();
         if (!item.when) return 'event needs when="…"';

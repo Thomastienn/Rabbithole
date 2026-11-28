@@ -7,8 +7,16 @@ import { sketchParts } from './sketchLayout.ts';
 // part keeps its key, and the board slides it to its new place (src/styles/board-items.css). `t` is the share of the
 // item's entry the part draws in, as [from, to].
 export type Part = { key: string; t: [number, number] } & (
-    | { kind: 'box'; x: number; y: number; w: number; h: number }
-    | { kind: 'line'; d: string; look: 'edge' | 'rule' | 'seam' }
+    | {
+          kind: 'box';
+          x: number;
+          y: number;
+          w: number;
+          h: number;
+          rx?: number;
+          look?: 'slice' | 'slice-alt';
+      }
+    | { kind: 'line'; d: string; look: 'edge' | 'rule' | 'seam' | 'leader' | 'slice' | 'slice-alt' }
     | { kind: 'circle'; x: number; y: number; r: number; look?: 'station' }
     | {
           kind: 'text';
