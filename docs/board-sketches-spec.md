@@ -134,6 +134,8 @@ The voice breathes. The board leaves a short beat after each sentence, and a lon
 
 ### Pacing
 
+Replaced by `docs/board-polish-spec.md`: the app no longer adds fixed pauses; the tutor writes them, and sentences between pauses are spoken as one stretch. The rates below still hold.
+
 - **Pauses** sit between sentences in board time, so the learner's speed scales them and pause holds them. Defaults (board time at 1.5×, tuned later without changing the rules):
   - a beat of about 300 ms after each sentence
   - about 900 ms before a sentence whose ops open a page (`page`, `open`) or start a new top-level component, and after a key sentence
