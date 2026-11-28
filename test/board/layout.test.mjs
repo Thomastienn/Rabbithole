@@ -245,3 +245,125 @@ test('board layout: an erased child keeps its place while the rest reflow withou
     assert.equal(parts.get('event1')[0].y, 450, 'alone again, centred');
     assert.equal(parts.get('event2')[1].y, 505, 'fading where it was');
 });
+
+// Compare, sequence and equation (mockup Rabbithole-bsk.6): the numbers are the mockup's.
+test('board layout: a compare widens its aspect column to the longest name and stacks rows down', () => {
+    const box = {
+        id: 'c1',
+        kind: 'compare',
+        at: [800, 450],
+        w: 1100,
+        h: 500,
+        vs: ['Bacteria', 'Virus'],
+    };
+    const one = sketch(box, 'aspect', [{ text: 'Size', values: ['about 1 µm', 'about 0.1 µm'] }]);
+    assert.deepEqual(draw(one, 'c1'), [
+        'Bacteria@458,244',
+        'Virus@904,244',
+        'rule M458 270H864M904 270H1350',
+    ]);
+    assert.deepEqual(draw(one, 'aspect1'), [
+        'Size@250,338',
+        'about 1 µm@458,339',
+        'about 0.1 µm@904,339',
+    ]);
+    const rows = ['Alive on its own', 'Has a cell wall', 'Antibiotics work'].map((text) => ({
+        text,
+        values: ['yes', 'no'],
+    }));
+    const four = sketch(box, 'aspect', [
+        { text: 'Size', values: ['about 1 µm', 'about 0.1 µm'] },
+        ...rows,
+    ]);
+    assert.equal(draw(four, 'c1')[2], 'rule M531 270H900.5M940.5 270H1350', 'reflowed');
+    assert.deepEqual(draw(four, 'aspect3'), [
+        'seam M250 472H1350',
+        'Has a cell wall@250,530',
+        'yes@531,531',
+        'no@940.5,531',
+    ]);
+    const ten = sketch(
+        box,
+        'aspect',
+        Array.from({ length: 10 }, (_, i) => ({ text: `A${i}`, values: ['x', 'y'] })),
+    );
+    const last = componentParts(ten).get('aspect10');
+    assert.ok(
+        last.every((p) => p.kind === 'line' || p.y <= 700),
+        'still inside the box',
+    );
+    assert.equal(last[1].size, 22.8, 'notes shrink by 26/32');
+});
+
+test('board layout: a sequence draws arrows between actors, breaks crossed lifelines and notes an actor', () => {
+    const box = {
+        id: 'q1',
+        kind: 'sequence',
+        at: [800, 450],
+        w: 1200,
+        h: 700,
+        actors: ['Browser', 'DNS', 'Server'],
+    };
+    const sends = [
+        { text: 'Where is example.com?', by: 0, to: 1 },
+        { text: '93.184.215.14', by: 1, to: 0 },
+        { text: 'GET /', by: 0, to: 2 },
+        { text: 'The page', by: 2, to: 0 },
+        { text: 'Draws it', by: 0 },
+    ];
+    assert.deepEqual(draw(sketch(box, 'send', []), 'q1').slice(3), [
+        'life0 M400 160V240',
+        'life1 M800 160V240',
+        'life2 M1200 160V240',
+    ]);
+    const one = sketch(box, 'send', sends.slice(0, 1));
+    assert.equal(draw(one, 'q1')[3], 'life0 M400 160V300');
+    assert.deepEqual(draw(one, 'send1'), [
+        'Where is example.com?@600,238',
+        'arrow M400 258H794M780 272L794 258L780 244',
+    ]);
+    const five = sketch(box, 'send', sends);
+    assert.deepEqual(draw(five, 'send2')[1], 'arrow M800 358H406M420 344L406 358L420 372');
+    assert.deepEqual(draw(five, 'send3'), [
+        'gap1 M800 404V468',
+        'GET /@800,438',
+        'arrow M400 458H1194M1180 472L1194 458L1180 444',
+    ]);
+    assert.deepEqual(draw(five, 'send5'), ['station 400,640,12', 'Draws it@430,650']);
+    assert.equal(draw(five, 'q1')[5], 'life2 M1200 160V700');
+    const tcp = { ...box, actors: ['Client', 'Server'] };
+    const ten = sketch(
+        tcp,
+        'send',
+        Array.from({ length: 10 }, (_, i) => ({ text: 'SYN', by: i % 2, to: 1 - (i % 2) })),
+    );
+    assert.deepEqual(draw(ten, 'send1'), [
+        'SYN@800,213.9',
+        'arrow M500 230.1H1094M1080 244.1L1094 230.1L1080 216.1',
+    ]);
+    assert.equal(draw(ten, 'q1')[3], 'life1 M1100 160V790', 'still inside the box');
+});
+
+test('board layout: an equation hangs each meaning off its symbol, the rightmost symbol on top', () => {
+    const box = { id: 'x1', kind: 'equation', at: [800, 450], w: 1200, h: 500, text: 'E = m c^2' };
+    assert.deepEqual(draw([box], 'x1'), [
+        'E@667.9,310',
+        '=@735.2,310',
+        'm@802.6,310',
+        'c@869.9,310',
+        '2@909.2,280',
+    ]);
+    const one = sketch(box, 'symbol', [{ text: 'E', means: 'energy', token: 0 }]);
+    assert.deepEqual(draw(one, 'symbol1'), ['leader M687.6 334V390H727.6', 'energy@743.6,400']);
+    const three = sketch(box, 'symbol', [
+        { text: 'E', means: 'energy', token: 0 },
+        { text: 'm', means: 'mass', token: 2 },
+        { text: 'c', means: 'the speed of light', token: 3 },
+    ]);
+    assert.deepEqual(draw(three, 'symbol1'), ['leader M687.6 334V534H727.6', 'energy@743.6,544']);
+    assert.deepEqual(draw(three, 'symbol2'), ['leader M822.2 334V462H862.2', 'mass@878.2,472']);
+    assert.deepEqual(draw(three, 'symbol3'), [
+        'leader M889.5 334V390H929.5',
+        'the speed of light@945.5,400',
+    ]);
+});

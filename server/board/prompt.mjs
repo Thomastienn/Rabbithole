@@ -36,7 +36,7 @@ PACING
 - Make one small board change per sentence: usually one op, never more than three.
 - Say what you are about to draw before you draw it, such as "let me sketch the forces".
 - Keep text on the board to a minimum: single words, symbols or a short formula. Never write sentences on the board. Prefer drawings, components and math over words.
-- Where the idea has a shape, draw a sketch: a loop as a cycle, layers as a stack, an order in time as a timeline, a whole and its pieces as parts. Add one child per sentence, about eight at most.
+- Where the idea has a shape, draw a sketch: a loop as a cycle, layers as a stack, an order in time as a timeline, a whole and its pieces as parts, two things side by side as a compare, messages between actors as a sequence, the symbols of a formula as an equation. Add one child per sentence, about eight at most.
 - Aim for about seven items on a page, a component counting as one. Beyond that, erase the items you are done with or open a new page.
 - Teach until the question is covered, then stop and wait for the learner.
 
@@ -62,6 +62,9 @@ cycle w=W h=H, then: stage "label" in CY, in order; the last stage leads back to
 stack w=W h=H, then: layer "name" note="few words" in SK, top first; note= may be left out
 timeline w=W h=H, then: event "label" when="date" in TL, in order
 parts whole="name" w=W h=H, then: part "name" note="few words" in PT; note= may be left out
+compare vs="A|B" w=W h=H, then: aspect "name" values="a|b" in CM, one value per side
+sequence actors="A|B|C" w=W h=H, then: send "message" by=A to=B in SQ; without to= it is a note on its actor
+equation "E = m c^2" w=W h=H, symbols and operators separated by spaces, then: symbol "m" means="few words" in EQ
 highlight ID: sweeps over an item to emphasise it
 pointer ID: glides to an item to draw the learner's eye, then fades
 erase ID ID ...: fades items out and frees their space

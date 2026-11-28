@@ -42,10 +42,11 @@ function scriptReader() {
 // are said slower, the slower of the two when both apply; the client stretches its caption estimate to match.
 const KEY_RATE = -15;
 const MATH_RATE = -10;
+const MATH = new Set(['math', 'equation', 'symbol']);
 const sentenceRate = (sentence) =>
     Math.min(
         sentence.key ? KEY_RATE : 0,
-        sentence.ops.some((op) => op.kind === 'math') ? MATH_RATE : 0,
+        sentence.ops.some((op) => MATH.has(op.kind)) ? MATH_RATE : 0,
     );
 
 // A reply's sentences as the stream arrives: each with its ops read through the board's guard, its op lines

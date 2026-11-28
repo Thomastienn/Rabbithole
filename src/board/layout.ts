@@ -8,14 +8,14 @@ import { sketchParts } from './sketchLayout.ts';
 // item's entry the part draws in, as [from, to].
 export type Part = { key: string; t: [number, number] } & (
     | { kind: 'box'; x: number; y: number; w: number; h: number }
-    | { kind: 'line'; d: string; look: 'edge' | 'rule' | 'seam' }
+    | { kind: 'line'; d: string; look: 'edge' | 'rule' | 'seam' | 'gap' | 'leader' }
     | { kind: 'circle'; x: number; y: number; r: number; look?: 'station' }
     | {
           kind: 'text';
           x: number;
           y: number;
           text: string;
-          look?: 'head' | 'set' | 'sm' | 'note';
+          look?: 'head' | 'set' | 'sm' | 'note' | 'name' | 'math' | 'mathop';
           anchor?: 'start' | 'end';
           // Font size in board pixels, when the look's own size does not apply.
           size?: number;

@@ -1,5 +1,6 @@
 import type { Op } from './player';
 import type { Part } from './layout.ts';
+import { rowParts } from './sketchRows.ts';
 
 // Board sketches (docs/board-sketches-spec.md, mockup Rabbithole-bsk.4): cycle, stack, timeline and parts, laid out
 // from their box and every child drawn so far, in board pixels. Stations are 14-radius circles in the board's
@@ -65,6 +66,7 @@ export function sketchParts(parent: Op, children: Op[], box: Box, parts: Parts) 
     if (parent.kind === 'stack') stack(children, box, parts);
     if (parent.kind === 'timeline') timeline(children, box, parts);
     if (parent.kind === 'parts') whole(parent, children, box, parts);
+    rowParts(parent, children, box, parts);
 }
 
 // A rounded loop 40 inside the box's sides, its top run 50 below the top and its bottom run 90 above the bottom. The

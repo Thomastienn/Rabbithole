@@ -53,10 +53,11 @@ test('board: each sentence is spoken in chunks tagged with its id, one sentence 
     await until(() => speech.closed);
 });
 
-test('board: a key sentence is said at -15%, one drawing math at -10%, one that is both at -15%, the rest at +0%', async (t) => {
+test('board: a key sentence is said at -15%, one drawing math or an equation at -10%, one that is both at -15%, the rest at +0%', async (t) => {
     const provider = boardProvider([
         [
-            '> Plain.\n!> Key.\n> Math.\nm1 math "x^2" at 400,450\n!> Both.\nm2 math "y^2" at 1200,450\n',
+            '> Plain.\n!> Key.\n> Math.\nm1 math "x^2" at 400,450\n!> Both.\nm2 math "y^2" at 1200,450\n' +
+                '> Formula.\np1 page\nx1 equation "E = m c^2" at 800,450\n> Symbol.\ny1 symbol "E" means="energy" in x1\n',
         ],
     ]);
     const rates = [];
@@ -74,7 +75,7 @@ test('board: a key sentence is said at -15%, one drawing math at -10%, one that 
     await opened(board.ws);
     board.send({ type: 'ask', text: 'Why?' });
     const sentences = [];
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 6; i++) {
         const sentence = await board.next('sentence');
         sentences.push(sentence);
         await until(() => rates.length > i);
@@ -87,6 +88,8 @@ test('board: a key sentence is said at -15%, one drawing math at -10%, one that 
         ['Key.', -15],
         ['Math.', -10],
         ['Both.', -15],
+        ['Formula.', -10],
+        ['Symbol.', -10],
     ]);
     assert.deepEqual(
         sentences.map((s) => [s.key, s.rate]),
@@ -95,6 +98,8 @@ test('board: a key sentence is said at -15%, one drawing math at -10%, one that 
             [true, -15],
             [undefined, -10],
             [true, -15],
+            [undefined, -10],
+            [undefined, -10],
         ],
         'the board gets the key mark and rate for its pause and caption estimate',
     );
