@@ -532,8 +532,7 @@ export default function Board({
     );
 }
 
-// What the board shows of its items: erased items fading out (or gone when replayed), passed pointers fading over
-// 300ms, no pointer when replayed, and one 1600×900 space per page.
+// What the board shows: erased items and passed pointers fading (gone when replayed), one 1600×900 space a page.
 function sceneOf(items: Drawn[]) {
     const erased = new Map(
         items.flatMap(({ op, ms, passed }) => [
