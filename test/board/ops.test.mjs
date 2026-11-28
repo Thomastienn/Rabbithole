@@ -86,7 +86,7 @@ test('board ops: a malformed op or one naming an unknown id is skipped with its 
     assert.ok(board.read('bl text "bulb" at 1460,450').item, 'a skipped id stays free');
 });
 
-test('board ops: math, highlight, pointer and erase name their items; an old clear opens a fresh untitled page below', () => {
+test('board ops: math, pointer and erase name their items, an old highlight reads as nothing; an old clear opens a fresh untitled page below', () => {
     const board = boardOps();
     const read = (line) => board.read(line).item;
     board.read('bat box at 360,450 w=120 h=220');
@@ -112,15 +112,14 @@ test('board ops: math, highlight, pointer and erase name their items; an old cle
         [432, 450],
         'it glides on from where it stopped',
     );
-    assert.deepEqual(read('h1 highlight bulb'), {
-        id: 'h1',
-        kind: 'highlight',
-        names: ['bulb'],
-        at: [1240, 450],
-        w: 180,
-        h: 180,
-    });
-    assert.deepEqual(read('x1 erase e1 h1'), { id: 'x1', kind: 'erase', ids: ['e1', 'h1'] });
+    // A saved board's highlight draws nothing, logs nothing, and leaves its item and its erase working.
+    assert.deepEqual(board.read('h1 highlight bulb'), {});
+    assert.deepEqual(board.read('h2 highlight'), {});
+    assert.ok(read('p0 pointer bulb'), 'the highlighted item still resolves');
+    assert.deepEqual(board.read('x0 erase h1'), {});
+    assert.deepEqual(read('x1 erase e1 h1'), { id: 'x1', kind: 'erase', ids: ['e1'] });
+    assert.ok(read('h2 dot at 800,800'), "a dropped highlight's id is free again");
+    assert.deepEqual(read('x9 erase h2').ids, ['h2'], 'and an erase reaches the item that took it');
     assert.match(board.read('p3 pointer e1').error, /unknown id e1/, 'erased items are gone');
     assert.deepEqual(read('n1 clear'), {
         id: 'n1',
@@ -146,8 +145,7 @@ test('board ops: math, highlight, pointer and erase name their items; an old cle
     );
     assert.deepEqual(read('x3 erase bat').ids, ['bat'], 'erase still reaches earlier pages');
     assert.match(board.read('m3 math "P = \\frac{V^2}{" at 800,780').error, /KaTeX parse error/);
-    for (const line of ['h2 highlight', 'h3 highlight bat bulb', 'x2 erase nope', 'p5 pointer x1'])
-        assert.ok(board.read(line).error, line);
+    for (const line of ['x2 erase nope', 'p5 pointer x1']) assert.ok(board.read(line).error, line);
 });
 
 test('board ops: page and open move between titled pages, each its own space that only erase reaches out of', () => {
@@ -171,7 +169,7 @@ test('board ops: page and open move between titled pages, each its own space tha
         'the guard leaves it be: f1 is on another page',
     );
     assert.deepEqual(read('t1 pointer g1').from, [800, 1350], 'the pointer starts at its centre');
-    for (const line of ['h1 highlight f1', 'c1 arrow from g1 to f1', 's9 page from=nope'])
+    for (const line of ['t2 pointer f1', 'c1 arrow from g1 to f1', 's9 page from=nope'])
         assert.match(board.read(line).error, /unknown id/, line);
     assert.deepEqual(read('s2 page'), {
         id: 's2',
@@ -391,8 +389,8 @@ test('board ops: marks name top-level items in view, and erasing a component era
     const board = boardOps();
     board.read('a1 axes at 680,480 w=1080 h=680 x=0..5 y=0..32');
     board.read('p1 plot on a1 y=x^2');
-    assert.equal(board.read('h1 highlight p1').error, 'unknown id p1');
-    assert.ok(board.read('h2 highlight a1').item);
+    assert.equal(board.read('t1 pointer p1').error, 'unknown id p1');
+    assert.ok(board.read('t2 pointer a1').item);
     assert.deepEqual(board.read('x1 erase a1').item.ids, ['a1', 'p1']);
     board.read('b1 axes at 680,480 w=1080 h=680 x=0..5 y=0..32');
     board.read('n1 clear');

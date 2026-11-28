@@ -70,7 +70,7 @@ function lay(ops: Op[]) {
     return parts;
 }
 
-// The space a child's boxes, circles and text take, for highlights, the pointer and the pen; lines are left out.
+// The space a child's boxes, circles and text take, for the pointer and the pen; lines are left out.
 // Text is measured at about 0.52 of its size per character, from 0.75 of its size above its baseline to 0.25 below.
 export function partsBox(parts: Part[] = []) {
     const boxes = parts.flatMap((p): [number, number, number, number][] => {
