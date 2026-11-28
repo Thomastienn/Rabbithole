@@ -8,6 +8,7 @@ import { boardMic } from './mic.mjs';
 import { boardPen } from './pen.mjs';
 import { boardVoicing } from './voicing.mjs';
 import { sessionFillers } from './fillers.mjs';
+import { attachBoardFiles, boardAsk } from './files.mjs';
 import { nativeTools as nativeToolsFor } from '../tools/runner.mjs';
 import { conversationHistory } from '../providers/conversationHistory.mjs';
 
@@ -283,12 +284,13 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
             if (!signal.aborted) await warm(tree, signal);
             if (signal.aborted) result = { status: 'interrupted' };
             else {
-                const images = await pen.sketches(current, tree, model, free);
+                const sketches = await pen.sketches(current, tree, model, free);
+                const images = [...sketches, ...current.images];
                 // The model gets only spoken captions back from history, so each turn says what pages exist.
                 index = board.index();
                 const prompt = `${index}\n\n${
-                    images.length
-                        ? `${text} · images of ${images.map((i) => i.id).join(', ')} attached`
+                    sketches.length
+                        ? `${text} · images of ${sketches.map((i) => i.id).join(', ')} attached`
                         : text
                 }`;
                 selection = { provider: tree.provider, model };
@@ -364,8 +366,8 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
         send({ type: 'notice', notice: result.error ?? STOPPED });
         finish(current, 'failed');
     };
-    // A learner's question, or with noAnswer 1 or 2 a no-answer turn after the wait.
-    const ask = (text, noAnswer = 0) => {
+    // A learner's question with its prepared files, or with noAnswer 1 or 2 a no-answer turn after the wait.
+    const ask = (text, noAnswer = 0, files = []) => {
         if (closed) return;
         // Sending mid-reply cuts in: the reply stops, saved up to the sentence heard, and the question starts a new turn.
         if (turn) stop(turn);
@@ -398,11 +400,13 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
             last?.board && last.role === 'assistant' && last.status === 'interrupted' && last.text
                 ? `(You were cut off. The last sentence the learner heard was "${last.text.split('\n').at(-1)}"; they did not hear the rest of that reply.)\n\n`
                 : '';
-        const prompt = cut + (note ? `${text}\n\n${note}` : text);
+        const attached = attachBoardFiles(ctx, id, user, text, files);
+        const prompt = cut + (note ? `${attached.prompt}\n\n${note}` : attached.prompt);
         const current = {
             reply,
             user,
             noAnswer,
+            images: attached.images,
             // Quick thinking judges a no-answer turn's concepts against the learner's last question.
             question: user ? text : (tree.messages.findLast((m) => m.role === 'user')?.text ?? ''),
             sentences: [],
@@ -514,7 +518,7 @@ export function boardSession(ctx, id, socket, lang = 'en', guided = false, check
             return;
         }
         if (m?.type === 'ask' && typeof m.text === 'string' && m.text.trim())
-            ask(m.text.slice(0, 100000));
+            boardAsk(ctx, id, m, ask, send);
         if (
             m?.type === 'stroke' &&
             Array.isArray(m.points) &&

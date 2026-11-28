@@ -62,7 +62,7 @@ export function FirstQuestion({
                 onChange={setDraft}
                 footerActions={
                     <>
-                        {!board && <AttachButton add={attach.add} isDisabled={busy} />}
+                        <AttachButton add={attach.add} isDisabled={busy} />
                         {modelMenu}
                         <BoardToggle board={board} toggleBoard={toggleBoard} />
                     </>

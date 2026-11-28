@@ -282,6 +282,7 @@ export default function FocusedChat({
                     thread={thread}
                     ink={addresses.get(tree.id)?.ink ?? 0}
                     first={first}
+                    firstFiles={boardStart?.files}
                     askedFirst={() => setBoardStart(undefined)}
                 />
             ) : (

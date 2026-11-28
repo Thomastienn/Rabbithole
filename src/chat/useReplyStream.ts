@@ -52,7 +52,7 @@ export function useReplyStream(
     const [pendingFiles, setPendingFiles] = useState<Record<string, File[]>>({});
     const [busy, setBusy] = useState(false);
     // A first question asked on the board: its conversation opens with the board on and asks it there.
-    const [boardStart, setBoardStart] = useState<{ id: string; question: string }>();
+    const [boardStart, setBoardStart] = useState<{ id: string; question: string; files: File[] }>();
     const streams = useRef(new Map<string, AbortController>());
     const turns = trees.live;
     const setDraft = (id: string, value: string) => setDrafts((d) => ({ ...d, [id]: value }));
@@ -221,7 +221,7 @@ export function useReplyStream(
                     refresh,
                     send: async (question, next) =>
                         board
-                            ? setBoardStart({ id: next.id, question })
+                            ? setBoardStart({ id: next.id, question, files })
                             : send(question, next, false, files),
                     open: async (next) => {
                         overviewOrigin.current = undefined;
@@ -236,7 +236,11 @@ export function useReplyStream(
                             first: '',
                             [next.id]: board ? '' : d.first || question,
                         }));
-                        setPendingFiles((p) => ({ ...p, first: [], [next.id]: files }));
+                        setPendingFiles((p) => ({
+                            ...p,
+                            first: [],
+                            [next.id]: board ? [] : files,
+                        }));
                     },
                 },
                 board,

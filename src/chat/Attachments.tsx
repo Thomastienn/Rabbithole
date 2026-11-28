@@ -16,9 +16,11 @@ export type Attachment = { id: string; name: string; type: string; size: number;
 export function AttachButton({
     add,
     isDisabled,
+    className,
 }: {
     add: (files: File[]) => void;
     isDisabled?: boolean;
+    className?: string;
 }) {
     const input = useRef<HTMLInputElement>(null);
     return (
@@ -36,6 +38,7 @@ export function AttachButton({
                 }}
             />
             <IconButton
+                className={className}
                 label="Attach files"
                 icon={<PaperClipIcon />}
                 variant="ghost"

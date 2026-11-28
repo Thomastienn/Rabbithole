@@ -264,10 +264,15 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
             }
         };
     }, [conversation]);
-    const ask = (text: string) => {
+    const ask = (text: string, files: File[] = []) => {
         const ws = socket.current;
         if (ws?.readyState !== WebSocket.OPEN) return false;
-        ws.send(JSON.stringify({ type: 'ask', text }));
+        // Files go base64 in the ask message, read first; the server prepares them as a chat send does.
+        if (files.length)
+            void Promise.all(files.map(encoded)).then((encodedFiles) =>
+                ws.send(JSON.stringify({ type: 'ask', text, files: encodedFiles })),
+            );
+        else ws.send(JSON.stringify({ type: 'ask', text }));
         // Sending mid-reply cuts in: the tutor stops here at once, without waiting on the server.
         if (state === 'speaking') {
             cut.current = true;
@@ -409,3 +414,12 @@ export function useBoard(conversation: string, messages: Message[], reload: () =
         waiting,
     };
 }
+
+// A file as the board's ask message carries it, its bytes in base64.
+const encoded = async (file: File) => {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 0x8000)
+        binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    return { name: file.name, type: file.type, data: btoa(binary) };
+};

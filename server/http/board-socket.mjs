@@ -5,7 +5,8 @@ import { VOICES } from '../board/speech.mjs';
 
 // One WebSocket per open board at /api/trees/<id>/board (docs/board-spec.md); chat replies stay on server-sent events.
 export function boardSockets(ctx, server) {
-    const sockets = new WebSocketServer({ noServer: true, maxPayload: 200000 });
+    // A question's files come base64 in its ask message: chat's 50 MB upload cap, plus a third for the encoding.
+    const sockets = new WebSocketServer({ noServer: true, maxPayload: 70 * 1024 * 1024 });
     server.on('upgrade', (req, socket, head) => {
         socket.on('error', () => {});
         const refuse = (status) =>

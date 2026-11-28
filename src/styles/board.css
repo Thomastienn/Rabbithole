@@ -294,7 +294,7 @@
     width: 100%;
 }
 
-/* The chat composer, centred, without model, effort or attach controls; its tools hold the mic. */
+/* The chat composer, centred, without model or effort controls; its tools hold attach and the mic. */
 .board-foot {
     padding: 8px 24px 20px;
 }
@@ -315,12 +315,12 @@
     padding: 0;
     font-size: 15px;
 }
-.board-composer :is(.astryx-chat-send-button, .board-mic, .board-pen, .board-pause) {
+.board-composer :is(.astryx-chat-send-button, .board-attach, .board-mic, .board-pen, .board-pause) {
     width: 36px;
     height: 36px;
 }
 .board-composer
-    :is(.astryx-chat-send-button, .board-mic, .board-pen, .board-pause)
+    :is(.astryx-chat-send-button, .board-attach, .board-mic, .board-pen, .board-pause)
     :is(svg, span:has(> svg)) {
     width: 20px;
     height: 20px;

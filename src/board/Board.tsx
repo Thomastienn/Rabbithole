@@ -18,11 +18,11 @@ import {
     PencilIcon,
     PlayIcon,
 } from '@heroicons/react/24/outline';
-import { holdEnter } from '../chat/Attachments';
+import { AttachButton, PendingAttachments, holdEnter, useAttach } from '../chat/Attachments';
 import type { Message } from '../chat/turn';
 import type { ThreadProps } from '../chat/ChatThread';
 import TranscriptRail from './TranscriptRail';
-import { useBoard, type Drawn } from './useBoard';
+import { useBoard } from './useBoard';
 import BoardItem, { strokePath } from './BoardItem';
 import { follow, slide } from './camera';
 import PageStrip, { BackChip, pagesOf } from './PageStrip';
@@ -30,7 +30,7 @@ import { labelRows } from './player';
 import { dimmed } from './spotlight';
 import { DEFAULT_SPEED } from './voice';
 import { BOARD_SPEEDS } from '../shell/preferences';
-import { componentParts } from './layout';
+import { sceneOf } from './scene';
 import { inkStyle } from '../map/treeList';
 
 type Point = [number, number];
@@ -59,6 +59,7 @@ export default function Board({
     thread,
     ink = 0,
     first,
+    firstFiles,
     askedFirst,
 }: {
     conversation: string;
@@ -68,13 +69,17 @@ export default function Board({
     ink?: number;
     // A tree started on the board: its first question, asked once the board connects.
     first?: string;
+    firstFiles?: File[];
     askedFirst?: () => void;
 }) {
     const board = useBoard(conversation, messages, reload);
     useEffect(() => {
-        if (first && board.ready && board.ask(first)) askedFirst?.();
+        if (first && board.ready && board.ask(first, firstFiles)) askedFirst?.();
     }, [first, board.ready]);
     const [draft, setDraft] = useState('');
+    // Files go with the next question, as in chat: paperclip, paste or drop.
+    const [files, setFiles] = useState<File[]>([]);
+    const attach = useAttach(files, setFiles);
     // Typing an answer holds a tutor's question open (mockup Rabbithole-brd.13).
     const changeDraft = (text: string) => {
         if (text.trim() && !draft.trim()) board.typing();
@@ -180,7 +185,10 @@ export default function Board({
     }, [ptt]);
     const submit = (text: string) => {
         if (busy || !text.trim()) return;
-        if (board.ask(text.trim())) setDraft('');
+        if (!board.ask(text.trim(), files)) return;
+        setDraft('');
+        setFiles([]);
+        attach.clear();
     };
     // The rail: the conversation's turns, then this board's, each reply as far as it was shown.
     const session = new Set(board.turns.flatMap((t) => [t.user, t.reply]));
@@ -363,7 +371,8 @@ export default function Board({
             </div>
             <div className="board-foot">
                 <ChatComposer
-                    className="board-composer"
+                    className={`board-composer attachment-composer${attach.dropping ? ' is-dropping' : ''}`}
+                    {...attach.zone}
                     elevation="none"
                     value={draft}
                     onChange={changeDraft}
@@ -373,6 +382,7 @@ export default function Board({
                     }
                     footerActions={
                         <span className="board-tools">
+                            <AttachButton className="board-attach" add={attach.add} />
                             {/* Off when a board opens; downloading and hearing widen it to the icon's right. */}
                             {ptt && !loading ? (
                                 // Push-to-talk (mockup Rabbithole-brd.12): a hold button, never a toggle.
@@ -503,8 +513,14 @@ export default function Board({
                                     </span>
                                 </div>
                             )}
+                            <PendingAttachments
+                                files={files}
+                                remove={(i) => setFiles(files.filter((_, j) => j !== i))}
+                            />
+                            {attach.notices}
                             <ChatComposerInput
                                 label="Your question"
+                                onFiles={attach.add}
                                 maxRows={4}
                                 value={draft}
                                 onChange={changeDraft}
@@ -529,21 +545,4 @@ export default function Board({
             />
         </section>
     );
-}
-
-// What the board shows: erased items and passed pointers fading (gone when replayed), one 1600×900 space a page.
-function sceneOf(items: Drawn[]) {
-    const erased = new Map(
-        items.flatMap(({ op, ms, passed }) => [
-            ...(op.ids ?? []).map((id) => [id, ms] as const),
-            ...(passed ? [[op.id, 300] as const] : []),
-        ]),
-    );
-    const shown = items.filter(({ op, ms }) => {
-        if (op.kind === 'erase' || op.top !== undefined) return false;
-        return erased.get(op.id) !== 0 && (op.kind !== 'pointer' || ms > 0);
-    });
-    const areas = 1 + Math.max(0, ...items.map(({ op }) => (op.top ?? 0) / 900));
-    const ops = shown.map(({ op }) => op);
-    return { shown, erased, areas, parts: componentParts(ops, erased) };
 }
